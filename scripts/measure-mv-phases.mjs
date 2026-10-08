@@ -58,12 +58,12 @@ async function main() {
   const t0 = Date.now();
   const { rows: players } = await pool.query(
     `with latest as (
-       select distinct on (puuid) puuid, tier
+       select distinct on (puuid) puuid, tier, rated
        from tft_player_marketvalue_snapshots
        where region = $1
        order by puuid, snapshot_date desc
      )
-     select puuid from latest where tier = any($2::text[]) limit $3`,
+     select puuid from latest where rated and tier = any($2::text[]) limit $3`,
     [REGION, D2_TIERS, N],
   );
   console.log(`  ${players.length} Spieler geladen in ${Date.now() - t0}ms`);

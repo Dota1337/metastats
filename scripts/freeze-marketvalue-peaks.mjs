@@ -141,11 +141,12 @@ const keepIfLower = (col) =>
 // cov:  Abdeckung ueber das GANZE Set, nicht nur ueber das Fenster, sonst waere
 //       snapshot_count vom Laufzeitpunkt abhaengig statt idempotent. Der
 //       Set-Filter fehlte in der alten SQL — dort zaehlte sie ueber Sets hinweg.
+// Ueberall nur bewertete Zeilen: "nicht bewertet"-Tage sind kein Snapshot.
 const SQL = `
 with cand as (
   select distinct puuid
     from tft_player_marketvalue_snapshots
-   where set_number = $1 and sample_size >= $2
+   where set_number = $1 and sample_size >= $2 and rated
      and ($3::date is null or snapshot_date >= $3::date)
 ),
 cov as (
@@ -155,7 +156,7 @@ cov as (
          max(s.snapshot_date) as last_snapshot_date
     from tft_player_marketvalue_snapshots s
     join cand c on c.puuid = s.puuid
-   where s.set_number = $1
+   where s.set_number = $1 and s.rated
    group by s.puuid
 ),
 peak as (
@@ -165,7 +166,7 @@ peak as (
          s.base_value, s.multiplier, s.final_value, s.sample_size, s.damping
     from tft_player_marketvalue_snapshots s
     join cand c on c.puuid = s.puuid
-   where s.set_number = $1 and s.sample_size >= $2
+   where s.set_number = $1 and s.sample_size >= $2 and s.rated
      and ($3::date is null or s.snapshot_date >= $3::date)
    order by s.puuid, s.final_value desc, s.snapshot_date asc
 )
@@ -273,7 +274,7 @@ async function runPass(set, since) {
     const c = await pool.query(
       `select count(distinct puuid)::int as n
          from tft_player_marketvalue_snapshots
-        where set_number = $1 and sample_size >= $2
+        where set_number = $1 and sample_size >= $2 and rated
           and ($3::date is null or snapshot_date >= $3::date)`,
       [set, MIN_SAMPLE, since],
     );

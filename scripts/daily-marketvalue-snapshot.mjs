@@ -93,8 +93,14 @@ import {
   loadGraph,
   gatherPlayer,
   persistPopulation,
+  loadPopulation,
+  countRatedPopulation,
+  syncKeptPopulation,
   snapshotPlayer,
+  writeUnratedMarker,
 } from './lib/tft-marketvalue-pipeline.mjs';
+import { computeBaseValue } from './lib/tft-marketvalue.mjs';
+import { shouldPersistPopulation } from './lib/tft-mv-population-guard.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { loadSetStartDate, daysSinceSetStart } from './lib/current-set.mjs';
 import { fetchD2PlusEntriesDetailed, splitByActivity, rankChallengers } from './lib/tft-league-entries.mjs';
@@ -686,21 +692,31 @@ async function loadIterationTargets(region) {
   // `order by ... created_at desc` als zweites Kriterium: bei mehreren Zeilen
   // desselben Tages — möglich, seit der Refresh-Button der API in dieselbe Zeile
   // schreibt — soll die zuletzt geschriebene gewinnen.
+  //
+  // `and rated`: wer zuletzt als "nicht bewertet" markiert wurde (Abstieg unter
+  // Diamond II, ohne Wertung), ist hier nicht mehr faellig. Kommt er zurueck,
+  // nimmt ihn der Neueinsteiger-Block aus den Liga-Listen wieder auf.
   const r = await pool.query(
     `with latest as (
        select distinct on (puuid)
-         puuid, region, tier, rank, lp, ladder_rank, snapshot_date, games_played, created_at, set_number
+         puuid, region, game_name, tag_line, tier, rank, lp, ladder_rank, snapshot_date,
+         games_played, created_at, set_number, rated
        from tft_player_marketvalue_snapshots
        where region = $1
        order by puuid, snapshot_date desc, created_at desc
      )
      select * from latest
      where tier = any($2::text[])
+       and rated
        and created_at < now() - ($3::text || ' hours')::interval`,
     [region, D2_TIERS, REFRESH_HOURS],
   );
   return r.rows.map(row => ({
     puuid: row.puuid,
+    // Name nur fuer die Nicht-bewertet-Zeile; der Bewertungspfad holt ihn
+    // frisch ueber den Account-Abruf.
+    gameName: row.game_name ?? null,
+    tagLine: row.tag_line ?? null,
     tier: row.tier,
     rank: row.rank,
     lp: row.lp,
@@ -750,6 +766,10 @@ function applyEntry(p, e, ladder) {
 // Nur dann heisst "fehlt" wirklich "nicht mehr dort". Auch alle Listen darueber
 // muessen vollstaendig sein (er kann aufgestiegen sein), und die Master-Liste
 // ist in grossen Regionen bei 10.000 abgeschnitten.
+// Bekannte Grenze: ist sie abgeschnitten, faellt ein abgestiegener Master- oder
+// Diamond-Spieler hier nicht auf. Er laeuft mit seinem letzten Rang weiter, bis
+// er wieder in einer Liste auftaucht oder die Master-Liste wieder vollstaendig
+// laedt. Challenger und GM betrifft das nicht.
 function listCoversTier(tier, loaded, masterCapped) {
   if (!loaded) return false;
   const apex = loaded.CHALLENGER && loaded.GRANDMASTER && loaded.MASTER;
@@ -985,27 +1005,60 @@ async function processRegion(region) {
     else if (ladder) p.ladderRank = ladder.get(p.puuid);
   }
 
-  // Neueinsteiger: in den Liga-Listen, aber noch nie mit Marktwert.
+  // Nicht mehr bewertbar (unter Diamond II oder ohne Wertung): diese Spieler
+  // brauchen keinen Match-Abruf und keine Bewertung, sondern nur die
+  // "nicht bewertet"-Zeile — die schreibt der scharfe Lauf unten. Dieselbe
+  // Pruefung wie in snapshotPlayer, damit beide nie auseinanderlaufen.
+  // Vorher liefen sie durch Pass 1, zaehlten in der Vergleichsgruppe mit und
+  // wurden dann in Pass 2 still uebersprungen — der alte Wert blieb stehen.
+  const unratedPlayers = [];
+  players = players.filter(p => {
+    const b = computeBaseValue(
+      { tier: p.tier, rank: p.rank || 'I', leaguePoints: p.lp, wins: p.wins, losses: p.losses },
+      p.tier === 'CHALLENGER' ? p.ladderRank : undefined,
+    );
+    if (b.rated) return true;
+    p._unratedReason = b.notRatedReason;
+    unratedPlayers.push(p);
+    return false;
+  });
+
+  // Neueinsteiger: in den Liga-Listen, aber ohne gueltigen Marktwert — noch nie
+  // bewertet, oder zuletzt als "nicht bewertet" markiert und wieder ab
+  // Diamond II (Rueckkehrer).
   let newcomerCount = 0;
+  let returningCount = 0;
   if (entries.size > 0 && NEWCOMER_CAP > 0) {
     const known = await pool.query(
-      `select distinct puuid from tft_player_marketvalue_snapshots where region = $1`,
+      `with latest as (
+         select distinct on (puuid) puuid, rated
+         from tft_player_marketvalue_snapshots
+         where region = $1
+         order by puuid, snapshot_date desc, created_at desc
+       )
+       select puuid, rated from latest`,
       [region],
     );
-    const knownSet = new Set(known.rows.map(r => r.puuid));
+    const knownRated = new Set();
+    const returning = new Set();
+    for (const r of known.rows) (r.rated ? knownRated : returning).add(r.puuid);
     const setStart = loadSetStartDate();
     const since = setStart ? new Date(setStart + 'T00:00:00Z') : new Date(Date.now() - 30 * 86_400_000);
     const candidates = [];
     for (const e of entries.values()) {
-      if (knownSet.has(e.puuid) || newcomerTried.has(e.puuid)) continue;
+      if (knownRated.has(e.puuid) || newcomerTried.has(e.puuid)) continue;
       if (e.tier === 'DIAMOND' && e.rank !== 'I' && e.rank !== 'II') continue;
       candidates.push(e);
     }
-    candidates.sort((a, b) => tierScore(b) - tierScore(a) || b.lp - a.lp);
+    // Rueckkehrer zuerst: ihr letzter sichtbarer Stand ist "nicht bewertet",
+    // ein neuer Wert ist fuer sie dringender als fuer echte Neueinsteiger.
+    candidates.sort((a, b) => (returning.has(b.puuid) - returning.has(a.puuid))
+      || tierScore(b) - tierScore(a) || b.lp - a.lp);
     // --limit ist ein Testschalter und deckelt auch die Neueinsteiger.
     const picked = candidates.slice(0, LIMIT > 0 ? Math.min(NEWCOMER_CAP, LIMIT) : NEWCOMER_CAP);
     newcomerCount = picked.length;
-    console.log(`  [neu] ${candidates.length} Spieler ohne Marktwert in den Listen, ${picked.length} in diesem Durchgang aufgenommen (Deckel ${NEWCOMER_CAP})`);
+    returningCount = picked.filter(e => returning.has(e.puuid)).length;
+    console.log(`  [neu] ${candidates.length} Spieler ohne Marktwert in den Listen, ${picked.length} in diesem Durchgang aufgenommen, davon ${returningCount} Rueckkehrer (Deckel ${NEWCOMER_CAP})`);
     if (!DRY_RUN) {
       for (const e of picked) {
         newcomerTried.add(e.puuid);
@@ -1021,6 +1074,7 @@ async function processRegion(region) {
     + ` | ${staleSet.size} nur mit Stand aus altem Set, ohne Eintrag → uebersprungen`
     + ` | ${phantoms.length} aus ihrer Liste verschwunden (${phantomFixed} nachgefragt${phantomSkipped ? `, ${phantomSkipped} ueber Deckel` : ''})`
     + ` | ${newcomerCount} neu`
+    + ` | ${unratedPlayers.length} nicht mehr bewertbar`
     + (ladder ? ` | ${ladder.size} Challenger-Plaetze` : '')
     + (entries.size === 0 ? ' | KEINE Liga-Eintraege → alle aktiv' : ''));
 
@@ -1038,7 +1092,7 @@ async function processRegion(region) {
     const estCalls = players.length * (1 + 2 + 1); // optimistisch 2 Match-Details avg
     console.log(`  [dry-run] fetch_state: ${f.n} cache rows, ${f.fresh_7d} fresh<7d, ${f.fresh_1d} fresh<1d`);
     console.log(`  [dry-run] estimated Riot-Calls: ${estCalls} (~${(estCalls / 17 / 60).toFixed(1)} min @ 17 req/s)`);
-    return { region, players: players.length, snapshots: 0, dryRun: true };
+    return { region, players: players.length, unratedPlanned: unratedPlayers.length, snapshots: 0, dryRun: true };
   }
 
   // 1. Backup vor scharfem Lauf
@@ -1069,6 +1123,42 @@ async function processRegion(region) {
     }
     await cleanupStaleInflight(setNumber);
   }
+
+  // "Nicht bewertet"-Zeilen fuer die Abgestiegenen. Ohne Match-Abruf und vor
+  // Pass 1: sie sollen weder Riot-Kontingent kosten noch in die
+  // Vergleichsgruppe rutschen. Ihr Puffer-Eintrag aus einem frueheren,
+  // abgebrochenen Lauf wird geloescht, sonst kaeme er unten als "carried"
+  // doch wieder in die Gruppe.
+  let markers = 0;
+  let markerFailed = 0;
+  if (unratedPlayers.length > 0) {
+    for (const p of unratedPlayers) {
+      if (aborting) break;
+      try {
+        if (await writeUnratedMarker(pool, p, { region, setNumber, snapshotDate: regionDay, reason: p._unratedReason })) markers++;
+      } catch (err) {
+        markerFailed++;
+        if (VERBOSE) console.error(`  [error] unrated ${p.puuid.slice(0, 8)}…: ${err.message}`);
+      }
+    }
+    if (USE_INFLIGHT_RESUME) {
+      try {
+        await pool.query(
+          `delete from tft_mv_inflight_raw where region = $1 and puuid = any($2::text[])`,
+          [region, unratedPlayers.map(p => p.puuid)],
+        );
+      } catch (err) {
+        console.warn(`  [inflight] Puffer der Abgestiegenen nicht geloescht: ${err.message}`);
+      }
+    }
+    console.log(`  [unrated] ${markers}/${unratedPlayers.length} als "nicht bewertet" markiert`);
+  }
+  if (players.length === 0) {
+    // Nur Abgestiegene faellig: keine Bewertung, keine neue Vergleichsgruppe.
+    console.log(`  [done] nur "nicht bewertet"-Zeilen geschrieben (${markers})`);
+    return { region, players: 0, snapshots: 0, markers, failed: markerFailed, markersOnly: true, backup: backupTbl };
+  }
+
   const graph = loadGraph(region);
   const hotCompKeys = buildHotCompKeys(graph);
   const recommendedItems = buildRecommendedItems(graph);
@@ -1246,7 +1336,9 @@ async function processRegion(region) {
   // Ausgeschlossen werden ALLE Fälligen, nicht nur die verwertbaren: ein
   // Fälliger, der diesmal zu wenige Spiele hat, darf nicht über einen alten
   // Puffer-Eintrag doch in die Population rutschen.
-  const dueSet = new Set(players.map(p => p.puuid));
+  // Die Abgestiegenen zaehlen mit: ihr Puffer ist oben zwar geloescht, aber
+  // schlaegt das Loeschen fehl, duerfen sie trotzdem nicht in die Gruppe.
+  const dueSet = new Set([...players, ...unratedPlayers].map(p => p.puuid));
   const carried = [...bufferMap]
     .filter(([puuid]) => !dueSet.has(puuid))
     .sort(([a], [b]) => a.localeCompare(b))
@@ -1262,18 +1354,41 @@ async function processRegion(region) {
     pop = makeNullPop();
     console.log(`  [pop] ${region} bypassed (n=${gathered.length} zu klein für valide z-Verteilung) — multiplier=1.0`);
   } else {
-    const compMeta = buildCompMeta(popCohort);
-    // applyMeta über die GESAMTE Bezugsgruppe (Inflight + Frisch) — data-skeptic
-    // F2: metaRelM wird in-place in raw_metrics geschrieben. Wenn applyMeta
-    // nur über Frisch läuft, fehlt metaRelative-z für Inflight-Spieler →
-    // unrated-Cascade in Pass 2.
-    for (const raw of popCohort) applyMeta(raw, compMeta);
-    pop = buildPopulation(popCohort);
-    compMetaSize = compMeta.size;
-    await persistPopulation(pool, region, setNumber, pop, compMeta, popCohort.length, {
-      supaUrl: SUPA_URL, supaKey: SUPA_KEY,
-    });
-    console.log(`  [pop] persisted — ${popCohort.length} players, ${compMetaSize} comps`);
+    // Speichern oder behalten? Ein Nachlauf mit einer Handvoll Spielern darf
+    // die Vergleichsgruppe des Hauptlaufs nicht ersetzen — sonst misst die
+    // naechste Bewertung jeden an diesem Rest (Regel und Messwerte in
+    // lib/tft-mv-population-guard.mjs). Entschieden wird VOR buildCompMeta,
+    // weil applyMeta den Rohdaten den Meta-Wert fest einschreibt.
+    const stored = await loadPopulation(pool, region, setNumber);
+    const ratedD2Plus = stored ? await countRatedPopulation(pool, region, setNumber) : null;
+    const decision = shouldPersistPopulation({ cohort: popCohort.length, stored, ratedD2Plus });
+    if (decision.persist) {
+      const compMeta = buildCompMeta(popCohort);
+      // applyMeta über die GESAMTE Bezugsgruppe (Inflight + Frisch) — data-skeptic
+      // F2: metaRelM wird in-place in raw_metrics geschrieben. Wenn applyMeta
+      // nur über Frisch läuft, fehlt metaRelative-z für Inflight-Spieler →
+      // unrated-Cascade in Pass 2.
+      for (const raw of popCohort) applyMeta(raw, compMeta);
+      pop = buildPopulation(popCohort);
+      compMetaSize = compMeta.size;
+      await persistPopulation(pool, region, setNumber, pop, compMeta, popCohort.length, {
+        supaUrl: SUPA_URL, supaKey: SUPA_KEY,
+      });
+      console.log(`  [pop] persisted — ${popCohort.length} players, ${compMetaSize} comps (${decision.reason})`);
+    } else {
+      // Behalten: gegen die gespeicherte Gruppe rechnen, genau wie der
+      // Refresh-Knopf der API. scoreSkill nimmt dann expectedDmg der
+      // gespeicherten Gruppe, weil buildPopulation hier nicht laeuft.
+      for (const raw of popCohort) applyMeta(raw, stored.compMeta);
+      pop = stored.pop;
+      compMetaSize = stored.compMeta.size;
+      await syncKeptPopulation({ supaUrl: SUPA_URL, supaKey: SUPA_KEY }, region, setNumber, stored);
+      const age = decision.ageHours == null ? 'Alter unbekannt' : `${decision.ageHours.toFixed(1)} h alt`;
+      console.log(`  [pop] behalten — gespeicherte Gruppe ${stored.playerCount} Spieler, ${age} (${decision.reason})`);
+      if (decision.warn) {
+        console.warn(`  [pop] WARNUNG: Vergleichsgruppe ${age} — kein Hauptlauf hat sie erneuert`);
+      }
+    }
   }
 
   // 4. Pass 2: snapshotPlayer pro Spieler
@@ -1313,7 +1428,8 @@ async function processRegion(region) {
     try {
       p2++;
       const r = await snapshotPlayer(pool, accountRiot, g.p, g.raw, pop, snapshotCtx);
-      if (r.snapshotted) snapshotted++; else unrated++;
+      if (r.snapshotted) snapshotted++;
+      else { unrated++; if (r.marker) markers++; }
     } catch (err) {
       failed++;
       if (VERBOSE) console.error(`  [error] snapshot ${g.p.puuid.slice(0, 8)}…: ${err.message}`);
@@ -1323,8 +1439,8 @@ async function processRegion(region) {
   const dt = ((Date.now() - t0) / 1000).toFixed(0);
   const inflightSuffix = inflightActive ? `, ${fromInflight} from-inflight` : '';
   const abortedSuffix = (pass1Aborted || pass2Aborted) ? ' [ABORTED — region not completed]' : '';
-  console.log(`  [done] ${snapshotted} snapshots | ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${failed} failed${inflightSuffix} | ${dt}s${abortedSuffix}`);
-  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, failed, backup: backupTbl, fromInflight, aborted: pass1Aborted || pass2Aborted };
+  console.log(`  [done] ${snapshotted} snapshots | ${gathered.length} usable / ${players.length} total | ${tooFew} too-few, ${unrated} unrated, ${markers} als nicht bewertet markiert, ${failed + markerFailed} failed${inflightSuffix} | ${dt}s${abortedSuffix}`);
+  return { region, players: players.length, gathered: gathered.length, snapshots: snapshotted, unrated, markers, failed: failed + markerFailed, backup: backupTbl, fromInflight, aborted: pass1Aborted || pass2Aborted };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1403,7 +1519,9 @@ async function main() {
           // müssen den Resume-Puffer behalten — er ist die einzige Stelle, an
           // der die Gather-Arbeit liegt, und genau sein früheres Löschen hat
           // dafür gesorgt, dass große Regionen nie fertig wurden.
-          if (!DRY_RUN && !r.aborted && !r.degraded) {
+          // Ein Lauf, der nur "nicht bewertet"-Zeilen geschrieben hat
+          // (markersOnly), hat keinen Puffer verbraucht — er raeumt ihn nicht.
+          if (!DRY_RUN && !r.aborted && !r.degraded && !r.markersOnly) {
             await cleanupRegionInflight(region);
           } else if (r.aborted || r.degraded) {
             const why = r.aborted ? 'abgebrochen' : 'degradiert';
@@ -1452,7 +1570,7 @@ async function main() {
   for (const r of results) {
     if (r.error) console.log(`  ${r.region}: ERROR ${r.error}`);
     else if (r.dryRun) console.log(`  ${r.region}: ${r.players} would-iterate`);
-    else console.log(`  ${r.region}: ${r.snapshots || 0} snapshots / ${r.players} players / ${r.failed || 0} failed${r.backup ? ` | backup=${r.backup}` : ''}`);
+    else console.log(`  ${r.region}: ${r.snapshots || 0} snapshots / ${r.players} players / ${r.markers || 0} nicht bewertet / ${r.failed || 0} failed${r.backup ? ` | backup=${r.backup}` : ''}`);
   }
 
   // Exit non-zero on SUBSTANTIAL region failure (>=50%) so systemd does NOT fire

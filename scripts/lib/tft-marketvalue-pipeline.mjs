@@ -144,12 +144,13 @@ export async function gatherPlayer(pool, riot, player, ctx) {
  * @param {{ supaUrl?: string|null, supaKey?: string|null }} [mirror]
  */
 export async function persistPopulation(pool, region, setNumber, pop, compMeta, playerCount, mirror = {}) {
-  await pool.query(
+  const r = await pool.query(
     `insert into tft_mv_population_stats (region, set_number, medians, expected_dmg, comp_meta, player_count, computed_at)
      values ($1, $2, $3::jsonb, $4::jsonb, $5::jsonb, $6, now())
      on conflict (region, set_number) do update set
        medians = excluded.medians, expected_dmg = excluded.expected_dmg,
-       comp_meta = excluded.comp_meta, player_count = excluded.player_count, computed_at = now()`,
+       comp_meta = excluded.comp_meta, player_count = excluded.player_count, computed_at = now()
+     returning computed_at`,
     [
       region, setNumber,
       JSON.stringify(pop.medians), JSON.stringify(pop.expectedDmg),
@@ -157,27 +158,170 @@ export async function persistPopulation(pool, region, setNumber, pop, compMeta, 
     ],
   );
   // Best-effort Supabase-Mirror — der Vercel-Live-Calc-Fallback liest hier.
-  const { supaUrl, supaKey } = mirror;
-  if (supaUrl && supaKey) {
-    try {
-      const r = await fetch(`${supaUrl}/rest/v1/tft_mv_population_stats?on_conflict=region,set_number`, {
-        method: 'POST',
-        signal: AbortSignal.timeout(15_000),
-        headers: {
-          apikey: supaKey, Authorization: `Bearer ${supaKey}`,
-          'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal',
-        },
-        body: JSON.stringify([{
-          region, set_number: setNumber,
-          medians: pop.medians, expected_dmg: pop.expectedDmg,
-          comp_meta: Object.fromEntries(compMeta), player_count: playerCount,
-        }]),
-      });
-      if (!r.ok) console.error(`  [pop→supabase] HTTP ${r.status}`);
-    } catch (e) {
-      console.error(`  [pop→supabase] ${e.message}`);
-    }
+  // computed_at geht mit, damit beide Seiten dasselbe Alter tragen: der
+  // Behalten-Pfad (syncKeptPopulation) erkennt einen verpassten Spiegel daran.
+  await mirrorPopulation(mirror, {
+    region, set_number: setNumber,
+    medians: pop.medians, expected_dmg: pop.expectedDmg,
+    comp_meta: Object.fromEntries(compMeta), player_count: playerCount,
+    computed_at: r.rows[0]?.computed_at ?? new Date(),
+  });
+}
+
+async function mirrorPopulation({ supaUrl, supaKey } = {}, row) {
+  if (!supaUrl || !supaKey) return false;
+  try {
+    const r = await fetch(`${supaUrl}/rest/v1/tft_mv_population_stats?on_conflict=region,set_number`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(15_000),
+      headers: {
+        apikey: supaKey, Authorization: `Bearer ${supaKey}`,
+        'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify([row]),
+    });
+    if (!r.ok) { console.error(`  [pop→supabase] HTTP ${r.status}`); return false; }
+    return true;
+  } catch (e) {
+    console.error(`  [pop→supabase] ${e.message}`);
+    return false;
   }
+}
+
+/**
+ * Gespeicherte Vergleichsgruppe einer Region (Hetzner). null, wenn es keine gibt.
+ * playerCount + computedAt braucht die Speicher-Entscheidung
+ * (tft-mv-population-guard.mjs), pop + compMeta der Behalten-Pfad und der
+ * Aktualisieren-Knopf in refresh-api-server.mjs.
+ */
+export async function loadPopulation(pool, region, setNumber) {
+  const r = await pool.query(
+    `select medians, expected_dmg, comp_meta, player_count, computed_at
+     from tft_mv_population_stats where region = $1 and set_number = $2`,
+    [region, setNumber],
+  );
+  if (!r.rows[0]) return null;
+  const row = r.rows[0];
+  return {
+    pop: { medians: row.medians, expectedDmg: row.expected_dmg },
+    compMeta: new Map(Object.entries(row.comp_meta || {})),
+    playerCount: row.player_count,
+    computedAt: row.computed_at,
+  };
+}
+
+/**
+ * Bewertete Spieler einer Region im aktuellen Set: juengste Zeile je Spieler,
+ * davon die bewerteten, die in den letzten 48 h geschrieben wurden. Nenner der
+ * Haelfte-Regel in shouldPersistPopulation. Nicht bewertete Zeilen
+ * (rated = false) zaehlen nicht — sie sind genau die Abgestiegenen.
+ */
+export async function countRatedPopulation(pool, region, setNumber) {
+  const r = await pool.query(
+    `with latest as (
+       select distinct on (puuid) puuid, rated, created_at
+       from tft_player_marketvalue_snapshots
+       where region = $1 and set_number = $2
+       order by puuid, snapshot_date desc, created_at desc
+     )
+     select count(*)::int as n from latest
+     where rated and created_at > now() - interval '48 hours'`,
+    [region, setNumber],
+  );
+  return r.rows[0]?.n ?? 0;
+}
+
+/**
+ * Behalten-Pfad: die Hetzner-Gruppe bleibt, Supabase soll aber dieselbe tragen.
+ * Gespiegelt wird nur, wenn Supabase keine Zeile hat, eine andere Spielerzahl
+ * oder eine aeltere Zeit — dann ist ein frueherer Spiegel fehlgeschlagen.
+ */
+export async function syncKeptPopulation(mirror, region, setNumber, stored) {
+  const { supaUrl, supaKey } = mirror ?? {};
+  if (!supaUrl || !supaKey || !stored) return false;
+  try {
+    const r = await fetch(
+      `${supaUrl}/rest/v1/tft_mv_population_stats?region=eq.${encodeURIComponent(region)}&set_number=eq.${setNumber}&select=computed_at,player_count`,
+      { signal: AbortSignal.timeout(15_000), headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } },
+    );
+    if (!r.ok) { console.error(`  [pop→supabase] Abgleich HTTP ${r.status}`); return false; }
+    const [remote] = await r.json();
+    const localMs = new Date(stored.computedAt).getTime();
+    const same = remote
+      && Number(remote.player_count) === Number(stored.playerCount)
+      && new Date(remote.computed_at).getTime() >= localMs - 60_000;
+    if (same) return false;
+  } catch (e) {
+    console.error(`  [pop→supabase] Abgleich ${e.message}`);
+    return false;
+  }
+  return mirrorPopulation(mirror, {
+    region, set_number: setNumber,
+    medians: stored.pop.medians, expected_dmg: stored.pop.expectedDmg,
+    comp_meta: Object.fromEntries(stored.compMeta), player_count: stored.playerCount,
+    computed_at: stored.computedAt,
+  });
+}
+
+/**
+ * Schreibt die "nicht bewertet"-Zeile fuer einen Spieler, der unter Diamond II
+ * gefallen ist (oder keinen Rang mehr hat). Ohne sie bliebe seine letzte
+ * bewertete Zeile die juengste, und jede Liste zeigte den alten Marktwert
+ * weiter an, als waere nichts passiert.
+ *
+ * Nur fuer Spieler, die schon eine Zeile in dieser Region haben — wer nie
+ * bewertet war, taucht in keiner Liste auf und braucht keine Markierung. Name
+ * und Spielzaehler werden nicht mit NULL ueberschrieben (coalesce).
+ *
+ * @returns {Promise<boolean>} true, wenn eine Zeile geschrieben wurde
+ */
+export async function writeUnratedMarker(pool, player, { region, setNumber, snapshotDate = null, reason }) {
+  if (!Number.isInteger(setNumber)) throw new Error('[writeUnratedMarker] kein gueltiges Set');
+  const dateExpr = snapshotDate ? '$3::date' : 'current_date';
+  const o = snapshotDate ? 1 : 0;
+  const r = await pool.query(
+    `insert into tft_player_marketvalue_snapshots (
+       puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp, ladder_rank,
+       base_value, multiplier, final_value, sample_size, damping, agents, games_played, rated
+     )
+     select $1, $2, ${dateExpr}, ${setNumber},
+            coalesce($${3 + o}::text, prev.game_name), coalesce($${4 + o}::text, prev.tag_line),
+            $${5 + o}, $${6 + o}, $${7 + o}, null,
+            0, 1, 0, 0, 1, $${8 + o}::jsonb, coalesce($${9 + o}::int, prev.games_played), false
+     from (
+       -- Juengste Vorzeile: liefert Namen und Spielzahl, wenn der Aufrufer sie
+       -- nicht kennt (Aktualisieren-Knopf). Keine Vorzeile → keine Markierung.
+       select game_name, tag_line, games_played from tft_player_marketvalue_snapshots
+       where puuid = $1 and region = $2
+       order by snapshot_date desc, created_at desc limit 1
+     ) prev
+     on conflict (puuid, region, snapshot_date) do update set
+       set_number   = excluded.set_number,
+       game_name    = coalesce(excluded.game_name, tft_player_marketvalue_snapshots.game_name),
+       tag_line     = coalesce(excluded.tag_line, tft_player_marketvalue_snapshots.tag_line),
+       tier         = excluded.tier,
+       rank         = excluded.rank,
+       lp           = excluded.lp,
+       ladder_rank  = excluded.ladder_rank,
+       base_value   = excluded.base_value,
+       multiplier   = excluded.multiplier,
+       final_value  = excluded.final_value,
+       sample_size  = excluded.sample_size,
+       damping      = excluded.damping,
+       agents       = excluded.agents,
+       games_played = coalesce(excluded.games_played, tft_player_marketvalue_snapshots.games_played),
+       rated        = excluded.rated,
+       created_at   = now()`,
+    [
+      player.puuid, region,
+      ...(snapshotDate ? [snapshotDate] : []),
+      player.gameName ?? null, player.tagLine ?? null,
+      player.tier || 'UNRANKED', player.rank ?? null, player.lp ?? 0,
+      JSON.stringify([{ signal: 'unrated', reason: reason ?? 'unknown' }]),
+      player.gamesPlayed ?? null,
+    ],
+  );
+  return r.rowCount > 0;
 }
 
 /**
@@ -194,7 +338,7 @@ export async function persistPopulation(pool, region, setNumber, pop, compMeta, 
  * @param {any} raw       extractRawMetrics-Output (mit applyMeta bereits aufgerufen)
  * @param {any} pop       buildPopulation-Output
  * @param {{ region: string, regional: string, apiKey: string, snapshotDate?: string|null }} ctx
- * @returns {Promise<{ snapshotted: boolean, finalValue?: number, reason?: string }>}
+ * @returns {Promise<{ snapshotted: boolean, finalValue?: number, marker?: boolean, reason?: string }>}
  */
 export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
   // Set-Stempel der Zeile. Ohne ihn kann kein Leser die Snapshots des alten
@@ -208,7 +352,12 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
     { tier: player.tier, rank: player.rank || 'I', leaguePoints: player.lp, wins: player.wins, losses: player.losses },
     player.tier === 'CHALLENGER' ? player.ladderRank : undefined,
   );
-  if (!base.rated) return { snapshotted: false, reason: base.notRatedReason };
+  if (!base.rated) {
+    // Abgestiegen: "nicht bewertet"-Zeile statt stillem Ueberspringen, sonst
+    // bliebe der alte Marktwert die juengste Zeile (Paket W3, Migration 0088).
+    const marker = await writeUnratedMarker(pool, player, { region, setNumber, snapshotDate, reason: base.notRatedReason });
+    return { snapshotted: false, marker, reason: base.notRatedReason };
+  }
 
   const sk = scoreSkill(raw, pop);
   const baseValue = Math.round(base.baseValue);
@@ -221,8 +370,8 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
        puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp, ladder_rank,
-       base_value, multiplier, final_value, sample_size, damping, agents, games_played
-     ) values ($1, $2, ${snapshotDateExpr}, ${setNumber}, $${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb, $${15 + baseParams.length})
+       base_value, multiplier, final_value, sample_size, damping, agents, games_played, rated
+     ) values ($1, $2, ${snapshotDateExpr}, ${setNumber},$${3 + baseParams.length}, $${4 + baseParams.length}, $${5 + baseParams.length}, $${6 + baseParams.length}, $${7 + baseParams.length}, $${8 + baseParams.length}, $${9 + baseParams.length}, $${10 + baseParams.length}, $${11 + baseParams.length}, $${12 + baseParams.length}, $${13 + baseParams.length}, $${14 + baseParams.length}::jsonb, $${15 + baseParams.length}, true)
      on conflict (puuid, region, snapshot_date) do update set
        set_number  = excluded.set_number,
        game_name   = excluded.game_name,
@@ -242,6 +391,9 @@ export async function snapshotPlayer(pool, riot, player, raw, pop, ctx) {
        -- zuruecksetzen — sonst gilt der Spieler beim naechsten Lauf faelschlich
        -- als aktiv und wird unnoetig neu gecrawlt.
        games_played = coalesce(excluded.games_played, tft_player_marketvalue_snapshots.games_played),
+       -- Eine am selben Tag vorher geschriebene "nicht bewertet"-Zeile wird
+       -- wieder zur bewerteten (Wiederaufstieg innerhalb eines Tages).
+       rated = excluded.rated,
        -- created_at traegt seit 2026-08-04 den ZULETZT-geschrieben-Zeitpunkt,
        -- nicht den ersten. Es ist der einzige Zeitstempel der Tabelle, und der
        -- Rundlauf im Daily-Driver braucht Stunden-Aufloesung: snapshot_date ist

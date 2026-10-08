@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
   let query = supabaseAdmin
     .from('tft_player_marketvalue_snapshots')
-    .select('region, puuid, final_value, snapshot_date')
+    .select('region, puuid, final_value, snapshot_date, rated')
     .eq('set_number', CURRENT_SET)
     .in('puuid', puuids)
     .gte('snapshot_date', since);
@@ -53,11 +53,16 @@ export async function GET(request: NextRequest) {
     return cachedJson({ region, values: {} }, { degraded: true });
   }
 
-  // Absteigend sortiert → der erste Treffer je Spieler ist der neueste.
+  // Absteigend sortiert → der erste Treffer je Spieler ist der neueste. Ist er
+  // "nicht bewertet", bekommt der Spieler keinen Wert — aeltere Zeilen zaehlen
+  // dann nicht mehr, sonst stuende der Wert von vor dem Abstieg weiter da.
   const values: Record<string, number> = {};
+  const done = new Set<string>();
   for (const row of data || []) {
     const key = isWorld ? `${row.region}:${row.puuid}` : row.puuid;
-    if (!(key in values) && typeof row.final_value === 'number') values[key] = row.final_value;
+    if (done.has(key)) continue;
+    if (row.rated === false) { done.add(key); continue; }
+    if (typeof row.final_value === 'number') { values[key] = row.final_value; done.add(key); }
   }
   return cachedJson({ region, values });
 }

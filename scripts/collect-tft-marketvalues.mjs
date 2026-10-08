@@ -40,8 +40,12 @@ import {
   loadGraph,
   gatherPlayer,
   persistPopulation,
+  loadPopulation,
+  countRatedPopulation,
+  syncKeptPopulation,
   snapshotPlayer,
 } from './lib/tft-marketvalue-pipeline.mjs';
+import { shouldPersistPopulation } from './lib/tft-mv-population-guard.mjs';
 import { rankChallengers, fetchChallengerLadder } from './lib/tft-league-entries.mjs';
 
 const args = process.argv.slice(2);
@@ -232,7 +236,7 @@ async function loadPlayersByPuuids(puuids) {
         const lr = await pool.query(
           `select ladder_rank from tft_player_marketvalue_snapshots
              where puuid=$1 and region=$2 and set_number=$3 and ladder_rank is not null
-               and not agents @> '[{"signal":"estimated"}]'
+               and rated and not agents @> '[{"signal":"estimated"}]'
              order by snapshot_date desc limit 1`,
           [puuid, REGION, loadCurrentSet()],
         );
@@ -328,14 +332,33 @@ async function main() {
   }
 
   // Pass 2 prep: cohort comp-benchmark + population median/MAD, persisted for the live path.
-  console.log(`\n[2/3] Build population from ${gathered.length} players`);
-  const compMeta = buildCompMeta(gathered.map(g => g.raw));
-  for (const g of gathered) applyMeta(g.raw, compMeta);
-  const pop = buildPopulation(gathered.map(g => g.raw));
-  await persistPopulation(pool, REGION, setNumber, pop, compMeta, gathered.length, {
-    supaUrl: SUPA_URL, supaKey: SUPA_KEY,
-  });
-  console.log(`  comp-benchmark: ${compMeta.size} comps · population persisted`);
+  // Gleicher Schutz wie im Tages-Treiber: ein Lauf mit wenigen Spielern (etwa
+  // --puuids oder --limit) darf die Vergleichsgruppe des Hauptlaufs nicht
+  // ersetzen (lib/tft-mv-population-guard.mjs). Entschieden VOR buildCompMeta,
+  // weil applyMeta den Meta-Wert fest in die Rohdaten schreibt.
+  const cohort = gathered.map(g => g.raw);
+  const stored = await loadPopulation(pool, REGION, setNumber);
+  const ratedD2Plus = stored ? await countRatedPopulation(pool, REGION, setNumber) : null;
+  const decision = shouldPersistPopulation({ cohort: cohort.length, stored, ratedD2Plus });
+  let pop;
+  if (decision.persist) {
+    console.log(`\n[2/3] Build population from ${gathered.length} players`);
+    const compMeta = buildCompMeta(cohort);
+    for (const raw of cohort) applyMeta(raw, compMeta);
+    pop = buildPopulation(cohort);
+    await persistPopulation(pool, REGION, setNumber, pop, compMeta, gathered.length, {
+      supaUrl: SUPA_URL, supaKey: SUPA_KEY,
+    });
+    console.log(`  comp-benchmark: ${compMeta.size} comps · population persisted (${decision.reason})`);
+  } else {
+    console.log(`\n[2/3] Keep stored population (${stored.playerCount} players)`);
+    for (const raw of cohort) applyMeta(raw, stored.compMeta);
+    pop = stored.pop;
+    await syncKeptPopulation({ supaUrl: SUPA_URL, supaKey: SUPA_KEY }, REGION, setNumber, stored);
+    const age = decision.ageHours == null ? 'Alter unbekannt' : `${decision.ageHours.toFixed(1)} h alt`;
+    console.log(`  [pop] behalten — ${age} (${decision.reason})`);
+    if (decision.warn) console.warn(`  [pop] WARNUNG: Vergleichsgruppe ${age} — kein Hauptlauf hat sie erneuert`);
+  }
 
   // Pass 2 must NOT bail on `aborting` — it's cheap (DB writes only, no Riot
   // calls) and dropping snapshots was the bug that left vn2 with 0 writes for

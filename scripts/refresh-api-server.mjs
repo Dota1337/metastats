@@ -106,22 +106,10 @@ import {
 import { computeBaseValue } from './lib/tft-marketvalue.mjs';
 import { fetchChallengerLadder } from './lib/tft-league-entries.mjs';
 import { extractRawMetrics, scoreSkill } from './lib/tft-skill-score.mjs';
-
-// Load the persisted region/set population so the single-player refresh can
-// normalise this one player against the same cohort the batch computed.
-// Returns null if the batch hasn't populated this region yet (→ neutral mult).
-async function loadPopulation(pool, region, setNumber) {
-  const r = await pool.query(
-    'select medians, expected_dmg, comp_meta from tft_mv_population_stats where region = $1 and set_number = $2',
-    [region, setNumber],
-  );
-  if (!r.rows[0]) return null;
-  const row = r.rows[0];
-  return {
-    pop: { medians: row.medians, expectedDmg: row.expected_dmg },
-    compMeta: new Map(Object.entries(row.comp_meta || {})),
-  };
-}
+// loadPopulation: gespeicherte Vergleichsgruppe der Region (null, wenn der
+// Tageslauf sie noch nicht gebaut hat → neutraler Multiplikator). Lag hier als
+// eigene Kopie; jetzt aus der Pipeline, die auch Treiber und Sammler nutzen.
+import { loadPopulation, writeUnratedMarker } from './lib/tft-marketvalue-pipeline.mjs';
 
 import { REGIONAL_ROUTING as REGIONAL, getAccountRouting } from './lib/regional-routing.mjs';
 import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
@@ -221,6 +209,7 @@ async function pushToSupabase(snapshotRow, seasonRow) {
   await fetch(`${SUPA_URL}/rest/v1/tft_player_marketvalue_snapshots?on_conflict=puuid,region,snapshot_date`, {
     method: 'POST', headers, body: JSON.stringify([snapshotRow]), signal: AbortSignal.timeout(15_000),
   }).then(r => { if (!r.ok) throw new Error(`snapshot push ${r.status}`); });
+  if (!seasonRow) return;
   await fetch(`${SUPA_URL}/rest/v1/tft_player_season_stats?on_conflict=puuid,region,set_number`, {
     method: 'POST', headers, body: JSON.stringify([seasonRow]), signal: AbortSignal.timeout(15_000),
   }).then(r => { if (!r.ok) throw new Error(`season push ${r.status}`); });
@@ -261,6 +250,32 @@ async function getChallengerLadder(region) {
 }
 
 // ─ Main work: refresh one player end-to-end ────────────────────────────────
+// Abgestiegen (unter Diamond II oder ohne Rang): "nicht bewertet"-Zeile
+// schreiben, damit keine Liste mehr den alten Marktwert zeigt — dieselbe
+// Markierung wie im Tageslauf. Nur fuer Spieler mit einer Vorzeile in der
+// Region. Ein Fehler hier darf die Antwort des Knopfs nicht kippen.
+async function markUnrated(puuid, region, setNumber, ranked, reason) {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const written = await writeUnratedMarker(pool, {
+      puuid,
+      tier: ranked?.tier ?? null, rank: ranked?.rank ?? null, lp: ranked?.leaguePoints ?? 0,
+    }, { region, setNumber, snapshotDate: today, reason });
+    if (!written) return;
+    const r = await pool.query(
+      `select puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp,
+              ladder_rank, base_value, multiplier::float8, final_value, sample_size,
+              damping::float8, agents, games_played, rated
+         from tft_player_marketvalue_snapshots
+        where puuid = $1 and region = $2 and snapshot_date = $3::date`,
+      [puuid, region, today],
+    );
+    if (r.rows[0]) await pushToSupabase({ ...r.rows[0], snapshot_date: today }, null);
+  } catch (err) {
+    console.error(`[refresh] Markierung "nicht bewertet" ${region}/${puuid.slice(0, 8)}… fehlgeschlagen: ${err.message}`);
+  }
+}
+
 async function refreshOnePlayer(puuid, region) {
   const setNumber = loadCurrentSet();
   if (setNumber == null) throw new Error('no current set');
@@ -293,6 +308,7 @@ async function refreshOnePlayer(puuid, region) {
   // 4) Pull ranked + account
   const ranked = await fetchPlayerRanked(puuid, region);
   if (!ranked) {
+    await markUnrated(puuid, region, setNumber, null, 'unranked');
     return { ok: true, rated: false, reason: 'unranked', sampleSize: matches.length };
   }
   const account = await fetchAccount(puuid, getAccountRouting(region));
@@ -310,7 +326,7 @@ async function refreshOnePlayer(puuid, region) {
     } else {
       console.warn(`[refresh] WARNUNG ${region}: Challenger-Liste nicht geladen — letzter Platz bleibt`);
       const ladderRankRow = await pool.query(
-        `select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and set_number = $3 and ladder_rank is not null and not agents @> '[{"signal":"estimated"}]' order by snapshot_date desc limit 1`,
+        `select ladder_rank from tft_player_marketvalue_snapshots where puuid = $1 and region = $2 and set_number = $3 and ladder_rank is not null and rated and not agents @> '[{"signal":"estimated"}]' order by snapshot_date desc limit 1`,
         [puuid, region, setNumber],
       );
       ladderRank = ladderRankRow.rows[0]?.ladder_rank ?? null;
@@ -323,6 +339,7 @@ async function refreshOnePlayer(puuid, region) {
     ranked.tier === 'CHALLENGER' && ladderRank ? ladderRank : undefined,
   );
   if (!base.rated) {
+    await markUnrated(puuid, region, setNumber, ranked, base.notRatedReason);
     return { ok: true, rated: false, reason: base.notRatedReason, sampleSize: matches.length };
   }
   // Normalise against the persisted population. If the batch hasn't populated
@@ -347,13 +364,13 @@ async function refreshOnePlayer(puuid, region) {
     ladder_rank: ladderRank,
     base_value: baseValue, multiplier,
     final_value: finalValue, sample_size: sampleSize,
-    damping, agents: signals,
+    damping, agents: signals, rated: true,
   };
   await pool.query(
     `insert into tft_player_marketvalue_snapshots (
        puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp, ladder_rank,
-       base_value, multiplier, final_value, sample_size, damping, agents
-     ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb)
+       base_value, multiplier, final_value, sample_size, damping, agents, rated
+     ) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16::jsonb,true)
      on conflict (puuid, region, snapshot_date) do update set
        set_number = excluded.set_number,
        game_name = excluded.game_name, tag_line = excluded.tag_line,
@@ -361,7 +378,8 @@ async function refreshOnePlayer(puuid, region) {
        ladder_rank = excluded.ladder_rank,
        base_value = excluded.base_value, multiplier = excluded.multiplier,
        final_value = excluded.final_value, sample_size = excluded.sample_size,
-       damping = excluded.damping, agents = excluded.agents`,
+       damping = excluded.damping, agents = excluded.agents,
+       rated = excluded.rated`,
     [
       snapshotRow.puuid, snapshotRow.region, snapshotRow.snapshot_date, snapshotRow.set_number,
       snapshotRow.game_name, snapshotRow.tag_line, snapshotRow.tier,
@@ -509,13 +527,19 @@ async function handleMarketvaluePool(body) {
   const limit = Math.max(50, Math.min(10000, Number(body?.limit) || 3000));
 
   const recencyDays = Math.max(1, Math.min(60, Number(body?.recency_days) || 14));
+  // Erst die juengste Zeile je Spieler, DANN Rang und rated filtern. Andersrum
+  // faende ein Abgestiegener (juengste Zeile: "nicht bewertet", Rang Platin)
+  // seine alte Master-Zeile und stuende mit dem alten Wert im Pool.
   const sql = `
-    select distinct on (puuid)
-      puuid, game_name, tag_line, tier, rank, lp, ladder_rank, final_value, snapshot_date
-    from tft_player_marketvalue_snapshots
-    where region = $1 and tier = ANY($2::text[])
-      and snapshot_date >= current_date - $3::int
-    order by puuid, snapshot_date desc
+    select * from (
+      select distinct on (puuid)
+        puuid, game_name, tag_line, tier, rank, lp, ladder_rank, final_value, snapshot_date, rated
+      from tft_player_marketvalue_snapshots
+      where region = $1
+        and snapshot_date >= current_date - $3::int
+      order by puuid, snapshot_date desc, created_at desc
+    ) latest
+    where rated and tier = ANY($2::text[])
   `;
   const t0 = Date.now();
   const rows = (await pool.query(sql, [region, tiers, recencyDays])).rows;

@@ -82,6 +82,7 @@ MISSING=$(psql "$DATABASE_URL" -t -A -c "
     select region, count(*)::int as n
       from tft_player_marketvalue_snapshots
      where snapshot_date = current_date
+       and rated  -- "nicht bewertet"-Zeilen sind keine Bewertung
      group by region
   ),
   referenz as (
@@ -90,6 +91,7 @@ MISSING=$(psql "$DATABASE_URL" -t -A -c "
         from tft_player_marketvalue_snapshots
        where snapshot_date >= current_date - 7
          and snapshot_date <  current_date
+         and rated
        group by region, snapshot_date
     ) t group by region
   )

@@ -92,9 +92,11 @@ async function syncSnapshots() {
     // dem Set-18-Start 31.521 Supabase-Zeilen ohne set_number entstanden —
     // die Leser filtern auf CURRENT_SET und fielen deshalb auf die
     // Live-Rechnung mit 30 Spielen zurueck (gemessen 30.08.2026).
+    // rated aus demselben Grund: fehlt es, landet eine "nicht bewertet"-Zeile
+    // in Supabase mit dem Default true und zeigt Marktwert 0 in jeder Liste.
     `select puuid, region, snapshot_date, set_number, game_name, tag_line, tier, rank, lp,
             ladder_rank, base_value, multiplier::float8, final_value, sample_size,
-            damping::float8, agents, games_played
+            damping::float8, agents, games_played, rated
        from tft_player_marketvalue_snapshots
        ${where}`,
     params,

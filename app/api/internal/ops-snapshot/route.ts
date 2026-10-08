@@ -179,9 +179,12 @@ async function fetchDbCounts() {
     if (tbl !== 'tft_player_match_cache') {
       try {
         const todayIso = new Date().toISOString().slice(0, 10);
-        const dayCol = tbl === 'tft_player_marketvalue_snapshots' ? 'snapshot_date' : 'day';
+        const isMv = tbl === 'tft_player_marketvalue_snapshots';
+        const dayCol = isMv ? 'snapshot_date' : 'day';
+        // Marktwerte: nur bewertete Zeilen zaehlen, "nicht bewertet" ist keine Bewertung.
+        const ratedFilter = isMv ? '&rated=is.true' : '';
         const res = await fetchWithTimeout(
-          `${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0&${dayCol}=eq.${todayIso}`,
+          `${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0&${dayCol}=eq.${todayIso}${ratedFilter}`,
           { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Prefer: 'count=exact' } },
         );
         const range = res.headers.get('content-range');

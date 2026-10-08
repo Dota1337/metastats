@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   if (!forceLive) {
     const { data: snap } = await supabaseAdmin
       .from('tft_player_marketvalue_snapshots')
-      .select('tier, rank, lp, ladder_rank, base_value, multiplier, final_value, sample_size, damping, agents, snapshot_date')
+      .select('tier, rank, lp, ladder_rank, base_value, multiplier, final_value, sample_size, damping, agents, snapshot_date, rated')
       // Nur Snapshots des laufenden Sets. Ohne diesen Filter zeigt die Seite
       // nach einem Set-Wechsel monatelang den eingefrorenen Wert aus dem alten
       // Set weiter (gemessen 27.08.2026: Multiplikator aus 510 Spielen, einen
@@ -69,9 +69,18 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (snap) {
+      // Neueste Zeile ist "nicht bewertet" (Spieler unter Diamond II gefallen):
+      // gleiche Antwort wie die Live-Rechnung fuer diesen Fall, kein alter Wert.
+      const unrated = snap.rated === false;
+      const unratedReason = unrated
+        ? ((snap.agents || []) as Array<{ signal?: string; reason?: string }>).find(a => a?.signal === 'unrated')?.reason ?? null
+        : null;
       return NextResponse.json({
         summoner: { name: `${account.gameName}#${account.tagLine}`, puuid, tier: snap.tier, rank: snap.rank, lp: snap.lp, ladderRank: snap.ladder_rank ?? null },
-        marketValue: {
+        marketValue: unrated ? {
+          baseValue: 0, multiplier: 1, finalValue: 0, rated: false,
+          notRatedReason: unratedReason, sampleSize: snap.sample_size, damping: 1, agents: [],
+        } : {
           baseValue: snap.base_value,
           multiplier: Number(snap.multiplier),
           finalValue: snap.final_value,
@@ -139,6 +148,7 @@ export async function GET(request: NextRequest) {
       .eq('puuid', puuid)
       .eq('region', region)
       .eq('set_number', CURRENT_SET)
+      .eq('rated', true)
       .not('ladder_rank', 'is', null)
       .order('snapshot_date', { ascending: false })
       .limit(1)

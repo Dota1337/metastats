@@ -946,6 +946,36 @@
   ],
   "scriptEdges": [
     {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/build-explorer-store.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/daily-marketvalue-snapshot.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/lib/daily-crawl-post.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/lib/daily-crawl-post.test.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/refresh-api-server.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-mv-readers.test.mjs",
+      "to": "scripts/sync-marketvalue-to-supabase.mjs",
+      "via": "spawn"
+    },
+    {
       "from": "scripts/crawl-all-regions.mjs",
       "to": "scripts/sync-marketvalue-to-supabase.mjs",
       "via": "spawn"

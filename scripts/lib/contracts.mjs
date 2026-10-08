@@ -84,18 +84,52 @@ async function supaGet(path, extraHeaders = {}) {
   return res;
 }
 
+/**
+ * Optionaler Zeilenfilter eines Vertrags: `"rowFilter": {"column": "rated", "eq": true}`
+ * zaehlt nur Zeilen mit diesem Wert.
+ *
+ * Anlass Migration 0088: Marktwert-Platzhalter ("nicht bewertet", rated=false)
+ * stehen in derselben Tabelle wie echte Werte. Ohne Filter hielte ein Tag aus
+ * lauter Platzhaltern Frische- und Abdeckungsvertraege gruen, obwohl kein
+ * einziger Wert berechnet wurde. Nur boolesche Gleichheit — mehr braucht es
+ * nicht, und so bleibt der Text, der in SQL und PostgREST-Pfade wandert, auf
+ * Kleinbuchstaben und true/false beschraenkt.
+ *
+ * Ausgewertet nur vom Standard-Frischecheck und von den Abdeckungsvertraegen;
+ * jeder andere Modus lehnt einen Filter laut ab (rowFilterSupported), statt ihn
+ * still zu ignorieren.
+ * @returns {{supa: string, pg: string}} PostgREST-Anhang bzw. SQL-`and`-Anhang
+ */
+export function rowFilterParts(c) {
+  const f = c.rowFilter;
+  if (f == null) return { supa: '', pg: '' };
+  if (typeof f.column !== 'string' || !/^[a-z_]+$/.test(f.column)) {
+    throw new Error(`rowFilter.column ungueltig: ${JSON.stringify(f.column)}`);
+  }
+  if (typeof f.eq !== 'boolean') throw new Error('rowFilter.eq muss true oder false sein');
+  return { supa: `&${f.column}=eq.${f.eq}`, pg: ` and ${f.column} = ${f.eq}` };
+}
+
+/** Wertet der Pruefpfad dieses Vertrags einen rowFilter ueberhaupt aus? */
+export function rowFilterSupported(c) {
+  if (c.type === 'coverage') return true;
+  if (c.type) return false;
+  if (c.totalRowsMin != null && !c.dateColumn) return false;
+  return !c.windowDays && !c.noGapsInDays;
+}
+
 /** Neuester Wert einer Datums-/Timestamp-Spalte, als YYYY-MM-DD. */
-async function supaMaxDate(table, col) {
-  const res = await supaGet(`${table}?select=${col}&order=${col}.desc.nullslast&limit=1`);
+async function supaMaxDate(table, col, filter = '') {
+  const res = await supaGet(`${table}?select=${col}${filter}&order=${col}.desc.nullslast&limit=1`);
   const rows = await res.json();
   const v = rows[0]?.[col];
   return v ? String(v).slice(0, 10) : null;
 }
 
 /** Neuester Tag STRIKT vor `before` (YYYY-MM-DD), als YYYY-MM-DD. */
-async function supaMaxDateBefore(table, col, before) {
+async function supaMaxDateBefore(table, col, before, filter = '') {
   const res = await supaGet(
-    `${table}?select=${col}&${col}=lt.${before}&order=${col}.desc.nullslast&limit=1`,
+    `${table}?select=${col}&${col}=lt.${before}${filter}&order=${col}.desc.nullslast&limit=1`,
   );
   const rows = await res.json();
   const v = rows[0]?.[col];
@@ -314,18 +348,18 @@ export async function closePools() {
   }
 }
 
-async function pgMaxDate(table, col) {
+async function pgMaxDate(table, col, and = '') {
   const pool = await hetznerPool();
-  const r = await pool.query(`select max(${col}) as m from ${table}`);
+  const r = await pool.query(`select max(${col}) as m from ${table} where true${and}`);
   const v = r.rows[0]?.m;
   if (!v) return null;
   return v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10);
 }
 
-async function pgMaxDateBefore(table, col, before) {
+async function pgMaxDateBefore(table, col, before, and = '') {
   const pool = await hetznerPool();
   const r = await pool.query(
-    `select max(${col}) as m from ${table} where ${col} < $1::date`,
+    `select max(${col}) as m from ${table} where ${col} < $1::date${and}`,
     [before],
   );
   const v = r.rows[0]?.m;
@@ -348,10 +382,10 @@ async function pgCountAll(table) {
   return r.rows[0].c;
 }
 
-async function pgCountOnDay(table, col, day) {
+async function pgCountOnDay(table, col, day, and = '') {
   const pool = await hetznerPool();
   const r = await pool.query(
-    `select count(*)::int as c from ${table} where ${col}::date = $1::date`,
+    `select count(*)::int as c from ${table} where ${col}::date = $1::date${and}`,
     [day],
   );
   return r.rows[0].c;
@@ -402,6 +436,12 @@ async function runCheck(c) {
   const r = (status, detail) => ({ id: c.id, owner: c.owner, status, detail });
 
   try {
+    if (c.rowFilter != null) {
+      rowFilterParts(c);   // wirft bei ungueltigem Filter → 'error'
+      if (!rowFilterSupported(c)) {
+        return r('error', 'rowFilter wird in diesem Pruefmodus nicht ausgewertet');
+      }
+    }
     if (c.type === 'mirror') return await checkMirror(c, r);
     if (c.type === 'file') return checkFile(c, r);
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
@@ -482,10 +522,12 @@ async function runCheck(c) {
     // und der Vertrag prüft faktisch nichts mehr. Frische gehört an den
     // neuesten Tag, Volumen an den letzten fertigen.
     const cutoff = today();   // JS-UTC, dieselbe Definition wie beim Lag
+    const rf = rowFilterParts(c);
+    const what = c.rowFilter ? `${c.table} (${c.rowFilter.column}=${c.rowFilter.eq})` : c.table;
     const latest = isSupa
-      ? await supaMaxDate(c.table, c.dateColumn)
-      : await pgMaxDate(c.table, c.dateColumn);
-    if (!latest) return r('broken', `${c.table} ist leer`);
+      ? await supaMaxDate(c.table, c.dateColumn, rf.supa)
+      : await pgMaxDate(c.table, c.dateColumn, rf.pg);
+    if (!latest) return r('broken', `${what} ist leer`);
 
     const lag = daysBetween(cutoff, latest);
     if (lag > c.maxLagDays) {
@@ -498,10 +540,10 @@ async function runCheck(c) {
     const countDay = latest < cutoff
       ? latest
       : isSupa
-        ? await supaMaxDateBefore(c.table, c.dateColumn, cutoff)
-        : await pgMaxDateBefore(c.table, c.dateColumn, cutoff);
+        ? await supaMaxDateBefore(c.table, c.dateColumn, cutoff, rf.supa)
+        : await pgMaxDateBefore(c.table, c.dateColumn, cutoff, rf.pg);
     if (!countDay) {
-      return r('broken', `${c.table} hat nur den laufenden Tag ${latest}, kein abgeschlossener Tag zum Zählen`);
+      return r('broken', `${what} hat nur den laufenden Tag ${latest}, kein abgeschlossener Tag zum Zählen`);
     }
 
     // Bei Timestamp-Spalten trifft `eq.<Datum>` nur exakt Mitternacht und
@@ -512,8 +554,8 @@ async function runCheck(c) {
       : `&${c.dateColumn}=eq.${countDay}`;
 
     const n = isSupa
-      ? await supaCount(c.table, dayFilter)
-      : await pgCountOnDay(c.table, c.dateColumn, countDay);
+      ? await supaCount(c.table, dayFilter + rf.supa)
+      : await pgCountOnDay(c.table, c.dateColumn, countDay, rf.pg);
     const where = countDay === latest ? countDay : `${countDay} (neuester Tag: ${latest})`;
     return n >= c.minRows
       ? r('ok', `${where}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`)
@@ -1168,6 +1210,7 @@ async function checkCoverage(c, r) {
   }
   if (c.compareTo) return checkCoverageLag(c, r);
   const isSupa = c.backend === 'supabase';
+  const rf = rowFilterParts(c);
 
   let rows;
   if (isSupa) {
@@ -1175,7 +1218,7 @@ async function checkCoverage(c, r) {
     rows = [];
     for (const g of c.groups) {
       const res = await supaGet(
-        `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}`
+        `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}${rf.supa}`
         + `&order=${c.dateColumn}.desc&limit=1`,
       );
       const j = await res.json();
@@ -1185,7 +1228,7 @@ async function checkCoverage(c, r) {
     const pool = await hetznerPool();
     const q = await pool.query(
       `select ${c.groupColumn} as grp, max(${c.dateColumn}) as newest
-         from ${c.table} group by ${c.groupColumn}`,
+         from ${c.table} where true${rf.pg} group by ${c.groupColumn}`,
     );
     rows = q.rows;
   }
@@ -1288,10 +1331,11 @@ async function checkCoverageLag(c, r) {
   // `current_date` wäre die Uhr des DB-Servers; überall sonst im Modul ist
   // "heute" JS-UTC (`today()`). Zwei Definitionen im selben Lauf können sich
   // um einen Tag unterscheiden, also wird die eine Definition reingereicht.
+  const rf = rowFilterParts(c);
   const pool = await hetznerPool();
   const q = await pool.query(
     `select ${c.groupColumn} as grp, max(${c.dateColumn}) as newest
-       from ${c.table} where ${c.dateColumn}::date < $1::date
+       from ${c.table} where ${c.dateColumn}::date < $1::date${rf.pg}
        group by ${c.groupColumn}`,
     [today()],
   );
@@ -1305,7 +1349,7 @@ async function checkCoverageLag(c, r) {
     const src = srcDay.get(g);
     if (!src) continue;   // an der Quelle nie vorhanden → Sache des Frische-Vertrags
     const res = await supaGet(
-      `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}`
+      `${c.table}?select=${c.dateColumn}&${c.groupColumn}=eq.${g}${rf.supa}`
       + `&order=${c.dateColumn}.desc&limit=1`,
     );
     const j = await res.json();

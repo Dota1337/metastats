@@ -2,7 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   VARIANTS, keySelect, variantRowsSql, variantsForQuery, aggEligible, compListSql, AGG_SIG,
-  aggBudgetS, nextUtc, aggCoveredDays, planAgg, aggDue, aggDaysFor,
+  aggBudgetS, nextUtc, aggCoveredDays, planAgg, aggDue, aggDaysFor, aggCopyEstS, aggDueForCopy,
+  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S,
 } from './explorer-agg.mjs';
 
 const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
@@ -52,6 +53,41 @@ test('SQL je Variante: Spalten in fester Reihenfolge, Komponenten nur geprueft',
 
 test('AGG_SIG ist ein stabiler Kurz-Hash', () => {
   assert.match(AGG_SIG, /^[0-9a-f]{16}$/);
+  // Stand Paket 5b/5c (AGG_REV 0): aendert er sich, rechnet jede Datei ihre
+  // Summen neu — dann bewusst hier nachziehen.
+  assert.equal(AGG_SIG, '810895ebc43c0841');
+});
+
+test('Uebernahme: Sperrgruende in fester Reihenfolge, sonst null', () => {
+  const ok = { prevKind: 'ok', prevTestRun: false, testRun: false, carryEnv: undefined, budgetS: 1200, aggtryExists: false };
+  assert.equal(aggCarryBlocked(ok), null);
+  assert.equal(aggCarryBlocked({ ...ok, carryEnv: '1' }), null);
+  assert.equal(aggCarryBlocked({ ...ok, prevKind: 'none' }), 'vorige Datei: none');
+  assert.equal(aggCarryBlocked({ ...ok, prevKind: 'legacy' }), 'vorige Datei: legacy');
+  assert.equal(aggCarryBlocked({ ...ok, testRun: true }), 'Testlauf');
+  assert.equal(aggCarryBlocked({ ...ok, prevTestRun: true }), 'vorige Datei aus einem Testlauf');
+  assert.equal(aggCarryBlocked({ ...ok, carryEnv: ' 0 ' }), 'AGG_CARRY=0');
+  assert.equal(aggCarryBlocked({ ...ok, budgetS: 0 }), 'AGG_BUDGET_S=0');
+  assert.equal(aggCarryBlocked({ ...ok, aggtryExists: true }), 'Versuchs-Stempel vom letzten Lauf');
+});
+
+test('Uebernahme: zu spaet, wenn 2 Fingerabdruecke + 600 s die harte Grenze reissen', () => {
+  const t0Ms = Date.parse('2026-10-09T01:35:00Z');
+  const edge = t0Ms + (AGG_HARD_S - 2 * 60 - 600) * 1000;
+  assert.equal(aggCarryLate({ nowMs: edge, t0Ms, fpOldS: 60 }), false);
+  assert.equal(aggCarryLate({ nowMs: edge + 1, t0Ms, fpOldS: 60 }), true);
+  assert.equal(aggCarryLate({ nowMs: t0Ms + 4_200_000, t0Ms, fpOldS: 40 }), false);
+});
+
+test('Uebernahme: nur gedeckte Tage mit gleichem Fingerabdruck', () => {
+  const oldFp = new Map([['2026-10-01', 'a'], ['2026-10-02', 'b'], ['2026-10-03', 'c'], ['2026-09-20', 'z']]);
+  const newFp = new Map([['2026-10-03', 'c'], ['2026-10-01', 'a'], ['2026-10-02', 'B'], ['2026-10-04', 'd']]);
+  const r = aggCarryDays({ oldFp, newFp, covered: ['2026-10-01', '2026-10-02', '2026-09-20'] });
+  assert.deepEqual(r.days, ['2026-10-01']);
+  assert.deepEqual(r.differ, ['2026-10-02']);
+  assert.deepEqual(r.uncovered, ['2026-10-03']);
+  assert.deepEqual(r.noOld, ['2026-10-04']);
+  assert.deepEqual(aggCarryDays({ oldFp, newFp: new Map(), covered: ['2026-10-01'] }).days, []);
 });
 
 test('AGG_BUDGET_S: leer/ungueltig → 1200, 0 → aus', () => {
@@ -103,6 +139,25 @@ test('Plan: Frist = kleinste der drei Grenzen, Pflicht-Tage zuerst, sonst neuest
   assert.equal(aggDue(q, q.todo[0], t0 + 120_000), true);
   assert.equal(aggDue(q, q.todo[1], t0 + 120_000), false);
   assert.equal(aggDue(q, q.todo[0], t0 + 8_400_000), false);
+});
+
+test('Block-Kopie: Tag nur, wenn er nach der geschaetzten Kopie noch faellig ist', () => {
+  assert.equal(Math.round(aggCopyEstS()), 198);
+  assert.equal(Math.round(aggCopyEstS(100)), 198);
+  assert.equal(Math.round(aggCopyEstS(300) * 10), 3300);
+  const t0 = Date.parse('2026-10-08T18:00:00Z');
+  const days = ['2026-09-11', '2026-09-12', '2026-10-08'];
+  const p = planAgg({ nowMs: t0, t0Ms: t0, budgetS: 1200, days, covered: [], newestDays: ['2026-10-08'] });
+  const normal = p.todo.find(x => !x.must);
+  const must = p.todo.find(x => x.must);
+  // Fall 18:31: 100 s vor der Frist faellig, nach 170 s Kopie nicht mehr
+  const late = p.deadlineMs - 100_000;
+  assert.equal(aggDue(p, normal, late), true);
+  assert.equal(aggDueForCopy(p, normal, late, aggCopyEstS()), false);
+  assert.equal(aggDueForCopy(p, normal, p.deadlineMs - 300_000, aggCopyEstS()), true);
+  // Pflicht-Tag misst gegen die harte Grenze
+  assert.equal(aggDueForCopy(p, must, late, aggCopyEstS()), true);
+  assert.equal(aggDueForCopy(p, must, p.hardMs - 100_000, aggCopyEstS()), false);
 });
 
 test('Dienst: Tage je Patch-Wahl, nur bei voller Deckung', () => {

@@ -61,8 +61,10 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { patchRanges } from './lib/tft-patch-day.mjs';
 import { currentWindowDay } from './lib/tft-crawl-window.mjs';
-import { AGG_SIG, compListSql } from './lib/explorer-agg.mjs';
-import { aggStep } from './lib/explorer-agg-build.mjs';
+import {
+  AGG_SIG, compListSql, aggBudgetS, aggCarryBlocked, aggCarryLate,
+} from './lib/explorer-agg.mjs';
+import { aggStep, aggBindingReason, aggCarrySave, aggCarryMatch } from './lib/explorer-agg-build.mjs';
 import { readComponents, componentsHash } from './lib/explorer-components.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -643,15 +645,48 @@ async function build({ t0, win, testRun, untilMs, files }) {
     await run(`CREATE TABLE trait_min(trait VARCHAR, lvl UTINYINT, min_units UTINYINT, tiers UTINYINT)`);
     await run(`INSERT INTO trait_min VALUES ${thresholds.map((t) => `(${sqlStr(t.id)}, ${t.lvl}, ${t.min}, ${t.tiers})`).join(',')}`);
 
+    const components = readComponents(ROOT, setNumber, log);
+    const compList = compListSql(components);
+    const compHash = componentsHash(components);
+
     // Voll: Rang aus der vorigen Datei (auch alte Form, dort nur bekannte
     // Raenge). Teil: vorige Datei wird die Arbeitskopie.
     const outdb = 'outdb';
+    // Vollaufbau mit Uebernahme (Paket 5c): carryPrep = gesicherte Summen +
+    // Tages-Fingerabdruck der vorigen Datei; carryInfo fuer Log und status.json.
+    let carryPrep = null;
+    const carryInfo = { reason: mode === 'full' ? null : 'Teil-Aufbau', fpOldS: null, fpNewS: null };
+    const dropCarry = async () => {
+      for (const t of ['cv_rows', 'cv_head', 'cv_kd', 'cv_nkd', 'cv_nb']) {
+        try { await run(`DROP TABLE IF EXISTS ${t}`); } catch { /* egal */ }
+      }
+    };
     if (mode === 'full') {
       if (prev.hasRank) {
         await run(`CREATE TABLE prev_rank AS SELECT DISTINCT ON (k) k, rank FROM prev.board_rank ORDER BY k, rank NULLS LAST`);
       } else {
         await run(`CREATE TABLE prev_rank(k UBIGINT, rank VARCHAR)`);
       }
+      carryInfo.reason = aggCarryBlocked({
+        prevKind: prev.kind, prevTestRun: prev.meta?.testRun, testRun, carryEnv: process.env.AGG_CARRY,
+        budgetS: aggBudgetS(process.env.AGG_BUDGET_S), aggtryExists: fs.existsSync(files.aggtry),
+      });
+      if (!carryInfo.reason) {
+        try {
+          carryInfo.reason = await aggBindingReason({ all, db: 'prev', nextBid: prev.meta.nextBid, compHash });
+          if (!carryInfo.reason) {
+            carryPrep = await aggCarrySave({ exec: run, all, db: 'prev', f: win.f });
+            carryInfo.fpOldS = carryPrep.s;
+            log(`Teilsummen-Uebernahme: vorige Summen gesichert, ${carryPrep.covered.length} Tage gedeckt, Fingerabdruck alt ${carryPrep.s} s`);
+          }
+        } catch (e) {
+          carryInfo.reason = `Vorbereitung gescheitert: ${e.message}`;
+          alarms.push(`Teilsummen-Uebernahme gescheitert: ${e.message}`);
+          carryPrep = null;
+          await dropCarry();
+        }
+      }
+      if (carryInfo.reason) log(`Teilsummen-Uebernahme: nein (${carryInfo.reason})`);
       if (prevAttached) { await run('DETACH prev'); prevAttached = false; }
       await run(`ATTACH ${sqlStr(files.tmp)} AS ${outdb}`);
     } else {
@@ -816,15 +851,41 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // Nummern nie wiederverwenden, auch wenn das hoechste Board rausgefallen ist.
     const nextBid = Math.max(Number(stats.max_bid) + 1, mode === 'delta' ? prev.meta.nextBid : 1);
 
+    // Vollaufbau mit Uebernahme: Fingerabdruck der alten Boards (Schluessel k
+    // schon in der vorigen Datei) in der neuen Datei. Gleich je Tag → die
+    // vorigen Summen des Tages gelten; neue Boards (cv_nb) kommen ueber das
+    // Partie-Delta dazu. Zeitgrenze ist die harte Grenze (aggCarryLate).
+    let carry = null;
+    if (carryPrep) {
+      try {
+        if (aggCarryLate({ nowMs: Date.now(), t0Ms: t0, fpOldS: carryInfo.fpOldS })) {
+          carryInfo.reason = 'zu spaet fuer den Fingerabdruck';
+        } else {
+          const r = await aggCarryMatch({ exec: run, all, outdb, prevKeys: 'prev_rank', f: win.f, prep: carryPrep });
+          carryInfo.fpNewS = r.s;
+          carry = { days: r.days, rows: 'cv_rows', head: 'cv_head' };
+          if (!r.days.length) carryInfo.reason = 'kein Tag gleich';
+          log(`Teilsummen-Uebernahme: ${r.days.length}/${r.nDays} Tage gleich, ${r.differ.length} anders`
+            + `${r.differ.length ? ` (${r.differ.join(', ')})` : ''}, ${r.uncovered.length} ungedeckt, ${r.noOld.length} ohne alte Boards,`
+            + ` Fingerabdruck neu ${r.s} s, ${r.nNew} neue Boards`);
+        }
+      } catch (e) {
+        carry = null;
+        carryInfo.reason = `Fingerabdruck gescheitert: ${e.message}`;
+        alarms.push(`Teilsummen-Uebernahme gescheitert: ${e.message}`);
+      }
+      if (!carry) log(`Teilsummen-Uebernahme: nein (${carryInfo.reason})`);
+    }
+
     // Tages-Teilsummen fuer die filterlosen Ansichten (Paket 5b). Liest die
     // alte meta (Kennung) und laeuft deshalb davor. Scheitert er, bleibt die
     // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
-    const components = readComponents(ROOT, setNumber, log);
     const agg = await aggStep({
       exec: (s) => c.run(s), all, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
-      compList: compListSql(components), compHash: componentsHash(components),
+      compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry,
     });
     alarms.push(...agg.alarms);
+    await dropCarry();
     tStep = Date.now();
 
     await run(`DROP TABLE IF EXISTS ${outdb}.meta`);
@@ -856,8 +917,11 @@ async function build({ t0, win, testRun, untilMs, files }) {
       builtAt: new Date().toISOString(), setNumber, boards, matches,
       minDay: stats.min_day, maxDay: stats.max_day, bytes: size,
       mode, reasons: decision.reasons, lastFullAt: lastFullMs == null ? null : new Date(lastFullMs).toISOString(),
-      durations: { totalS: Math.round(totalS), scanS: Math.round(scanS), aggS: agg.s },
+      durations: {
+        totalS: Math.round(totalS), scanS: Math.round(scanS), aggS: agg.s, fpOldS: carryInfo.fpOldS, fpNewS: carryInfo.fpNewS,
+      },
       aggDays: { covered: agg.covered, total: agg.total }, aggNew: agg.newDays, aggSig: agg.token ? AGG_SIG : null,
+      aggCarried: agg.carried, aggCarryReason: carryInfo.reason,
       alarms,
     });
     log(`fertig (${mode}) in ${totalS.toFixed(1)} s: ${boards} Boards / ${matches} Partien, Rang bekannt ${stats.ranked},`

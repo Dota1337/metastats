@@ -99,8 +99,16 @@ export function aggEligible(q) {
     && q.traits.length === 0 && !q.focus && q.tab !== 'summary' ? variantsForQuery(q) : null;
 }
 
+// Stand der Summen-SQL ausserhalb von variantRowsSql (aggClSql, aggHeadSql,
+// rowsSelect, Fingerabdruck in explorer-agg-build.mjs). Erhoehen, wenn sich
+// dort etwas aendert: dann verwirft der naechste Lauf alle Summen, auch die
+// sonst im Vollaufbau uebernommenen. Bei 0 bleibt AGG_SIG wie vor Paket 5c.
+// Der Stolperdraht in explorer-agg-build.test.mjs erinnert daran.
+export const AGG_REV = 0;
+
 export const AGG_SIG = crypto.createHash('sha1')
-  .update(VARIANTS.map(v => variantRowsSql(v, { b: 'B', u: 'U', t: 'T', compList: 'C' }, 'CL')).join('\n'))
+  .update(VARIANTS.map(v => variantRowsSql(v, { b: 'B', u: 'U', t: 'T', compList: 'C' }, 'CL')).join('\n')
+    + (AGG_REV ? `\nrev ${AGG_REV}` : ''))
   .digest('hex').slice(0, 16);
 
 // ─── Planung im Bau (reine Funktionen) ─────────────────────────────────────
@@ -155,6 +163,48 @@ export function planAgg({ nowMs, t0Ms, budgetS, days, covered, newestDays = [] }
 }
 
 export const aggDue = (plan, entry, nowMs) => nowMs < (entry.must ? plan.hardMs : plan.deadlineMs);
+
+// Block-Kopie vorab einpreisen: ein Tag kommt nur in den Block, wenn er nach
+// der Kopie noch faellig ist. Schaetzung = max(180 s, laengste Kopie dieses
+// Laufs) × 1,1 (gemessen 115–170 s je 7-Tage-Block).
+export const AGG_COPY_MIN_S = 180;
+export const aggCopyEstS = (maxCopyS = 0) => Math.max(AGG_COPY_MIN_S, maxCopyS) * 1.1;
+export const aggDueForCopy = (plan, entry, nowMs, estS) => aggDue(plan, entry, nowMs + estS * 1000);
+
+// ─── Vollaufbau mit Uebernahme (Paket 5c, reine Funktionen) ────────────────
+
+// Gruende gegen eine Uebernahme; null = versuchen.
+export function aggCarryBlocked({ prevKind, prevTestRun, testRun, carryEnv, budgetS, aggtryExists }) {
+  if (prevKind !== 'ok') return `vorige Datei: ${prevKind}`;
+  if (testRun) return 'Testlauf';
+  if (prevTestRun) return 'vorige Datei aus einem Testlauf';
+  if (String(carryEnv ?? '').trim() === '0') return 'AGG_CARRY=0';
+  if (budgetS === 0) return 'AGG_BUDGET_S=0';
+  if (aggtryExists) return 'Versuchs-Stempel vom letzten Lauf';
+  return null;
+}
+
+// Zeitgrenze der Uebernahme ist die harte Grenze, nicht die Tauschfrist.
+// Rest-Schaetzung: neuer Fingerabdruck wie der alte, dazu Partie-Delta und
+// Rang-Schritt (600 s).
+export const aggCarryLate = ({ nowMs, t0Ms, fpOldS }) => nowMs + (2 * fpOldS + 600) * 1000 > t0Ms + AGG_HARD_S * 1000;
+
+// Uebernommen wird ein Tag, der gedeckt war und dessen alte Boards in beiden
+// Dateien denselben Fingerabdruck haben.
+export function aggCarryDays({ oldFp, newFp, covered }) {
+  const cov = new Set(covered);
+  const days = [];
+  const differ = [];
+  const uncovered = [];
+  const noOld = [];
+  for (const d of [...newFp.keys()].sort()) {
+    if (!oldFp.has(d)) noOld.push(d);
+    else if (oldFp.get(d) !== newFp.get(d)) differ.push(d);
+    else if (!cov.has(d)) uncovered.push(d);
+    else days.push(d);
+  }
+  return { days, differ, uncovered, noOld };
+}
 
 // ─── Dienst (reine Funktion) ───────────────────────────────────────────────
 

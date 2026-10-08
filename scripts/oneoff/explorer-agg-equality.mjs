@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Abgleich der Tages-Teilsummen (Paket 5b) gegen eine LOKALE Kopie der
-// Explorer-Datei. Fasst die Quelle nie an: alles laeuft auf zwei Kopien im
+// Abgleich der Tages-Teilsummen (Paket 5b + 5c) gegen eine LOKALE Kopie der
+// Explorer-Datei. Fasst die Quelle nie an: alles laeuft auf Kopien im
 // --tmp-Ordner.
 //
 //   B  Vollaufbau der Summen (Fenster ohne den ersten Tag)       → Pruefung (a)
@@ -8,7 +8,12 @@
 //      teils verfaelscht, Patch eines Tages verfaelscht; Summen voll gerechnet.
 //      Dann "heute": juengste Boards dazu, Raenge + Patch zurueck, erster Tag
 //      raus, Summen per Teil-Schritt nachgefuehrt.                → Pruefung (b)
-//   (b) verlangt: A und B haben Zeile fuer Zeile dieselben Summen.
+//   C  Vollaufbau mit Uebernahme: vorige Datei (ohne die juengsten Boards, an
+//      sechs Tagen verfaelscht: Platz, Schluessel, Item, Trait, Rang vor der
+//      neuen Frost-Grenze, Patch), neue Datei mit neu vergebenen
+//      Board-Nummern. Genau die sechs Tage muessen beim Fingerabdruck
+//      rausfallen, der Rest wird uebernommen.                     → Pruefung (c)
+//   (b) und (c) verlangen: A bzw. N und B haben Zeile fuer Zeile dieselben Summen.
 //
 // Aufruf: node scripts/oneoff/explorer-agg-equality.mjs --duckdb=<.../node-api/lib/index.js>
 //           --src=<explorer.duckdb> --tmp=<Ordner>
@@ -17,7 +22,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
-import { aggStep, aggChecks } from '../lib/explorer-agg-build.mjs';
+import { aggStep, aggChecks, aggBindingReason, aggCarrySave, aggCarryMatch } from '../lib/explorer-agg-build.mjs';
 import { compListSql } from '../lib/explorer-agg.mjs';
 import { readComponents, componentsHash } from '../lib/explorer-components.mjs';
 
@@ -30,13 +35,13 @@ if (!DUCK || !SRC || !TMP) { console.error('--duckdb, --src und --tmp angeben');
 const fwd = (p) => p.split(path.sep).join('/');
 const log = (...a) => console.log(`[agg-eq ${new Date().toISOString().slice(11, 19)}]`, ...a);
 const addDay = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const sq = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 const { DuckDBInstance } = await import(pathToFileURL(DUCK).href);
 fs.mkdirSync(TMP, { recursive: true });
 const P = (f) => path.join(TMP, f);
-for (const f of ['A.duckdb', 'B.duckdb', 'work.duckdb']) for (const x of [P(f), `${P(f)}.wal`]) fs.rmSync(x, { force: true });
-fs.copyFileSync(SRC, P('A.duckdb'));
-fs.copyFileSync(SRC, P('B.duckdb'));
+for (const f of ['A.duckdb', 'B.duckdb', 'P.duckdb', 'N.duckdb', 'work.duckdb']) for (const x of [P(f), `${P(f)}.wal`]) fs.rmSync(x, { force: true });
+for (const f of ['A.duckdb', 'B.duckdb', 'P.duckdb', 'N.duckdb']) fs.copyFileSync(SRC, P(f));
 
 const inst = await DuckDBInstance.create(P('work.duckdb'), {
   threads: '1', memory_limit: '900MB', preserve_insertion_order: 'false', temp_directory: fwd(P('spill')),
@@ -64,7 +69,8 @@ const X = days[Math.floor(days.length / 2)];
 log(`Set ${setNumber}, Tage ${w0}..${n} (${days.length}), Frost ${f}, Schnitt bid ${K} (naechste ${nextBid}), Patch-Tag ${X}, ${components.length} Komponenten`);
 
 const files = (tag) => ({ aggwork: P(`${tag}.aggwork`), aggtry: P(`${tag}.aggtry`) });
-const base = { exec, all, log, compList, compHash, t0Ms: Date.now(), budgetRaw: '99999' };
+// Frischer Laufbeginn je Schritt — die Frist haengt daran.
+const base = () => ({ exec, all, log, compList, compHash, t0Ms: Date.now(), budgetRaw: '99999' });
 const dropBefore = async (o, w) => {
   for (const t of ['units', 'traits', 'board_rank']) await exec(`DELETE FROM ${o}.${t} WHERE bid IN (SELECT bid FROM ${o}.boards WHERE day < DATE '${w}')`);
   await exec(`DELETE FROM ${o}.boards WHERE day < DATE '${w}'`);
@@ -72,10 +78,28 @@ const dropBefore = async (o, w) => {
 let ok = true;
 const fail = (m) => { ok = false; log(`ABWEICHUNG: ${m}`); };
 
+// Datei outdb gegen B: Boards, Summen Zeile fuer Zeile, Pruefungen.
+const compare = async (tag) => {
+  await exec(`ATTACH '${fwd(P('B.duckdb'))}' AS b (READ_ONLY)`);
+  const bc = await one(`SELECT (SELECT count(*) FROM outdb.boards)::DOUBLE AS a, (SELECT count(*) FROM b.boards)::DOUBLE AS b`);
+  if (bc.a !== bc.b) fail(`Boards ${tag} ${bc.a} ≠ B ${bc.b}`);
+  for (const t of ['agg_rows', 'agg_head', 'agg_days', 'day_patches']) {
+    const d = await one(`SELECT
+      (SELECT count(*) FROM (SELECT * FROM outdb.${t} EXCEPT ALL SELECT * FROM b.${t}))::DOUBLE AS ab,
+      (SELECT count(*) FROM (SELECT * FROM b.${t} EXCEPT ALL SELECT * FROM outdb.${t}))::DOUBLE AS ba,
+      (SELECT count(*) FROM b.${t})::DOUBLE AS nb`);
+    log(`${tag} ${t}: ${d.nb} Zeilen, nur in ${tag} ${d.ab}, nur in B ${d.ba}`);
+    if (d.ab || d.ba) fail(`${tag} ${t} unterscheidet sich`);
+  }
+  const fl = await aggChecks({ all, outdb: 'outdb' });
+  if (fl.length) fail(`Pruefungen ${tag}: ${fl.join('; ')}`);
+  await exec('DETACH b');
+};
+
 // ── B: Vollaufbau, Fenster ab w1 ───────────────────────────────────────────
 await exec(`ATTACH '${fwd(P('B.duckdb'))}' AS outdb`);
 await dropBefore('outdb', w1);
-const rB = await aggStep({ ...base, outdb: 'outdb', mode: 'full', win: { w: w1, f, n }, startBid: 1, nextBid, files: files('B') });
+const rB = await aggStep({ ...base(), outdb: 'outdb', mode: 'full', win: { w: w1, f, n }, startBid: 1, nextBid, files: files('B') });
 log(`B: token ${rB.token ? 'ja' : 'NEIN'}, ${rB.covered}/${rB.total} Tage, ${rB.s} s, Alarme ${JSON.stringify(rB.alarms)}`);
 if (!rB.token || rB.covered !== rB.total || rB.alarms.length) fail('(a) Vollaufbau nicht vollstaendig oder mit Alarm');
 await exec('DETACH outdb');
@@ -86,7 +110,7 @@ for (const t of ['units', 'traits', 'board_rank']) await exec(`DELETE FROM outdb
 await exec(`DELETE FROM outdb.boards WHERE bid >= ${K}`);
 await exec(`UPDATE outdb.boards SET rank = CASE WHEN rank = 'IRON' THEN 'GOLD' ELSE 'IRON' END WHERE day >= DATE '${f}' AND bid % 7 = 0`);
 await exec(`UPDATE outdb.boards SET patch = 'zz.test' WHERE day = DATE '${X}'`);
-const rA0 = await aggStep({ ...base, outdb: 'outdb', mode: 'full', win: { w: w0, f, n }, startBid: 1, nextBid: K, files: files('A') });
+const rA0 = await aggStep({ ...base(), outdb: 'outdb', mode: 'full', win: { w: w0, f, n }, startBid: 1, nextBid: K, files: files('A') });
 log(`A gestern: ${rA0.covered}/${rA0.total} Tage, ${rA0.s} s, Alarme ${JSON.stringify(rA0.alarms)}`);
 if (!rA0.token) fail('A gestern ohne Summen');
 await exec('DROP TABLE outdb.meta');
@@ -100,29 +124,89 @@ await exec(`CREATE OR REPLACE TABLE nb AS SELECT * FROM src.boards WHERE bid >= 
 await exec('INSERT INTO outdb.boards BY NAME SELECT * FROM nb');
 await exec(`INSERT INTO outdb.units BY NAME SELECT * FROM src.units WHERE bid IN (SELECT bid FROM nb)`);
 await exec(`INSERT INTO outdb.traits BY NAME SELECT * FROM src.traits WHERE bid IN (SELECT bid FROM nb)`);
-const rA = await aggStep({ ...base, outdb: 'outdb', mode: 'delta', win: { w: w1, f, n }, startBid: K, nextBid, patchChanged: [X], files: files('A') });
+const rA = await aggStep({ ...base(), outdb: 'outdb', mode: 'delta', win: { w: w1, f, n }, startBid: K, nextBid, patchChanged: [X], files: files('A') });
 log(`A heute: ${rA.covered}/${rA.total} Tage, ${rA.newDays} neu gerechnet, Partie-Delta ${rA.partMatches} Partien, ${rA.s} s, Alarme ${JSON.stringify(rA.alarms)}`);
 if (!rA.token) fail('A heute ohne Summen');
 if (rA.partMatches === 0) fail('Partie-Delta nicht ausgeloest — Test sagt nichts');
 if (rA.newDays < 2) fail(`erwartet mind. 2 neu gerechnete Tage (Patch-Tag + Folgetag), waren ${rA.newDays}`);
-
-// ── Vergleich ──────────────────────────────────────────────────────────────
-await exec(`ATTACH '${fwd(P('B.duckdb'))}' AS b (READ_ONLY)`);
-const bc = await one(`SELECT (SELECT count(*) FROM outdb.boards)::DOUBLE AS a, (SELECT count(*) FROM b.boards)::DOUBLE AS b`);
-if (bc.a !== bc.b) fail(`Boards A ${bc.a} ≠ B ${bc.b}`);
-for (const t of ['agg_rows', 'agg_head', 'agg_days', 'day_patches']) {
-  const d = await one(`SELECT
-    (SELECT count(*) FROM (SELECT * FROM outdb.${t} EXCEPT ALL SELECT * FROM b.${t}))::DOUBLE AS ab,
-    (SELECT count(*) FROM (SELECT * FROM b.${t} EXCEPT ALL SELECT * FROM outdb.${t}))::DOUBLE AS ba,
-    (SELECT count(*) FROM b.${t})::DOUBLE AS nb`);
-  log(`${t}: ${d.nb} Zeilen, nur in A ${d.ab}, nur in B ${d.ba}`);
-  if (d.ab || d.ba) fail(`${t} unterscheidet sich`);
-}
-const fA = await aggChecks({ all, outdb: 'outdb' });
-if (fA.length) fail(`Pruefungen A: ${fA.join('; ')}`);
-await exec('DETACH b');
+await compare('A');
 await exec('DETACH outdb');
+
+// ── C: vorige Datei ────────────────────────────────────────────────────────
+const od = (await all(`SELECT DISTINCT day::VARCHAR AS d FROM src.boards WHERE bid < ${K} AND day >= DATE '${w1}'
+  ORDER BY 1`)).map((r) => r.d);
+const fP = addDay(f, -1);
+const dm = { place: od[1], key: od[3], item: od[5], trait: od[7], rankOld: fP, rankNew: addDay(f, 1), patch: od[9] };
+const dPatchNext = addDay(dm.patch, 1);
+const chosen = [...Object.values(dm), dPatchNext];
+if (chosen.some((d) => !od.includes(d)) || new Set(chosen).size !== chosen.length) {
+  throw new Error(`Testtage ungeeignet: ${JSON.stringify(dm)}, Folgetag ${dPatchNext}`);
+}
+log(`C: Testtage ${JSON.stringify(dm)}, Patch-Folgetag ${dPatchNext}, vorige Frost ${fP}`);
+
+await exec(`ATTACH '${fwd(P('P.duckdb'))}' AS outdb`);
+for (const t of ['units', 'traits', 'board_rank']) await exec(`DELETE FROM outdb.${t} WHERE bid >= ${K}`);
+await exec(`DELETE FROM outdb.boards WHERE bid >= ${K}`);
+const minBid = async (d) => Number((await one(`SELECT min(bid)::DOUBLE AS v FROM outdb.boards WHERE day = DATE '${d}'`)).v);
+await exec(`UPDATE outdb.boards SET placement = 9 - placement WHERE bid = ${await minBid(dm.place)}`);
+await exec(`UPDATE outdb.board_rank SET k = k + 1 WHERE bid = ${await minBid(dm.key)}`);
+const it = await one(`SELECT u.bid::DOUBLE AS bid, u.unit FROM outdb.units u JOIN outdb.boards b USING (bid)
+  WHERE b.day = DATE '${dm.item}' AND u.i1 IS NOT NULL ORDER BY u.bid, u.unit LIMIT 1`);
+await exec(`UPDATE outdb.units SET i1 = NULL WHERE bid = ${it.bid} AND unit = ${sq(it.unit)} AND i1 IS NOT NULL`);
+const tr = await one(`SELECT t.bid::DOUBLE AS bid, t.trait FROM outdb.traits t JOIN outdb.boards b USING (bid)
+  WHERE b.day = DATE '${dm.trait}' ORDER BY t.bid, t.trait LIMIT 1`);
+await exec(`UPDATE outdb.traits SET lvl = lvl + 1 WHERE bid = ${tr.bid} AND trait = ${sq(tr.trait)}`);
+await exec(`UPDATE outdb.boards SET rank = CASE WHEN rank = 'IRON' THEN 'GOLD' ELSE 'IRON' END
+  WHERE day IN (DATE '${dm.rankOld}', DATE '${dm.rankNew}') AND bid % 7 = 0`);
+await exec(`UPDATE outdb.boards SET patch = 'zz.test' WHERE day = DATE '${dm.patch}'`);
+const rV = await aggStep({ ...base(), outdb: 'outdb', mode: 'full', win: { w: w0, f: fP, n }, startBid: 1, nextBid: K, files: files('P') });
+log(`C vorige: ${rV.covered}/${rV.total} Tage, ${rV.s} s, Alarme ${JSON.stringify(rV.alarms)}`);
+if (!rV.token || rV.covered !== rV.total) fail('C vorige Datei ohne volle Summen');
+await exec('DROP TABLE outdb.meta');
+await exec(`CREATE TABLE outdb.meta AS SELECT '${rV.token}'::VARCHAR AS agg_token`);
+await exec('DETACH outdb');
+
+// ── C: neue Datei, Board-Nummern neu vergeben ──────────────────────────────
+await exec(`ATTACH '${fwd(P('N.duckdb'))}' AS outdb`);
+await dropBefore('outdb', w1);
+for (const t of ['boards', 'units', 'traits', 'board_rank']) {
+  await exec(`CREATE TABLE outdb.${t}_r AS SELECT * REPLACE (CAST(${nextBid} - bid AS UINTEGER) AS bid) FROM outdb.${t}`);
+  await exec(`DROP TABLE outdb.${t}`);
+  await exec(`ALTER TABLE outdb.${t}_r RENAME TO ${t}`);
+}
+await exec(`ATTACH '${fwd(P('P.duckdb'))}' AS prev (READ_ONLY)`);
+const why = await aggBindingReason({ all, db: 'prev', nextBid: K, compHash });
+if (why) fail(`C Bindung abgelehnt: ${why}`);
+const prep = await aggCarrySave({ exec, all, db: 'prev', f });
+await exec('CREATE OR REPLACE TABLE prev_rank AS SELECT DISTINCT k FROM prev.board_rank');
+await exec('DETACH prev');
+const m = await aggCarryMatch({ exec, all, outdb: 'outdb', prevKeys: 'prev_rank', f, prep });
+log(`C Fingerabdruck: ${m.days.length}/${m.nDays} gleich, anders ${JSON.stringify(m.differ)}, ungedeckt ${m.uncovered.length},`
+  + ` ohne alte ${m.noOld.length}, ${m.nNew} neue Boards, alt ${prep.s} s, neu ${m.s} s`);
+const expDiffer = [dm.place, dm.key, dm.item, dm.trait, dm.rankOld, dm.patch].sort();
+if (JSON.stringify(m.differ) !== JSON.stringify(expDiffer)) fail(`(c) anders erwartet ${JSON.stringify(expDiffer)}`);
+const expDays = od.filter((d) => !expDiffer.includes(d));
+if (JSON.stringify(m.days) !== JSON.stringify(expDays)) fail(`(c) gleiche Tage ${m.days.length}, erwartet ${expDays.length}`);
+if (m.uncovered.length || m.noOld.length) fail('(c) ungedeckte Tage oder Tage ohne alte Boards');
+const expNew = Number((await one(`SELECT count(*)::DOUBLE AS v FROM src.boards WHERE bid >= ${K} AND day >= DATE '${w1}'`)).v) + 1;
+if (m.nNew !== expNew) fail(`(c) neue Boards ${m.nNew}, erwartet ${expNew}`);
+const rN = await aggStep({
+  ...base(), outdb: 'outdb', mode: 'full', win: { w: w1, f, n }, startBid: 1, nextBid, patchChanged: [dm.patch], files: files('N'),
+  newBoards: 'cv_nb', carry: { days: m.days, rows: 'cv_rows', head: 'cv_head' },
+});
+log(`C neu: ${rN.covered}/${rN.total} Tage, ${rN.carried} uebernommen, ${rN.newDays} neu gerechnet, Partie-Delta ${rN.partMatches} Partien,`
+  + ` ${rN.s} s, Alarme ${JSON.stringify(rN.alarms)}`);
+if (!rN.token || rN.alarms.length) fail('C neu ohne Summen oder mit Alarm');
+if (rN.carried !== m.days.length) fail(`C uebernommen ${rN.carried}, erwartet ${m.days.length}`);
+if (!rN.partMatches) fail('C Partie-Delta nicht ausgeloest — Test sagt nichts');
+if (rN.covered !== rN.total) fail('C nicht voll gedeckt');
+// Patch-Folgetag ist im Fingerabdruck gleich, faellt aber ueber patchChanged raus.
+if (rN.newDays !== rN.total - (rN.carried - 1)) fail(`C neu gerechnet ${rN.newDays}, erwartet ${rN.total - (rN.carried - 1)}`);
+for (const t of ['cv_rows', 'cv_head', 'cv_nb', 'prev_rank']) await exec(`DROP TABLE IF EXISTS ${t}`);
+await compare('N');
+await exec('DETACH outdb');
+
 c.closeSync?.();
 inst.closeSync?.();
-log(ok ? 'GLEICH — Teil-Schritt liefert dieselben Summen wie der Vollaufbau' : 'NICHT GLEICH');
+log(ok ? 'GLEICH — Teil-Schritt und Uebernahme liefern dieselben Summen wie der Vollaufbau' : 'NICHT GLEICH');
 process.exit(ok ? 0 : 1);

@@ -12,7 +12,9 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { AGG_SIG, VARIANTS, variantRowsSql, aggBudgetS, aggCoveredDays, planAgg, aggDue } from './explorer-agg.mjs';
+import {
+  AGG_SIG, VARIANTS, variantRowsSql, aggBudgetS, aggCoveredDays, planAgg, aggDue, aggCopyEstS, aggDueForCopy, aggCarryDays,
+} from './explorer-agg.mjs';
 
 export const AGG_SUM_COLS = ['m1', 'n1', 's1', 't4', 't1', 'ss11', 'sn11', 'nn11', 's1S', 's1N', 'n1S', 'n1N', 'n3'];
 export const AGG_HEAD_COLS = ['matches', 'n', 's', 'ss', 'sn', 'nn', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'h7', 'h8'];
@@ -29,6 +31,13 @@ const dLit = (d) => {
   return `DATE '${d}'`;
 };
 const inList = (days) => days.map(dLit).join(', ');
+
+// Eine Spaltenliste fuer alle Kopien (Block, Partie-Delta, Rang) und den
+// Fingerabdruck: was die Summen lesen, muss der Fingerabdruck pruefen.
+export const BOARD_COLS = ['bid', 'mid', 'day', 'patch', 'region', 'placement', 'level', 'last_round', 'gold_left', 'family', 'rank'];
+export const UNIT_COLS = ['unit', 'star', 'i1', 'i2', 'i3'];
+export const TRAIT_COLS = ['trait', 'lvl', 'overcap'];
+const cols = (list, a) => list.map((c) => (a ? `${a}.${c}` : c)).join(', ');
 
 export const aggTablesDdl = (o) => [
   `CREATE TABLE ${o}.agg_rows(variant VARCHAR, day DATE, patch VARCHAR, region VARCHAR, key VARCHAR, sub INTEGER, sub2 INTEGER, `
@@ -50,11 +59,94 @@ export const aggHeadSql = (cl) => `SELECT day, patch, region, count(*)::DOUBLE A
   sum(s * s)::DOUBLE AS ss, sum(s * n)::DOUBLE AS sn, sum(n * n)::DOUBLE AS nn, ${HIST.map((i) => `sum(h${i})::DOUBLE AS h${i}`).join(', ')}
   FROM (${cl}) GROUP BY ALL`;
 
-const rowsSelect = (v, names, cl, sign = 1) => {
+export const rowsSelect = (v, names, cl, sign = 1) => {
   const inner = variantRowsSql(v, names, cl);
   if (sign > 0) return `SELECT '${v}' AS variant, * FROM (${inner})`;
   return `SELECT '${v}' AS variant, day, patch, region, key, sub, sub2, ${AGG_SUM_COLS.map((c) => `-${qi(c)} AS ${qi(c)}`).join(', ')} FROM (${inner})`;
 };
+
+// Tages-Fingerabdruck (Paket 5c): je Kalendertag Anzahl und Summe eines
+// zeilenweisen hash() ueber den stabilen Board-Schluessel k und alle Spalten,
+// die die Summen lesen. hash() ist NULL-sicher und positionsabhaengig; Summe
+// als HUGEINT, Text im Ergebnis. Rang nur vor der Frost-Grenze f — ab f
+// rechnet Schritt 4 die Rang-Zeilen ohnehin neu. kd = Tabelle (bid, day, k)
+// der zu pruefenden Boards.
+export const aggFingerprintSql = ({ db, kd, f }) => {
+  const bc = BOARD_COLS.filter((c) => !['bid', 'day', 'rank'].includes(c));
+  const sel = (list) => `SELECT x.day::VARCHAR AS day, count(*)::DOUBLE AS n, sum(hash(x.k, ${list})::HUGEINT)::VARCHAR AS h`;
+  return {
+    b: `${sel(`${cols(bc, 'b')}, CASE WHEN x.day < ${dLit(f)} THEN b.rank END`)} FROM ${db}.boards b JOIN ${kd} x USING (bid) GROUP BY ALL`,
+    u: `${sel(cols(UNIT_COLS, 'u'))} FROM ${db}.units u JOIN ${kd} x USING (bid) GROUP BY ALL`,
+    t: `${sel(cols(TRAIT_COLS, 't'))} FROM ${db}.traits t JOIN ${kd} x USING (bid) GROUP BY ALL`,
+  };
+};
+
+// Map Tag → "n:h|n:h|n:h" (boards|units|traits).
+export async function aggFingerprint({ all, db, kd, f }) {
+  const q = aggFingerprintSql({ db, kd, f });
+  const by = new Map();
+  for (const part of ['b', 'u', 't']) {
+    for (const r of await all(q[part])) {
+      const day = String(r.day);
+      const o = by.get(day) ?? { b: '-', u: '-', t: '-' };
+      o[part] = `${Number(r.n)}:${String(r.h)}`;
+      by.set(day, o);
+    }
+  }
+  return new Map([...by].map(([d, o]) => [d, `${o.b}|${o.u}|${o.t}`]));
+}
+
+// Vollaufbau mit Uebernahme, Teil 1 (vorige Datei als db angehaengt):
+// Summen in die Arbeitsdatei sichern (cv_rows, cv_head), gedeckte Tage und
+// Fingerabdruck aller Boards der vorigen Datei. s = Sekunden fuer den
+// Fingerabdruck.
+export async function aggCarrySave({ exec, all, db, f }) {
+  await exec(`CREATE OR REPLACE TABLE cv_rows AS SELECT * FROM ${db}.agg_rows`);
+  await exec(`CREATE OR REPLACE TABLE cv_head AS SELECT * FROM ${db}.agg_head`);
+  const covered = (await all(`SELECT day::VARCHAR AS d FROM ${db}.agg_days`)).map((r) => String(r.d));
+  await exec(`CREATE OR REPLACE TABLE cv_kd AS SELECT br.k, br.bid, b.day FROM ${db}.board_rank br JOIN ${db}.boards b USING (bid)`);
+  const t = Date.now();
+  const oldFp = await aggFingerprint({ all, db, kd: 'cv_kd', f });
+  const s = Math.round((Date.now() - t) / 1000);
+  await exec('DROP TABLE cv_kd');
+  return { covered, oldFp, s };
+}
+
+// Teil 2 (neue Datei o): neue Boards = Schluessel k fehlt in prevKeys
+// (Tabelle mit Spalte k) → cv_nb fuer das Partie-Delta; Fingerabdruck der
+// uebrigen, alten Boards und Abgleich je Tag gegen prep aus Teil 1. Jedes
+// Board hat genau eine board_rank-Zeile (Pruefung im Bau vor diesem Schritt).
+export async function aggCarryMatch({ exec, all, outdb: o, prevKeys, f, prep }) {
+  await exec(`CREATE OR REPLACE TABLE cv_nb AS SELECT b.bid, b.mid, b.day FROM ${o}.boards b JOIN ${o}.board_rank br USING (bid)
+    WHERE NOT EXISTS (SELECT 1 FROM ${prevKeys} p WHERE p.k = br.k)`);
+  await exec(`CREATE OR REPLACE TABLE cv_nkd AS SELECT br.k, br.bid, b.day FROM ${o}.board_rank br JOIN ${o}.boards b USING (bid)
+    WHERE NOT EXISTS (SELECT 1 FROM cv_nb n WHERE n.bid = br.bid)`);
+  const t = Date.now();
+  const newFp = await aggFingerprint({ all, db: o, kd: 'cv_nkd', f });
+  const s = Math.round((Date.now() - t) / 1000);
+  await exec('DROP TABLE cv_nkd');
+  const nNew = Number((await all('SELECT count(*) AS n FROM cv_nb'))[0]?.n ?? 0);
+  return { ...aggCarryDays({ oldFp: prep.oldFp, newFp, covered: prep.covered }), nDays: newFp.size, nNew, s };
+}
+
+// Passen die Summen in Datei db zu ihr? Rechenweg, Kennung (agg_meta =
+// meta.agg_token), Board-Nummer beim Rechnen = nextBid der Datei,
+// Komponenten. null = ja, sonst der Grund. Teil-Aufbau (db = Arbeitskopie)
+// und Vollaufbau mit Uebernahme (db = vorige Datei) pruefen gleich.
+export async function aggBindingReason({ all, db, nextBid, compHash }) {
+  const has = Number((await all(`SELECT count(*) AS n FROM duckdb_tables() WHERE database_name = ${lit(db)} AND table_name = 'agg_meta'`))[0]?.n ?? 0);
+  if (!has) return 'keine Summen in der vorigen Datei';
+  const am = await all(`SELECT sig, token, base_next_bid::DOUBLE AS bnb, comp_hash FROM ${db}.agg_meta`);
+  const metaCols = (await all(`SELECT column_name AS v FROM duckdb_columns() WHERE database_name = ${lit(db)} AND table_name = 'meta'`))
+    .map((r) => r.v);
+  const prevToken = metaCols.includes('agg_token') ? ((await all(`SELECT agg_token AS v FROM ${db}.meta`))[0]?.v ?? null) : null;
+  if (am.length !== 1) return `agg_meta mit ${am.length} Zeilen`;
+  if (am[0].sig !== AGG_SIG) return `Rechenweg geaendert (${am[0].sig} → ${AGG_SIG})`;
+  if (!am[0].token || am[0].token !== prevToken) return 'Kennung passt nicht zur Datei';
+  if (Number(am[0].bnb) !== Number(nextBid)) return `Board-Nummer ${am[0].bnb} ≠ ${nextBid}`;
+  if (am[0].comp_hash !== compHash) return 'Komponenten-Liste geaendert';
+  return null;
+}
 
 // Pruefungen (Plan Punkt 14 + Gegenprobe gegen die Boards). Liefert die
 // Liste der Verstoesse, leer = in Ordnung.
@@ -97,12 +189,19 @@ export async function aggChecks({ all, outdb: o }) {
 // Der Schritt. Liefert { token, covered, total, newDays, s, alarms, ... };
 // token = null heisst: keine gueltigen Summen in der Datei (Dienst rechnet
 // live). Wirft nie — ein Fehler leert die Summen und wird Alarm.
+//
+// carry (nur Vollaufbau, Paket 5c): { days, rows, head } — Tage, deren alte
+// Boards per Fingerabdruck gleich sind, und die gesicherten Summen-Tabellen
+// der vorigen Datei in der Arbeitsdatei. newBoards enthaelt dann genau die
+// Boards, deren Schluessel k in der vorigen Datei fehlte; alt = der Rest.
 export async function aggStep({
   exec, all, log, outdb: o, mode, win, startBid, nextBid, patchChanged = [], t0Ms, files,
-  compList, compHash, newBoards = 'nb', budgetRaw = process.env.AGG_BUDGET_S, now = () => Date.now(),
+  compList, compHash, newBoards = 'nb', carry = null, budgetRaw = process.env.AGG_BUDGET_S, now = () => Date.now(),
 }) {
   const t1 = now();
-  const res = { token: null, covered: 0, total: 0, newDays: 0, s: 0, alarms: [], newest: null, newestCovered: false, partMatches: 0 };
+  const res = {
+    token: null, covered: 0, total: 0, newDays: 0, s: 0, alarms: [], newest: null, newestCovered: false, partMatches: 0, carried: 0,
+  };
   const n = async (sql) => Number((await all(sql))[0]?.n ?? 0);
   const col = async (sql) => (await all(sql)).map((r) => r.v);
   const tx = async (stmts) => {
@@ -141,21 +240,20 @@ export async function aggStep({
   fs.writeFileSync(files.aggtry, JSON.stringify({ pid: process.pid, startedAt: new Date(t1).toISOString() }));
   try {
     // 1) Generation: Summen der vorigen Datei nur, wenn Rechenweg, Kennung,
-    //    Board-Nummer und Komponenten zu dieser Datei passen.
+    //    Board-Nummer und Komponenten zu dieser Datei passen. Im Vollaufbau
+    //    mit Uebernahme hat der Bau die Bindung schon geprueft.
     let reason = null;
-    if (mode !== 'delta') reason = 'Vollaufbau';
-    else if (!(await n(`SELECT count(*) AS n FROM duckdb_tables() WHERE database_name = ${lit(o)} AND table_name = 'agg_meta'`))) {
-      reason = 'keine Summen in der vorigen Datei';
-    } else {
-      const am = await all(`SELECT sig, token, base_next_bid::DOUBLE AS bnb, comp_hash FROM ${o}.agg_meta`);
-      const metaCols = await col(`SELECT column_name AS v FROM duckdb_columns() WHERE database_name = ${lit(o)} AND table_name = 'meta'`);
-      const prevToken = metaCols.includes('agg_token') ? ((await all(`SELECT agg_token AS v FROM ${o}.meta`))[0]?.v ?? null) : null;
-      if (am.length !== 1) reason = `agg_meta mit ${am.length} Zeilen`;
-      else if (am[0].sig !== AGG_SIG) reason = `Rechenweg geaendert (${am[0].sig} → ${AGG_SIG})`;
-      else if (!am[0].token || am[0].token !== prevToken) reason = 'Kennung passt nicht zur Datei';
-      else if (Number(am[0].bnb) !== startBid) reason = `Board-Nummer ${am[0].bnb} ≠ ${startBid}`;
-      else if (am[0].comp_hash !== compHash) reason = 'Komponenten-Liste geaendert';
-    }
+    if (mode !== 'delta' && carry?.days.length) {
+      const IN = inList(carry.days);
+      await tx([
+        ...TABLES.map((t) => `DROP TABLE IF EXISTS ${o}.${t}`), ...aggTablesDdl(o),
+        `INSERT INTO ${o}.agg_rows BY NAME SELECT * FROM ${carry.rows} WHERE day IN (${IN})`,
+        `INSERT INTO ${o}.agg_head BY NAME SELECT * FROM ${carry.head} WHERE day IN (${IN})`,
+        `INSERT INTO ${o}.agg_days VALUES ${carry.days.map((d) => `(${dLit(d)})`).join(', ')}`,
+      ]);
+      res.carried = carry.days.length;
+    } else if (mode !== 'delta') reason = carry ? 'Vollaufbau, kein Tag gleich' : 'Vollaufbau';
+    else reason = await aggBindingReason({ all, db: o, nextBid: startBid, compHash });
     if (reason) await reset();
 
     // 2) Deckung: Tage vor dem Fenster und Tage mit geaendertem Patch raus.
@@ -168,18 +266,21 @@ export async function aggStep({
     // 3) Partie-Delta fuer gedeckte Tage: neue Boards aendern n und s ihrer
     //    Partie, also jede Zeile, an der die Partie haengt. Fuer die
     //    betroffenen Partien: + Summen ueber alle Boards, − Summen ueber die
-    //    alten (bid < startBid, so beim letzten Lauf gerechnet).
+    //    alten, so beim letzten Lauf gerechnet. Alt heisst im Teil-Aufbau
+    //    bid < startBid; im Vollaufbau sind die Nummern neu vergeben, dort
+    //    ist alt = nicht in newBoards (Schluessel k schon in der vorigen
+    //    Datei; der Fingerabdruck hat diese Boards je Tag als gleich belegt).
     if (keep.length) {
       await exec(`CREATE OR REPLACE TABLE ag_pm AS SELECT DISTINCT mid FROM ${newBoards} WHERE day IN (${inList(keep)})`);
       res.partMatches = await n('SELECT count(*) AS n FROM ag_pm');
     }
     if (res.partMatches) {
       const fLit = dLit(win.f);
-      await exec(`CREATE OR REPLACE TABLE ag_pb AS SELECT bid, mid, day, patch, region, placement, level, last_round, gold_left, family, rank
-        FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm)`);
-      await exec(`CREATE OR REPLACE TABLE ag_pbo AS SELECT * FROM ag_pb WHERE bid < ${startBid}`);
-      await exec(`CREATE OR REPLACE TABLE ag_pu AS SELECT bid, unit, star, i1, i2, i3 FROM ${o}.units WHERE bid IN (SELECT bid FROM ag_pb)`);
-      await exec(`CREATE OR REPLACE TABLE ag_pt AS SELECT bid, trait, lvl, overcap FROM ${o}.traits WHERE bid IN (SELECT bid FROM ag_pb)`);
+      const oldWhere = carry ? `bid NOT IN (SELECT bid FROM ${newBoards})` : `bid < ${startBid}`;
+      await exec(`CREATE OR REPLACE TABLE ag_pb AS SELECT ${cols(BOARD_COLS)} FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm)`);
+      await exec(`CREATE OR REPLACE TABLE ag_pbo AS SELECT * FROM ag_pb WHERE ${oldWhere}`);
+      await exec(`CREATE OR REPLACE TABLE ag_pu AS SELECT bid, ${cols(UNIT_COLS)} FROM ${o}.units WHERE bid IN (SELECT bid FROM ag_pb)`);
+      await exec(`CREATE OR REPLACE TABLE ag_pt AS SELECT bid, ${cols(TRAIT_COLS)} FROM ${o}.traits WHERE bid IN (SELECT bid FROM ag_pb)`);
       await exec(`CREATE OR REPLACE TABLE ag_cla AS ${aggClSql('ag_pb')}`);
       await exec(`CREATE OR REPLACE TABLE ag_clo AS ${aggClSql('ag_pbo')}`);
       await exec('CREATE OR REPLACE TABLE ag_ad AS SELECT DISTINCT day FROM ag_cla');
@@ -220,8 +321,7 @@ export async function aggStep({
 
     // 4) Rang-Zeilen gedeckter Tage ab der Frost-Grenze immer neu.
     if (rankDays.length) {
-      await exec(`CREATE OR REPLACE TABLE ag_rb AS SELECT bid, mid, day, patch, region, placement, rank
-        FROM ${o}.boards WHERE day IN (${inList(rankDays)})`);
+      await exec(`CREATE OR REPLACE TABLE ag_rb AS SELECT ${cols(BOARD_COLS)} FROM ${o}.boards WHERE day IN (${inList(rankDays)})`);
       await exec(`CREATE OR REPLACE TABLE ag_rcl AS ${aggClSql('ag_rb')}`);
       await exec(`CREATE OR REPLACE TABLE ag_rr AS ${rowsSelect('rank', { b: 'ag_rb', compList }, 'SELECT * FROM ag_rcl', 1)}`);
       await tx([
@@ -242,26 +342,36 @@ export async function aggStep({
     const queue = [...plan.todo];
     const names = { b: 'ag_b', u: 'ag_u', t: 'ag_t', compList };
     const cl = 'SELECT * FROM ag_c';
+    // Fix A: ein Tag kommt nur in den Block, wenn er nach der geschaetzten
+    // Kopie noch faellig ist — sonst kopiert der Lauf Bloecke ohne Ertrag.
+    // Leerer Block → Schluss (break, kein continue: die Warteschlange ist leer).
+    let maxCopyS = 0;
     while (queue.length) {
+      const est = aggCopyEstS(maxCopyS);
       const block = [];
+      let late = 0;
       while (queue.length && block.length < BLOCK_DAYS) {
         const e = queue.shift();
-        if (aggDue(plan, e, now())) block.push(e);
+        if (aggDueForCopy(plan, e, now(), est)) block.push(e);
+        else late++;
       }
-      if (!block.length) break;
+      if (!block.length) {
+        log(`Teilsummen: Frist reicht nicht fuer Kopie (~${Math.round(est)} s), ${late} Tage offen`);
+        break;
+      }
       const tb = now();
       await exec('DETACH DATABASE IF EXISTS aw');
       for (const f of [files.aggwork, `${files.aggwork}.wal`]) fs.rmSync(f, { force: true });
       await exec(`ATTACH ${lit(files.aggwork)} AS aw`);
       const IN = inList(block.map((e) => e.day));
-      await exec(`CREATE TABLE aw.bd AS SELECT bid, mid, day, patch, region, placement, level, last_round, gold_left, family, rank
-        FROM ${o}.boards WHERE day IN (${IN}) ORDER BY day, mid`);
+      await exec(`CREATE TABLE aw.bd AS SELECT ${cols(BOARD_COLS)} FROM ${o}.boards WHERE day IN (${IN}) ORDER BY day, mid`);
       await exec(`CREATE TABLE aw.cl AS SELECT * FROM (${aggClSql('aw.bd')}) ORDER BY day, mid`);
-      await exec(`CREATE TABLE aw.ud AS SELECT b.day, u.bid, u.unit, u.star, u.i1, u.i2, u.i3
+      await exec(`CREATE TABLE aw.ud AS SELECT b.day, u.bid, ${cols(UNIT_COLS, 'u')}
         FROM ${o}.units u JOIN aw.bd b USING (bid) ORDER BY b.day, u.bid`);
-      await exec(`CREATE TABLE aw.td AS SELECT b.day, t.bid, t.trait, t.lvl, t.overcap
+      await exec(`CREATE TABLE aw.td AS SELECT b.day, t.bid, ${cols(TRAIT_COLS, 't')}
         FROM ${o}.traits t JOIN aw.bd b USING (bid) ORDER BY b.day, t.bid`);
       const copyS = (now() - tb) / 1000;
+      maxCopyS = Math.max(maxCopyS, copyS);
       let nDone = 0;
       for (const e of block) {
         if (!aggDue(plan, e, now())) continue;
@@ -315,7 +425,8 @@ export async function aggStep({
     if (mode === 'delta' && res.newest != null && !res.newestCovered) {
       res.alarms.push(`Teilsummen: neuester Patch ${res.newest} nicht voll gedeckt`);
     }
-    log(`Teilsummen: ${res.covered}/${res.total} Tage gedeckt, ${res.newDays} neu, ${drop.length} raus${reason ? ` (neu begonnen: ${reason})` : ''},`
+    log(`Teilsummen: ${res.covered}/${res.total} Tage gedeckt, ${res.carried ? `${res.carried} uebernommen, ` : ''}${res.newDays} neu,`
+      + ` ${drop.length} raus${reason ? ` (neu begonnen: ${reason})` : ''},`
       + ` Partie-Delta ${res.partMatches} Partien, Rang neu ${rankDays.length} Tage (${((tKeep - t1) / 1000).toFixed(1)} s),`
       + ` neuester Patch ${res.newest ?? '—'} ${res.newestCovered ? 'voll' : 'NICHT voll'} gedeckt`);
   } catch (e) {

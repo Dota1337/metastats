@@ -90,13 +90,16 @@ crawl_running() {
   # resume + catchup nur hier (2026-10): resume faehrt denselben Tagestreiber,
   # catchup startet resume. Der Treiber startet am Ende die Patch-Umbenennung als
   # Kind — ein Reset mitten darin tauschte deren Code unter dem laufenden Lauf aus.
+  # explorer-build nur hier: laedt seine Bibliotheken nach, ein Reset im ~70-Min-
+  # Vollaufbau mischte alten und neuen Code in einem Lauf.
   for u in metastats-crawler.service \
            metastats-daily-crawl.service \
            metastats-daily-crawl-resume.service \
            metastats-daily-crawl-catchup.service \
            metastats-marketvalue-snapshot.service \
            metastats-tft-pro-fullsync.service \
-           metastats-snapshot-publisher.service; do
+           metastats-snapshot-publisher.service \
+           metastats-explorer-build.service; do
     state=$(systemctl is-active "$u" 2>/dev/null || true)
     if [ "$state" = active ] || [ "$state" = activating ] || [ "$state" = reloading ]; then
       echo "$u is $state"

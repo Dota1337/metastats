@@ -2,6 +2,7 @@
 // Reine Funktionen (plan.test.ts) — alles aus den Daten der Comp abgeleitet,
 // keine festen Zeitplaene.
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+import type { OppBoard, OppUnit } from './boards.ts';
 
 export type LevelPlan =
   | { kind: 'reroll'; level: number; targets: string[]; avgLevel: number | null }
@@ -85,27 +86,52 @@ export function shopMatches(shop: Array<string | null>, comp: CompanionComp | nu
   });
 }
 
-// Comp des Gegners aus seinem zuletzt gesehenen Brett. Erst ab Stage 3 (davor
-// sind Boards Zwischenstaende), mindestens 5 Units der Comp auf dem Brett und
-// mehr Treffer als die naechstbeste — bei Gleichstand wird nichts geraten.
-// Ein Treffer Vorsprung reicht: verwandte Comps teilen oft alle Units bis auf
-// eine, mit 2 blieb selbst ein komplettes Brett meist unerkannt. Die
-// Liste fasst Sub-Cluster schon ueber members zusammen, eine Comp = ein Eintrag.
+// Comp eines Gegners aus seinem gesehenen Brett, in zwei Sicherheitsstufen.
+//
+// Treffer = verschiedene Units der Comp auf dem Brett, mindestens 5.
+// - sicher: mindestens 2 Treffer Vorsprung vor der naechstbesten Comp UND
+//   mindestens ein Carry dieser Comp steht auf dem Brett.
+// - wahrscheinlich: alle Comps mit hoechstens einem Treffer weniger als die
+//   beste teilen denselben Trait (Geschwister wie „Trait · A" und „Trait · B").
+//   Gezeigt werden dann nur der Trait und die Carries dieser Comps, die
+//   wirklich auf dem Brett stehen — nie ein Carry, den der Gegner nicht hat.
+// - sonst nichts: verschiedene Traits gleichauf wird nicht geraten.
+// Vor Ende Stufe 2 (Runde 2-5) sind Bretter Zwischenstaende, dann gibt es nichts.
+// Die Liste fasst Sub-Cluster schon ueber members zusammen, eine Comp = ein Eintrag.
 export const RECOGNIZE_MIN_HITS = 5;
-export const RECOGNIZE_MIN_LEAD = 1;
+export const RECOGNIZE_SURE_LEAD = 2;
+export const RECOGNIZE_MIN_ROUND = 25;
 
-export function recognizeComp(units: string[], comps: CompanionComp[], stage: string | null): CompanionComp | null {
-  const s = stage ? Number(stage.split('-')[0]) : null;
-  if (s != null && Number.isFinite(s) && s < 3) return null;
-  const own = new Set(units);
-  if (own.size < RECOGNIZE_MIN_HITS) return null;
-  let best: CompanionComp | null = null;
-  let bestHits = 0;
-  let second = 0;
-  for (const c of comps) {
-    const hits = new Set(c.units.map(u => u.id).filter(id => own.has(id))).size;
-    if (hits > bestHits) { second = bestHits; bestHits = hits; best = c; }
-    else if (hits > second) second = hits;
+export type OppRecognition =
+  | { kind: 'sure'; comp: CompanionComp; carries: OppUnit[] }
+  | { kind: 'likely'; trait: string; label: string; carries: OppUnit[] };
+
+export function recognizeComp(board: OppBoard | null | undefined, comps: CompanionComp[]): OppRecognition | null {
+  if (!board || board.round < RECOGNIZE_MIN_ROUND) return null;
+  const onBoard = new Map(board.units.map(u => [u.unit, u.level]));
+  if (onBoard.size < RECOGNIZE_MIN_HITS) return null;
+  const scored = comps
+    .map(c => ({ c, hits: new Set(c.units.map(u => u.id).filter(id => onBoard.has(id))).size }))
+    .filter(x => x.hits > 0)
+    .sort((a, b) => b.hits - a.hits);
+  const best = scored[0];
+  if (!best || best.hits < RECOGNIZE_MIN_HITS) return null;
+  const carriesOf = (cs: CompanionComp[]): OppUnit[] => {
+    const ids = [...new Set(cs.flatMap(c => c.carries))].filter(id => onBoard.has(id));
+    return ids.map(unit => ({ unit, level: onBoard.get(unit) ?? 1 }));
+  };
+  const second = scored[1]?.hits ?? 0;
+  const sureCarries = carriesOf([best.c]);
+  if (best.hits - second >= RECOGNIZE_SURE_LEAD && sureCarries.length > 0) {
+    return { kind: 'sure', comp: best.c, carries: sureCarries };
   }
-  return best && bestHits >= RECOGNIZE_MIN_HITS && bestHits - second >= RECOGNIZE_MIN_LEAD ? best : null;
+  const near = scored.filter(x => x.hits >= best.hits - 1).map(x => x.c);
+  if (!near.every(c => c.trait === best.c.trait)) return null;
+  return { kind: 'likely', trait: best.c.trait, label: traitLabel(best.c), carries: carriesOf(near) };
+}
+
+// Trait-Name, wie ihn der Server in den Comp-Namen schreibt („Trait · Carry").
+export function traitLabel(c: CompanionComp): string {
+  const i = c.name.indexOf(' · ');
+  return i > 0 ? c.name.slice(0, i) : c.name;
 }

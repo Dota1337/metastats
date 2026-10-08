@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode,
-  TFT_GAME_IDS, gameClassId, isTftGame, tftFromGame, featuresFor, parseLocalPlayer,
+  TFT_GAME_IDS, gameClassId, isTftGame, tftFromGame, featuresFor, parseLocalPlayer, parseRoster,
   fightToRound, fightsLowerBound, regionFromHandle,
 } from './gep.ts';
 
@@ -87,6 +87,21 @@ test('parseLocalPlayer findet den eigenen Eintrag und nimmt nur Platz 1-8', () =
   assert.deepEqual(parseLocalPlayer({ Me: { localplayer: true, rank: 0 } }), { name: 'Me', rank: null });
   assert.equal(parseLocalPlayer({ A: { localplayer: false } }), null);
   assert.equal(parseLocalPlayer('kaputt'), null);
+});
+
+test('parseRoster liest alle Spieler mit Leben, Platz und Namen#Tag', () => {
+  const raw = JSON.stringify({
+    'TFT Chillout': { index: 5, health: 58, xp: 8, localplayer: true, rank: 0, tag_line: 'EUW' },
+    'Gegner#X': { health: '0', rank: 7 },
+    Leer: null,
+  });
+  assert.deepEqual(parseRoster(raw), [
+    { name: 'TFT Chillout#EUW', health: 58, rank: null, local: true },
+    { name: 'Gegner#X', health: 0, rank: 7, local: false },
+  ]);
+  assert.deepEqual(parseRoster({ A: { health: '' } }), [{ name: 'A', health: null, rank: null, local: false }]);
+  assert.deepEqual(parseRoster('{}'), []);
+  assert.deepEqual(parseRoster('kaputt'), []);
 });
 
 test('fightToRound folgt dem TFT-Ablauf', () => {

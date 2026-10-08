@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.6.0",
+    "version": "0.7.0",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",
@@ -80,6 +80,11 @@
         "title": "Show/hide metastats.gg",
         "action-type": "custom",
         "default": "Alt+D"
+      },
+      "move_matchup": {
+        "title": "Move opponent overlay",
+        "action-type": "custom",
+        "default": "Alt+M"
       }
     },
     "game_targeting": {
@@ -106,6 +111,6 @@
       ]
     },
     "extra-objects": {},
-    "user_agent": "metastats-companion/0.6"
+    "user_agent": "metastats-companion/0.7"
   }
 }

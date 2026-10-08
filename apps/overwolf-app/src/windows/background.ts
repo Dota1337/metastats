@@ -4,16 +4,18 @@
 // Augmente werden NICHT angefordert: Overwolf warnt, dass Augment-Daten gegen
 // Riots Regeln verstossen und die App sperren koennen.
 import { APP_SECRET, API_BASE, CLIENT_VERSION } from '../lib/config.ts';
-import { read, write, subscribe, type Live } from '../lib/store.ts';
+import { read, write, subscribe, type Live, type RosterRow } from '../lib/store.ts';
 import { loadComps, loadLookups, loadCompDetail } from '../lib/api.ts';
-import { show, close, toggle, moveTo, minimize, setTopmost, obtain, type WindowName } from '../lib/ow.ts';
+import { show, close, toggle, front, moveTo, minimize, setTopmost, setPassThrough, obtain, type WindowName } from '../lib/ow.ts';
 import { enqueue, flush, clear, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
-import { recordBoard, flattenBoards, ownRounds, type Boards } from '../lib/boards.ts';
+import { recordBoard, flattenBoards, ownRounds, toOppBoard, mergeOppBoard, sameOppBoard, type Boards } from '../lib/boards.ts';
 import { saveLocalMatch } from '../lib/history-store.ts';
+import { classifyLaunch, launchSource, type LaunchKind } from '../lib/launch.ts';
+import { rectFromGame, overlayBox } from '../lib/placement.ts';
 import {
   jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode, gameClassId, isTftGame, tftFromGame,
-  featuresFor, parseLocalPlayer, fightToRound, fightsLowerBound, regionFromHandle,
+  featuresFor, parseRoster, fightToRound, fightsLowerBound, regionFromHandle,
 } from '../lib/gep.ts';
 
 const REFRESH_MS = 30 * 60 * 1000;
@@ -162,7 +164,13 @@ async function submit(): Promise<void> {
 
 // ---------- Live-Zustand fuer die Overlays ----------
 
-let live: Live = { ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, oppBoards: {} };
+// Stand vor einem Neustart der App. Gehoert er zur selben Partie (gleiche
+// Kennung beim Spielstart), bleiben gesehene Gegner-Bretter und Spielerliste.
+let restore: Live | null = read('ms.live');
+let live: Live = {
+  ...read('ms.live'), inTft: false, shop: [], shopVisible: false, opponent: null, stage: null,
+  oppBoards: {}, roster: [], lobby: null, startedAt: null, moving: false,
+};
 let sawShopVisibleEvent = false;
 
 function patchLive(p: Partial<Live>): void {
@@ -172,6 +180,7 @@ function patchLive(p: Partial<Live>): void {
 }
 
 const seenKeys = new Set<string>();
+let lastSpectate = '';
 
 function debugKeys(all: Record<string, Record<string, unknown>>): void {
   if (!DEBUG_GEP) return;
@@ -215,8 +224,10 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
         if (r != null && r > match.round) match.round = r;
       }
     }
-    // 28164: kein round_type — jedes neue Kampfergebnis zaehlt als ein Kampf.
-    // Overwolf fuehrt den Schluessel dort mit Leerzeichen am Ende.
+    // Rueckfall ohne round_type: jedes neue Kampfergebnis zaehlt als ein Kampf.
+    // 28164 liefert round_type inzwischen auch (Protokoll vom 07.10.2026), der
+    // Zaehler greift nur, solange keins kam. Overwolf fuehrt den Schluessel
+    // dort mit Leerzeichen am Ende.
     const ro = mi.round_outcome ?? mi['round_outcome '];
     if (ro != null && ro !== '') {
       const txt = typeof ro === 'string' ? ro : JSON.stringify(ro);
@@ -229,6 +240,15 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
       match.lastOutcome = txt;
     }
     if (mi.opponent !== undefined) p.opponent = parseOpponent(mi.opponent);
+    // Probe: wessen Brett gerade gezeigt wird (bisher nur null gesehen). Jeder
+    // neue Wert einmal ins Log, um zu klaeren, ob er fruehere Bretter liefert.
+    if (mi.board_spectate !== undefined) {
+      const v = typeof mi.board_spectate === 'string' ? mi.board_spectate : asText(mi.board_spectate);
+      if (v !== lastSpectate) {
+        lastSpectate = v;
+        log('board spectate', { value: v, stage: p.stage ?? live.stage, roster: live.roster.length, opponent: p.opponent ?? live.opponent });
+      }
+    }
     if (mi.match_id) match.matchId = String(mi.match_id);
     const outcome = Number(mi.match_outcome ?? mi.placement);
     if (outcome >= 1 && outcome <= 8 && !match.placement) {
@@ -239,7 +259,12 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
 
   const roster = all.roster;
   if (roster?.player_status !== undefined) {
-    const lp = parseLocalPlayer(roster.player_status);
+    const entries = parseRoster(roster.player_status);
+    if (entries.length) {
+      const rows: RosterRow[] = entries.map(({ name, health, rank }) => ({ name, health, rank }));
+      if (JSON.stringify(rows) !== JSON.stringify(live.roster)) p.roster = rows;
+    }
+    const lp = entries.find(e => e.local);
     if (lp) {
       if (!match.handle || (lp.name.includes('#') && !match.handle.includes('#'))) setHandle(lp.name);
       // Ausgeschieden: Platz steht fest, Paket geht sofort raus.
@@ -294,10 +319,16 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
     const pieces = parseBoardPieces(board.opponent_board_pieces);
     recordBoard(match.boards, 'opp', match.round, opp, pieces);
-    // Letztes Brett je Gegner fuer die Comp-Erkennung im Gegner-Overlay.
-    const units = [...new Set(pieces.map(x => x.unit).filter(Boolean))].sort();
-    if (opp && units.length && units.join('|') !== (live.oppBoards[opp] ?? []).join('|')) {
-      p.oppBoards = { ...live.oppBoards, [opp]: units };
+    // Vollstaendigstes Brett je Gegner fuer die Comp-Erkennung im Gegner-
+    // Overlay. Das Spiel meldet oft nur Teile davon; die werden zusammengefuehrt.
+    if (opp) {
+      const prev = live.oppBoards[opp];
+      const next = toOppBoard(pieces, match.round, p.stage ?? live.stage);
+      const merged = mergeOppBoard(prev, next);
+      if (Math.abs(next.units.length - (prev?.units.length ?? 0)) >= 2) {
+        log('opp board size', { opponent: opp, round: match.round, seen: next.units.length, before: prev?.units.length ?? 0, kept: merged.units.length });
+      }
+      if (!sameOppBoard(prev, merged)) p.oppBoards = { ...live.oppBoards, [opp]: merged };
     }
   }
 
@@ -310,7 +341,7 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
   for (const ev of e?.events || []) {
     if (ev.name === 'match_start' || ev.name === 'matchStart') {
       resetMatch();
-      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, oppBoards: {} });
+      patchLive({ inTft: live.inTft, level: null, shop: [], stage: null, opponent: null, oppBoards: {}, roster: [], startedAt: match.startedAt });
     } else if (ev.name === 'shop_visible' || ev.name === 'shop_hidden') {
       sawShopVisibleEvent = true;
       const visible = ev.name === 'shop_visible' && String(ev.data) !== 'false';
@@ -345,15 +376,28 @@ function armFeatures(classId: number | null): void {
 
 let activeGame: number | null = null;
 
-function onGameStart(classId: number | null): void {
+// sessionId: Kennung der laufenden Partie laut Overwolf. Startet die App
+// mitten in einer Partie neu (Absturz, Update), bleibt mit derselben Kennung
+// alles erhalten, was schon gesehen wurde — Gegner-Bretter, Spielerliste und
+// der Beginn der Partie (eine Partie im Spielverlauf, nicht zwei).
+function onGameStart(classId: number | null, sessionId: string | null): void {
   if (!isTftGame(classId) || activeGame === classId) return; // anderes Spiel / schon erfasst
   activeGame = classId;
   resetMatch();
   match.gameId = classId;
   sawShopVisibleEvent = false;
   armFeatures(classId);
+  const old = restore;
+  restore = null;
+  const resume = !!sessionId && old?.lobby === sessionId;
+  if (resume && old?.startedAt) match.startedAt = old.startedAt;
+  log('game start', { classId, sessionId, resumed: resume, boards: resume ? Object.keys(old?.oppBoards ?? {}).length : 0 });
   // 28164/21570 sind sicher TFT; bei 5426 entscheidet erst game_mode.
-  patchLive({ inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null, oppBoards: {} });
+  patchLive({
+    inTft: tftFromGame(classId) === true, shop: [], shopVisible: false, opponent: null, stage: null, level: null,
+    oppBoards: resume ? old!.oppBoards : {}, roster: resume ? old!.roster : [],
+    lobby: sessionId, startedAt: match.startedAt, moving: false,
+  });
   void mainForGame();
 }
 
@@ -363,7 +407,8 @@ function onGameEnd(): void {
   armGen++;
   void submit();
   sawShopVisibleEvent = false;
-  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, oppBoards: {} });
+  stopMoving('game end');
+  patchLive({ inTft: false, shop: [], shopVisible: false, opponent: null, stage: null, level: null, oppBoards: {}, roster: [], lobby: null, startedAt: null });
   void setTopmost('main', false);
 }
 
@@ -388,18 +433,44 @@ async function onGameMonitor(w: overwolf.windows.WindowInfo): Promise<boolean | 
   return cx >= d.x && cx < d.x + d.width && cy >= d.y && cy < d.y + d.height;
 }
 
-// Waehrend TFT bleibt das Hauptfenster im Vordergrund (auf dem 2. Bildschirm
-// oder per Alt+D ueber dem Spiel). Liegt es beim Start auf dem Spiel-
-// Bildschirm, wird es minimiert, damit es das Spiel nicht verdeckt.
+// Zeitpunkt, zu dem der Nutzer das Hauptfenster selbst geoeffnet hat (Klick im
+// Overwolf-Dock o. Ae.). Kurz danach wird es beim Spielstart nicht minimiert.
+let userShownAt = 0;
+const USER_SHOWN_GRACE_MS = 10_000;
+
+// Spielstart: das Hauptfenster geht mit auf und bleibt im Vordergrund (auf dem
+// 2. Bildschirm oder per Alt+D ueber dem Spiel), ohne dem Spiel die Tastatur zu
+// nehmen. Liegt es auf dem Spiel-Bildschirm, wird es minimiert, damit es das
+// Spiel nicht verdeckt — ausser der Nutzer hat es gerade selbst geoeffnet.
 async function mainForGame(): Promise<void> {
   await setTopmost('main', true);
   const w = await obtain('main');
-  if (!w) return;
-  const st = String(w.stateEx || w.state || '');
-  if (st !== 'normal' && st !== 'maximized') return;
+  if (!w) { log('main on game start', { action: 'missing' }); return; }
+  const state = String(w.stateEx || w.state || '');
   const same = await onGameMonitor(w);
-  log('main on game start', { monitorId: w.monitorId, sameMonitor: same });
-  if (same !== false) await minimize('main');
+  const userShown = Date.now() - userShownAt < USER_SHOWN_GRACE_MS;
+  const action = same !== false && !userShown ? 'minimize' : 'show';
+  log('main on game start', { state, monitorId: w.monitorId, sameMonitor: same, userShown, action });
+  if (action === 'minimize') {
+    if (state === 'normal' || state === 'maximized') await minimize('main');
+    return;
+  }
+  if (await show('main')) await front('main', false);
+}
+
+// Wie wurde die App geoeffnet? Ein Klick des Nutzers holt das Hauptfenster
+// immer nach vorn; ein Selbststart (mit dem Spiel, nach Update, beim
+// Hochfahren) entscheidet ueber mainForGame bzw. gar nicht.
+function handleLaunch(kind: LaunchKind | null, origin: string | null): void {
+  log('launch', { origin, kind });
+  if (kind === 'click') {
+    userShownAt = Date.now();
+    void show('main').then(id => { if (id) void front('main', true); });
+    return;
+  }
+  if (kind === 'auto') return;
+  // Herkunft unbekannt: wie bisher — ohne laufendes TFT geht das Fenster auf.
+  void runningGame().then(g => { if (!g || !isTftGame(gameClassId(g))) void show('main'); });
 }
 
 // ---------- Overlays ----------
@@ -408,44 +479,37 @@ async function mainForGame(): Promise<void> {
 // Schliessen neu setzen.
 const placed = new Set<WindowName>();
 
-// Das Spielbild ist eine zentrierte 16:9-Flaeche; Lagen in Anteilen davon.
-async function gameRect(): Promise<{ ox: number; oy: number; bw: number; bh: number } | null> {
-  const g = await new Promise<overwolf.games.GetRunningGameInfoResult | null>(res => overwolf.games.getRunningGameInfo(r => res(r || null)));
-  if (!g?.isRunning) return null;
-  const W = g.logicalWidth || g.width;
-  const H = g.logicalHeight || g.height;
-  if (!W || !H) return null;
-  const bw = Math.min(W, (H * 16) / 9);
-  const bh = (bw * 9) / 16;
-  return { ox: (W - bw) / 2, oy: (H - bh) / 2, bw, bh };
-}
-
-// Shop-Leiste: unten zwischen ca. 24 % und 77,5 % der Breite.
-// Gegner-Liste: links neben den Spieler-Bildern am rechten Rand (die Hoehe
-// passt das Fenster selbst an seinen Inhalt an).
-const PLACES: Partial<Record<WindowName, [number, number, number, number]>> = {
-  shop: [0.24, 0.80, 0.535, 0.11],
-  matchup: [0.715, 0.17, 0.15, 0.5],
-};
+// Lagen: src/lib/placement.ts. Shop mit fester Groesse; das Gegner-Overlay nur
+// mit Lage (Standard oder vom Nutzer verschoben), Groesse setzt es selbst.
+const PLACED: ReadonlySet<WindowName> = new Set<WindowName>(['shop', 'matchup']);
 
 async function place(name: WindowName): Promise<void> {
-  const at = PLACES[name];
-  const r = at ? await gameRect() : null;
-  if (!at || !r) return;
-  await moveTo(name, r.ox + r.bw * at[0], r.oy + r.bh * at[1], r.bw * at[2], r.bh * at[3]);
+  if (name !== 'shop' && name !== 'matchup') return;
+  const g = await runningGame();
+  const r = g ? rectFromGame(g.logicalWidth || g.width, g.logicalHeight || g.height) : null;
+  if (!r) return;
+  const box = overlayBox(name, r, read('ms.settings').matchupPos);
+  await moveTo(name, box.left, box.top, box.width, box.height);
   placed.add(name);
 }
 
 const shown = new Set<WindowName>();
+
+// Lage neu setzen (Aufloesung gewechselt, Lage verschoben oder zurueckgesetzt).
+function replace(name: WindowName): void {
+  placed.delete(name);
+  if (shown.has(name)) void place(name);
+}
 
 async function setOverlay(name: WindowName, want: boolean): Promise<void> {
   if (want === shown.has(name)) return;
   if (want) {
     shown.add(name);
     await show(name);
-    if (PLACES[name] && !placed.has(name)) await place(name);
+    if (PLACED.has(name) && !placed.has(name)) await place(name);
   } else {
     shown.delete(name);
+    if (name === 'matchup') stopMoving('hidden');
     await close(name);
     placed.delete(name);
   }
@@ -462,6 +526,28 @@ async function syncOverlays(): Promise<void> {
     setOverlay('shop', tft && s.shop && !!pin && live.shopVisible),
     setOverlay('matchup', tft && s.opponent),
   ]);
+}
+
+// Verschiebe-Modus des Gegner-Overlays (Tastenkuerzel oder Knopf in den
+// Einstellungen): das Overlay nimmt kurz die Maus an und zeigt einen Rahmen.
+// Endet nach dem Ablegen, nach 30 s, beim zweiten Druck oder am Spielende.
+const MOVE_MS = 30_000;
+let moveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function toggleMoving(source: string): void {
+  if (live.moving) { stopMoving(source); return; }
+  if (!shown.has('matchup')) { log('move overlay', { source, action: 'not shown' }); return; }
+  if (moveTimer) clearTimeout(moveTimer);
+  moveTimer = setTimeout(() => stopMoving('timeout'), MOVE_MS);
+  patchLive({ moving: true });
+  void setPassThrough('matchup', false).then(ok => log('move overlay', { source, action: 'start', ok }));
+}
+
+function stopMoving(reason: string): void {
+  if (moveTimer) { clearTimeout(moveTimer); moveTimer = null; }
+  if (!live.moving) return;
+  patchLive({ moving: false });
+  void setPassThrough('matchup', true).then(ok => log('move overlay', { reason, action: 'stop', ok }));
 }
 
 // Detail der angehefteten Comp (Aufstellung, fruehe Boards) fuer das Overlay.
@@ -503,36 +589,55 @@ async function refreshData(force = false): Promise<void> {
 
 // ---------- Start ----------
 
+const sessionOf = (g: { sessionId?: string } | null | undefined): string | null => (g?.sessionId ? String(g.sessionId) : null);
+
 overwolf.games.events.onInfoUpdates2.addListener(onInfo);
 overwolf.games.events.onNewEvents.addListener(onEvents);
 overwolf.games.onGameInfoUpdated.addListener(e => {
   if (e?.runningChanged || e?.gameChanged) {
-    if (e.gameInfo?.isRunning) onGameStart(gameClassId(e.gameInfo));
+    if (e.gameInfo?.isRunning) onGameStart(gameClassId(e.gameInfo), sessionOf(e.gameInfo));
     else onGameEnd();
   }
-  if (e?.resolutionChanged) placed.clear();
+  if (e?.resolutionChanged) { replace('shop'); replace('matchup'); }
 });
-overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) onGameStart(gameClassId(r)); });
+overwolf.games.getRunningGameInfo(r => { if (r?.isRunning) onGameStart(gameClassId(r), sessionOf(r)); });
 // Schliesst der Nutzer ein Overlay selbst, muss es beim naechsten Mal wieder aufgehen.
 overwolf.windows.onStateChanged.addListener(e => {
   const name = e?.window_name as WindowName;
   if (name && shown.has(name) && (e.window_state_ex === 'closed' || e.window_state_ex === 'hidden')) {
     shown.delete(name);
     placed.delete(name);
+    if (name === 'matchup') stopMoving('closed');
   }
 });
-overwolf.settings.hotkeys.onPressed.addListener(e => { if (e?.name === 'toggle_main') void toggle('main'); });
+overwolf.settings.hotkeys.onPressed.addListener(e => {
+  if (e?.name === 'toggle_main') void toggle('main', false);
+  else if (e?.name === 'move_matchup') toggleMoving('hotkey');
+});
+// Knopf "Verschieben" in den Einstellungen des Hauptfensters.
+overwolf.windows.onMessageReceived.addListener(m => { if (m?.id === 'move_matchup') toggleMoving('settings'); });
+// Klick auf die App, waehrend sie schon laeuft.
+overwolf.extensions.onAppLaunchTriggered.addListener(e => handleLaunch(classifyLaunch(e?.origin), e?.origin ?? null));
 
 let lastRegion = read('ms.settings').region;
+let lastPos = JSON.stringify(read('ms.settings').matchupPos);
 subscribe(['ms.settings', 'ms.pin'], key => {
   if (key === 'ms.settings') {
-    const region = read('ms.settings').region;
-    if (region !== lastRegion) {
-      lastRegion = region;
+    const settings = read('ms.settings');
+    if (settings.region !== lastRegion) {
+      lastRegion = settings.region;
       void loadComps(true);
     }
+    // Gegner-Overlay verschoben oder zurueckgesetzt: an die neue Lage.
+    const pos = JSON.stringify(settings.matchupPos);
+    if (pos !== lastPos) {
+      lastPos = pos;
+      log('overlay position', settings.matchupPos);
+      stopMoving('placed');
+      replace('matchup');
+    }
     // Teilen aus: noch wartende Pakete duerfen nicht mehr rausgehen.
-    if (!read('ms.settings').share) {
+    if (!settings.share) {
       void clear(idbStore)
         .then(n => { if (n) log('outbox cleared', n); })
         .catch(e => log('outbox clear failed', (e as Error)?.message));
@@ -547,7 +652,7 @@ void refreshData();
 void flushOutbox();
 setInterval(() => { void refreshData(true); void flushOutbox(); }, REFRESH_MS);
 window.addEventListener('online', () => void flushOutbox());
-// Beim Start ueber das Spiel (Overwolf startet die App mit dem Spiel) bleibt
-// das Hauptfenster zu; sonst geht es auf.
-void runningGame().then(g => { if (!g || !isTftGame(gameClassId(g))) void show('main'); });
-log('ready', CLIENT_VERSION);
+// Erster Start: Herkunft steht in der Fensteradresse (?source=...).
+const source = launchSource(location.href);
+log('ready', CLIENT_VERSION, { href: location.href, source });
+handleLaunch(classifyLaunch(source), source);

@@ -1,11 +1,11 @@
 {
   "name": "metastats-overwolf-app",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit && vite build && node build-opk.mjs",
+    "build": "tsc --noEmit && node --test \"src/**/*.test.ts\" && vite build && node build-opk.mjs",
     "test": "node --test \"src/**/*.test.ts\""
   },
   "devDependencies": {

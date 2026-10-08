@@ -126,19 +126,33 @@ export function featuresFor(classId: number | null): string[] {
 
 // ---------- Ersatzquellen fuer 28164 ----------
 
-// roster.player_status: {"Name":{"localplayer":true,"rank":0,...},...}.
+// roster.player_status: {"Name":{"index":5,"health":58,"xp":8,"localplayer":true,
+// "rank":0,"tag_line":"EUW"},...}. Kommt immer vollstaendig fuer alle acht
+// Spieler (gemessen im Overwolf-Protokoll vom 07.10.2026), am Spielbeginn als {}.
 // Lebende Spieler haben rank 0 bzw. leer, wer ausscheidet bekommt seinen Platz.
-export function parseLocalPlayer(raw: unknown): { name: string; rank: number | null } | null {
-  const parsed = jsonish<Record<string, { localplayer?: boolean | string; rank?: number | string; tag_line?: string } | null>>(raw);
-  if (!parsed || typeof parsed !== 'object') return null;
+export interface RosterEntry { name: string; health: number | null; rank: number | null; local: boolean }
+
+export function parseRoster(raw: unknown): RosterEntry[] {
+  const parsed = jsonish<Record<string, { localplayer?: boolean | string; rank?: number | string; health?: number | string; tag_line?: string } | null>>(raw);
+  if (!parsed || typeof parsed !== 'object') return [];
+  const out: RosterEntry[] = [];
   for (const [key, val] of Object.entries(parsed)) {
-    if (!val || typeof val !== 'object') continue;
-    if (val.localplayer !== true && val.localplayer !== 'true') continue;
+    if (!key || !val || typeof val !== 'object') continue;
     const rank = Number(val.rank);
-    const name = val.tag_line && !key.includes('#') ? `${key}#${val.tag_line}` : key;
-    return { name, rank: Number.isInteger(rank) && rank >= 1 && rank <= 8 ? rank : null };
+    const health = val.health === '' || val.health == null ? NaN : Number(val.health);
+    out.push({
+      name: val.tag_line && !key.includes('#') ? `${key}#${val.tag_line}` : key,
+      health: Number.isFinite(health) ? health : null,
+      rank: Number.isInteger(rank) && rank >= 1 && rank <= 8 ? rank : null,
+      local: val.localplayer === true || val.localplayer === 'true',
+    });
   }
-  return null;
+  return out;
+}
+
+export function parseLocalPlayer(raw: unknown): { name: string; rank: number | null } | null {
+  const me = parseRoster(raw).find(e => e.local);
+  return me ? { name: me.name, rank: me.rank } : null;
 }
 
 // Kampf Nr. n (ab 1) → Stufe×10+Runde. Ab Stufe 2 hat jede Stufe fuenf

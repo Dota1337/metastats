@@ -12,6 +12,35 @@ function toggleRow(label: string, key: 'pinned' | 'shop' | 'opponent' | 'share')
   return h('label', { class: 'setting' }, h('span', {}, label), box);
 }
 
+// Tastenkuerzel aus Overwolf (der Nutzer kann es dort aendern), sonst der Standard.
+function hotkeyKbd(name: string, fallback: string): HTMLElement {
+  const kbd = h('kbd', {}, fallback);
+  try {
+    overwolf.settings.hotkeys.get(r => {
+      const all = [...((r as { globals?: Array<{ name: string; binding: string }> })?.globals ?? [])];
+      for (const g of Object.values((r as { games?: Record<string, Array<{ name: string; binding: string }>> })?.games ?? {})) all.push(...g);
+      const hk = all.find(x => x.name === name);
+      if (hk?.binding) kbd.textContent = hk.binding;
+    });
+  } catch { /* ausserhalb von Overwolf */ }
+  return kbd;
+}
+
+// Verschiebe-Modus des Gegner-Overlays schaltet das Hintergrundfenster
+// (wie beim Tastenkuerzel); Zuruecksetzen = Standardlage.
+function moveRow(): HTMLElement {
+  const move = h('button', { class: 'btn ghost', type: 'button' }, t('settings.move'));
+  move.addEventListener('click', () => {
+    try { overwolf.windows.sendMessage('background', 'move_matchup', '', () => {}); } catch { /* ausserhalb von Overwolf */ }
+  });
+  const reset = h('button', { class: 'btn ghost', type: 'button' }, t('settings.resetPos'));
+  reset.addEventListener('click', () => patchSettings({ matchupPos: null }));
+  return h('div', { class: 'setting' },
+    h('span', {}, t('settings.moveOverlay')),
+    h('div', { class: 'setting-actions' }, hotkeyKbd('move_matchup', 'Alt+M'), move, reset),
+  );
+}
+
 export function settingsTab(): HTMLElement {
   const s = read('ms.settings');
   const regionLabel = (r: string) => r === 'all' ? t('settings.allRegions') : r === 'west' ? t('settings.west') : r === 'asia' ? t('settings.asia') : r.toUpperCase().replace(/\d$/, '');
@@ -19,15 +48,6 @@ export function settingsTab(): HTMLElement {
   region.addEventListener('change', () => patchSettings({ region: region.value }));
   const language = h('select', {}, LANGS.map(l => h('option', { value: l.code, selected: l.code === lang() }, l.label)));
   language.addEventListener('change', () => patchSettings({ lang: language.value as Lang }));
-  const hotkey = h('kbd', {}, 'Alt+D');
-  try {
-    overwolf.settings.hotkeys.get(r => {
-      const all = [...((r as { globals?: Array<{ name: string; binding: string }> })?.globals ?? [])];
-      for (const g of Object.values((r as { games?: Record<string, Array<{ name: string; binding: string }>> })?.games ?? {})) all.push(...g);
-      const hk = all.find(x => x.name === 'toggle_main');
-      if (hk?.binding) hotkey.textContent = hk.binding;
-    });
-  } catch { /* ausserhalb von Overwolf */ }
   return h('section', { class: 'panel' },
     h('div', { class: 'card settings' },
       toggleRow(t('settings.pinned'), 'pinned'),
@@ -36,7 +56,8 @@ export function settingsTab(): HTMLElement {
       toggleRow(t('settings.share'), 'share'),
       h('label', { class: 'setting' }, h('span', {}, t('settings.region')), region),
       h('label', { class: 'setting' }, h('span', {}, t('settings.language')), language),
-      h('div', { class: 'setting' }, h('span', {}, t('settings.hotkey')), hotkey),
+      h('div', { class: 'setting' }, h('span', {}, t('settings.hotkey')), hotkeyKbd('toggle_main', 'Alt+D')),
+      moveRow(),
     ),
   );
 }

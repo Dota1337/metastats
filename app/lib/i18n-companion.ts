@@ -55,8 +55,12 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.allRegions': t6('Alle Regionen', 'All regions', '모든 지역', '所有区域', 'Todas las regiones', 'Toutes les régions'),
   'companion.settings.west': t6('Westen', 'West', '서부', '西部', 'Oeste', 'Ouest'),
   'companion.settings.asia': t6('Asien', 'Asia', '아시아', '亚洲', 'Asia', 'Asie'),
+  'companion.settings.moveOverlay': t6('Gegner-Overlay verschieben', 'Move opponent overlay', '상대 오버레이 이동', '移动对手浮窗', 'Mover superposición de rivales', 'Déplacer la superposition des adversaires'),
+  'companion.settings.move': t6('Verschieben', 'Move', '이동', '移动', 'Mover', 'Déplacer'),
+  'companion.settings.resetPos': t6('Zurücksetzen', 'Reset', '초기화', '重置', 'Restablecer', 'Réinitialiser'),
 
   'companion.overlay.target': t6('Ziel-Aufstellung', 'Target board', '목표 배치', '目标站位', 'Tablero objetivo', 'Placement cible'),
+  'companion.overlay.opponents': t6('Gegner-Comps', 'Opponent comps', '상대 조합', '对手阵容', 'Composiciones rivales', 'Compos adverses'),
 
   'companion.tab.units': t6('Units', 'Units', '유닛', '弈子', 'Unidades', 'Unités'),
   'companion.tab.items': t6('Items', 'Items', '아이템', '装备', 'Objetos', 'Objets'),

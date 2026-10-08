@@ -34,12 +34,14 @@ export function clear(el: Element, ...children: Array<Child | Child[]>): void {
 
 const COST_CLASS = ['', 'c1', 'c2', 'c3', 'c4', 'c5'];
 
-export function unitIcon(id: string, lookups: CompanionLookups | null, opts: { star3?: boolean; items?: string[]; size?: 'sm' | 'md' } = {}): HTMLElement {
+// stars: gesehener Stern einer Unit (Gegner-Overlay), ab 2 Sternen angezeigt.
+export function unitIcon(id: string, lookups: CompanionLookups | null, opts: { star3?: boolean; stars?: number; items?: string[]; size?: 'xs' | 'sm' | 'md' } = {}): HTMLElement {
   const c = lookups?.champions[id];
   const name = c?.name || id.replace(/^(?:TFT\d*|DA)_(?:\d+_)?/, '');
+  const stars = opts.star3 ? 3 : Math.min(opts.stars ?? 0, 4);
   return h('div', { class: `unit ${opts.size || 'md'} ${COST_CLASS[c?.cost ?? 0] || ''}`, title: name },
     c?.icon ? h('img', { src: c.icon, alt: name, loading: 'lazy' }) : h('span', { class: 'unit-fallback' }, name.slice(0, 3)),
-    opts.star3 ? h('span', { class: 'star3' }, '★★★') : null,
+    stars >= 2 ? h('span', { class: `star3 s${stars}` }, '★'.repeat(stars)) : null,
     opts.items?.length
       ? h('div', { class: 'unit-items' }, opts.items.map(it => itemIcon(it, lookups, 'xs')))
       : null,

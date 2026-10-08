@@ -1,5 +1,5 @@
 [Unit]
-Description=metastats TFT Data Explorer: Analyse-Speicher (DuckDB) naechtlich neu bauen
+Description=metastats TFT Data Explorer: Analyse-Speicher (DuckDB) naechtlich nachfuehren
 After=network-online.target postgresql.service
 Wants=network-online.target
 # Kein Conflicts=: die Box ist nie idle (daily-crawl bis ~17:40, Marktwert bis
@@ -10,11 +10,14 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-# flock -n: laeuft schon ein Build, endet dieser Start sofort ohne Fehler.
-ExecStart=/usr/bin/flock -n -E 0 /mnt/HC_Volume_105869432/explorer/.build.lock /usr/bin/node scripts/build-explorer-store.mjs
-# Vollbuild gemessen 2026-09-28: Rohdaten 374 s + Umbau; 90 min ist Puffer
-# fuer Tage, an denen die Crawls die Platte belegen.
-TimeoutStartSec=5400
+# Sperre im Skript (explorer.duckdb.lock, pid + boot_id): laeuft schon ein
+# Build, endet dieser Start ohne Fehler. Taeglich Teil-Aufbau (nur neu
+# angekommene Partien), einmal je Woche und bei Bedarf Vollaufbau.
+# Exit 2 = Vollaufbau noetig, aber heute schon gescheitert (alte Datei bleibt).
+ExecStart=/usr/bin/node scripts/build-explorer-store.mjs
+# Vollaufbau gemessen 2026-10-08: 3438 s. 9000 s ist Puffer fuer Tage, an
+# denen die Crawls die Platte belegen; ab 6000 s meldet status.json einen Alarm.
+TimeoutStartSec=9000
 Nice=19
 IOSchedulingClass=idle
 CPUQuota=100%

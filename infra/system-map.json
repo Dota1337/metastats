@@ -201,7 +201,7 @@
     {
       "name": "metastats-explorer-build.service",
       "kind": "service",
-      "description": "metastats TFT Data Explorer: Analyse-Speicher (DuckDB) naechtlich neu bauen",
+      "description": "metastats TFT Data Explorer: Analyse-Speicher (DuckDB) naechtlich nachfuehren",
       "scripts": [
         "scripts/build-explorer-store.mjs"
       ],
@@ -212,10 +212,10 @@
     {
       "name": "metastats-explorer-build.timer",
       "kind": "timer",
-      "description": "metastats TFT Data Explorer: Analyse-Speicher taeglich neu bauen",
+      "description": "metastats TFT Data Explorer: Analyse-Speicher taeglich nachfuehren",
       "scripts": [],
       "onCalendar": [
-        "*-*-* 02:15:00 UTC"
+        "*-*-* 01:35:00 UTC"
       ],
       "interval": [],
       "activates": "metastats-explorer-build.service",
@@ -623,7 +623,7 @@
       "timer": "metastats-explorer-build.timer",
       "activates": "metastats-explorer-build.service",
       "onCalendar": [
-        "*-*-* 02:15:00 UTC"
+        "*-*-* 01:35:00 UTC"
       ]
     },
     {
@@ -1206,7 +1206,8 @@
       "metatft-comps/familien-abdeckung"
     ],
     "metastats-explorer-build.service": [
-      "explorer/datei-frische"
+      "explorer/datei-frische",
+      "explorer/vollaufbau-frische"
     ],
     ".github/workflows/pro-teams-weekly.yml": [
       "pro-teams/datei-frische",

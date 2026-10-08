@@ -4,16 +4,17 @@
 //
 // Zahlen kommen aus denselben Routen wie die Detailseite (/api/tft/comps mit
 // slug, /api/tft/positions/by-units) im selben Prozess; Stufen-Zeitpunkte und
-// Early-Boards aus der MetaTFT-Datei des laufenden Sets.
+// Early-Boards aus der MetaTFT-Datei des laufenden Sets. Das Brett rechnet
+// buildCompBoards — dieselbe Funktion wie das Brett der Comp-Liste
+// (/api/tft/comps/board).
 import { NextRequest } from 'next/server';
 import { GET as compsGET } from '../../../tft/comps/route';
 import { GET as byUnitsGET } from '../../../tft/positions/by-units/route';
-import { resolveGuideId } from '../../../../lib/tft-comp-guides';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import { LOW_DATA_GAMES } from '../../../../lib/tft-comp-outcome';
 import {
-  COMPANION_API_VERSION, companionJson, companionPreflight, companionStats, resolveBoard, unitsAtPlayerLevel,
-  type CompanionCompDetail, type CompanionEarlyBoard,
+  BOARD_UNIT_RE, COMPANION_API_VERSION, buildCompBoards, companionJson, companionPreflight, companionStats,
+  type CellShares, type CompanionCompDetail,
 } from '../../../../lib/companion-api';
 
 export const maxDuration = 60;
@@ -26,8 +27,6 @@ export function OPTIONS() {
   return companionPreflight();
 }
 
-const UNIT_RE = /^[A-Za-z0-9_]{2,60}$/;
-
 export async function GET(request: NextRequest) {
   const sp = request.nextUrl.searchParams;
   const slug = sp.get('slug') || '';
@@ -35,9 +34,9 @@ export async function GET(request: NextRequest) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'bad_slug' }, { status: 400, ...NO_STORE });
   }
   const region = /^[a-z0-9_]{2,20}$/.test(sp.get('region') || '') ? sp.get('region')! : 'all';
-  const askedUnits = (sp.get('units') || '').split(',').map(u => u.trim()).filter(u => UNIT_RE.test(u)).slice(0, 12);
+  const askedUnits = (sp.get('units') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 12);
   // Ab App 0.6: Carries + Item-Traeger fuer die Early-Game-Zuordnung.
-  const askedCarries = (sp.get('carries') || '').split(',').map(u => u.trim()).filter(u => UNIT_RE.test(u)).slice(0, 6);
+  const askedCarries = (sp.get('carries') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 6);
 
   const origin = request.nextUrl.origin;
   const inner = new URL('/api/tft/comps', origin);
@@ -65,94 +64,50 @@ export async function GET(request: NextRequest) {
   if (!comp) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'not_found' }, { status: 404, ...NO_STORE });
   }
-  const families = (comp.mergedFamilies || []).filter(f => /^[\w@]+_[A-Za-z0-9_]+$/.test(f)).slice(0, 4);
-  const units = askedUnits.length > 0
-    ? askedUnits
-    : (comp.typicalUnits || []).map(u => u.characterId).filter(u => UNIT_RE.test(u)).slice(0, 9);
 
-  // Feld-Anteile je Unit; die Route nimmt hoechstens 12 Units je Anfrage, die
-  // Anteile einer Unit haengen nicht von den anderen ab.
-  type Shares = Record<string, Array<{ cell: number; share: number }>>;
-  const fetchShares = async (ids: string[]): Promise<{ units: Shares; source: CompanionCompDetail['boardSource'] } | null> => {
+  // Feld-Anteile je Unit (by-units nimmt hoechstens 12 Units je Anfrage).
+  const fetchShares = async (ids: string[], { families, guide }: { families: string[]; guide: string | null }) => {
     const pos = new URL('/api/tft/positions/by-units', origin);
-    pos.search = new URLSearchParams({ units: ids.join(','), ...(families.length ? { cluster: families.join(',') } : {}) }).toString();
+    pos.search = new URLSearchParams({
+      units: ids.join(','),
+      ...(families.length ? { cluster: families.join(',') } : {}),
+      ...(guide ? { guide } : {}),
+    }).toString();
     const pr = await byUnitsGET(new NextRequest(pos)).catch(() => null);
     const pj = pr && pr.ok ? await pr.json().catch(() => null) as {
-      hasData?: boolean; source?: CompanionCompDetail['boardSource']; units?: Shares;
+      hasData?: boolean; source?: CompanionCompDetail['boardSource']; units?: CellShares;
     } | null : null;
     return pj?.hasData && pj.units ? { units: pj.units, source: pj.source ?? null } : null;
   };
 
-  // Aufstellung: je Unit die Feld-Anteile, Konflikte loest resolveBoard.
-  let board: CompanionCompDetail['board'] = [];
-  let boardSource: CompanionCompDetail['boardSource'] = null;
-  if (units.length > 0) {
-    const pj = await fetchShares(units);
-    if (pj) {
-      board = resolveBoard(units, pj.units);
-      boardSource = board.length > 0 ? pj.source : null;
-    }
-  }
-
   // Endbrett je Spielerstufe (Umschalter in der App): Stufen 5-9 mit
-  // mindestens LOW_DATA_GAMES Spielen der Comp auf der Stufe. Units = die
-  // haeufigsten auf der Stufe, Feld-Anteile dieselben wie fuer `board`.
-  const outcome = comp.outcome;
-  const levelUnits = new Map<number, string[]>();
-  for (const l of outcome?.levels || []) {
-    if (l.level < 5 || l.level > 9 || l.games < LOW_DATA_GAMES) continue;
-    const ids = unitsAtPlayerLevel(outcome?.units || [], l.level).filter(u => UNIT_RE.test(u));
-    if (ids.length > 0) levelUnits.set(l.level, ids);
-  }
-  let boardsByPlayerLevel: CompanionCompDetail['boardsByPlayerLevel'];
-  if (levelUnits.size > 0) {
-    const all = [...new Set([...levelUnits.values()].flat())];
-    const chunks: string[][] = [];
-    for (let i = 0; i < all.length; i += 12) chunks.push(all.slice(i, i + 12));
-    const parts = await Promise.all(chunks.map(fetchShares));
-    const shares: Shares = Object.assign({}, ...parts.map(p => p?.units ?? {}));
-    for (const [lvl, ids] of levelUnits) {
-      const b = resolveBoard(ids, shares);
-      if (b.length > 0) (boardsByPlayerLevel ??= {})[String(lvl)] = b;
-    }
-  }
-
-  // Stufen-Zeitpunkte + Early-Boards aus MetaTFT. Zuordnung wie auf der Seite
-  // (resolveGuideId): Familien-Eintrag oder bestes Brett ab Jaccard 0,7 mit
-  // einem unserer Carries darin.
-  const guides = loadGuidesFromDisk();
-  const familyCarries = families.map(f => f.split('__')[1]).filter((c): c is string => !!c);
-  const guideUnits = (comp.typicalUnits || []).map(u => u.characterId).filter(u => UNIT_RE.test(u)).slice(0, 9);
-  const metaId = guides
-    ? resolveGuideId(guides, families, guideUnits, [...new Set([...askedCarries, ...familyCarries])])
-    : null;
-  const details = metaId ? guides?.details[metaId] : undefined;
-  const levelTiming = (details?.levels || [])
-    .filter(l => Number.isFinite(l.level) && l.stage && l.round)
-    .map(l => ({ level: l.level, stage: `${l.stage}-${l.round}` }));
-  const early: Record<string, CompanionEarlyBoard[]> = {};
-  for (const [lvl, opts] of Object.entries(details?.earlyByLevel || {})) {
-    const boards = (opts || [])
-      .filter(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= EARLY_MIN_GAMES)
-      .map(o => ({ units: o.units, games: o.count ?? 0, avg: o.avg == null ? null : Number(o.avg.toFixed(2)) }));
-    if (boards.length > 0) early[lvl] = boards;
-  }
+  // mindestens LOW_DATA_GAMES Spielen der Comp auf der Stufe.
+  const boards = await buildCompBoards({
+    comp,
+    fetchShares,
+    guides: loadGuidesFromDisk(),
+    levelRange: [5, 9],
+    minLevelGames: LOW_DATA_GAMES,
+    earlyMinGames: EARLY_MIN_GAMES,
+    boardUnits: askedUnits,
+    extraCarries: askedCarries,
+  });
 
   const out: CompanionCompDetail = {
     v: COMPANION_API_VERSION,
     slug,
-    board,
-    boardSource,
+    board: boards.board,
+    boardSource: boards.boardSource,
     levels: (comp.outcome?.levels || []).map(l => ({
       level: l.level,
       share: Number(l.share.toFixed(3)),
       ...companionStats(l),
     })),
-    levelTiming,
-    early,
-    ...(boardsByPlayerLevel ? { boardsByPlayerLevel } : {}),
+    levelTiming: boards.levelTiming,
+    early: boards.early,
+    ...(boards.boardsByPlayerLevel ? { boardsByPlayerLevel: boards.boardsByPlayerLevel } : {}),
   };
   // Ohne Ergebnis-Bloecke (Zeitlimit der Abfrage) nicht zwischenspeichern,
   // sonst fehlt der Umschalter eine halbe Stunde lang.
-  return companionJson(out, outcome ? CACHE : NO_STORE);
+  return companionJson(out, comp.outcome ? CACHE : NO_STORE);
 }

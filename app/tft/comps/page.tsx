@@ -124,10 +124,10 @@ export default function TftCompsPage() {
 
         {!error && hasData && visibleFamilies.length > 0 && (
           <>
-            <div className={`hidden sm:grid items-center gap-4 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
+            <div className={`hidden sm:grid items-center gap-3 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
               filters.velocity > 0
-                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_7rem]'
-                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_7rem]'
+                ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
+                : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]'
             }`}>
               <div></div>
               <div></div>
@@ -155,6 +155,7 @@ export default function TftCompsPage() {
                   region={filters.region}
                   bucket={filters.bucket}
                   days={filters.days}
+                  patch={filters.patch}
                   showVelocity={filters.velocity > 0}
                   velocityShift={filters.velocity}
                   tierCutoffs={tierCutoffs}

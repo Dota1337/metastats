@@ -14,8 +14,11 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 // together, only their shares are shown:
 //   1. companion  tft_position_comp_cell for ?cluster=<trait>__<carry>[,...], once
 //                 the unit stood in >= MIN_UNIT_MATCHES own games of this comp.
-//   2. metatft    public/tft-metatft-boards-{set}.json (daily import), via the
-//                 file's familyMap.
+//   2. metatft    public/tft-metatft-boards-{set}.json (daily import): first
+//                 the board of ?guide=<id> (resolveGuideId, the same MetaTFT
+//                 comp the levelling plan comes from), then the file's
+//                 familyMap. Both can name different boards for one family
+//                 (11 of 79 families on 2026-10-08), the guide is the better fit.
 //   3. global     tft_position_unit_cell view (all comps).
 // `source` reports the one used, or 'mixed' if units came from different ones.
 
@@ -104,11 +107,15 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 2) MetaTFT-Aufstellung derselben Comp-Familie.
-  const boards = clusters.length > 0 ? loadBoards() : null;
-  for (const cluster of clusters) {
-    const id = boards?.familyMap[cluster];
-    const board = id ? boards?.boards[id] : undefined;
+  // 2) MetaTFT-Aufstellung: zuerst die zugeordnete MetaTFT-Comp, dann die
+  //    Familien-Eintraege der Datei.
+  const guideParam = searchParams.get('guide') || '';
+  const guide = /^\d{1,12}$/.test(guideParam) ? guideParam : null;
+  const boards = clusters.length > 0 || guide ? loadBoards() : null;
+  const boardIds = [...new Set([guide, ...clusters.map(c => boards?.familyMap[c])])]
+    .filter((id): id is string => !!id);
+  for (const id of boardIds) {
+    const board = boards?.boards[id];
     if (board) {
       for (const unit of units) {
         if (result[unit] || !board[unit]?.length) continue;

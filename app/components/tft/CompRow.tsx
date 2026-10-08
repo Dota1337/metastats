@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
@@ -91,6 +91,7 @@ export default function CompRow({
   compareSelected = false,
   onCompareToggle = null,
   roles: rolesProp = null,
+  boardToggle = null,
 }: {
   comp: Comp;
   rank: number;
@@ -117,6 +118,10 @@ export default function CompRow({
   // durch, weil deren Spielzahl die Familien-Summe ist). Fehlt es, rechnet die
   // Zeile ihre Rollen aus den eigenen Units.
   roles?: CompRoles | null;
+  // Knopf fuer das Aufstellungsbrett (CompBoardPanel). Das Brett selbst rendert
+  // CompFamilyRow unter der Zeile — ausserhalb des role=link-Containers.
+  // onPrefetch laedt beim Zeigen/Fokussieren vor (150 ms Verzoegerung).
+  boardToggle?: { expanded: boolean; onToggle: () => void; onPrefetch?: () => void; controlsId: string } | null;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -130,6 +135,12 @@ export default function CompRow({
   // Cached bundle load — runs once per page session despite N rows.
   const [guideBundle, setGuideBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   useEffect(() => { loadCompGuidesBundle().then(setGuideBundle); }, []);
+  const prefetchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelPrefetch = () => {
+    if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+    prefetchTimer.current = null;
+  };
+  useEffect(() => cancelPrefetch, []);
   // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
   // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
   // Beschreibung dieser Constellation zeigt.
@@ -207,6 +218,49 @@ export default function CompRow({
     carryStar: parts?.carryStar,
   });
 
+  // Aufstellungs-Knopf: Desktop in der Aktions-Leiste, mobil links in der
+  // Werte-Zeile. Tastatur-Ereignisse nicht an die Zeile weiterreichen, sonst
+  // oeffnet Enter auf dem Knopf die Detailseite.
+  const boardButton = (mobile: boolean) => {
+    if (!boardToggle) return null;
+    const label = t(boardToggle.expanded ? 'tft.comps.positioning.hide' : 'tft.comps.positioning.show');
+    return (
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); boardToggle.onToggle(); }}
+        onKeyDown={e => e.stopPropagation()}
+        onPointerEnter={e => {
+          if (e.pointerType === 'touch' || !boardToggle.onPrefetch) return;
+          if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+          prefetchTimer.current = setTimeout(boardToggle.onPrefetch, 150);
+        }}
+        onPointerLeave={cancelPrefetch}
+        onFocus={() => {
+          if (!boardToggle.onPrefetch) return;
+          if (prefetchTimer.current) clearTimeout(prefetchTimer.current);
+          prefetchTimer.current = setTimeout(boardToggle.onPrefetch, 150);
+        }}
+        onBlur={cancelPrefetch}
+        className={`${mobile ? 'w-9 h-9 mr-auto' : 'w-8 h-8'} flex items-center justify-center rounded-md transition-colors flex-shrink-0`}
+        style={{
+          color: boardToggle.expanded ? 'var(--accent)' : 'var(--fg-secondary)',
+          backgroundColor: boardToggle.expanded ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-overlay)',
+          border: `1px solid ${boardToggle.expanded ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--fg-faint)'}`,
+        }}
+        title={label}
+        aria-label={label}
+        aria-expanded={boardToggle.expanded}
+        aria-controls={boardToggle.controlsId}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true">
+          <path d="M7 2.5l3.5 2v4L7 10.5l-3.5-2v-4z" />
+          <path d="M17 2.5l3.5 2v4L17 10.5l-3.5-2v-4z" />
+          <path d="M12 13.5l3.5 2v4L12 21.5l-3.5-2v-4z" />
+        </svg>
+      </button>
+    );
+  };
+
   // Outer wrapper used to be an <a href={href}>, which produced invalid HTML
   // (nested <a> for the carry + 9 unit tiles inside). Replaced with a div that
   // mimics native anchor behavior: Cmd/Ctrl/Mid-click opens in a new tab,
@@ -245,9 +299,9 @@ export default function CompRow({
           entsprechend entfernt. */}
       <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
         showVelocity
-          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_7rem]'
-          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_7rem]'
-      } items-center gap-2.5 sm:gap-4`}>
+          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
+          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]'
+      } items-center gap-2.5 sm:gap-3`}>
         {/* Rang ist eine Ordnungszahl, kein Messwert — vorher trug er als
             einzige Zahl der Zeile font-medium, während top4/top1 in Regular
             standen. Die Hierarchie zeigte also auf die unwichtigste Zahl. */}
@@ -503,6 +557,7 @@ export default function CompRow({
             "ausgewaehlt" vorbehalten; Copy traegt Accent nur als Kontur, sonst
             saehe es aus wie ein aktivierter Toggle. */}
         <div className="hidden sm:flex items-center justify-end gap-1.5">
+          {boardButton(false)}
           {onCompareToggle && (
             <button
               type="button"
@@ -544,6 +599,7 @@ export default function CompRow({
 
         {/* Mobile-only inline stats */}
         <div className="sm:hidden flex items-center gap-2.5 col-span-full justify-end tabular-nums">
+          {boardButton(true)}
           <span className="font-semibold text-lg" style={{ color: tier.color }}>
             {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
           </span>

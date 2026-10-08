@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 84,
+    "routes": 85,
     "groups": 30,
     "tables": 36,
     "rpcs": 29,
     "files": 14,
-    "edges": 494,
+    "edges": 502,
     "unused": 7,
     "unresolved": 1
   },
@@ -25,11 +25,11 @@
       "count": 9
     },
     {
-      "name": "companion/v1",
-      "count": 6
+      "name": "tft/comps",
+      "count": 7
     },
     {
-      "name": "tft/comps",
+      "name": "companion/v1",
       "count": 6
     },
     {
@@ -757,6 +757,7 @@
       "usedBy": [
         "app/api/companion/v1/comp/route.ts",
         "app/api/companion/v1/comps/route.ts",
+        "app/api/tft/comps/board/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
         "app/lib/useTftCompsData.ts",
@@ -770,6 +771,27 @@
         "scripts/probe-aggregator-readiness.mjs",
         "scripts/publish-snapshot-bundle.mjs",
         "scripts/warm-tft-stats-cache.mjs"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/board",
+      "kind": "route",
+      "label": "/api/tft/comps/board",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/board/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/cdragon-base.ts",
+        "app/lib/current-set.ts",
+        "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides-server.ts",
+        "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/components/tft/CompBoardPanel.tsx"
       ]
     },
     {
@@ -1220,6 +1242,7 @@
       "used": true,
       "usedBy": [
         "app/api/companion/v1/comp/route.ts",
+        "app/api/tft/comps/board/route.ts",
         "app/components/tft/PositionHeatmap.tsx",
         "next.config.ts"
       ]
@@ -3040,6 +3063,46 @@
     {
       "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "file:tft-metatft-comps-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/board",
+      "to": "fn:get_tft_available_patches",
       "kind": "calls"
     },
     {

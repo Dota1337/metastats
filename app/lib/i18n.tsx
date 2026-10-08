@@ -2991,6 +2991,16 @@ const translations = {
     '배치', '站位',
     'Posicionamiento', 'Placement'
   ),
+  'tft.comps.positioning.show': t6(
+    'Positionierung anzeigen', 'Show positioning',
+    '배치 보기', '显示站位',
+    'Mostrar posicionamiento', 'Afficher le placement'
+  ),
+  'tft.comps.positioning.hide': t6(
+    'Positionierung ausblenden', 'Hide positioning',
+    '배치 숨기기', '隐藏站位',
+    'Ocultar posicionamiento', 'Masquer le placement'
+  ),
   'tft.comp.avgPlacement': t6(
     '\u00D8 Platz', 'Avg place',
     '\uD3C9\uADE0 \uC21C\uC704', '\u5E73\u5747\u6392\u540D',

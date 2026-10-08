@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { type TierCutoffs } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
+import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompBoardPanel';
 
 // CompFamilyRow — Trait+Carry-Family-Card mit Drop-Down (MetaTFT-Style).
 // Hauptcomp rendert als reguläre CompRow mit Toggle-Pfeil zwischen Trait+
@@ -55,6 +56,7 @@ export default function CompFamilyRow({
   region,
   bucket,
   days,
+  patch,
   showVelocity = false,
   velocityShift = 0,
   tierCutoffs,
@@ -67,6 +69,8 @@ export default function CompFamilyRow({
   region: string;
   bucket: string;
   days?: number;
+  // Patch-Filter der Seite (auch Alias wie "current") fuer das Aufstellungsbrett.
+  patch: string;
   showVelocity?: boolean;
   velocityShift?: number;
   tierCutoffs?: TierCutoffs | null;
@@ -76,23 +80,46 @@ export default function CompFamilyRow({
   onCompareToggle?: (() => void) | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const boardId = `comp-board-${useId().replace(/:/g, '')}`;
   const familyRoles = { carries: family.carries, tanks: family.tanks, itemCarriers: family.itemCarriers };
+
+  // Aufstellungsbrett der ganzen Familie. Abgefragt wird die meistgespielte
+  // Variante: fuer genau die gibt es den vorberechneten Detail-Stand
+  // (publish-snapshot-bundle, Top-N nach Spielen), und das Ergebnis ist
+  // familienweit, also fuer jede Variante gleich.
+  const boardParams = useMemo<CompBoardParams>(() => {
+    const key = [...family.variants].sort((a, b) => (b.games || 0) - (a.games || 0))[0] ?? family.mainComp;
+    const carries = [...new Set([...(family.carries || []), ...(family.itemCarriers || [])])].filter(Boolean).slice(0, 6);
+    return { slug: key.slug, patch, bucket, days: days ?? 3, region, carries };
+  }, [family.variants, family.mainComp, family.carries, family.itemCarriers, patch, bucket, days, region]);
+  const boardToggle = {
+    expanded: boardOpen,
+    onToggle: () => setBoardOpen(o => !o),
+    onPrefetch: () => prefetchCompBoard(boardParams),
+    controlsId: boardId,
+  };
+  const boardPanel = boardOpen ? <CompBoardPanel id={boardId} params={boardParams} assets={assets} /> : null;
 
   // Single-Variant-Family: regular CompRow ohne Toggle.
   if (family.variants.length === 1) {
     return (
-      <CompRow
-        comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
-        rank={rank}
-        assets={assets}
-        href={familyHref(family.mainComp, region, bucket, days)}
-        showVelocity={showVelocity}
-        velocityShift={velocityShift}
-        tierCutoffs={tierCutoffs}
-        compareSelected={compareSelected}
-        onCompareToggle={onCompareToggle}
-        roles={familyRoles}
-      />
+      <div>
+        <CompRow
+          comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
+          rank={rank}
+          assets={assets}
+          href={familyHref(family.mainComp, region, bucket, days)}
+          showVelocity={showVelocity}
+          velocityShift={velocityShift}
+          tierCutoffs={tierCutoffs}
+          compareSelected={compareSelected}
+          onCompareToggle={onCompareToggle}
+          roles={familyRoles}
+          boardToggle={boardToggle}
+        />
+        {boardPanel}
+      </div>
     );
   }
 
@@ -124,7 +151,9 @@ export default function CompFamilyRow({
         compareSelected={compareSelected}
         onCompareToggle={onCompareToggle}
         roles={familyRoles}
+        boardToggle={boardToggle}
       />
+      {boardPanel}
 
       {/* Drop-Down — Sub-Variants als reguläre CompRows rendern (identisches
           Layout zur Hauptcomp, Stats-Spalten sauber untereinander). rank=0

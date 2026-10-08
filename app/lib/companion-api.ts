@@ -16,11 +16,14 @@ import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
 import {
   COMPANION_API_VERSION,
-  type CompanionBoardCell, type CompanionComp, type CompanionCompUnit, type CompanionLobbyPlayer,
+  type CompanionComp, type CompanionCompUnit, type CompanionLobbyPlayer,
   type CompanionLookups, type CompanionMatch, type CompanionStats, type CompanionVs,
 } from './companion-types';
 
 export * from './companion-types';
+// Aufstellungsbrett (resolveBoard, unitsAtPlayerLevel, buildCompBoards) liegt
+// in einer reinen Datei, weil die Comp-Liste es auch im Browser braucht.
+export * from './tft-comp-board';
 
 export const SITE_ORIGIN = 'https://www.metastats.gg';
 
@@ -134,40 +137,6 @@ export function buildCompanionVs(
   return out;
 }
 
-/**
- * Ein Feld je Unit aus den Feld-Anteilen (beste zuerst). Wer den hoechsten
- * Anteil hat, waehlt zuerst; ist sein Feld belegt, nimmt er sein naechstes
- * Feld aus der Liste, sonst das naechste freie Feld derselben Reihe. Gleiche
- * Daten ergeben immer dasselbe Board.
- */
-export function resolveBoard(
-  units: string[],
-  shares: Record<string, Array<{ cell: number; share: number }>>,
-): CompanionBoardCell[] {
-  const order = units
-    .filter(u => shares[u]?.length)
-    .sort((a, b) => shares[b][0].share - shares[a][0].share || a.localeCompare(b));
-  const taken = new Set<number>();
-  const out: CompanionBoardCell[] = [];
-  for (const unit of order) {
-    let cell = shares[unit].map(c => c.cell).find(c => c >= 0 && c < 28 && !taken.has(c));
-    if (cell == null) {
-      const first = shares[unit][0].cell;
-      const row = Math.floor(first / 7);
-      const col = first % 7;
-      for (let d = 1; d < 7 && cell == null; d++) {
-        for (const c of [col - d, col + d]) {
-          if (c >= 0 && c < 7 && !taken.has(row * 7 + c)) { cell = row * 7 + c; break; }
-        }
-      }
-    }
-    if (cell == null) continue;
-    taken.add(cell);
-    out.push({ unit, cell });
-  }
-  return out;
-}
-
 // Reroll-Comps bleiben auf der Stufe, auf der ihr 3-Sterne-Carry am haeufigsten
 // im Shop steht: 1-Kosten auf 5, 2-Kosten auf 6, 3-Kosten auf 7.
 export const REROLL_LEVEL_BY_COST: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
@@ -203,24 +172,6 @@ export function rerollPlan(
   if (hits.length === 0) return null;
   const cost = hits[0].cost;
   return { level: REROLL_LEVEL_BY_COST[cost], targets: hits.filter(h => h.cost === cost).map(h => h.id) };
-}
-
-/**
- * Units des Endbretts auf Spielerstufe `level`: die `level` Units, die auf
- * dieser Stufe am haeufigsten im Brett standen (Anteil an den Spielen der
- * Comp auf der Stufe). Gleiche Daten ergeben immer dieselbe Auswahl.
- */
-export function unitsAtPlayerLevel(
-  units: Array<{ characterId: string; levelGames?: Record<string, number> }>,
-  level: number,
-): string[] {
-  const key = String(level);
-  return units
-    .map(u => ({ id: u.characterId, n: Number(u.levelGames?.[key]) || 0 }))
-    .filter(u => u.n > 0)
-    .sort((a, b) => b.n - a.n || a.id.localeCompare(b.id))
-    .slice(0, level)
-    .map(u => u.id);
 }
 
 export function toCompanionComp(

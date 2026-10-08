@@ -86,7 +86,7 @@ export const SCRIPT_VERSION = 2;
 export const FREEZE_DAYS = 7;      // Rang ab Stichtag − 7 wird neu bestimmt, davor eingefroren
 export const FULL_EVERY_DAYS = 7;  // spaetestens so oft alles neu (raeumt auch geloeschte Zeilen der Datei auf)
 const MARGIN_MS = 3 * 3_600_000;   // Teil-Aufbau liest ab Wasserstand − 3 h (spaet bestaetigte Schreibvorgaenge)
-const SCAN_ALARM_S = 600;          // Postgres-Lesen sonst ~130 s
+const SCAN_ALARM_S = 600;          // nur Teil-Aufbau (Tabellen-Scan ~130 s); Vollaufbau ueber TOTAL_ALARM_S
 const TOTAL_ALARM_S = 6000;        // Unit-Zeitlimit 9000 s
 const DAY_MS = 86_400_000;
 const OPEN_END = '2999-12-31';
@@ -173,6 +173,13 @@ export function decideMode({ full = false, marker = false, prev, cur, patchChang
   if (must.length) return blocked ? { mode: 'skip', reasons: [...must, failedToday] } : { mode: 'full', reasons: must };
   if (cycle) return blocked ? { mode: 'delta', reasons: [`Wochen-Vollaufbau faellig, aber ${failedToday}`] } : { mode: 'full', reasons: ['Wochen-Vollaufbau'] };
   return { mode: 'delta', reasons: [] };
+}
+
+// Lese-Alarm nur im Teil-Aufbau: der Vollaufbau liest alle Boards des Sets und
+// waechst mit ihnen (08.10.: 990 s fuer 11,8 Mio) — dort wacht die Gesamtgrenze.
+export function scanAlarm({ mode, scanS }) {
+  if (mode !== 'delta' || !(scanS > SCAN_ALARM_S)) return null;
+  return `Postgres-Lesen ${Math.round(scanS)} s (Grenze ${SCAN_ALARM_S} s)`;
 }
 
 // Sperre: veraltet, wenn der Rechner neu gestartet wurde, der Prozess nicht
@@ -658,7 +665,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
     const rawN = Number(rawStats.n);
     log(`Rohdaten: ${rawN} Zeilen in ${scanS.toFixed(1)} s${sinceMs != null ? ` (angekommen ab ${new Date(sinceMs).toISOString()})` : ''}`);
     if (mode === 'full' && rawN === 0) throw new Error('0 Boards gelesen — Abbruch, alte Datei bleibt');
-    if (scanS > SCAN_ALARM_S) alarms.push(`Postgres-Lesen ${Math.round(scanS)} s (Grenze ${SCAN_ALARM_S} s)`);
+    const scanAlarmText = scanAlarm({ mode, scanS });
+    if (scanAlarmText) alarms.push(scanAlarmText);
     await run(`CREATE TABLE rawk AS SELECT md5_number_upper(match_id || puuid) AS rk_key, * FROM raw`);
     await run('DROP TABLE raw');
     let src = 'rawk';

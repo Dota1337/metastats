@@ -278,7 +278,7 @@
       "dateField": "builtAt",
       "maxAgeDays": 1,
       "mustBeEmpty": ["alarms"],
-      "note": "Datenstand des Analyse-Speichers hinter /tft/explorer. Der Build laeuft taeglich 01:35 UTC: Teil-Aufbau (nur die seit dem letzten Lauf angekommenen Partien), einmal je Woche und bei Bedarf Vollaufbau (mode und reasons in status.json). status.json wird erst nach dem erfolgreichen Datei-Tausch geschrieben. Das Alter wird in ganzen Tagen abgerundet, 1 heisst also: rot ab 48 h, ein ausgefallener Lauf geht noch durch. alarms: Postgres-Lesen ueber 600 s, Laufzeit ueber 6000 s (Zeitlimit 9000 s) oder unlesbare Vor-Datei (eingefrorene Raenge verloren). Rot: journalctl -u metastats-explorer-build — die alte Datei bleibt bei jedem Fehler stehen, die Seite zeigt dann aeltere Zahlen mit ihrem Datenstand. Exit 2 heisst: Vollaufbau noetig, aber heute schon gescheitert; mit --full erzwingen."
+      "note": "Datenstand des Analyse-Speichers hinter /tft/explorer. Der Build laeuft taeglich 01:35 UTC: Teil-Aufbau (nur die seit dem letzten Lauf angekommenen Partien), einmal je Woche und bei Bedarf Vollaufbau (mode und reasons in status.json). status.json wird erst nach dem erfolgreichen Datei-Tausch geschrieben. Das Alter wird in ganzen Tagen abgerundet, 1 heisst also: rot ab 48 h, ein ausgefallener Lauf geht noch durch. alarms: Postgres-Lesen im Teil-Aufbau ueber 600 s (Vollaufbau nur ueber die Laufzeit-Grenze), Laufzeit ueber 6000 s (Zeitlimit 9000 s) oder unlesbare Vor-Datei (eingefrorene Raenge verloren). Rot: journalctl -u metastats-explorer-build — die alte Datei bleibt bei jedem Fehler stehen, die Seite zeigt dann aeltere Zahlen mit ihrem Datenstand. Exit 2 heisst: Vollaufbau noetig, aber heute schon gescheitert; mit --full erzwingen."
     },
 
     {

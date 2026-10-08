@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, lockIsStale, rawSql, filesFor,
+  scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, scanAlarm, lockIsStale, rawSql, filesFor,
   SCRIPT_VERSION,
 } from './build-explorer-store.mjs';
 
@@ -195,6 +195,13 @@ test('decideMode: heute gescheiterter Vollaufbau — Pflicht → skip, Turnus �
   assert.equal(decide({ stamp: { day: '2026-10-07', startedMs: 9000 }, cur: cur({ nTupUpd: 101 }) }).mode, 'full');
   // ohne vorige Datei: Pflicht + Stempel von heute → skip
   assert.equal(decide({ stamp, prev: { kind: 'none' } }).mode, 'skip');
+});
+
+test('scanAlarm: nur im Teil-Aufbau ueber 600 s, nie im Vollaufbau', () => {
+  assert.equal(scanAlarm({ mode: 'delta', scanS: 601 }), 'Postgres-Lesen 601 s (Grenze 600 s)');
+  assert.equal(scanAlarm({ mode: 'delta', scanS: 600 }), null);
+  assert.equal(scanAlarm({ mode: 'full', scanS: 989.6 }), null);
+  assert.equal(scanAlarm({ mode: 'full', scanS: 6001 }), null);
 });
 
 test('lockIsStale: Neustart, toter Prozess, fremder Prozess, lebender Lauf', () => {

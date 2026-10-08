@@ -75,29 +75,34 @@ export function prefetchCompBoard(params: CompBoardParams) {
   load(url).promise.catch(() => {}).finally(() => { prefetching--; });
 }
 
+// key = Versuch + Adresse: ein neuer Filter oder "Erneut versuchen" gilt als
+// neue Anfrage, ein alter Fehler oder ein altes Brett passt dann nicht mehr.
 type State =
-  | { url: string; status: 'loading' }
-  | { url: string; status: 'error' }
-  | { url: string; status: 'ready'; data: BoardData };
+  | { key: string; status: 'loading' }
+  | { key: string; status: 'error' }
+  | { key: string; status: 'ready'; data: BoardData };
 
+// Laden und Zwischenspeicher-Treffer werden beim Zeichnen abgeleitet; der
+// Effekt setzt den Zustand nur, wenn eine Antwort da ist (nie synchron).
 function useBoard(params: CompBoardParams, attempt: number): State {
   const url = boardUrl(params);
-  const [state, setState] = useState<State>(() =>
-    cache.has(url) ? { url, status: 'ready', data: cache.get(url)! } : { url, status: 'loading' },
-  );
+  const key = `${attempt}|${url}`;
+  const [state, setState] = useState<State | null>(null);
 
   useEffect(() => {
-    if (cache.has(url)) {
-      setState({ url, status: 'ready', data: cache.get(url)! });
-      return;
-    }
-    setState({ url, status: 'loading' });
     let active = true;
+    if (cache.has(url)) {
+      // Das Zeichnen liefert das schon; nur falls das Vorladen zwischen
+      // Zeichnen und Effekt fertig wurde, einmal nachziehen.
+      const data = cache.get(url)!;
+      queueMicrotask(() => { if (active) setState({ key, status: 'ready', data }); });
+      return () => { active = false; };
+    }
     const entry = load(url);
     entry.users++;
     entry.promise.then(
-      data => { if (active) setState({ url, status: 'ready', data }); },
-      () => { if (active) setState({ url, status: 'error' }); },
+      data => { if (active) setState({ key, status: 'ready', data }); },
+      () => { if (active) setState({ key, status: 'error' }); },
     );
     return () => {
       active = false;
@@ -109,9 +114,11 @@ function useBoard(params: CompBoardParams, attempt: number): State {
         inflight.delete(url);
       }
     };
-  }, [url, attempt]);
+  }, [url, key]);
 
-  return state.url === url ? state : { url, status: 'loading' };
+  if (state?.key === key) return state;
+  if (cache.has(url)) return { key, status: 'ready', data: cache.get(url)! };
+  return { key, status: 'loading' };
 }
 
 // Brettmasse in Einheiten der Feldbreite s: 7 Felder + halbes Feld Versatz,

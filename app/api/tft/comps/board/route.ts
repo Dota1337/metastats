@@ -45,8 +45,13 @@ export interface CompBoardResponse {
   levelTiming: Array<{ level: number; stage: string }>;
 }
 
+// Fehlerantwort: die Edge haelt sie 10 s (schuetzt vor Wiederholungs-Stuermen),
+// der Browser gar nicht — sonst liefert "Erneut versuchen" den alten Fehler.
 function degraded(error: string, status: number) {
-  return NextResponse.json({ error }, { status, headers: { 'Cache-Control': DEGRADED_CACHE_CONTROL } });
+  return NextResponse.json({ error }, {
+    status,
+    headers: { 'Cache-Control': 'no-store', 'Vercel-CDN-Cache-Control': DEGRADED_CACHE_CONTROL },
+  });
 }
 
 export async function GET(request: NextRequest) {

@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-07T20:06:45.170Z",
+  "updatedAt": "2026-10-08T03:06:48.608Z",
   "totalPlayers": 1236,
   "withAccounts": 1125,
   "players": [
@@ -538,21 +538,21 @@
       ]
     },
     {
-      "proName": "Mutra",
-      "team": "AaB Esport",
-      "role": "Mid",
-      "country": "Denmark",
-      "accounts": [
-        "Mutra"
-      ]
-    },
-    {
       "proName": "Legenden Lalle",
       "team": "AaB Esport",
       "role": "Mid",
       "country": "Denmark",
       "accounts": [
         "Lalle"
+      ]
+    },
+    {
+      "proName": "Mutra",
+      "team": "AaB Esport",
+      "role": "Mid",
+      "country": "Denmark",
+      "accounts": [
+        "Mutra"
       ]
     },
     {
@@ -3376,13 +3376,6 @@
       ]
     },
     {
-      "proName": "APA (Eain Stearns)",
-      "team": "Cloud9",
-      "role": "Mid",
-      "country": "United States",
-      "accounts": []
-    },
-    {
       "proName": "Loki (Lee Sang-min)",
       "team": "Cloud9",
       "role": "Mid",
@@ -3390,9 +3383,9 @@
       "accounts": []
     },
     {
-      "proName": "Jack (Jack Etienne)",
+      "proName": "APA (Eain Stearns)",
       "team": "Cloud9",
-      "role": "Owner",
+      "role": "Mid",
       "country": "United States",
       "accounts": []
     },
@@ -3411,13 +3404,11 @@
       ]
     },
     {
-      "proName": "Jukes",
+      "proName": "Jack (Jack Etienne)",
       "team": "Cloud9",
-      "role": "Streamer",
-      "country": "Brazil",
-      "accounts": [
-        "Jukes"
-      ]
+      "role": "Owner",
+      "country": "United States",
+      "accounts": []
     },
     {
       "proName": "Meteos",
@@ -3426,6 +3417,15 @@
       "country": "United States",
       "accounts": [
         "Meteos"
+      ]
+    },
+    {
+      "proName": "Jukes",
+      "team": "Cloud9",
+      "role": "Streamer",
+      "country": "Brazil",
+      "accounts": [
+        "Jukes"
       ]
     },
     {
@@ -3443,21 +3443,21 @@
       "accounts": []
     },
     {
-      "proName": "Crest",
-      "team": "Colossal Gaming",
-      "role": "Coach",
-      "country": "Italy",
-      "accounts": [
-        "Crest"
-      ]
-    },
-    {
       "proName": "Herna",
       "team": "Colossal Gaming",
       "role": "Coach",
       "country": "",
       "accounts": [
         "Herna"
+      ]
+    },
+    {
+      "proName": "Crest",
+      "team": "Colossal Gaming",
+      "role": "Coach",
+      "country": "Italy",
+      "accounts": [
+        "Crest"
       ]
     },
     {
@@ -3599,15 +3599,6 @@
       ]
     },
     {
-      "proName": "Nukez",
-      "team": "Contingent Esports",
-      "role": "Support",
-      "country": "United States",
-      "accounts": [
-        "Nukez"
-      ]
-    },
-    {
       "proName": "Tub",
       "team": "Contingent Esports",
       "role": "Support",
@@ -3617,6 +3608,15 @@
         "Dadumdum",
         "Tub",
         "Tubs"
+      ]
+    },
+    {
+      "proName": "Nukez",
+      "team": "Contingent Esports",
+      "role": "Support",
+      "country": "United States",
+      "accounts": [
+        "Nukez"
       ]
     },
     {
@@ -5087,6 +5087,15 @@
       ]
     },
     {
+      "proName": "Kraven",
+      "team": "Dynasty",
+      "role": "Manager",
+      "country": "Portugal",
+      "accounts": [
+        "Kraven"
+      ]
+    },
+    {
       "proName": "TheCooperMan",
       "team": "Dynasty",
       "role": "Manager",
@@ -5094,15 +5103,6 @@
       "accounts": [
         "Bangooie",
         "TheCooperMan"
-      ]
-    },
-    {
-      "proName": "Kraven",
-      "team": "Dynasty",
-      "role": "Manager",
-      "country": "Portugal",
-      "accounts": [
-        "Kraven"
       ]
     },
     {
@@ -6740,21 +6740,21 @@
       ]
     },
     {
-      "proName": "Momochi",
-      "team": "Fluxo W7M",
-      "role": "Support",
-      "country": "Brazil",
-      "accounts": [
-        "Momochi"
-      ]
-    },
-    {
       "proName": "ProDelta",
       "team": "Fluxo W7M",
       "role": "Support",
       "country": "Brazil",
       "accounts": [
         "ProDelta"
+      ]
+    },
+    {
+      "proName": "Momochi",
+      "team": "Fluxo W7M",
+      "role": "Support",
+      "country": "Brazil",
+      "accounts": [
+        "Momochi"
       ]
     },
     {
@@ -10176,6 +10176,15 @@
       ]
     },
     {
+      "proName": "Agaro",
+      "team": "JSK Academy",
+      "role": "Support",
+      "country": "Tunisia",
+      "accounts": [
+        "Agaro"
+      ]
+    },
+    {
       "proName": "BipolarXD",
       "team": "JSK Academy",
       "role": "Support",
@@ -10183,15 +10192,6 @@
       "accounts": [
         "BipolarXD",
         "Jaysu"
-      ]
-    },
-    {
-      "proName": "Agaro",
-      "team": "JSK Academy",
-      "role": "Support",
-      "country": "Tunisia",
-      "accounts": [
-        "Agaro"
       ]
     },
     {
@@ -11038,15 +11038,6 @@
       ]
     },
     {
-      "proName": "Diaakc",
-      "team": "Kits Esports",
-      "role": "Top",
-      "country": "Peru",
-      "accounts": [
-        "Diaakc"
-      ]
-    },
-    {
       "proName": "Cacahuate",
       "team": "Kits Esports",
       "role": "Top",
@@ -11054,6 +11045,15 @@
       "accounts": [
         "Cacahuate",
         "Chanteur"
+      ]
+    },
+    {
+      "proName": "Diaakc",
+      "team": "Kits Esports",
+      "role": "Top",
+      "country": "Peru",
+      "accounts": [
+        "Diaakc"
       ]
     },
     {
@@ -11110,14 +11110,14 @@
       "accounts": []
     },
     {
-      "proName": "Dopani",
+      "proName": "cCarter",
       "team": "Kiwoom DRX",
       "role": "Manager",
       "country": "South Korea",
       "accounts": []
     },
     {
-      "proName": "cCarter",
+      "proName": "Dopani",
       "team": "Kiwoom DRX",
       "role": "Manager",
       "country": "South Korea",

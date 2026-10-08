@@ -289,7 +289,7 @@ export default function CompBoardPanel({
                   {data.levelTiming.map(step => (
                     <div
                       key={step.level}
-                      className="flex flex-col items-center bg-[#111c2e] border border-border-subtle rounded px-2 py-1 min-w-[3.25rem]"
+                      className="flex flex-col items-center bg-surface-level-chip border border-border-subtle rounded px-2 py-1 min-w-[3.25rem]"
                     >
                       <div className="text-white text-xs font-semibold">{stepLabel(step.level)}</div>
                       <div className="text-fg-muted text-[11px] tabular-nums">{step.stage}</div>

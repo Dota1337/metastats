@@ -216,7 +216,7 @@ export default function CompGuide({
               {planSteps.map(step => (
                 <div
                   key={step.level}
-                  className="flex flex-col items-center bg-[#111c2e] border border-border-subtle rounded px-2.5 py-1.5 min-w-[3.5rem]"
+                  className="flex flex-col items-center bg-surface-level-chip border border-border-subtle rounded px-2.5 py-1.5 min-w-[3.5rem]"
                 >
                   <div className="text-white text-xs font-semibold">
                     {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}

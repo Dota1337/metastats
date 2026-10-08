@@ -22,14 +22,15 @@ import { readFileSync } from 'node:fs';
 
 // Deckel fuer Stufe 2. Beim Senken auch dieses Kommentar-Datum mitziehen.
 // Stand nach Welle 2 / Commit B (2026-08-09): 321. Seit 2026-09-02: 313 —
-// der Zeigezustand auf --surface-overlay ist jetzt ein Token.
+// der Zeigezustand auf --surface-overlay ist jetzt ein Token. Seit 2026-10-08:
+// 297 — die Levelplan-Chips nutzen --surface-level-chip.
 //
 // Warum die Accent-Familie NICHT in MIGRATED (harte Null) steht, obwohl sie
 // jetzt Tokens hat: es bleiben bewusst Roh-Hexe stehen, die kein Token
 // bekommen duerfen -- Gold im Root-Chrome (Nav/Footer, 43x) und zwei
 // Fundstellen in Dateien, die keine Route erreicht. Eine harte Null wuerde
 // genau die melden. Sie kommt, wenn diese Reste geklaert sind.
-const BASELINE = 298;
+const BASELINE = 297;
 
 // Die Farben aus app/globals.css, die ein Token haben (10 seit Commit A, 3 Textgraus seit 2026-09-27).
 const MIGRATED = new Set([

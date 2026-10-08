@@ -55,6 +55,10 @@
      Knopf anschlaegt. Seit 2026-09-27 #384a68 (1,29 gegen overlay; vorher #2a3a52 = jetzt overlay). */
   --surface-overlay-hover: #384a68;
 
+  /* Levelplan-Chips (Stufe + Runde): Detailseite (CompGuide) und Brett in der
+     Comp-Liste (CompBoardPanel). Ein Token, damit beide gleich bleiben. */
+  --surface-level-chip: #111c2e;
+
   /* --- Ränder --------------------------------------------------------------
      ACHTUNG: --border-subtle hat denselben Hex wie --surface-overlay.
      Das ist eine Koinzidenz des Ist-Zustands, KEINE Aussage. Bewusst zwei
@@ -210,6 +214,7 @@
   --color-surface-comp-row-hover: var(--surface-comp-row-hover);
   --color-surface-overlay: var(--surface-overlay);
   --color-surface-overlay-hover: var(--surface-overlay-hover);
+  --color-surface-level-chip: var(--surface-level-chip);
 
   --color-border-subtle: var(--border-subtle);
   --color-border-default: var(--border-default);

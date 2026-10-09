@@ -27,6 +27,11 @@ export const ITEM_CARRIER_MIN_LOAD = 0.9;      // fertige Items je Spiel (Emblem
 export const ITEM_CARRIER_FILL_LOAD = 0.6;     // Auffuellen, solange eine Comp weniger als 3 hat
 export const ITEM_CARRIER_MIN = 3;
 export const ITEM_CARRIER_MAX = 4;
+// Core/Flex (User 2026-10-10: „welche Units Core und Flex sind … mit einer
+// Umrandung"): Core = Unit steht in mindestens 75 % der Spiele dieser Comp auf
+// dem Endbrett, alles darunter ist Flex. Gemessen an Spielen mit der Unit
+// (gamesWithUnit), nicht an Kopien — Kopien zaehlen bei ×2-Units doppelt.
+export const CORE_MIN_PRESENCE = 0.75;
 export const MERGE_MIN_JACCARD = 0.7;    // Ueberlappung der Kern-Units zweier Familien
 
 export interface RoleItem { apiName: string; count: unknown }
@@ -178,6 +183,30 @@ export function shownItems<T extends RoleItem>(
     .filter(it => it?.apiName && !isComponent(it.apiName) && num(it.count) > 0)
     .sort((a, b) => num(b.count) - num(a.count))
     .slice(0, max);
+}
+
+export type CoreFlexKind = 'core' | 'flex';
+
+// Core oder Flex einer Unit in einer Comp mit `games` Spielen. Zaehler und
+// Nenner muessen aus denselben Zeilen stammen (Liste: tft-comp-families.ts,
+// Comp-DNA: Detailseite). null = keine Spiele.
+export function unitPresence(u: RoleUnit, games: number): number | null {
+  return games > 0 ? unitGames(u) / games : null;
+}
+
+export function coreFlexKind(u: RoleUnit, games: number): CoreFlexKind | null {
+  const p = unitPresence(u, games);
+  if (p == null) return null;
+  return p >= CORE_MIN_PRESENCE ? 'core' : 'flex';
+}
+
+export function coreFlexMap(units: readonly RoleUnit[] | null | undefined, games: number): Record<string, CoreFlexKind> {
+  const out: Record<string, CoreFlexKind> = {};
+  for (const u of units || []) {
+    const k = u?.characterId ? coreFlexKind(u, games) : null;
+    if (k) out[u.characterId] = k;
+  }
+  return out;
 }
 
 // Units mehrerer Varianten zu einer Family-Sicht aufsummieren.

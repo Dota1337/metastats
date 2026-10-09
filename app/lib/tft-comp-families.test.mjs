@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  familyTrend, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT,
+  familyTrend, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies,
 } from './tft-comp-families.ts';
 
 const fam = (key, games, extra = {}) => ({
@@ -44,4 +44,26 @@ test('currentSetFamilies behaelt nur Traits aus dem aktuellen Bundle', () => {
   const assets = { traits: { DA_Trait: {} }, champions: {} };
   const out = currentSetFamilies([fam('a', 1), fam('b', 1, { trait: 'TFT17_Old' })], assets);
   assert.deepEqual(out.map(f => f.familyKey), ['a']);
+});
+
+test('Core/Flex: zusammengelegte Variante zaehlt alle Gruppenzeilen, Hauptzeile die ganze Familie', () => {
+  const units = (o) => Object.entries(o).map(([characterId, g]) => ({ characterId, count: g, gamesWithUnit: g }));
+  const row = (slug, games, u) => ({ slug, clusterKey: slug, games, avgPlacement: 4, top4Rate: 0.5, top1Rate: 0.1, pickRate: 0.01, typicalUnits: units(u) });
+  // T@8 und T@9 haben dieselben Units -> eine Variante mit 160 Spielen.
+  // B: 60 + 60 von 160 = 75 % -> Core (nur der Anker: 60/100 bzw. 60/160 -> Flex)
+  // A: 90 + 20 von 160 = 69 % -> Flex (nur der Anker: 90/100 -> Core)
+  const rows = [
+    row('DA_T@8_DA_C', 100, { DA_C: 100, A: 90, B: 60 }),
+    row('DA_T@9_DA_C', 60, { DA_C: 60, A: 20, B: 60 }),
+    row('DA_T@7_DA_C', 40, { DA_C: 40, D: 40 }),
+  ];
+  const [f] = buildCompFamilies(rows, 'games', null);
+  const merged = f.variants.find(v => v._mergedFromBuilds);
+  assert.equal(merged.games, 160);
+  assert.deepEqual(merged.coreFlex, { DA_C: 'core', A: 'flex', B: 'core' });
+  const single = f.variants.find(v => !v._mergedFromBuilds);
+  assert.deepEqual(single.coreFlex, { DA_C: 'core', D: 'core' });
+  // Familie: 200 Spiele — C 200 Core, A 110 / B 120 / D 40 Flex
+  assert.equal(f.totalGames, 200);
+  assert.deepEqual(f.mainComp.coreFlex, { DA_C: 'core', A: 'flex', B: 'flex', D: 'flex' });
 });

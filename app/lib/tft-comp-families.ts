@@ -4,7 +4,7 @@
 import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
-import { computeRoles, componentCheckFromItems, jaccard, namedCarries, resolveFamilies, sumUnits } from './tft-comp-roles';
+import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 
 export type CompSortBy = 'avg' | 'win' | 'top4' | 'pick' | 'velocity' | 'games';
 
@@ -17,6 +17,7 @@ export interface CompApiRow extends FamilyComp {
   _mergedFrom?: string[];
   _mainOrigSlug?: string;
   _mergedFromBuilds?: string[];
+  coreFlex?: Record<string, CoreFlexKind>;
 }
 
 // Wie viele Comp-Familien die Liste hoechstens zeigt. Gemessen 2026-08-27:
@@ -180,7 +181,13 @@ export function buildCompFamilies(
     // Single-Build-Group bleibt unverändert (keine Re-Aggregation nötig).
     const variants: CompApiRow[] = [];
     for (const group of byBuild.values()) {
-      if (group.length === 1) { variants.push(group[0]); continue; }
+      // Core/Flex je Variante: Zaehler und Nenner aus denselben Zeilen. Die
+      // zusammengelegte Variante traegt nur die Units des Ankers, aber die
+      // Spiele der ganzen Gruppe — deshalb ueber alle Gruppenzeilen summieren.
+      if (group.length === 1) {
+        variants.push({ ...group[0], coreFlex: coreFlexMap(group[0].typicalUnits, group[0].games || 0) });
+        continue;
+      }
       const gTotal = group.reduce((s, v) => s + (v.games || 0), 0);
       const w = (key: string) => gTotal > 0
         ? group.reduce((s, v) => s + ((v[key] ?? 0) as number) * (v.games || 0), 0) / gTotal
@@ -195,6 +202,7 @@ export function buildCompFamilies(
         avgLevel: w('avgLevel'),
         pickRate: group.reduce((s, v) => s + (v.pickRate ?? 0), 0),
         _mergedFromBuilds: group.map(v => v.slug || v.clusterKey),
+        coreFlex: coreFlexMap(sumUnits(group.map(v => v.typicalUnits)), gTotal),
       };
       variants.push(merged);
     }
@@ -278,7 +286,12 @@ export function buildCompFamilies(
         mainComp.velocity = bestSrc;
       }
     }
-    const familyRoles = computeRoles(familyUnits(membersOf.get(familyKey) || [familyKey]), totalGames, { ...roleOpts, keyCarry: carry });
+    const famUnits = familyUnits(membersOf.get(familyKey) || [familyKey]);
+    const familyRoles = computeRoles(famUnits, totalGames, { ...roleOpts, keyCarry: carry });
+    // Core/Flex der Hauptzeile ueber die ganze Familie (User 2026-10-10:
+    // „Ganze Familie") — dieselbe Basis wie Comp-DNA auf der Detailseite.
+    // Unterzeilen behalten ihre eigene Einteilung (Build-Gruppe oben).
+    mainComp.coreFlex = coreFlexMap(famUnits, totalGames);
     // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
     // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
     // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.

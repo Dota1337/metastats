@@ -52,7 +52,8 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../l
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey, compTraitFamilyKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, unitPresence, type RoleUnit } from '../../../lib/tft-comp-roles';
+import { coreFlexRing } from '../../../lib/tft-ui';
 
 // Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
 // grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
@@ -696,7 +697,8 @@ export default function TftCompDetailPage() {
                 <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
                 {comp.boardComposition && (
                   <BoardCompositionPanel
-                    composition={comp.boardComposition}
+                    units={comp.typicalUnits || []}
+                    games={comp.games || 0}
                     assets={assets}
                     t={t as (k: string) => string}
                   />
@@ -1103,50 +1105,57 @@ function DeathKpi({ label, value, sub, accent }: { label: string; value: string;
   );
 }
 
+// Core/Flex wie in der Comp-Liste (User 2026-10-10): innen die Kostenfarbe,
+// aussen der Ring aus coreFlexRing. Einteilung aus typicalUnits/games dieser
+// Ansicht (Familie bzw. ?variant=exact), gemessen an Spielen mit der Unit —
+// nicht am Server-Feld boardComposition, das Kopien zaehlt.
 function BoardCompositionPanel({
-  composition,
+  units,
+  games,
   assets,
   t,
 }: {
-  composition: { core: number; flex: number; tech: number; slots: Array<{ characterId: string; count: number; cooccurrence: number; kind: 'core' | 'flex' | 'tech' }> };
+  units: RoleUnit[];
+  games: number;
   assets: TftAssetsBundle | null;
   t: (k: string) => string;
 }) {
-  const COLORS = {
-    core: { ring: '#7B61FF', label: '#c39bff', bg: 'rgba(123,97,255,0.15)' },
-    flex: { ring: '#3a8ddc', label: '#7ab9ec', bg: 'rgba(58,141,220,0.12)' },
-    tech: { ring: 'var(--fg-faint)', label: 'var(--fg-muted)', bg: 'rgba(90,106,128,0.12)' },
-  } as const;
+  const kinds = coreFlexMap(units, games);
+  const slots = units
+    .filter(u => kinds[u.characterId])
+    .map(u => ({ characterId: u.characterId, kind: kinds[u.characterId], pct: Math.round((unitPresence(u, games) ?? 0) * 100) }));
+  const n = { core: slots.filter(s => s.kind === 'core').length, flex: slots.filter(s => s.kind === 'flex').length };
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3 mb-3">
       <div className="flex items-baseline justify-between mb-2">
         <span className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.board.title')}</span>
-        <div className="flex gap-3 text-[11px] tabular-nums">
-          <span style={{ color: COLORS.core.label }}>{composition.core} {t('tft.comp.board.core')}</span>
-          <span style={{ color: COLORS.flex.label }}>{composition.flex} {t('tft.comp.board.flex')}</span>
-          <span style={{ color: COLORS.tech.label }}>{composition.tech} {t('tft.comp.board.tech')}</span>
+        <div className="flex items-center gap-3 text-[11px] tabular-nums text-fg-secondary">
+          {(['core', 'flex'] as const).map(k => (
+            <span key={k} className="inline-flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded-[3px] bg-surface-sunken" style={coreFlexRing(k)} aria-hidden="true" />
+              {n[k]} {t(`tft.comp.board.${k}`)}
+            </span>
+          ))}
         </div>
       </div>
       <div className="flex flex-wrap gap-1.5">
-        {composition.slots.map(s => {
+        {slots.map(s => {
           const ch = findChampion(assets, s.characterId);
           const url = tftChampionTileUrl(assets, ch);
-          const c = COLORS[s.kind];
-          const pct = Math.round(s.cooccurrence * 100);
           return (
             <a
               key={s.characterId}
               href={`/tft/units/${encodeURIComponent(s.characterId)}`}
-              title={`${ch?.name || s.characterId} — ${pct}% ${t(`tft.comp.board.${s.kind}`)}`}
-              className="relative flex flex-col items-center gap-0.5 hover:scale-105 transition-transform"
+              title={`${ch?.name || s.characterId} — ${s.pct}% ${t(`tft.comp.board.${s.kind}`)}`}
+              className="relative flex flex-col items-center gap-1 hover:scale-105 transition-transform"
             >
               <div
                 className="w-10 h-10 rounded border-2 overflow-hidden"
-                style={{ borderColor: c.ring, backgroundColor: c.bg }}
+                style={{ borderColor: ch ? costColor(ch.cost) : 'var(--border-subtle)', ...coreFlexRing(s.kind) }}
               >
                 {url && <img src={url} alt={ch?.name || s.characterId} className="w-full h-full object-cover" />}
               </div>
-              <span className="text-[9px] tabular-nums" style={{ color: c.label }}>{pct}%</span>
+              <span className="text-[9px] tabular-nums text-fg-muted">{s.pct}%</span>
             </a>
           );
         })}

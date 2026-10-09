@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   computeRoles, namedCarries, shownItems, sumUnits, resolveFamilies, roleItemSets, componentCheckFromItems,
+  coreFlexKind, coreFlexMap, unitPresence,
 } from './tft-comp-roles.ts';
 
 const opts = { set: 18, isComponent: (a) => a === 'DA_BFSword' };
@@ -138,4 +139,29 @@ test('Komponenten-Pruefung liest die Tags aus dem Asset-Bundle', () => {
   assert.equal(isC('DA_BFSword'), true);
   assert.equal(isC('DA_InfinityEdge'), false);
   assert.equal(isC('Unbekannt'), false);
+});
+
+test('Core/Flex: Core ab genau 75 % der Spiele, darunter Flex', () => {
+  assert.equal(coreFlexKind({ characterId: 'A', count: 75, gamesWithUnit: 75 }, 100), 'core');
+  assert.equal(coreFlexKind({ characterId: 'A', count: 74, gamesWithUnit: 74 }, 100), 'flex');
+  assert.equal(coreFlexKind({ characterId: 'A', count: 3, gamesWithUnit: 3 }, 100), 'flex');
+});
+
+test('Core/Flex zaehlt Spiele mit der Unit, nicht Kopien; altes Format faellt auf count zurueck', () => {
+  // zwei Kopien in 60 von 100 Spielen: count 120, Anteil trotzdem 60 %
+  const twice = { characterId: 'B', count: 120, gamesWithUnit: 60 };
+  assert.equal(unitPresence(twice, 100), 0.6);
+  assert.equal(coreFlexKind(twice, 100), 'flex');
+  assert.equal(coreFlexKind({ characterId: 'C', count: 80 }, 100), 'core');
+});
+
+test('Core/Flex ohne Spiele: keine Einteilung statt erfundener Werte', () => {
+  assert.equal(unitPresence({ characterId: 'A', count: 5, gamesWithUnit: 5 }, 0), null);
+  assert.equal(coreFlexKind({ characterId: 'A', count: 5, gamesWithUnit: 5 }, 0), null);
+  assert.deepEqual(coreFlexMap([{ characterId: 'A', count: 5 }], 0), {});
+  assert.deepEqual(coreFlexMap(null, 100), {});
+  assert.deepEqual(
+    coreFlexMap([{ characterId: 'A', count: 90, gamesWithUnit: 90 }, { characterId: 'B', count: 40, gamesWithUnit: 40 }, { count: 99 }], 100),
+    { A: 'core', B: 'flex' },
+  );
 });

@@ -4,7 +4,7 @@ import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
-import { costColor as costColorOf } from '../../lib/tft-ui';
+import { costColor as costColorOf, coreFlexRing } from '../../lib/tft-ui';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -54,6 +54,9 @@ interface Comp {
     topItems?: { apiName: string; count: number | unknown }[];
   }[];
   velocity?: CompVelocity | null;
+  // Core/Flex je Unit, gerechnet in tft-comp-families.ts (Hauptzeile ueber die
+  // Familie, Unterzeile ueber ihre Build-Gruppe). Fehlt es, kein Ring.
+  coreFlex?: Record<string, 'core' | 'flex'>;
 }
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
@@ -439,8 +442,11 @@ export default function CompRow({
                 <a
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
-                  className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm"
-                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
+                  className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm focus-visible:ring-2 focus-visible:ring-accent-a60"
+                  style={{
+                    borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)'),
+                    ...coreFlexRing(comp.coreFlex?.[u.characterId]),
+                  }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}

@@ -14,6 +14,7 @@ import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters from '../../components/tft/AdvancedCompFilters';
 import { visibleFamilies as pickVisibleFamilies, type CompSortBy } from '../../lib/tft-comp-families';
 import { useTftCompsData } from '../../lib/useTftCompsData';
+import { coreFlexRing } from '../../lib/tft-ui';
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
@@ -132,7 +133,15 @@ export default function TftCompsPage() {
               <div></div>
               <div></div>
               <div>{t('nav.comps')}</div>
-              <div></div>
+              {/* Legende zum Core/Flex-Ring der Unit-Kacheln (User 2026-10-10). */}
+              <div className="flex items-center gap-3 font-normal text-fg-muted">
+                {(['core', 'flex'] as const).map(k => (
+                  <span key={k} className="inline-flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 rounded-[3px] bg-surface-sunken" style={coreFlexRing(k)} aria-hidden="true" />
+                    {t(`tft.comp.board.${k}`)}
+                  </span>
+                ))}
+              </div>
               <div className="text-center">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>

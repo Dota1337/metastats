@@ -977,6 +977,8 @@ function enrichComp(r: CompRow) {
   // Ersetzt die alte Shannon-Entropy-Metrik, die durch den 40 %-Cooccurrence-
   // Pre-Filter eh fast immer 0.9-1.0 lag und damit keine sinnvolle Auflösung
   // mehr lieferte.
+  // Achtung: zaehlt Kopien (count). Die Anzeige (Comp-DNA, Comp-Liste) rechnet
+  // Core/Flex selbst aus typicalUnits per coreFlexMap in tft-comp-roles.
   const boardComposition = (() => {
     if (games <= 0 || typicalUnits.length === 0) return null;
     let core = 0, flex = 0, tech = 0;

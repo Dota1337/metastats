@@ -11,8 +11,12 @@
 // Abfrage an und tauschen erst dann. Die alte Instanz wird geschlossen, sobald
 // keine Abfrage sie mehr haelt (Referenzzaehler).
 //
-// Last (Live-Spur): hoechstens 2 Abfragen gleichzeitig, bis zu 8 warten, danach 503.
-// Besucher-Abfragen werden nach QUERY_TIMEOUT_MS abgebrochen. Laeuft dieselbe
+// Last (Live-Spur): eine Abfrage zur Zeit (die Instanz hat ohnehin nur 2
+// Threads, zwei gleichzeitig bringen keinen Durchsatz), bis zu 8 warten, danach
+// 503. Die Frist laeuft ab Eingang: eine Besucher-Abfrage bekommt
+// QUERY_TIMEOUT_MS minus ihre Wartezeit; bleiben weniger als LIVE_MIN_LEFT_MS,
+// gibt es sofort 504 ohne Rechnung (refresh-api haette sie nicht mehr
+// abgeholt). Laeuft dieselbe
 // Ansicht schon, wartet eine weitere Anfrage auf diese Rechnung (hoechstens
 // WAIT_MS, unter der 20-s-Grenze von refresh-api), statt doppelt zu rechnen.
 //
@@ -23,7 +27,15 @@
 // AGG_TIMEOUT_MS), damit diese Ansichten nie hinter 15-s-Abfragen warten.
 // Genommen nur, wenn die Summen zu dieser Datei gehoeren (loadAgg) und alle
 // Tage der Patch-Wahl gedeckt sind; sonst und bei jedem Fehler live.
-// EXPLORER_AGG=0 schaltet den Weg ab. Antwort-Kopf X-Explorer-Source: agg|live.
+// EXPLORER_AGG=0 schaltet den Weg ab. Antwort-Kopf X-Explorer-Source: agg|mask|live.
+//
+// Platz-Masken (Paket 6): Ansichten mit Board-Filter oder Rang rechnet die
+// Live-Spur ueber die Masken-Tabellen des Baus (scripts/lib/explorer-mask-query.mjs),
+// bitgleich zum heutigen Weg. Nur, wenn die Masken zu dieser Datei gehoeren
+// (loadMask) und alle Tage der Patch-Wahl gedeckt sind. Fehlt zur Laufzeit eine
+// Tabelle oder Spalte, rechnet dieselbe Anfrage mit der Restfrist wie bisher;
+// Zeitgrenze und Speicherfehler bleiben 504/500. EXPLORER_MASKS=0 schaltet den
+// Weg ab, /healthz zeigt Schalter und gedeckte Tage.
 //
 // Startansichten (alle Reiter ohne Filter, neuester Patch) rechnet der Dienst
 // nach jedem Laden selbst, mit der eigenen Grenze WARM_TIMEOUT_MS: live
@@ -43,20 +55,23 @@ import path from 'node:path';
 import { readComponents as readComponentsFrom, componentsHash } from './lib/explorer-components.mjs';
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
-import { ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, runQuery, finishRows } from './lib/explorer-query.mjs';
+import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
+import { loadMask, runQueryWay } from './lib/explorer-mask-query.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
 const DUCKDB_MODULE = process.env.EXPLORER_DUCKDB_MODULE
   || '/opt/metastats-explorer/node_modules/@duckdb/node-api/lib/index.js';
-const MAX_RUNNING = 2;
+const MAX_RUNNING = 1;
 const MAX_QUEUE = 8;
+const LIVE_MIN_LEFT_MS = 2000;
 const WARM_TIMEOUT_MS = Number(process.env.EXPLORER_WARM_TIMEOUT_MS || 300_000);
 const WAIT_MS = 18_000;
 const WARM_RETRY_PAUSE_MS = 60_000;
 const POLL_MS = 60_000;
 const CACHE_MAX = 400;
 const AGG_ON = process.env.EXPLORER_AGG !== '0';
+const MASK_ON = process.env.EXPLORER_MASKS !== '0';
 const AGG_RUNNING = 4;
 const AGG_QUEUE = 16;
 const AGG_TIMEOUT_MS = Number(process.env.EXPLORER_AGG_TIMEOUT_MS || 2000);
@@ -79,12 +94,13 @@ async function openStore() {
     temp_directory: path.join(path.dirname(DB_PATH), 'tmp-api'),
   });
   const holder = {
-    instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], compHash: null, agg: null,
+    instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], compHash: null, agg: null, mask: null,
     pinned: new Map(), warmConn: null,
   };
   const conn = await instance.connect();
   try {
     holder.agg = AGG_ON ? await loadAgg(conn) : null;
+    holder.mask = MASK_ON ? await loadMask({ all: async s => (await conn.runAndReadAll(s)).getRowObjectsJS(), log }) : null;
     const m = (await conn.runAndReadAll(
       `SELECT CAST(built_at AS VARCHAR) AS built_at, set_number, days,
               CAST(min_day AS VARCHAR) AS min_day, CAST(max_day AS VARCHAR) AS max_day,
@@ -178,7 +194,8 @@ async function pollSwap() {
     current = next;
     cache.clear();
     log(`Datei geladen: Stand ${next.meta.builtAt}, ${next.meta.boards} Boards, Inode ${next.ino}, `
-      + `Teilsummen ${next.agg ? `${next.agg.coveredDays}/${next.agg.total} Tage` : (AGG_ON ? 'keine' : 'aus')}`);
+      + `Teilsummen ${next.agg ? `${next.agg.coveredDays}/${next.agg.total} Tage` : (AGG_ON ? 'keine' : 'aus')}, `
+      + `Masken ${next.mask ? `${next.mask.coveredDays}/${next.mask.total} Tage` : (MASK_ON ? 'keine' : 'aus')}`);
     if (prev) {
       prev.retired = true;
       // Laufendes Vorwaermen der alten Datei abbrechen, sonst haelt es bis zu
@@ -196,7 +213,7 @@ async function pollSwap() {
 
 // ─── Warteschlange ─────────────────────────────────────────────────────────
 
-// Zwei Spuren: live (2 laufend, 8 wartend) und Teilsummen (4/16). Eine
+// Zwei Spuren: live (1 laufend, 8 wartend) und Teilsummen (4/16). Eine
 // Summen-Abfrage braucht Millisekunden und soll nie hinter einer
 // 15-s-Live-Rechnung warten.
 // wait: das Vorwaermen stellt sich immer an, statt mit 503 abgewiesen zu werden.
@@ -357,6 +374,7 @@ const pending = new Map();
 function compute(holder, q, key, { warm = false } = {}) {
   const inflight = pending.get(key);
   if (inflight) return warm ? inflight : withDeadline(inflight, WAIT_MS);
+  const t0 = Date.now();
   const p = (async () => {
     // Erst die Teilsummen in ihrer eigenen Spur; scheitert das (auch an der
     // 2-s-Grenze), rechnet dieselbe Anfrage live. Ist die Summen-Spur voll,
@@ -375,7 +393,19 @@ function compute(holder, q, key, { warm = false } = {}) {
     }
     await liveLane.acquire({ wait: warm });
     try {
-      return await execute(holder, q, key, warm);
+      // Frist ab Eingang: was vor dem Platz verging (Warten in der Schlange,
+      // ein gescheiterter Summen-Versuch), geht von QUERY_TIMEOUT_MS ab. Die
+      // Startansichten behalten ihre eigene Grenze.
+      let timeoutMs;
+      if (!warm) {
+        const waited = Date.now() - t0;
+        timeoutMs = QUERY_TIMEOUT_MS - waited;
+        if (timeoutMs < LIVE_MIN_LEFT_MS) {
+          log(`Frist verbraucht nach ${waited} ms Wartezeit, 504 ohne Rechnung: ${JSON.stringify(q)}`);
+          const e = new Error('timeout'); e.status = 504; throw e;
+        }
+      }
+      return await execute(holder, q, key, warm, null, timeoutMs);
     } finally {
       liveLane.release();
     }
@@ -416,6 +446,7 @@ const server = http.createServer(async (req, res) => {
     return send(res, current ? 200 : 503, {
       ok: !!current, meta: current?.meta ?? null, running: liveLane.running, queued: liveLane.queue.length,
       agg: a ? { covered: a.coveredDays, total: a.total, running: aggLane.running, queued: aggLane.queue.length } : null,
+      masks: { on: MASK_ON, covered: current?.mask?.coveredDays ?? null, total: current?.mask?.total ?? null },
     });
   }
   if (req.method !== 'POST' || req.url !== '/explore') return send(res, 404, { error: 'not_found' });
@@ -455,16 +486,20 @@ function resolveLatest(holder, q) {
 function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
 
 // Laeuft mit belegtem Slot; der Aufrufer gibt ihn frei.
-// days gesetzt = Summen-Weg (aggDays), sonst live.
-async function execute(holder, q, key, warm = false, days = null) {
+// days gesetzt = Summen-Weg (aggDays), sonst Masken-Weg oder live
+// (runQueryWay). timeoutMs = Restfrist der Live-Spur (compute); fehlt sie,
+// gilt QUERY_TIMEOUT_MS.
+async function execute(holder, q, key, warm = false, days = null, timeoutMs = undefined) {
   holder.refs++;
   const t0 = Date.now();
   try {
-    const result = days
-      ? await runAggQuery(holder, q, days, warm ? { timeoutMs: AGG_WARM_TIMEOUT_MS, warm: true } : {})
-      : await runQuery(holder, q, warm ? { timeoutMs: WARM_TIMEOUT_MS, warm: true } : {});
+    const { result, src } = days
+      ? { result: await runAggQuery(holder, q, days, warm ? { timeoutMs: AGG_WARM_TIMEOUT_MS, warm: true } : {}), src: 'agg' }
+      : await runQueryWay(holder, q, warm
+        ? { timeoutMs: WARM_TIMEOUT_MS, warm: true, log }
+        : { timeoutMs, minLeftMs: LIVE_MIN_LEFT_MS, log });
     // Nicht aufzaehlbar: steht nicht im JSON, nur im Antwort-Kopf.
-    Object.defineProperty(result, 'src', { value: days ? 'agg' : 'live', enumerable: false });
+    Object.defineProperty(result, 'src', { value: src, enumerable: false });
     result.ms = Date.now() - t0;
     if (warm) holder.pinned.set(key, result); else cacheSet(key, result);
     if (result.ms > 3000) log(`langsam ${result.ms} ms: ${JSON.stringify(q)}`);

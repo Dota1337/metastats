@@ -65,6 +65,8 @@ import {
   AGG_SIG, compListSql, aggBudgetS, aggCarryBlocked, aggCarryLate,
 } from './lib/explorer-agg.mjs';
 import { aggStep, aggBindingReason, aggCarrySave, aggCarryMatch } from './lib/explorer-agg-build.mjs';
+import { MASK_SIG } from './lib/explorer-mask.mjs';
+import { maskStep } from './lib/explorer-mask-build.mjs';
 import { readComponents, componentsHash } from './lib/explorer-components.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -224,6 +226,8 @@ export function filesFor(out) {
     spill: `${out}.spill`,
     aggwork: `${out}.aggwork`,   // Arbeitskopie je Tages-Block der Teilsummen
     aggtry: `${out}.aggtry`,     // Versuchs-Stempel: bleibt nur nach Absturz im Teilsummen-Schritt liegen
+    maskwork: `${out}.maskwork`, // Arbeitskopie je Tages-Block der Platz-Masken
+    masktry: `${out}.masktry`,   // Versuchs-Stempel des Masken-Schritts
     stamp: `${out}.full-attempt.json`,
     marker: path.join(dir, 'force-full'),
     status: path.join(dir, base === 'explorer' ? 'status.json' : `${base}.status.json`),
@@ -531,7 +535,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
 
   const { DuckDBInstance } = await import(DUCKDB_MODULE);
   const cleanup = () => {
-    for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`, files.aggwork, `${files.aggwork}.wal`]) {
+    for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`, files.aggwork, `${files.aggwork}.wal`,
+      files.maskwork, `${files.maskwork}.wal`]) {
       fs.rmSync(f, { force: true });
     }
     fs.rmSync(files.spill, { recursive: true, force: true });
@@ -856,6 +861,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // vorigen Summen des Tages gelten; neue Boards (cv_nb) kommen ueber das
     // Partie-Delta dazu. Zeitgrenze ist die harte Grenze (aggCarryLate).
     let carry = null;
+    let maskCarry = null;
     if (carryPrep) {
       try {
         if (aggCarryLate({ nowMs: Date.now(), t0Ms: t0, fpOldS: carryInfo.fpOldS })) {
@@ -864,6 +870,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
           const r = await aggCarryMatch({ exec: run, all, outdb, prevKeys: 'prev_rank', f: win.f, prep: carryPrep });
           carryInfo.fpNewS = r.s;
           carry = { days: r.days, rows: 'cv_rows', head: 'cv_head' };
+          // Masken-Uebernahme: dieselben Tages-Fingerabdruecke, Quelle = vorige Datei.
+          maskCarry = { path: OUT, oldFp: carryPrep.oldFp, newFp: r.newFp };
           if (!r.days.length) carryInfo.reason = 'kein Tag gleich';
           log(`Teilsummen-Uebernahme: ${r.days.length}/${r.nDays} Tage gleich, ${r.differ.length} anders`
             + `${r.differ.length ? ` (${r.differ.join(', ')})` : ''}, ${r.uncovered.length} ungedeckt, ${r.noOld.length} ohne alte Boards,`
@@ -880,11 +888,23 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // Tages-Teilsummen fuer die filterlosen Ansichten (Paket 5b). Liest die
     // alte meta (Kennung) und laeuft deshalb davor. Scheitert er, bleibt die
     // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
+    const tAgg = Date.now();
     const agg = await aggStep({
       exec: (s) => c.run(s), all, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
       compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry,
     });
     alarms.push(...agg.alarms);
+
+    // Platz-Masken fuer gefilterte Ansichten (Paket 6): nur im Rest des
+    // Teilsummen-Budgets, im Vollaufbau nie ueber den Laufzeit-Alarm. Liest
+    // ebenfalls die alte meta. Scheitert er, bleibt die Datei gueltig — ohne
+    // Masken, der Dienst rechnet dann wie bisher.
+    const mask = await maskStep({
+      exec: (s) => c.run(s), all, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0, aggStartMs: tAgg,
+      files, compList, compHash, carry: carry ? maskCarry : null,
+      capMs: mode === 'full' ? t0 + (TOTAL_ALARM_S - 600) * 1000 : null,
+    });
+    alarms.push(...mask.alarms);
     await dropCarry();
     tStep = Date.now();
 
@@ -900,7 +920,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
       ${lastFullMs == null ? 'NULL' : lastFullMs}::BIGINT AS last_full_ms,
       ${lastFullDay ? sqlStr(lastFullDay) : 'NULL'}::DATE AS last_full_day,
       ${sqlStr(win.n)}::DATE AS n_day, ${nextBid}::BIGINT AS next_bid,
-      ${testRun} AS test_run, ${sqlStr(mode)} AS mode, ${agg.token ? sqlStr(agg.token) : 'NULL'}::VARCHAR AS agg_token`);
+      ${testRun} AS test_run, ${sqlStr(mode)} AS mode, ${agg.token ? sqlStr(agg.token) : 'NULL'}::VARCHAR AS agg_token,
+      ${mask.token ? sqlStr(mask.token) : 'NULL'}::VARCHAR AS mask_token`);
     await run(`CHECKPOINT ${outdb}`);
     await run(`DETACH ${outdb}`);
     close();
@@ -919,14 +940,18 @@ async function build({ t0, win, testRun, untilMs, files }) {
       mode, reasons: decision.reasons, lastFullAt: lastFullMs == null ? null : new Date(lastFullMs).toISOString(),
       durations: {
         totalS: Math.round(totalS), scanS: Math.round(scanS), aggS: agg.s, fpOldS: carryInfo.fpOldS, fpNewS: carryInfo.fpNewS,
+        maskS: mask.s, maskCopyS: mask.copyS, maskCalcS: mask.calcS,
       },
       aggDays: { covered: agg.covered, total: agg.total }, aggNew: agg.newDays, aggSig: agg.token ? AGG_SIG : null,
       aggCarried: agg.carried, aggCarryReason: carryInfo.reason,
+      maskDays: { covered: mask.covered, total: mask.total }, maskNew: mask.newDays, maskCarried: mask.carried,
+      maskFailed: mask.failed, maskSig: mask.token ? MASK_SIG : null,
       alarms,
     });
     log(`fertig (${mode}) in ${totalS.toFixed(1)} s: ${boards} Boards / ${matches} Partien, Rang bekannt ${stats.ranked},`
       + ` ohne Patch ${stats.no_patch}, neue Traits ohne Bundle-Schwelle ${nNoTraitMin}, ${stats.min_day}..${stats.max_day},`
       + ` Teilsummen ${agg.token ? `${agg.covered}/${agg.total} Tage` : 'keine'},`
+      + ` Masken ${mask.token ? `${mask.covered}/${mask.total} Tage` : 'keine'},`
       + ` ${(size / 1e6).toFixed(0)} MB${alarms.length ? `, ALARM: ${alarms.join('; ')}` : ''}`);
     return 0;
   } finally {

@@ -21,23 +21,23 @@ export const AGG_HEAD_COLS = ['matches', 'n', 's', 'ss', 'sn', 'nn', 'h1', 'h2',
 const HIST = [1, 2, 3, 4, 5, 6, 7, 8];
 // Arbeitskopie je Block statt einmal fuer alle Tage: gemessen 2,1 s fuer
 // 1 Tag, 28 s fuer 7, 84 s fuer 21 Tage bei ~1 GB Spitzenspeicher.
-const BLOCK_DAYS = 7;
+export const BLOCK_DAYS = 7;
 const TABLES = ['agg_rows', 'agg_head', 'agg_days', 'day_patches', 'agg_meta'];
 
-const qi = (c) => `"${c}"`;
-const lit = (s) => `'${String(s).replace(/'/g, "''")}'`;
-const dLit = (d) => {
+export const qi = (c) => `"${c}"`;
+export const lit = (s) => `'${String(s).replace(/'/g, "''")}'`;
+export const dLit = (d) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) throw new Error(`Tag ${d} ungueltig`);
   return `DATE '${d}'`;
 };
-const inList = (days) => days.map(dLit).join(', ');
+export const inList = (days) => days.map(dLit).join(', ');
 
 // Eine Spaltenliste fuer alle Kopien (Block, Partie-Delta, Rang) und den
 // Fingerabdruck: was die Summen lesen, muss der Fingerabdruck pruefen.
 export const BOARD_COLS = ['bid', 'mid', 'day', 'patch', 'region', 'placement', 'level', 'last_round', 'gold_left', 'family', 'rank'];
 export const UNIT_COLS = ['unit', 'star', 'i1', 'i2', 'i3'];
 export const TRAIT_COLS = ['trait', 'lvl', 'overcap'];
-const cols = (list, a) => list.map((c) => (a ? `${a}.${c}` : c)).join(', ');
+export const cols = (list, a) => list.map((c) => (a ? `${a}.${c}` : c)).join(', ');
 
 export const aggTablesDdl = (o) => [
   `CREATE TABLE ${o}.agg_rows(variant VARCHAR, day DATE, patch VARCHAR, region VARCHAR, key VARCHAR, sub INTEGER, sub2 INTEGER, `
@@ -116,6 +116,7 @@ export async function aggCarrySave({ exec, all, db, f }) {
 // (Tabelle mit Spalte k) → cv_nb fuer das Partie-Delta; Fingerabdruck der
 // uebrigen, alten Boards und Abgleich je Tag gegen prep aus Teil 1. Jedes
 // Board hat genau eine board_rank-Zeile (Pruefung im Bau vor diesem Schritt).
+// newFp geht zusaetzlich an die Masken-Uebernahme (explorer-mask-build.mjs).
 export async function aggCarryMatch({ exec, all, outdb: o, prevKeys, f, prep }) {
   await exec(`CREATE OR REPLACE TABLE cv_nb AS SELECT b.bid, b.mid, b.day FROM ${o}.boards b JOIN ${o}.board_rank br USING (bid)
     WHERE NOT EXISTS (SELECT 1 FROM ${prevKeys} p WHERE p.k = br.k)`);
@@ -126,7 +127,7 @@ export async function aggCarryMatch({ exec, all, outdb: o, prevKeys, f, prep }) 
   const s = Math.round((Date.now() - t) / 1000);
   await exec('DROP TABLE cv_nkd');
   const nNew = Number((await all('SELECT count(*) AS n FROM cv_nb'))[0]?.n ?? 0);
-  return { ...aggCarryDays({ oldFp: prep.oldFp, newFp, covered: prep.covered }), nDays: newFp.size, nNew, s };
+  return { ...aggCarryDays({ oldFp: prep.oldFp, newFp, covered: prep.covered }), nDays: newFp.size, nNew, s, newFp };
 }
 
 // Passen die Summen in Datei db zu ihr? Rechenweg, Kennung (agg_meta =

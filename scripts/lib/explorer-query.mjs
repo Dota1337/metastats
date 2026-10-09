@@ -168,6 +168,29 @@ export function summarize(s) {
   };
 }
 
+// Kopf der Antwort aus gefilterter Menge, Grundmenge und den Kreuzsummen der
+// Abweichung (null = keine Abweichung). Heutiger Weg und Masken-Weg
+// (explorer-mask-query.mjs) bauen ihn hier, damit Form und Reihenfolge gleich bleiben.
+export function headOut(filtered, base, cross) {
+  let headDelta = null;
+  if (cross) {
+    const row = {
+      n1: filtered.n, s1: filtered.s, m1: filtered.matches, ss11: filtered.ss, sn11: filtered.sn, nn11: filtered.nn,
+      s1S: cross.s1S, s1N: cross.s1N, n1S: cross.n1S, n1N: cross.n1N,
+      t4: filtered.hist.slice(0, 4).reduce((a, b) => a + b, 0), t1: filtered.hist[0],
+    };
+    const ref = { ...base, t4: base.hist.slice(0, 4).reduce((a, b) => a + b, 0) };
+    headDelta = rowStats(row, ref);
+  }
+  return {
+    summary: summarize(filtered),
+    base: summarize(base),
+    headDelta: headDelta && { dOut: headDelta.dOut, dOutHalf: headDelta.dOutHalf, dBase: headDelta.dBase, dBaseHalf: headDelta.dBaseHalf },
+    rows: null,
+    refGames: null,
+  };
+}
+
 // ─── Abfrage ───────────────────────────────────────────────────────────────
 
 export async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm = false } = {}) {
@@ -190,94 +213,87 @@ export async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm =
 
     // Kopfzeile: gefiltert gegen den Rest der Grundmenge (disjunkt) — gleiche
     // Rechnung wie je Zeile, mit "Zeile" = gefilterte Boards.
-    let headDelta = null;
+    let cross = null;
     if (hasFilters && filtered.n > 0) {
       const p = [];
       const cteB = fbCte(q, p, { withFilters: false });
       const fw = filterWhere(q, p);
-      const r = (await conn.runAndReadAll(`
+      cross = (await conn.runAndReadAll(`
         WITH ${cteB},
         cl AS (SELECT mid, count(*) AS n, sum(placement) AS s FROM fb GROUP BY mid),
         kg AS (SELECT mid, count(*) AS n1, sum(placement) AS s1 FROM fb b WHERE ${fw.join(' AND ')} GROUP BY mid)
         SELECT sum(s1 * cl.s)::DOUBLE AS "s1S", sum(s1 * cl.n)::DOUBLE AS "s1N",
                sum(n1 * cl.s)::DOUBLE AS "n1S", sum(n1 * cl.n)::DOUBLE AS "n1N"
         FROM kg JOIN cl USING (mid)`, p)).getRowObjectsJS()[0];
-      const row = {
-        n1: filtered.n, s1: filtered.s, m1: filtered.matches, ss11: filtered.ss, sn11: filtered.sn, nn11: filtered.nn,
-        s1S: r.s1S, s1N: r.s1N, n1S: r.n1S, n1N: r.n1N,
-        t4: filtered.hist.slice(0, 4).reduce((a, b) => a + b, 0), t1: filtered.hist[0],
-      };
-      const ref = { ...base, t4: base.hist.slice(0, 4).reduce((a, b) => a + b, 0) };
-      headDelta = rowStats(row, ref);
     }
+    const out = headOut(filtered, base, cross);
 
-    const out = {
-      summary: summarize(filtered),
-      base: summarize(base),
-      headDelta: headDelta && { dOut: headDelta.dOut, dOutHalf: headDelta.dOutHalf, dBase: headDelta.dBase, dBaseHalf: headDelta.dBaseHalf },
-      rows: null,
-      refGames: null,
-    };
-
-    if (q.tab !== 'summary' && filtered.n > 0) {
-      const p = [];
-      const cte = fbCte(q, p);
-      let refCte = 'ref AS (SELECT * FROM fb)';
-      let ref = filtered;
-      if (q.tab === 'items' && q.focus) {
-        refCte = 'ref AS (SELECT * FROM fb WHERE bid IN (SELECT bid FROM units WHERE unit = ?))';
-        p.push(q.focus);
-        const pr = [...p];
-        ref = await setStats(conn, `${cte}, ${refCte}`, pr, 'ref');
-      }
-      const ks = keySql(q, p, holder.components);
-      // Sterne-Vergleich: je Board genau ein Stern je Unit, also ergibt die
-      // Summe ueber die Sterne je Partie exakt die Unit-Gesamtzeile (sub NULL).
-      const starTotals = q.tab === 'units' && q.split === 'star';
-      p.push(ROW_MIN_BOARDS, ROW_LIMIT);
-      const rows = ref.n === 0 ? [] : (await conn.runAndReadAll(`
-        WITH ${cte}, ${refCte},
-        cl AS (SELECT mid, count(*) AS n, sum(placement) AS s FROM ref GROUP BY mid),
-        k AS (${ks}),
-        kg0 AS (SELECT key, sub, sub2, mid, count(*) AS n1, sum(placement) AS s1,
-                      count(*) FILTER (WHERE placement <= 4) AS t4, count(*) FILTER (WHERE placement = 1) AS t1
-               FROM k GROUP BY key, sub, sub2, mid),
-        kg AS (${starTotals ? `SELECT * FROM kg0 UNION ALL BY NAME
-               SELECT key, NULL::INTEGER AS sub, sub2, mid, sum(n1)::BIGINT AS n1, sum(s1) AS s1,
-                      sum(t4)::BIGINT AS t4, sum(t1)::BIGINT AS t1
-               FROM kg0 GROUP BY key, sub2, mid` : 'SELECT * FROM kg0'})
-        SELECT key, sub, sub2, count(*)::DOUBLE AS m1, sum(n1)::DOUBLE AS n1, sum(s1)::DOUBLE AS s1,
-               sum(t4)::DOUBLE AS t4, sum(t1)::DOUBLE AS t1,
-               sum(s1 * s1)::DOUBLE AS ss11, sum(s1 * n1)::DOUBLE AS sn11, sum(n1 * n1)::DOUBLE AS nn11,
-               sum(s1 * cl.s)::DOUBLE AS "s1S", sum(s1 * cl.n)::DOUBLE AS "s1N",
-               sum(n1 * cl.s)::DOUBLE AS "n1S", sum(n1 * cl.n)::DOUBLE AS "n1N"
-        FROM kg JOIN cl USING (mid)
-        GROUP BY key, sub, sub2
-        HAVING sum(n1) >= ?
-        ${ROW_ORDER}
-        LIMIT ?`, p)).getRowObjectsJS();
-      finishRows(out, rows, ref);
-      // Units: wie oft landet die Unit auf 3★ (hoechste Kopie je Board)?
-      if (q.tab === 'units' && q.split !== 'star' && out.rows.length) {
-        const ps = [];
-        const cteS = fbCte(q, ps);
-        const st = (await conn.runAndReadAll(`
-          WITH ${cteS},
-          s AS (SELECT u.unit, max(u.star) AS st FROM fb r JOIN units u USING (bid) GROUP BY r.bid, u.unit)
-          SELECT unit, (count(*) FILTER (WHERE st >= 3))::DOUBLE / count(*) AS star3
-          FROM s GROUP BY unit`, ps)).getRowObjectsJS();
-        const m = new Map(st.map(x => [x.unit, x.star3]));
-        for (const r of out.rows) r.star3 = m.get(r.key) ?? null;
-      }
-    } else if (q.tab !== 'summary') {
-      out.rows = [];
-      out.refGames = 0;
-    }
+    await liveRows(conn, q, holder, out, filtered);
     return out;
   } finally {
     clearTimeout(timer);
     if (holder.warmConn === conn) holder.warmConn = null;
     conn.closeSync?.();
+  }
+}
+
+// Tabellenzeilen live aus den Boards (und units-3★). mkCte(params) liefert die
+// fb-CTE; der Masken-Weg (Paket 6) gibt statt der Filter-WHERE den Join auf
+// seine Partien-Tabelle g mit, Rechnung und Ausgabe bleiben dieselben.
+export async function liveRows(conn, q, holder, out, filtered, mkCte = p => fbCte(q, p)) {
+  if (q.tab !== 'summary' && filtered.n > 0) {
+    const p = [];
+    const cte = mkCte(p);
+    let refCte = 'ref AS (SELECT * FROM fb)';
+    let ref = filtered;
+    if (q.tab === 'items' && q.focus) {
+      refCte = 'ref AS (SELECT * FROM fb WHERE bid IN (SELECT bid FROM units WHERE unit = ?))';
+      p.push(q.focus);
+      const pr = [...p];
+      ref = await setStats(conn, `${cte}, ${refCte}`, pr, 'ref');
+    }
+    const ks = keySql(q, p, holder.components);
+    // Sterne-Vergleich: je Board genau ein Stern je Unit, also ergibt die
+    // Summe ueber die Sterne je Partie exakt die Unit-Gesamtzeile (sub NULL).
+    const starTotals = q.tab === 'units' && q.split === 'star';
+    p.push(ROW_MIN_BOARDS, ROW_LIMIT);
+    const rows = ref.n === 0 ? [] : (await conn.runAndReadAll(`
+      WITH ${cte}, ${refCte},
+      cl AS (SELECT mid, count(*) AS n, sum(placement) AS s FROM ref GROUP BY mid),
+      k AS (${ks}),
+      kg0 AS (SELECT key, sub, sub2, mid, count(*) AS n1, sum(placement) AS s1,
+                    count(*) FILTER (WHERE placement <= 4) AS t4, count(*) FILTER (WHERE placement = 1) AS t1
+             FROM k GROUP BY key, sub, sub2, mid),
+      kg AS (${starTotals ? `SELECT * FROM kg0 UNION ALL BY NAME
+             SELECT key, NULL::INTEGER AS sub, sub2, mid, sum(n1)::BIGINT AS n1, sum(s1) AS s1,
+                    sum(t4)::BIGINT AS t4, sum(t1)::BIGINT AS t1
+             FROM kg0 GROUP BY key, sub2, mid` : 'SELECT * FROM kg0'})
+      SELECT key, sub, sub2, count(*)::DOUBLE AS m1, sum(n1)::DOUBLE AS n1, sum(s1)::DOUBLE AS s1,
+             sum(t4)::DOUBLE AS t4, sum(t1)::DOUBLE AS t1,
+             sum(s1 * s1)::DOUBLE AS ss11, sum(s1 * n1)::DOUBLE AS sn11, sum(n1 * n1)::DOUBLE AS nn11,
+             sum(s1 * cl.s)::DOUBLE AS "s1S", sum(s1 * cl.n)::DOUBLE AS "s1N",
+             sum(n1 * cl.s)::DOUBLE AS "n1S", sum(n1 * cl.n)::DOUBLE AS "n1N"
+      FROM kg JOIN cl USING (mid)
+      GROUP BY key, sub, sub2
+      HAVING sum(n1) >= ?
+      ${ROW_ORDER}
+      LIMIT ?`, p)).getRowObjectsJS();
+    finishRows(out, rows, ref);
+    // Units: wie oft landet die Unit auf 3★ (hoechste Kopie je Board)?
+    if (q.tab === 'units' && q.split !== 'star' && out.rows.length) {
+      const ps = [];
+      const cteS = mkCte(ps);
+      const st = (await conn.runAndReadAll(`
+        WITH ${cteS},
+        s AS (SELECT u.unit, max(u.star) AS st FROM fb r JOIN units u USING (bid) GROUP BY r.bid, u.unit)
+        SELECT unit, (count(*) FILTER (WHERE st >= 3))::DOUBLE / count(*) AS star3
+        FROM s GROUP BY unit`, ps)).getRowObjectsJS();
+      const m = new Map(st.map(x => [x.unit, x.star3]));
+      for (const r of out.rows) r.star3 = m.get(r.key) ?? null;
+    }
+  } else if (q.tab !== 'summary') {
+    out.rows = [];
+    out.refGames = 0;
   }
 }
 

@@ -10,8 +10,12 @@ test('launchSource liest ?source= aus der Fensteradresse', () => {
   assert.equal(launchSource('kein link'), null);
 });
 
-test('classifyLaunch: Selbststart = auto, alles andere Bekannte = click, leer = null', () => {
-  for (const o of ['gamelaunchevent', 'update', 'startup', 'GameLaunchEvent', ' startup ']) assert.equal(classifyLaunch(o), 'auto', o);
-  for (const o of ['dock', 'storeapi', 'odk', 'tray', 'urlscheme', 'commandline', 'unknown', 'other']) assert.equal(classifyLaunch(o), 'click', o);
+test('classifyLaunch: Selbststart = auto (auch relaunch), bekannte Klicks = click', () => {
+  for (const o of ['gamelaunchevent', 'update', 'startup', 'relaunch', 'GameLaunchEvent', ' startup ', 'Relaunch']) assert.equal(classifyLaunch(o), 'auto', o);
+  for (const o of ['dock', 'storeapi', 'odk', 'tray', 'urlscheme', 'commandline', 'after-install', 'overwolfstartlaunchevent']) assert.equal(classifyLaunch(o), 'click', o);
+});
+
+test('classifyLaunch: unbekannte Herkunft = unknown, leer = null', () => {
+  for (const o of ['unknown', 'other', 'irgendwas']) assert.equal(classifyLaunch(o), 'unknown', o);
   for (const o of ['', '  ', null, undefined]) assert.equal(classifyLaunch(o), null, String(o));
 });

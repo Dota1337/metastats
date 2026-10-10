@@ -3,9 +3,9 @@
 // Pfade wuerden dort ins Leere zeigen.
 import { defineConfig } from 'vite';
 import { resolve } from 'node:path';
+import { WINDOW_NAMES } from './src/lib/windows.ts';
 
 const here = import.meta.dirname;
-const WINDOWS = ['background', 'main', 'pinned', 'shop', 'matchup'];
 
 export default defineConfig({
   // Vite setzt crossorigin an Skripte und Styles; unter overwolf-extension://
@@ -23,7 +23,7 @@ export default defineConfig({
     target: 'chrome110',
     modulePreload: false,
     rollupOptions: {
-      input: Object.fromEntries(WINDOWS.map(w => [w, resolve(here, `src/windows/${w}.html`)])),
+      input: Object.fromEntries(WINDOW_NAMES.map(w => [w, resolve(here, `src/windows/${w}.html`)])),
     },
   },
   server: { fs: { allow: [resolve(here, '../..')] } },

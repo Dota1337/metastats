@@ -1,6 +1,7 @@
 // Duenne Huelle um overwolf.windows, als Promises.
 
-export type WindowName = 'background' | 'main' | 'pinned' | 'shop' | 'matchup';
+import type { WindowName } from './windows.ts';
+export type { WindowName };
 
 export function obtain(name: WindowName): Promise<overwolf.windows.WindowInfo | null> {
   return new Promise(res => {
@@ -113,6 +114,22 @@ export function dragSelf(done: (d: DragDone | null) => void): void {
 
 export function closeSelf(): void {
   overwolf.windows.getCurrentWindow(r => { if (r?.window) overwolf.windows.close(r.window.id, () => {}); });
+}
+
+// Maximieren und zurueck (Knopf in der Kopfleiste des Hauptfensters).
+export function toggleMaximizeSelf(): void {
+  overwolf.windows.getCurrentWindow(r => {
+    const w = r?.window;
+    if (!w) return;
+    const maxed = String(w.stateEx || w.state || '') === 'maximized';
+    if (maxed) overwolf.windows.restore(w.id, () => {});
+    else overwolf.windows.maximize(w.id, () => {});
+  });
+}
+
+// Nachricht an das Hintergrundfenster (× an Overlays, Neu laden).
+export function tellBackground(id: string, content = ''): void {
+  try { overwolf.windows.sendMessage('background', id, content, () => {}); } catch { /* ausserhalb von Overwolf */ }
 }
 
 export function minimizeSelf(): void {

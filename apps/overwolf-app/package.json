@@ -1,12 +1,13 @@
 {
   "name": "metastats-overwolf-app",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.8.0",
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && node --test \"src/**/*.test.ts\" && vite build && node build-opk.mjs",
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"src/**/*.test.ts\"",
+    "shortcuts": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/install-shortcuts.ps1"
   },
   "devDependencies": {
     "@overwolf/types": "^3.51.0",

@@ -1,7 +1,8 @@
-// Gegner-Overlay: je Gegner, dessen gesehenes Brett zu einer Comp passt, eine
-// Zeile mit Name, Stufe des Bretts, Carries mit Sternen und Trait der Comp
-// (sicher: mit Tier, wahrscheinlich: blasser, ohne Tier). Sortiert nach Leben,
-// der naechste Gegner ist markiert. Braucht keine angeheftete Comp.
+// Gegner-Overlay (Tracker wie bei MetaTFT): je lebendem Gegner, sortiert nach
+// Leben, Name, wann man zuletzt gegen ihn gekaempft hat (lib/tracker.ts) und
+// Leben. Zweite Zeile: vor Stufe 2-1 Rang und letzte Platzierungen aus unserer
+// Datenbank (Scout, abschaltbar), danach die erkannte Comp seines Bretts
+// (sicher: mit Tier, wahrscheinlich: blasser). Braucht keine angeheftete Comp.
 //
 // Das Fenster ist durchklickbar; das Hintergrundfenster setzt es neben die
 // Spielerliste. Im Verschiebe-Modus (Tastenkuerzel oder Einstellungen) nimmt
@@ -12,6 +13,9 @@ import { read, subscribe, patchSettings } from '../lib/store.ts';
 import { boot } from '../lib/boot.ts';
 import { fitSelf, dragSelf } from '../lib/ow.ts';
 import { opponentRows } from '../lib/opponents.ts';
+import { trackRows } from '../lib/tracker.ts';
+import { trackLabel, rankShort, placeChips } from '../lib/track-view.ts';
+import { stageToRound } from '../lib/gep.ts';
 import { traitLabel } from '../lib/plan.ts';
 import { rectFromGame, matchupFrac, toPixels, toFrac, clampPos } from '../lib/placement.ts';
 import { t } from '../lib/i18n.ts';
@@ -20,27 +24,48 @@ import { h, clear, tierBadge, unitIcon } from '../lib/dom.ts';
 const root = document.getElementById('app')!;
 const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a.map(x => (typeof x === 'string' ? x : JSON.stringify(x))));
 
+// Scout-Zeile bis einschliesslich Stufe 1-4 (vor dem ersten Spielerkampf).
+const SCOUT_UNTIL = 21;
+
 function render(): void {
   const live = read('ms.live');
+  const settings = read('ms.settings');
   const comps = read('ms.comps')?.data.comps ?? [];
   const lookups = read('ms.lookups')?.data ?? null;
-  const rows = opponentRows(live, comps);
-  if (rows.length === 0 && !live.moving) { clear(root); return; }
+  const { rows } = trackRows({
+    pvp: live.pvp, roster: live.roster, stage: live.stage, roundKind: live.roundKind,
+    queueId: live.queueId, me: read('ms.me'),
+  });
+  const alive = rows.filter(r => !r.dead).sort((a, b) => (b.hp ?? -1) - (a.hp ?? -1));
+  if (alive.length === 0 && !live.moving) { clear(root); fitSelf(1, 1); return; }
+  const recs = new Map(opponentRows(live, comps).map(r => [r.name, r.rec]));
+  const round = stageToRound(live.stage);
+  const lobby = settings.scout && (round == null || round < SCOUT_UNTIL) ? read('ms.lobby')?.players ?? null : null;
+
   const box = h('div', { class: live.moving ? 'overlay matchup moving' : 'overlay matchup' },
     live.moving ? h('div', { class: 'ov-label' }, t('overlay.opponents')) : null,
-    rows.map(r => {
-      const label = r.rec.kind === 'sure' ? traitLabel(r.rec.comp) : r.rec.label;
-      const full = r.rec.kind === 'sure' ? r.rec.comp.name : r.rec.label;
-      return h('div', { class: r.next ? 'opp-row next' : 'opp-row' },
+    alive.map(r => {
+      const rec = recs.get(r.name);
+      const scout = lobby?.[r.name];
+      const rank = scout?.found ? rankShort(scout) : null;
+      const second = scout?.found && (rank || scout.recent.length)
+        ? h('div', { class: 'opp-comp' },
+          rank ? h('span', { class: 'opp-rank' }, rank) : null,
+          scout.recent.length ? placeChips(scout.recent, 5) : null)
+        : rec
+          ? h('div', { class: 'opp-comp' },
+            rec.carries.map(c => unitIcon(c.unit, lookups, { stars: c.level, size: 'xs' })),
+            h('span', { class: rec.kind === 'sure' ? 'opp-label' : 'opp-label likely', title: rec.kind === 'sure' ? rec.comp.name : rec.label },
+              rec.kind === 'sure' ? traitLabel(rec.comp) : rec.label),
+            rec.kind === 'sure' ? tierBadge(rec.comp.tier) : null)
+          : null;
+      return h('div', { class: r.status === 'now' ? 'opp-row next' : 'opp-row' },
         h('div', { class: 'opp-head' },
-          h('span', { class: 'opp-name', title: r.name }, r.short),
-          h('span', { class: 'opp-stage' }, r.stage),
+          h('span', { class: 'opp-name', title: r.name }, r.name.split('#')[0]),
+          trackLabel(r),
+          r.hp != null ? h('span', { class: 'opp-hp' }, String(r.hp)) : null,
         ),
-        h('div', { class: 'opp-comp' },
-          r.rec.carries.map(c => unitIcon(c.unit, lookups, { stars: c.level, size: 'xs' })),
-          h('span', { class: r.rec.kind === 'sure' ? 'opp-label' : 'opp-label likely', title: full }, label),
-          r.rec.kind === 'sure' ? tierBadge(r.rec.comp.tier) : null,
-        ),
+        second,
       );
     }),
   );
@@ -77,4 +102,4 @@ function startDrag(e: MouseEvent): void {
 }
 
 void boot(render);
-subscribe(['ms.live', 'ms.comps', 'ms.lookups'], render);
+subscribe(['ms.live', 'ms.comps', 'ms.lookups', 'ms.lobby', 'ms.me', 'ms.settings'], render);

@@ -56,7 +56,16 @@ export function toFrac(left: number, top: number, r: GameRect): Frac {
 // Fensterlage in Pixeln. Das Gegner-Overlay bekommt nur die Lage: Breite und
 // Hoehe setzt es selbst nach seinem Inhalt (fitSelf rechnet die Bildschirm-
 // Skalierung mit ein, die Spielfenster-Angaben hier tun das nicht).
-export function overlayBox(name: 'shop' | 'matchup', r: GameRect, saved: Partial<Frac> | null | undefined): Box {
+// Item-Auswahl: Leiste ueber den Karten, unten mittig. Masse wie MetaTFT (im
+// Paket 0.2.768 gemessen): 1320 x 375 bei 1080 Pixeln Bildhoehe.
+export const ITEMS_SIZE = { w: 1320 / 1080, h: 375 / 1080 } as const;
+
+export function overlayBox(name: 'shop' | 'matchup' | 'items', r: GameRect, saved: Partial<Frac> | null | undefined): Box {
+  if (name === 'items') {
+    const width = r.bh * ITEMS_SIZE.w;
+    const height = r.bh * ITEMS_SIZE.h;
+    return { left: r.ox + (r.bw - width) / 2, top: r.oy + r.bh - height, width, height };
+  }
   if (name === 'shop') {
     const [x, y, w, h] = SHOP_PLACE;
     return { left: r.ox + r.bw * x, top: r.oy + r.bh * y, width: r.bw * w, height: r.bh * h };

@@ -42,7 +42,7 @@ function listView(): HTMLElement {
     )));
   };
   fill();
-  const input = h('input', { class: 'search', type: 'search', placeholder: t('items.search'), value: ui.query });
+  const input = h('input', { class: 'search', type: 'search', 'data-keep': 'items', placeholder: t('items.search'), value: ui.query });
   input.addEventListener('input', () => { ui.query = input.value; fill(); });
   return h('div', { class: 'panel' },
     h('div', { class: 'toolbar' }, input),

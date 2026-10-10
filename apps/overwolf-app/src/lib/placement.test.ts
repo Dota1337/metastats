@@ -53,3 +53,11 @@ test('overlayBox: Shop mit fester Groesse, Gegner-Overlay nur mit Lage', () => {
   const moved = overlayBox('matchup', r, { x: 0.1, y: 0.2 });
   assert.deepEqual([moved.left, moved.top], [192, 216]);
 });
+
+test('overlayBox: Item-Leiste unten mittig, 1320x375 bei 1080p', () => {
+  const r = rectFromGame(1920, 1080)!;
+  assert.deepEqual(overlayBox('items', r, null), { left: 300, top: 705, width: 1320, height: 375 });
+  // 21:9 mit Balken: bleibt im 16:9-Bild
+  const w = rectFromGame(2560, 1080)!;
+  assert.deepEqual(overlayBox('items', w, null), { left: 620, top: 705, width: 1320, height: 375 });
+});

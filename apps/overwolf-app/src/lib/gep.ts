@@ -60,6 +60,31 @@ export function parseStage(raw: unknown): string | null {
   return rt?.stage && /^\d+-\d+$/.test(rt.stage) ? rt.stage : null;
 }
 
+// Art der Runde aus round_type.type. Gemessen (Logs 04.-09.10.): PVP, PVE,
+// Carousel. Nur PVP ist ein Kampf gegen einen Spieler (oder seine Kopie).
+export type RoundKind = 'pvp' | 'pve' | 'carousel' | 'other';
+export function parseRoundKind(raw: unknown): RoundKind | null {
+  const rt = jsonish<{ type?: string }>(raw);
+  const t = String(rt?.type ?? '').trim().toUpperCase();
+  if (!t) return null;
+  if (t === 'PVP') return 'pvp';
+  if (t === 'PVE') return 'pve';
+  if (t === 'CAROUSEL') return 'carousel';
+  return 'other';
+}
+
+// match_info.item_select: {"item_1":{"name":"DA_Artifact_Dawncore"}, ...} →
+// Kennungen in Kartenreihenfolge (links nach rechts). null/leer = keine Auswahl offen.
+export function parseItemSelect(raw: unknown): string[] {
+  const parsed = jsonish<Record<string, { name?: string } | null>>(raw);
+  if (!parsed || typeof parsed !== 'object') return [];
+  return Object.entries(parsed)
+    .map(([k, v]) => ({ i: Number(/^item_(\d+)$/.exec(k)?.[1]), name: v?.name ? String(v.name) : '' }))
+    .filter(x => Number.isInteger(x.i) && x.i >= 1 && x.name)
+    .sort((a, b) => a.i - b.i)
+    .map(x => x.name);
+}
+
 // "3-2" → 32. Fortlaufend und monoton fuer die Brett-Beobachtungen.
 export function stageToRound(stage: string | null): number | null {
   if (!stage) return null;
@@ -97,6 +122,36 @@ export function isTftMode(mode: unknown): boolean | null {
 export const TFT_GAME_IDS = [28164, 21570, 5426] as const;
 const TFT_ONLY = new Set<number>([28164, 21570]);
 
+// Der League-Client (Launcher). Startet die App schon in der Lobby und meldet
+// den Spielmodus (lobby_info.queueId). Bewusst NICHT in TFT_GAME_IDS: sonst
+// hielte onGameStart den Client fuer eine laufende Partie.
+export const LAUNCHER_IDS = [10902] as const;
+export const LAUNCHER_FEATURES = ['game_flow', 'lobby_info', 'summoner_info'];
+
+// TFT-Warteschlangen (Riot queueId). Double Up hat 4 Teams statt 8 Spieler.
+export const QUEUE_DOUBLE_UP = 1160;
+
+export function isTftOnlyGame(classId: number | null): boolean {
+  return classId != null && TFT_ONLY.has(classId);
+}
+
+// Launcher-Meldung: {feature, info:{lobby_info:{queueId:"1100"}, game_flow:{phase:"InProgress"}}}.
+export interface LauncherUpdate { queueId?: number | null; phase?: string | null; platform?: string | null }
+export function parseLauncherInfo(info: unknown): LauncherUpdate {
+  const i = jsonish<Record<string, unknown>>(info) ?? {};
+  const out: LauncherUpdate = {};
+  const lobby = jsonish<{ queueId?: string | number }>(i.lobby_info);
+  if (lobby && 'queueId' in lobby) {
+    const q = Number(lobby.queueId);
+    out.queueId = Number.isInteger(q) && q > 0 ? q : null;
+  }
+  const flow = jsonish<{ phase?: string }>(i.game_flow);
+  if (flow && 'phase' in flow) out.phase = flow.phase ? String(flow.phase) : null;
+  const sum = jsonish<{ platform_id?: string }>(i.summoner_info);
+  if (sum && 'platform_id' in sum) out.platform = sum.platform_id ? String(sum.platform_id).toLowerCase() : null;
+  return out;
+}
+
 // gameInfo.classId, sonst aus der Instanz-ID (281641 → 28164).
 export function gameClassId(info: { classId?: number; id?: number } | null | undefined): number | null {
   const c = Number(info?.classId);
@@ -116,12 +171,13 @@ export function tftFromGame(classId: number | null): boolean | null {
   return classId === 5426 ? null : false;
 }
 
-// 28164 kennt kein live_client_data, dafuer roster (eigener Name, Platzierung).
+// 28164 kennt kein live_client_data und kein game_info (Overwolf bestaetigt es
+// nicht, Log 07.10.), dafuer roster (eigener Name, Platzierung).
 // Die Bank (bench) wird seit 0.6 nicht mehr gebraucht (Comp-Vorschlaege weg).
 export function featuresFor(classId: number | null): string[] {
-  const base = ['gep_internal', 'game_info', 'me', 'match_info', 'store', 'board', 'roster'];
+  const base = ['gep_internal', 'me', 'match_info', 'store', 'board', 'roster'];
   if (classId === 28164) return base;
-  return [...base, 'live_client_data'];
+  return [...base, 'game_info', 'live_client_data'];
 }
 
 // ---------- Ersatzquellen fuer 28164 ----------
@@ -148,6 +204,15 @@ export function parseRoster(raw: unknown): RosterEntry[] {
     });
   }
   return out;
+}
+
+// Platz 1: der Sieger scheidet nie aus, roster meldet ihm deshalb keinen
+// Platz. Haben alle sieben anderen einen, hat der eigene Spieler gewonnen —
+// sonst gilt das Spielende als Absturz (kein Paket mit Platz, kein Popup).
+export function wonMatch(entries: RosterEntry[]): boolean {
+  const me = entries.find(e => e.local);
+  const others = entries.filter(e => !e.local);
+  return !!me && me.rank == null && others.length >= 7 && others.every(e => e.rank != null);
 }
 
 export function parseLocalPlayer(raw: unknown): { name: string; rank: number | null } | null {

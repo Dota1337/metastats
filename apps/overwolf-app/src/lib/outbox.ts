@@ -53,6 +53,9 @@ export async function clear(store: OutboxStore): Promise<number> {
 }
 
 let flushing = false;
+// Kommt waehrend eines Durchgangs ein neues Paket, laeuft danach gleich noch
+// einer — sonst wartet es bis zum naechsten Takt (30 min).
+let again = false;
 
 /**
  * Sendet alle wartenden Pakete der Reihe nach. Gibt die Zahl der angenommenen zurueck.
@@ -68,29 +71,35 @@ export async function flush(
   now = Date.now(),
 ): Promise<{ sent: number; dropped: number; left: number }> {
   const out = { sent: 0, dropped: 0, left: 0 };
-  if (flushing) return out;
+  if (flushing) { again = true; return out; }
   flushing = true;
   try {
-    const all = (await store.all()).sort((a, b) => a.createdAt - b.createdAt);
-    for (const e of all) {
-      if (!shareOn() || now - e.createdAt > MAX_AGE_MS || e.tries >= MAX_TRIES) {
-        await store.del(e.id);
-        out.dropped++;
-        continue;
+    // Ein weiterer Durchgang nur, wenn der erste ohne Sendefehler durchkam —
+    // sonst wuerden die Fehlversuche doppelt gezaehlt.
+    do {
+      again = false;
+      const all = (await store.all()).sort((a, b) => a.createdAt - b.createdAt);
+      for (const e of all) {
+        if (!shareOn() || now - e.createdAt > MAX_AGE_MS || e.tries >= MAX_TRIES) {
+          await store.del(e.id);
+          out.dropped++;
+          continue;
+        }
+        const v = verdict(await send(e));
+        if (v === 'done') {
+          await store.del(e.id);
+          out.sent++;
+        } else if (v === 'drop') {
+          await store.del(e.id);
+          out.dropped++;
+        } else {
+          await store.put({ ...e, tries: e.tries + 1 });
+          out.left++;
+        }
       }
-      const v = verdict(await send(e));
-      if (v === 'done') {
-        await store.del(e.id);
-        out.sent++;
-      } else if (v === 'drop') {
-        await store.del(e.id);
-        out.dropped++;
-      } else {
-        await store.put({ ...e, tries: e.tries + 1 });
-        out.left++;
-      }
-    }
+    } while (again && out.left === 0);
   } finally {
+    again = false;
     flushing = false;
   }
   return out;

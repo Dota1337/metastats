@@ -3,19 +3,20 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",
     "icon_gray": "images/IconMouseNormal.png",
     "launcher_icon": "images/launcher_icon.ico",
     "splash_image": "images/splash.png",
-    "description": "TFT companion by metastats.gg: current comps and tier list, item recipes, shop odds and a level plan for your pinned comp, shop highlight in game, and player profiles with match history."
+    "description": "TFT companion by metastats.gg: current comps and tier list, comp picker and level plan in game, opponent tracker with recognized comps, item hints at item selection, lobby scouting, shop highlight, and player profiles with match history."
   },
   "permissions": [
     "GameInfo",
     "Extensions",
-    "Hotkeys"
+    "Hotkeys",
+    "DesktopStreaming"
   ],
   "data": {
     "start_window": "background",
@@ -27,7 +28,10 @@
         "transparent": true,
         "clickthrough": true,
         "resizable": false,
-        "size": { "width": 1, "height": 1 }
+        "size": {
+          "width": 1,
+          "height": 1
+        }
       },
       "main": {
         "file": "windows/main.html",
@@ -37,9 +41,38 @@
         "use_os_windowing": false,
         "desktop_only": true,
         "native_window": true,
-        "size": { "width": 900, "height": 680 },
-        "min_size": { "width": 720, "height": 520 },
-        "start_position": { "top": 80, "left": 120 }
+        "size": {
+          "width": 1280,
+          "height": 800
+        },
+        "min_size": {
+          "width": 1024,
+          "height": 640
+        },
+        "start_position": {
+          "top": 80,
+          "left": 120
+        }
+      },
+      "main_overlay": {
+        "file": "windows/main_overlay.html",
+        "in_game_only": true,
+        "transparent": true,
+        "resizable": true,
+        "show_in_taskbar": false,
+        "grab_keyboard_focus": true,
+        "size": {
+          "width": 1280,
+          "height": 760
+        },
+        "min_size": {
+          "width": 1024,
+          "height": 600
+        },
+        "start_position": {
+          "top": 120,
+          "left": 240
+        }
       },
       "pinned": {
         "file": "windows/pinned.html",
@@ -48,8 +81,14 @@
         "resizable": false,
         "show_in_taskbar": false,
         "grab_keyboard_focus": false,
-        "size": { "width": 340, "height": 260 },
-        "start_position": { "top": 120, "left": 20 }
+        "size": {
+          "width": 340,
+          "height": 260
+        },
+        "start_position": {
+          "top": 120,
+          "left": 20
+        }
       },
       "shop": {
         "file": "windows/shop.html",
@@ -60,7 +99,10 @@
         "show_in_taskbar": false,
         "grab_keyboard_focus": false,
         "grab_focus_on_desktop": false,
-        "size": { "width": 1000, "height": 110 }
+        "size": {
+          "width": 1000,
+          "height": 110
+        }
       },
       "matchup": {
         "file": "windows/matchup.html",
@@ -71,8 +113,28 @@
         "show_in_taskbar": false,
         "grab_keyboard_focus": false,
         "grab_focus_on_desktop": false,
-        "size": { "width": 320, "height": 44 },
-        "start_position": { "top": 12, "left": 760 }
+        "size": {
+          "width": 320,
+          "height": 44
+        },
+        "start_position": {
+          "top": 12,
+          "left": 760
+        }
+      },
+      "items": {
+        "file": "windows/items.html",
+        "in_game_only": true,
+        "transparent": true,
+        "clickthrough": true,
+        "resizable": false,
+        "show_in_taskbar": false,
+        "grab_keyboard_focus": false,
+        "grab_focus_on_desktop": false,
+        "size": {
+          "width": 1320,
+          "height": 375
+        }
       }
     },
     "hotkeys": {
@@ -89,15 +151,29 @@
     },
     "game_targeting": {
       "type": "dedicated",
-      "game_ids": [28164, 21570, 5426]
+      "game_ids": [
+        28164,
+        21570,
+        5426
+      ]
     },
-    "game_events": [28164, 21570, 5426],
+    "game_events": [
+      10902,
+      28164,
+      21570,
+      5426
+    ],
     "launch_events": [
       {
         "event": "GameLaunch",
         "tracked": true,
         "event_data": {
-          "game_ids": [28164, 21570, 5426]
+          "game_ids": [
+            10902,
+            28164,
+            21570,
+            5426
+          ]
         },
         "start_minimized": true
       }
@@ -111,6 +187,7 @@
       ]
     },
     "extra-objects": {},
-    "user_agent": "metastats-companion/0.7"
+    "user_agent": "metastats-companion/0.8",
+    "auto_relaunch_on_crash": true
   }
 }

@@ -36,7 +36,7 @@ function listView(): HTMLElement {
     )));
   };
   fill();
-  const input = h('input', { class: 'search', type: 'search', placeholder: t('units.search'), value: ui.query });
+  const input = h('input', { class: 'search', type: 'search', 'data-keep': 'units', placeholder: t('units.search'), value: ui.query });
   input.addEventListener('input', () => { ui.query = input.value; fill(); });
   return h('section', { class: 'panel' },
     h('div', { class: 'toolbar' },

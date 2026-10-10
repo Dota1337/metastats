@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {
   jsonish, parseBoardPieces, parseShop, parseLevel, parseStage, stageToRound,
   parseOpponent, gameTimeToRound, isTftMode,
-  TFT_GAME_IDS, gameClassId, isTftGame, tftFromGame, featuresFor, parseLocalPlayer, parseRoster,
+  TFT_GAME_IDS, LAUNCHER_IDS, gameClassId, isTftGame, tftFromGame, featuresFor, parseLocalPlayer, parseRoster, wonMatch,
+  parseRoundKind, parseItemSelect, parseLauncherInfo, isTftOnlyGame,
   fightToRound, fightsLowerBound, regionFromHandle,
 } from './gep.ts';
 
@@ -68,12 +69,46 @@ test('isTftMode unterscheidet TFT von Kluft', () => {
   assert.equal(isTftMode(undefined), null);
 });
 
-test('Manifest nennt genau die TFT-Spiel-IDs', () => {
+test('Manifest: Overlays nur fuer TFT-Spiele, Start und Ereignisse auch mit dem League-Client', () => {
   const m = JSON.parse(readFileSync(new URL('../../public/manifest.json', import.meta.url), 'utf8'));
-  const want = [...TFT_GAME_IDS].sort();
-  assert.deepEqual([...m.data.game_targeting.game_ids].sort(), want);
-  assert.deepEqual([...m.data.game_events].sort(), want);
-  assert.deepEqual([...m.data.launch_events[0].event_data.game_ids].sort(), want);
+  const tft = [...TFT_GAME_IDS].sort();
+  const all = [...TFT_GAME_IDS, ...LAUNCHER_IDS].sort();
+  assert.deepEqual([...m.data.game_targeting.game_ids].sort(), tft);
+  assert.deepEqual([...m.data.game_events].sort(), all);
+  assert.deepEqual([...m.data.launch_events[0].event_data.game_ids].sort(), all);
+  // Der Client darf nie als laufendes TFT-Spiel gelten (sonst Bug B2).
+  for (const id of LAUNCHER_IDS) assert.equal(isTftGame(id), false);
+});
+
+test('parseRoundKind: PVP / PVE / Carousel, unbekannt = other', () => {
+  assert.equal(parseRoundKind('{"stage":"3-2","type":"PVP"}'), 'pvp');
+  assert.equal(parseRoundKind({ stage: '4-7', type: 'PVE' }), 'pve');
+  assert.equal(parseRoundKind({ stage: '4-4', name: 'Carousel', type: 'Carousel' }), 'carousel');
+  assert.equal(parseRoundKind({ type: 'Encounter' }), 'other');
+  assert.equal(parseRoundKind(null), null);
+});
+
+test('parseItemSelect: Kartenreihenfolge, leere Auswahl', () => {
+  // Echtes Angebot aus dem Log vom 09.10. 21:23 (gemischt).
+  const raw = '{"item_1":{"name":"DA_Component_ChainVest"}, "item_2":{"name":"DA_ThiefsGloves"}, "item_3":{"name":"DA_18_EmblemBlossom"}, "item_4":{"name":"DA_Reforger"}}';
+  assert.deepEqual(parseItemSelect(raw), ['DA_Component_ChainVest', 'DA_ThiefsGloves', 'DA_18_EmblemBlossom', 'DA_Reforger']);
+  assert.deepEqual(parseItemSelect({ item_2: { name: 'B' }, item_1: { name: 'A' } }), ['A', 'B']);
+  assert.deepEqual(parseItemSelect(null), []);
+  assert.deepEqual(parseItemSelect('null'), []);
+});
+
+test('parseLauncherInfo: Queue, Phase, Region', () => {
+  assert.deepEqual(parseLauncherInfo({ lobby_info: { queueId: '1160' } }), { queueId: 1160 });
+  assert.deepEqual(parseLauncherInfo({ lobby_info: '{"queueId":"0"}' }), { queueId: null });
+  assert.deepEqual(parseLauncherInfo({ game_flow: { phase: 'InProgress' }, summoner_info: { platform_id: 'EUW1' } }), { phase: 'InProgress', platform: 'euw1' });
+  assert.deepEqual(parseLauncherInfo(null), {});
+});
+
+test('isTftOnlyGame: 28164/21570 ja, 5426 nein', () => {
+  assert.equal(isTftOnlyGame(28164), true);
+  assert.equal(isTftOnlyGame(21570), true);
+  assert.equal(isTftOnlyGame(5426), false);
+  assert.equal(isTftOnlyGame(null), false);
 });
 
 test('Shop: "Sold" ist ein leerer Platz', () => {
@@ -104,6 +139,16 @@ test('parseRoster liest alle Spieler mit Leben, Platz und Namen#Tag', () => {
   assert.deepEqual(parseRoster('kaputt'), []);
 });
 
+test('wonMatch: Platz 1, sobald alle sieben anderen einen Platz haben', () => {
+  const others = (ranks: Array<number | null>) => ranks.map((rank, i) => ({ name: `P${i}`, health: rank ? 0 : 20, rank, local: false }));
+  const me = { name: 'Me', health: 30, rank: null, local: true };
+  assert.equal(wonMatch([me, ...others([2, 3, 4, 5, 6, 7, 8])]), true);
+  assert.equal(wonMatch([me, ...others([null, 3, 4, 5, 6, 7, 8])]), false);   // einer lebt noch
+  assert.equal(wonMatch([{ ...me, rank: 2 }, ...others([1, 3, 4, 5, 6, 7, 8])]), false);
+  assert.equal(wonMatch(others([2, 3, 4, 5, 6, 7, 8])), false);              // eigener Spieler fehlt
+  assert.equal(wonMatch([me, ...others([2, 3, 4])]), false);                 // Liste unvollstaendig
+});
+
 test('fightToRound folgt dem TFT-Ablauf', () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6, 10, 11].map(fightToRound), [21, 22, 23, 25, 26, 31, 36, 41]);
   assert.equal(fightToRound(0), 21);
@@ -130,6 +175,9 @@ test('Spiel-Kennungen: 28164 und 21570 sind sicher TFT, 5426 offen', () => {
   assert.ok(!featuresFor(28164).includes('live_client_data'));
   assert.ok(featuresFor(5426).includes('live_client_data'));
   assert.ok(featuresFor(28164).includes('roster'));
+  // 28164 bestaetigt game_info nie (45 Erfolgsmeldungen im Log, 07.-09.10.).
+  assert.ok(!featuresFor(28164).includes('game_info'));
+  assert.ok(featuresFor(5426).includes('game_info'));
   assert.ok(featuresFor(21570).includes('live_client_data'));
   for (const id of [28164, 21570, 5426]) assert.ok(!featuresFor(id).includes('bench'));
 });

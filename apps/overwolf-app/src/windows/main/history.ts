@@ -1,10 +1,11 @@
 // Reiter Match History: Riot-ID-Suche, je Spiel aufklappbar die Lobby mit
 // allen 8 Spielern. Bei eigenen Spielen zusaetzlich die Aufstellung Runde fuer
 // Runde, die die App waehrend des Spiels auf diesem Rechner gespeichert hat.
-import type { CompanionMatch, CompanionPlayerResponse } from '../../../../../app/lib/companion-types.ts';
+import type { CompanionMatch, CompanionPlayerResponse, CompanionSearchHit } from '../../../../../app/lib/companion-types.ts';
 import { read } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
-import { loadPlayer } from '../../lib/api.ts';
+import { loadPlayer, searchPlayers } from '../../lib/api.ts';
+import { rankLong, isApex } from '../../lib/track-view.ts';
 import { findLocalMatch, type LocalMatch } from '../../lib/boards.ts';
 import { localMatches } from '../../lib/history-store.ts';
 import { boardView } from '../../lib/board-view.ts';
@@ -13,6 +14,7 @@ import { lookups, rerender } from './ctx.ts';
 
 const ui = {
   name: '',
+  draft: null as string | null,    // getippt, noch nicht gesucht; uebersteht das Neuzeichnen
   data: null as CompanionPlayerResponse | null,
   error: null as string | null,
   loading: false,
@@ -20,41 +22,81 @@ const ui = {
   open: new Set<string>(),
   round: new Map<string, number>(), // Spiel -> gewaehlte Runde
   local: [] as LocalMatch[],
+  region: null as string | null,   // Region aus der Trefferliste (Suche ohne #Tag)
+  hits: null as CompanionSearchHit[] | null,
 };
 
-async function search(name: string): Promise<void> {
+// Jede Suche zaehlt hoch; kommt die Antwort einer aelteren Suche spaeter an,
+// wird sie verworfen und ueberschreibt nicht den neuen Spieler.
+let seq = 0;
+
+// 400 = Name so nicht gueltig (z. B. „Foo#“), fuer den Nutzer dasselbe wie nicht gefunden.
+function errorText(e: unknown): string {
+  const s = (e as { status?: number }).status;
+  return s === 404 || s === 400 ? t('profile.notFound') : t('common.offline');
+}
+
+// Ohne #Tag: Trefferliste aller Spieler mit genau diesem Namen (wie die Suche
+// auf der Seite), ein Klick oeffnet den Spieler in seiner Region.
+async function findByName(n: string): Promise<void> {
+  const my = ++seq;
+  Object.assign(ui, { name: n, draft: null, loading: true, loadingMore: false, error: null, data: null, hits: null });
+  rerender();
+  try {
+    const r = await searchPlayers(n);
+    if (my !== seq) return;
+    ui.hits = r.hits;
+    if (r.hits.length === 0) ui.error = t('profile.notFound');
+  } catch (e) {
+    if (my !== seq) return;
+    ui.error = errorText(e);
+  }
+  ui.loading = false;
+  rerender();
+}
+
+export function openPlayer(name: string, region: string | null = null): Promise<void> {
+  return search(name, region);
+}
+
+async function search(name: string, region: string | null = null): Promise<void> {
   const n = name.trim();
-  if (!n.includes('#')) return;
-  Object.assign(ui, { name: n, loading: true, error: null, data: null });
+  if (!n) return;
+  if (!n.includes('#')) return findByName(n);
+  const my = ++seq;
+  Object.assign(ui, { name: n, draft: null, region, loading: true, loadingMore: false, error: null, data: null, hits: null });
   ui.open.clear();
   rerender();
   try {
-    const [data, local] = await Promise.all([loadPlayer(n), localMatches()]);
+    const [data, local] = await Promise.all([loadPlayer(n, 0, { region }), localMatches()]);
+    if (my !== seq) return;
     ui.data = data;
     ui.local = local;
   } catch (e) {
-    ui.error = (e as { status?: number }).status === 404 ? t('profile.notFound') : t('common.offline');
-  } finally {
-    ui.loading = false;
-    rerender();
+    if (my !== seq) return;
+    ui.error = errorText(e);
   }
+  ui.loading = false;
+  rerender();
 }
 
 async function more(): Promise<void> {
   const d = ui.data;
   if (!d?.nextStart || ui.loadingMore) return;
+  const my = seq;
   ui.loadingMore = true;
   rerender();
   try {
-    const next = await loadPlayer(ui.name, d.nextStart);
+    const next = await loadPlayer(ui.name, d.nextStart, { region: ui.region ?? d.region });
+    if (my !== seq) return;
     const seen = new Set(d.matches.map(m => m.id));
     ui.data = { ...d, matches: [...d.matches, ...next.matches.filter(m => !seen.has(m.id))], nextStart: next.nextStart ?? null };
   } catch {
     // Knopf bleibt stehen, der naechste Klick versucht es neu.
-  } finally {
-    ui.loadingMore = false;
-    rerender();
+    if (my !== seq) return;
   }
+  ui.loadingMore = false;
+  rerender();
 }
 
 function isMe(): boolean {
@@ -111,7 +153,8 @@ function matchRow(m: CompanionMatch): HTMLElement {
 
 export function historyTab(): HTMLElement {
   const me = read('ms.me');
-  const input = h('input', { class: 'search', type: 'search', placeholder: t('profile.placeholder'), value: ui.name || me || '' });
+  const input = h('input', { class: 'search', type: 'search', 'data-keep': 'history', placeholder: t('profile.placeholder'), value: ui.draft ?? (ui.name || me || '') });
+  input.addEventListener('input', () => { ui.draft = input.value; });
   input.addEventListener('keydown', e => { if (e.key === 'Enter') void search(input.value); });
   const p = ui.data;
   return h('section', { class: 'panel' },
@@ -122,6 +165,14 @@ export function historyTab(): HTMLElement {
     ),
     ui.loading ? h('div', { class: 'spinner' }) : null,
     ui.error ? h('div', { class: 'empty' }, ui.error) : null,
+    ui.hits?.length && !ui.loading ? h('div', { class: 'card' },
+      h('h3', {}, t('history.hits')),
+      h('div', { class: 'hit-list' }, ui.hits.map(hit => h('button', { class: 'hit', onclick: () => void search(hit.name, hit.region) },
+        h('span', { class: 'hit-name' }, hit.name),
+        h('span', { class: 'hit-region' }, hit.region.toUpperCase().replace(/[0-9]$/, '')),
+        h('span', { class: 'muted' }, rankLong(hit) ?? t('profile.unranked')),
+      ))),
+    ) : null,
     p && !ui.loading ? h('div', { class: 'profile' },
       h('div', { class: 'card profile-head' },
         p.player.icon != null ? h('img', { class: 'avatar', src: `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${p.player.icon}.jpg`, alt: '' }) : null,
@@ -129,7 +180,11 @@ export function historyTab(): HTMLElement {
           h('div', { class: 'player-name' }, p.player.name),
           h('div', { class: 'muted' },
             p.ranked?.tier
-              ? `${p.ranked.tier[0]}${p.ranked.tier.slice(1).toLowerCase()} ${p.ranked.rank ?? ''} · ${p.ranked.lp ?? 0} LP · ${p.ranked.wins}–${p.ranked.losses}`
+              ? [
+                rankLong({ tier: p.ranked.tier, division: p.ranked.rank, lp: p.ranked.lp }),
+                isApex(p.ranked.tier) ? null : `${p.ranked.lp ?? 0} LP`,
+                `${p.ranked.wins}–${p.ranked.losses}`,
+              ].filter(Boolean).join(' · ')
               : t('profile.unranked'),
           ),
         ),

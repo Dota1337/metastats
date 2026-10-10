@@ -86,6 +86,25 @@ test('Teilen an: sendet alle Pakete wie bisher', async () => {
   assert.deepEqual(r, { sent: 2, dropped: 0, left: 0 });
 });
 
+test('Paket waehrend eines Durchgangs: geht im selben Lauf noch raus', async () => {
+  const s = memStore();
+  await enqueue(s, entry('a', 1));
+  const sent: string[] = [];
+  let second: Promise<unknown> | null = null;
+  const r = await flush(s, async e => {
+    sent.push(e.id);
+    if (e.id === 'a') {
+      // Spielende waehrend des Sendens: neues Paket, zweiter Aufruf kehrt sofort zurueck.
+      await enqueue(s, entry('b', 2));
+      second = flush(s, async () => ({ status: 200 }), on, 10);
+    }
+    return { status: 200 };
+  }, on, 10);
+  assert.deepEqual(await second, { sent: 0, dropped: 0, left: 0 });
+  assert.deepEqual(sent, ['a', 'b']);
+  assert.deepEqual(r, { sent: 2, dropped: 0, left: 0 });
+});
+
 test('Stau: nur die neuesten MAX_ENTRIES bleiben', async () => {
   const s = memStore();
   for (let i = 0; i < MAX_ENTRIES + 3; i++) await enqueue(s, entry('e' + i, i));

@@ -13,15 +13,17 @@
 //   - README.md       (dev doc, not the user-facing one Overwolf wants
 //                      in their store listing — that lives elsewhere)
 
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { ZipArchive } from 'archiver';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = resolve(here, 'dist');
-const outFile = join(outDir, 'metastats-companion.opk');
 const appDir = join(outDir, 'app');
+// Version im Dateinamen, damit alte und neue Pakete nicht verwechselt werden.
+const version = JSON.parse(readFileSync(join(appDir, 'manifest.json'), 'utf8')).meta.version;
+const outFile = join(outDir, `metastats-companion-${version}.opk`);
 
 async function main() {
   await import('node:fs/promises').then(fs => fs.mkdir(outDir, { recursive: true }));

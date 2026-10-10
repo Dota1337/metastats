@@ -6,7 +6,7 @@ import { t, lang } from '../../lib/i18n.ts';
 import { h, unitIcon, tierBadge, fmtAvg, levelTabs } from '../../lib/dom.ts';
 import { shownLevels } from '../../lib/plan.ts';
 import { nav, go, lookups, comps, slotFallback, rerender } from './ctx.ts';
-import { compDetailSlot, detailSlotKey } from './comps.ts';
+import { compDetailSlot, detailSlotKey, compsEmpty } from './comps.ts';
 
 // Gewaehlte Stufe; springt beim Wechsel der Comp auf deren erste Stufe mit Boards.
 const ui = { key: '', level: 0 };
@@ -16,14 +16,17 @@ export function earlyTab(): HTMLElement {
   const all = comps();
   const lk = lookups();
   const pin = read('ms.pin');
-  // Ohne Wahl: die angeheftete Comp, sonst die erste mit fruehen Boards.
-  const key = nav.earlyKey ?? (pin?.hasEarly ? pin.key : null) ?? all.find(x => x.hasEarly)?.key ?? all[0]?.key ?? null;
+  // Ohne Wahl: die angeheftete Comp, sonst die erste mit fruehen Boards. Nur
+  // Comps, die es in der aktuellen Liste gibt (nach Region- oder Datenwechsel
+  // blieb der Reiter sonst leer).
+  const known = (k: string | null | undefined) => (k && all.some(x => x.key === k) ? k : null);
+  const key = known(nav.earlyKey) ?? (pin?.hasEarly ? known(pin.key) : null) ?? all.find(x => x.hasEarly)?.key ?? all[0]?.key ?? null;
   const c = all.find(x => x.key === key) ?? null;
 
   const select = h('select', {}, all.map(x => h('option', { value: x.key, selected: x.key === key }, `${x.tier ?? '—'} · ${x.name}`)));
   select.addEventListener('change', () => go('early', { earlyKey: select.value }));
 
-  if (!c) return h('section', { class: 'panel' }, all.length ? null : h('div', { class: 'spinner' }));
+  if (!c) return h('section', { class: 'panel' }, compsEmpty());
   const slot = compDetailSlot(c);
   const d = slot.state === 'ok' ? slot.data : null;
   if (ui.key !== c.key) { ui.key = c.key; ui.level = 0; }

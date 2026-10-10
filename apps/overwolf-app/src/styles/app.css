@@ -26,11 +26,15 @@ html, body {
 }
 
 body.win-main { background: var(--bg); overflow: hidden; }
-body.win-pinned, body.win-shop, body.win-matchup, body.win-background { background: transparent; overflow: hidden; }
+body.win-pinned, body.win-shop, body.win-matchup, body.win-items, body.win-background { background: transparent; overflow: hidden; }
 
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
 input, select { font: inherit; color: var(--text); }
 .muted { color: var(--muted); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
 /* ---------- Hauptfenster ---------- */
 
@@ -285,3 +289,87 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .lobby-row .units { padding-bottom: 8px; gap: 4px; }
 .more { align-self: center; }
 .ov-board { display: flex; justify-content: center; }
+
+/* ---------- Hauptfenster: Seitenleiste, Live-Spalte (0.8) ---------- */
+
+/* Hauptfenster als Overlay ueber dem Spiel: Fenster durchsichtig, Inhalt als Karte. */
+body.win-main.win-main-overlay { background: transparent; }
+.win-main-overlay #app { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.titlebar-fill { flex: 1; }
+.shell { flex: 1; display: flex; min-height: 0; }
+.shell .content { min-width: 0; }
+.sidebar { width: 150px; flex: none; display: flex; flex-direction: column; gap: 2px; padding: 10px 8px; background: var(--panel); border-right: 1px solid var(--line); overflow-y: auto; }
+.side-tab { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px 10px; border-radius: 6px; color: var(--muted); }
+.side-tab:hover { color: var(--text); background: var(--card); }
+.side-tab.active { color: var(--text); background: var(--accent-soft); }
+.sidebar-fill { flex: 1; }
+.live-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--good); box-shadow: 0 0 6px var(--good); }
+.live-col { width: 230px; flex: none; display: flex; flex-direction: column; gap: 8px; padding: 12px 12px 12px 0; overflow-y: auto; }
+@media (max-width: 899px) { .live-col { display: none; } }
+.live-head { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; }
+.live-head:hover { border-color: var(--accent); }
+.live-head .avatar { width: 40px; height: 40px; }
+.live-who { min-width: 0; }
+.live-who .player-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-avg { margin-top: 8px; }
+.live-match { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-left: 3px solid var(--line); }
+.live-match.top { border-left-color: var(--good); }
+.live-match.bot { border-left-color: var(--bad); }
+.live-match .match-place { font-size: 13px; min-width: 22px; }
+.live-match .units { flex-wrap: nowrap; gap: 3px; overflow: hidden; }
+
+/* Gegner-Tracker und Platzierungen (Overlay und Reiter „Im Spiel“) */
+.track { white-space: nowrap; font-size: 12px; }
+.track.now { color: var(--c5); font-weight: 600; }
+.track.never { color: var(--muted); }
+.track.unlikely { color: var(--muted); opacity: .6; }
+.place-chips { display: inline-flex; gap: 2px; vertical-align: middle; }
+.place-chip { min-width: 16px; height: 16px; padding: 0 2px; border-radius: 3px; display: inline-grid; place-items: center; font-size: 10px; font-weight: 700; color: #0b1120; }
+.place-chip.win { background: var(--c5); }
+.place-chip.top { background: var(--good); }
+.place-chip.bot { background: var(--bad); color: #fff; }
+
+.ingame-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.table.ingame td { vertical-align: middle; }
+.table.ingame th:nth-child(n+3), .table.ingame td:nth-child(n+3) { text-align: left; }
+.table.ingame tr.dead td { opacity: .4; }
+.table.ingame tr.next td:first-child { box-shadow: inset 3px 0 var(--c5); }
+.table.ingame .lobby-name { display: inline-block; max-width: 160px; vertical-align: middle; }
+.table.ingame .name-cell { gap: 4px; }
+
+.hit-list { display: flex; flex-direction: column; gap: 4px; }
+.hit { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line); text-align: left; }
+.hit:hover { border-color: var(--accent); }
+.hit-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hit-region { font-size: 11px; color: var(--muted); background: var(--card); border-radius: 4px; padding: 1px 6px; }
+
+/* ---------- Comp-Auswahl im Spiel ---------- */
+
+.picker-search { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; outline: none; cursor: text; user-select: text; }
+.picker-search:focus { border-color: var(--accent); }
+.picker-list { display: flex; flex-direction: column; gap: 2px; max-height: 420px; overflow-y: auto; }
+.picker-row { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 6px; border-radius: 6px; text-align: left; }
+.picker-row:hover { background: var(--card); }
+.picker-row.fits { background: var(--accent-soft); }
+.picker-row .tier { min-width: 20px; height: 20px; font-size: 11px; border-radius: 5px; }
+.picker-carries { display: flex; gap: 2px; flex: none; }
+.picker-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.picker-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-chips { display: flex; gap: 3px; }
+.tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+.tag.ok { background: rgba(54, 196, 122, .18); color: var(--good); }
+.tag.warn { background: rgba(228, 91, 91, .18); color: var(--bad); }
+
+/* Gegner-Overlay: Leben und Rang */
+.opp-head .track { flex: none; font-size: 11px; }
+.opp-hp { flex: none; min-width: 20px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.opp-rank { font-size: 11px; font-weight: 600; margin-right: 4px; }
+
+/* ---------- Item-Leiste ---------- */
+
+/* Ueber den Karten der Item-Auswahl; Lage relativ zum 16:9-Spielbild (placement.ts ITEMS_SIZE). */
+.items-row { position: fixed; left: 0; right: 0; bottom: 43.5%; padding-right: 12.8%; display: flex; justify-content: center; gap: 1%; pointer-events: none; }
+.items-box { flex: 0 1 19.8%; display: flex; justify-content: center; align-items: flex-end; }
+.item-hint { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 6px; background: rgba(11, 17, 32, .9); border: 1px solid var(--line); font-size: 12px; white-space: nowrap; }
+.item-hint.best { border-color: var(--c5); color: var(--c5); }
+.item-hint.pin { border-color: var(--accent); }

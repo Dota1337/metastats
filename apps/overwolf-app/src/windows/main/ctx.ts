@@ -6,8 +6,13 @@ import { read } from '../../lib/store.ts';
 import { t } from '../../lib/i18n.ts';
 import { h } from '../../lib/dom.ts';
 
-export type Tab = 'comps' | 'units' | 'items' | 'early' | 'history' | 'settings';
-export const TABS: Tab[] = ['comps', 'units', 'items', 'early', 'history', 'settings'];
+export type Tab = 'ingame' | 'comps' | 'units' | 'items' | 'early' | 'history' | 'settings';
+// „Im Spiel“ steht nur waehrend einer TFT-Partie in der Seitenleiste.
+export const TABS: Tab[] = ['ingame', 'comps', 'units', 'items', 'early', 'history', 'settings'];
+
+// Dasselbe Fenster laeuft auch als main_overlay ueber dem Spiel; dort laedt es
+// nie selbst (das Hintergrundfenster haelt ms.comps/ms.lookups aktuell).
+export const IS_OVERLAY = document.body.dataset.window === 'main_overlay';
 
 export const nav = {
   tab: 'comps' as Tab,

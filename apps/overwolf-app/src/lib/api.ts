@@ -3,7 +3,8 @@
 // aelter als die Frist ist — im Spiel wird so nie auf das Netz gewartet.
 import type {
   CompanionCompDetail, CompanionCompsResponse, CompanionItemDetail, CompanionItemsResponse,
-  CompanionLookups, CompanionPlayerResponse, CompanionUnitDetail, CompanionUnitsResponse,
+  CompanionLobbyResponse, CompanionLookups, CompanionPlayerResponse, CompanionSearchResponse, CompanionUnitDetail,
+  CompanionUnitsResponse,
 } from '../../../../app/lib/companion-types.ts';
 import { API_BASE } from './config.ts';
 import { read, write } from './store.ts';
@@ -31,6 +32,9 @@ export async function loadComps(force = false): Promise<CompanionCompsResponse |
   if (fresh && !force) return cached.data;
   try {
     const data = await getJson<CompanionCompsResponse>(`/api/companion/v1/comps?region=${encodeURIComponent(region)}`, 60000);
+    // Region waehrend des Abrufs gewechselt: die Antwort gehoert zur alten und
+    // darf die neue (eigener Abruf) nicht ueberschreiben.
+    if (read('ms.settings').region !== region) return null;
     write('ms.comps', { fetchedAt: Date.now(), data });
     return data;
   } catch {
@@ -51,8 +55,23 @@ export async function loadLookups(force = false): Promise<CompanionLookups | nul
   }
 }
 
-export function loadPlayer(name: string, start = 0): Promise<CompanionPlayerResponse> {
-  const q = `name=${encodeURIComponent(name)}${start > 0 ? `&start=${start}` : ''}`;
+// lobby: false = ohne Mitspieler-Namen (Live-Spalte; spart Riot-Abrufe).
+// Item-Ergebnisse fuer die Item-Leiste im Spiel (Overlays laden nie selbst).
+export async function loadItemStats(force = false): Promise<CompanionItemsResponse | null> {
+  const cached = read('ms.itemStats');
+  if (cached && !force && Date.now() - cached.fetchedAt < COMPS_TTL) return cached.data;
+  try {
+    const data = await getJson<CompanionItemsResponse>('/api/companion/v1/items', 30000);
+    write('ms.itemStats', { fetchedAt: Date.now(), data });
+    return data;
+  } catch {
+    return cached?.data ?? null;
+  }
+}
+
+export function loadPlayer(name: string, start = 0, opts: { lobby?: boolean; region?: string | null } = {}): Promise<CompanionPlayerResponse> {
+  const q = `name=${encodeURIComponent(name)}${start > 0 ? `&start=${start}` : ''}`
+    + (opts.lobby === false ? '&lobby=0' : '') + (opts.region ? `&region=${encodeURIComponent(opts.region)}` : '');
   return getJson<CompanionPlayerResponse>(`/api/companion/v1/player?${q}`, 30000);
 }
 
@@ -100,6 +119,17 @@ export async function loadCompDetail(slug: string, units: string[], carries: str
     await new Promise(r => setTimeout(r, 3000));
     return cached<CompanionCompDetail>(path, 60000);
   }
+}
+
+// Mitspieler der laufenden Partie: Rang und letzte Spiele aus unserer Datenbank.
+export function loadLobby(names: string[], region: string | null): Promise<CompanionLobbyResponse> {
+  const q = `names=${encodeURIComponent(names.join(','))}` + (region ? `&region=${encodeURIComponent(region)}` : '');
+  return getJson<CompanionLobbyResponse>(`/api/companion/v1/lobby?${q}`, 20000);
+}
+
+// Spielersuche ohne #Tag: alle Spieler mit genau diesem Namen, mit Region.
+export function searchPlayers(name: string): Promise<CompanionSearchResponse> {
+  return getJson<CompanionSearchResponse>(`/api/companion/v1/search?q=${encodeURIComponent(name)}`, 15000);
 }
 
 export function siteUrl(path: string): string {

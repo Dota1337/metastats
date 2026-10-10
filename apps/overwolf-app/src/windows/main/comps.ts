@@ -60,7 +60,7 @@ function listView(): HTMLElement {
   const all = comps();
   const lk = lookups();
   const pin = read('ms.pin');
-  const input = h('input', { class: 'search', type: 'search', placeholder: t('comps.search'), value: listState.query });
+  const input = h('input', { class: 'search', type: 'search', 'data-keep': 'comps', placeholder: t('comps.search'), value: listState.query });
   const renderList = () => {
     const q = listState.query.trim().toLowerCase();
     const l = q
@@ -76,13 +76,17 @@ function listView(): HTMLElement {
   });
   return h('section', { class: 'panel' },
     h('div', { class: 'toolbar' }, input),
-    all.length === 0
-      ? listState.loadFailed
-        ? h('div', { class: 'empty' }, t('common.offline'), ' ', h('button', { class: 'btn', onclick: () => listState.retry() }, t('common.retry')))
-        : h('div', { class: 'spinner' })
-      : null,
+    all.length === 0 ? compsEmpty() : null,
     h('div', { id: 'comp-list', class: 'comp-list' }, renderList()),
   );
+}
+
+// Keine Comps: laedt noch, Abruf fehlgeschlagen oder der Server hat keine
+// (dann nicht ewig drehen).
+export function compsEmpty(): HTMLElement {
+  if (read('ms.comps')) return h('div', { class: 'empty' }, t('common.noData'));
+  if (listState.loadFailed) return h('div', { class: 'empty' }, t('common.offline'), ' ', h('button', { class: 'btn', onclick: () => listState.retry() }, t('common.retry')));
+  return h('div', { class: 'spinner' });
 }
 
 export function detailSlotKey(c: CompanionComp): string {

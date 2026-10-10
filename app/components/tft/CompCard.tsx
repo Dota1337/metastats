@@ -297,7 +297,7 @@ export default function CompCard({
                     >
                       {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                       {showThreeStar && (
-                        <div className="absolute -top-1 -left-1 bg-[#e7c310] text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
+                        <div className="absolute -top-1 -left-1 bg-star3-badge text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
                           3★
                         </div>
                       )}

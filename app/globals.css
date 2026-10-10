@@ -127,6 +127,8 @@
   --brand: #7B61FF;
   --brand-rgb: 123 97 255;
   --gold-earnings: #c89b3c;
+  /* 3★-Abzeichen auf Unit-Kacheln (Comp-Liste + Comp-Kopf). */
+  --star3-badge: #e7c310;
 
   /* --- Semantik ------------------------------------------------------------
      WELLE-2-SCHULD: Win/Loss läuft heute über ZWEI parallele Systeme —
@@ -231,6 +233,7 @@
 
   --color-brand: var(--brand);
   --color-gold-earnings: var(--gold-earnings);
+  --color-star3-badge: var(--star3-badge);
 
   /* Transparente Accent-Stufen.
      Warum hier und nicht als `accent/40`: Tailwinds Slash-Syntax baut daraus

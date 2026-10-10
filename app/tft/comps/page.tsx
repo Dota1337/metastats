@@ -14,7 +14,7 @@ import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters from '../../components/tft/AdvancedCompFilters';
 import { visibleFamilies as pickVisibleFamilies, type CompSortBy } from '../../lib/tft-comp-families';
 import { useTftCompsData } from '../../lib/useTftCompsData';
-import { coreFlexRing } from '../../lib/tft-ui';
+import { coreFlexFrame } from '../../lib/tft-ui';
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
@@ -125,6 +125,11 @@ export default function TftCompsPage() {
 
         {!error && hasData && visibleFamilies.length > 0 && (
           <>
+            {/* Handy: der Tabellenkopf mit der Legende ist dort ausgeblendet —
+                Legende als eigene Zeile (User 2026-10-10). */}
+            <div className="sm:hidden mb-2 px-1 text-[11px]">
+              <CoreFlexLegend t={t} />
+            </div>
             <div className={`hidden sm:grid items-center gap-3 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
               filters.velocity > 0
                 ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
@@ -133,15 +138,8 @@ export default function TftCompsPage() {
               <div></div>
               <div></div>
               <div>{t('nav.comps')}</div>
-              {/* Legende zum Core/Flex-Ring der Unit-Kacheln (User 2026-10-10). */}
-              <div className="flex items-center gap-3 font-normal text-fg-muted">
-                {(['core', 'flex'] as const).map(k => (
-                  <span key={k} className="inline-flex items-center gap-1.5">
-                    <span className="inline-block w-3 h-3 rounded-[3px] bg-surface-sunken" style={coreFlexRing(k)} aria-hidden="true" />
-                    {t(`tft.comp.board.${k}`)}
-                  </span>
-                ))}
-              </div>
+              {/* Legende zu den Core/Flex-Rahmen der Unit-Reihe (User 2026-10-10). */}
+              <CoreFlexLegend t={t} />
               <div className="text-center">{t('tft.avgPlacement')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
@@ -178,6 +176,20 @@ export default function TftCompsPage() {
       </div>
       <Footer />
     </main>
+  );
+}
+
+// Legende zu den Core/Flex-Rahmen: Mini-Rahmen im Stil der Gruppen (coreFlexFrame).
+function CoreFlexLegend({ t }: { t: (k: any) => string }) {
+  return (
+    <div className="flex items-center gap-3 font-normal text-fg-muted">
+      {(['core', 'flex'] as const).map(k => (
+        <span key={k} className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-[3px]" style={coreFlexFrame(k)} aria-hidden="true" />
+          {t(`tft.comp.board.${k}`)}
+        </span>
+      ))}
+    </div>
   );
 }
 

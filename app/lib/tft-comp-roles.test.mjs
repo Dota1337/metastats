@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   computeRoles, namedCarries, shownItems, sumUnits, resolveFamilies, roleItemSets, componentCheckFromItems,
-  coreFlexKind, coreFlexMap, unitPresence,
+  coreFlexKind, coreFlexMap, unitPresence, splitCoreFlex,
 } from './tft-comp-roles.ts';
 
 const opts = { set: 18, isComponent: (a) => a === 'DA_BFSword' };
@@ -164,4 +164,21 @@ test('Core/Flex ohne Spiele: keine Einteilung statt erfundener Werte', () => {
     coreFlexMap([{ characterId: 'A', count: 90, gamesWithUnit: 90 }, { characterId: 'B', count: 40, gamesWithUnit: 40 }, { count: 99 }], 100),
     { A: 'core', B: 'flex' },
   );
+});
+
+test('splitCoreFlex: Reihenfolge bleibt je Gruppe, genannte Carries immer Core', () => {
+  const units = ['A', 'B', 'C', 'D', 'E'].map((characterId) => ({ characterId }));
+  const kinds = { A: 'flex', B: 'core', C: 'flex', D: 'core' };
+  const ids = (g) => Object.fromEntries(Object.entries(g).map(([k, v]) => [k, v.map((u) => u.characterId)]));
+  // E ohne Eintrag: hinten ohne Rahmen
+  assert.deepEqual(ids(splitCoreFlex(units, kinds)), { core: ['B', 'D'], flex: ['A', 'C'], rest: ['E'] });
+  // C steht im Comp-Namen: Core, an seiner Stelle in der Eingabe-Reihenfolge
+  assert.deepEqual(ids(splitCoreFlex(units, kinds, ['C'])), { core: ['B', 'C', 'D'], flex: ['A'], rest: ['E'] });
+});
+
+test('splitCoreFlex ohne Einteilung: keine Rahmen, auch nicht fuer genannte Carries', () => {
+  const units = [{ characterId: 'A' }, { characterId: 'B' }];
+  for (const kinds of [undefined, null, {}]) {
+    assert.deepEqual(splitCoreFlex(units, kinds, ['A']), { core: [], flex: [], rest: units });
+  }
 });

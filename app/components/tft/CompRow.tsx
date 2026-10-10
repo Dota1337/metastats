@@ -4,7 +4,8 @@ import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
-import { costColor as costColorOf, coreFlexRing } from '../../lib/tft-ui';
+import { costColor as costColorOf } from '../../lib/tft-ui';
+import CoreFlexGroups from './CoreFlexGroups';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import BookmarkButton from '../BookmarkButton';
@@ -54,8 +55,8 @@ interface Comp {
     topItems?: { apiName: string; count: number | unknown }[];
   }[];
   velocity?: CompVelocity | null;
-  // Core/Flex je Unit, gerechnet in tft-comp-families.ts (Hauptzeile ueber die
-  // Familie, Unterzeile ueber ihre Build-Gruppe). Fehlt es, kein Ring.
+  // Core/Flex je Unit, gerechnet in tft-comp-families.ts ueber die Build-Gruppe
+  // des gezeigten Boards. Fehlt es, keine Rahmen (CoreFlexGroups).
   coreFlex?: Record<string, 'core' | 'flex'>;
 }
 
@@ -156,10 +157,13 @@ export default function CompRow({
       _c: safeCount(u.count),
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
-    // Strikt Cost ASC + Name ASC (Alphabet erstes Zeichen) — User-Vorgabe
+    // Cost ASC + Name ASC (Alphabet erstes Zeichen) — User-Vorgabe
     // 2026-06-20: „grundsätzlich die Units bei den Comps von links nach
     // rechts nach der jeweiligen Cost hierarchisch abbilden, angefangen mit
     // 1-cost, dann 2-cost usw. Bei 2 2-Cost gehen wir nach dem Alphabet".
+    // Seit 2026-10-10 gilt das INNERHALB der Core- und der Flex-Gruppe
+    // (User: „eine Umrandung für Core und eine für Flex"): erst alle Core-Units
+    // nach Kosten, dann alle Flex-Units nach Kosten — CoreFlexGroups.
     // Carry-Differenzierung bleibt visuell über den lila Tile-Border erhalten.
     const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
     const nameOf = (cid: string) =>
@@ -423,8 +427,15 @@ export default function CompRow({
           </button>
         )}
         </div>
-        <div className="flex items-start gap-1.5 flex-wrap sm:flex-nowrap">
-          {typicalUnits.slice(0, 9).map(u => {
+        {/* Handy: Units als eigene Zeile ueber die volle Breite, unter Name und
+            Werten (User 2026-10-10) — in der schmalen Spalte neben dem Namen
+            passte mit Rahmen nur noch eine Unit je Zeile. */}
+        <CoreFlexGroups
+          className="col-span-full order-last sm:col-span-1 sm:order-none"
+          units={typicalUnits}
+          kinds={comp.coreFlex}
+          forceCore={named}
+          renderUnit={u => {
             const ch = findChampion(assets, u.characterId);
             const isCarry = carrySet.has(u.characterId);
             const url = tftChampionTileUrl(assets, ch);
@@ -443,10 +454,7 @@ export default function CompRow({
                   href={`/tft/units/${encodeURIComponent(u.characterId)}`}
                   onClick={e => e.stopPropagation()}
                   className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm focus-visible:ring-2 focus-visible:ring-accent-a60"
-                  style={{
-                    borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)'),
-                    ...coreFlexRing(comp.coreFlex?.[u.characterId]),
-                  }}
+                  style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
                   title={ch?.name || u.characterId}
                 >
                   {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
@@ -482,8 +490,8 @@ export default function CompRow({
                 )}
               </div>
             );
-          })}
-        </div>
+          }}
+        />
 
         {/* Stats: mobile = single column on the right; desktop = 4-5 columns */}
         <div className="hidden sm:block text-center tabular-nums font-semibold text-lg" style={{ color: tier.color }}>

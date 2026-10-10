@@ -31,6 +31,7 @@ export const ITEM_CARRIER_MAX = 4;
 // Umrandung"): Core = Unit steht in mindestens 75 % der Spiele dieser Comp auf
 // dem Endbrett, alles darunter ist Flex. Gemessen an Spielen mit der Unit
 // (gamesWithUnit), nicht an Kopien — Kopien zaehlen bei ×2-Units doppelt.
+// Genannte Carries stehen trotzdem in Core (splitCoreFlex).
 export const CORE_MIN_PRESENCE = 0.75;
 export const MERGE_MIN_JACCARD = 0.7;    // Ueberlappung der Kern-Units zweier Familien
 
@@ -205,6 +206,25 @@ export function coreFlexMap(units: readonly RoleUnit[] | null | undefined, games
   for (const u of units || []) {
     const k = u?.characterId ? coreFlexKind(u, games) : null;
     if (k) out[u.characterId] = k;
+  }
+  return out;
+}
+
+// Units fuer die Gruppen-Rahmen aufteilen, Reihenfolge der Eingabe bleibt
+// (Liste: Kosten, DNA: Anteil). Carries aus dem Comp-Namen (forceCore) stehen
+// immer in Core (User 2026-10-10), sonst sagte der Name „Carry" und der Rahmen
+// „austauschbar". Ohne Einteilung (keine Spiele) alles in rest = ohne Rahmen;
+// ebenso eine einzelne Unit ohne Eintrag.
+export function splitCoreFlex<T extends { characterId: string }>(
+  units: readonly T[],
+  kinds: Readonly<Record<string, CoreFlexKind>> | null | undefined,
+  forceCore: readonly string[] = [],
+): { core: T[]; flex: T[]; rest: T[] } {
+  const out = { core: [] as T[], flex: [] as T[], rest: [] as T[] };
+  if (!kinds || Object.keys(kinds).length === 0) { out.rest = [...units]; return out; }
+  for (const u of units) {
+    const k = forceCore.includes(u.characterId) ? 'core' : kinds[u.characterId];
+    (k ? out[k] : out.rest).push(u);
   }
   return out;
 }

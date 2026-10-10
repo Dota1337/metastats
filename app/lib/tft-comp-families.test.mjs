@@ -46,7 +46,7 @@ test('currentSetFamilies behaelt nur Traits aus dem aktuellen Bundle', () => {
   assert.deepEqual(out.map(f => f.familyKey), ['a']);
 });
 
-test('Core/Flex: zusammengelegte Variante zaehlt alle Gruppenzeilen, Hauptzeile die ganze Familie', () => {
+test('Core/Flex: zusammengelegte Variante zaehlt alle Gruppenzeilen, Hauptzeile ihr gezeigtes Board', () => {
   const units = (o) => Object.entries(o).map(([characterId, g]) => ({ characterId, count: g, gamesWithUnit: g }));
   const row = (slug, games, u) => ({ slug, clusterKey: slug, games, avgPlacement: 4, top4Rate: 0.5, top1Rate: 0.1, pickRate: 0.01, typicalUnits: units(u) });
   // T@8 und T@9 haben dieselben Units -> eine Variante mit 160 Spielen.
@@ -63,7 +63,9 @@ test('Core/Flex: zusammengelegte Variante zaehlt alle Gruppenzeilen, Hauptzeile 
   assert.deepEqual(merged.coreFlex, { DA_C: 'core', A: 'flex', B: 'core' });
   const single = f.variants.find(v => !v._mergedFromBuilds);
   assert.deepEqual(single.coreFlex, { DA_C: 'core', D: 'core' });
-  // Familie: 200 Spiele — C 200 Core, A 110 / B 120 / D 40 Flex
+  // Hauptzeile = gezeigtes Board (hier die zusammengelegte Gruppe mit den
+  // meisten Spielen), nicht die Familie (dort waeren A, B und D Flex).
   assert.equal(f.totalGames, 200);
-  assert.deepEqual(f.mainComp.coreFlex, { DA_C: 'core', A: 'flex', B: 'flex', D: 'flex' });
+  assert.equal(f.mainComp._mergedFromBuilds?.length, 2);
+  assert.deepEqual(f.mainComp.coreFlex, { DA_C: 'core', A: 'flex', B: 'core' });
 });

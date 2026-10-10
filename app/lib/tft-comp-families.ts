@@ -288,10 +288,10 @@ export function buildCompFamilies(
     }
     const famUnits = familyUnits(membersOf.get(familyKey) || [familyKey]);
     const familyRoles = computeRoles(famUnits, totalGames, { ...roleOpts, keyCarry: carry });
-    // Core/Flex der Hauptzeile ueber die ganze Familie (User 2026-10-10:
-    // „Ganze Familie") — dieselbe Basis wie Comp-DNA auf der Detailseite.
-    // Unterzeilen behalten ihre eigene Einteilung (Build-Gruppe oben).
-    mainComp.coreFlex = coreFlexMap(famUnits, totalGames);
+    // Core/Flex der Hauptzeile: die Einteilung ihrer Build-Gruppe (oben), also
+    // des gezeigten Boards — User 2026-10-10 „Gezeigtes Board" statt Familie,
+    // nachdem 23 von 40 Zeilen nach Familie dem Board widersprachen. Die
+    // Comp-DNA der Detailseite misst weiter die ganze Familie.
     // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
     // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
     // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.

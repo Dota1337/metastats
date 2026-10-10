@@ -12,13 +12,13 @@ export function costColor(cost: number): string {
     : '#e0c75a';
 }
 
-// Core/Flex-Ring um eine Unit-Kachel (Comp-Liste + Comp-DNA, User 2026-10-10):
-// innen bleibt die Kostenfarbe, aussen ein heller Ring — durchgezogen = Core,
-// gestrichelt = Flex. outline verschiebt nichts; 1 px Abstand, damit der Ring
-// nicht mit dem grauen 1-Kosten-Rahmen verschmilzt. Kein Ring ohne Einteilung.
-export function coreFlexRing(kind: 'core' | 'flex' | null | undefined): { outline: string; outlineOffset: string } | undefined {
+// Core/Flex-Rahmen um eine Gruppe von Unit-Kacheln (Comp-Liste + Comp-DNA,
+// User 2026-10-10: „eine Umrandung für Core und eine für Flex"): durchgezogen =
+// Core, gestrichelt = Flex. Auch fuer die Mini-Symbole in Legende und Zaehler,
+// damit sie wie der Rahmen aussehen. Kein Rahmen ohne Einteilung.
+export function coreFlexFrame(kind: 'core' | 'flex' | null | undefined): { border: string } | undefined {
   if (!kind) return undefined;
-  return { outline: `1.5px ${kind === 'core' ? 'solid' : 'dashed'} var(--fg-bright)`, outlineOffset: '1px' };
+  return { border: `1.5px ${kind === 'core' ? 'solid' : 'dashed'} var(--fg-bright)` };
 }
 
 // Sechseck-Maske fuer Champion-Portraits (Builder-Brett, Comp-Uebersicht).

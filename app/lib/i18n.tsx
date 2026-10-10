@@ -2744,6 +2744,50 @@ const translations = {
     '\uC870\uD569\uC744 \uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230\u9635\u5BB9',
     'Comp no encontrado', 'Comp introuvable'
   ),
+  // Comp-Vergleich mit Spieler-Insights (User 2026-10-10). Eigener Namensraum:
+  // tft.compare.* gehoert teils dem Spieler-Vergleich.
+  'tft.compVs.verdict': t6('Kurzurteil', 'Verdict', '\uC694\uC57D', '\u7ED3\u8BBA', 'Veredicto', 'Verdict'),
+  'tft.compVs.better': t6(
+    '{name} landet im Schnitt besser: Platz {a} gegen {b}.', '{name} places better on average: {a} vs {b}.',
+    '{name}\uC758 \uD3C9\uADE0 \uB4F1\uC218\uAC00 \uB354 \uC88B\uC2B5\uB2C8\uB2E4: {a} \uB300 {b}.', '{name} \u5E73\u5747\u540D\u6B21\u66F4\u597D\uFF1A{a} \u5BF9 {b}\u3002',
+    '{name} queda mejor de media: {a} frente a {b}.', '{name} se classe mieux en moyenne : {a} contre {b}.'
+  ),
+  'tft.compVs.even': t6(
+    'Im Schnitt etwa gleich stark: Platz {a} gegen {b}.', 'About equally strong on average: {a} vs {b}.',
+    '\uD3C9\uADE0\uC801\uC73C\uB85C \uBE44\uC2B7\uD55C \uC218\uC900\uC785\uB2C8\uB2E4: {a} \uB300 {b}.', '\u5E73\u5747\u5B9E\u529B\u76F8\u5F53\uFF1A{a} \u5BF9 {b}\u3002',
+    'Igual de fuertes de media: {a} frente a {b}.', 'Force comparable en moyenne : {a} contre {b}.'
+  ),
+  'tft.compVs.shared': t6(
+    'Gemeinsame Units: {n}', 'Shared units: {n}',
+    '\uACF5\uD1B5 \uC720\uB2DB: {n}\uAC1C', '\u5171\u540C\u68CB\u5B50\uFF1A{n} \u4E2A',
+    'Unidades en com\u00FAn: {n}', 'Unit\u00E9s en commun : {n}'
+  ),
+  'tft.compVs.star3': t6(
+    '{name}: {p} % der Spiele mit 3\u2605-Carry, mit 2\u2605 im Schnitt Platz {avg}.',
+    '{name}: {p}% of games with a 3\u2605 carry; at 2\u2605 it averages {avg}.',
+    '{name}: {p}% \uAC8C\uC784\uC5D0\uC11C 3\u2605 \uCE90\uB9AC, 2\u2605\uC77C \uB54C \uD3C9\uADE0 {avg}\uB4F1.',
+    '{name}\uFF1A{p}% \u7684\u5BF9\u5C40\u4E3BC\u4E3A3\u2605\uFF0C2\u2605\u65F6\u5E73\u5747\u7B2C{avg}\u540D\u3002',
+    '{name}: {p} % de las partidas con carry 3\u2605; con 2\u2605 queda de media {avg}.',
+    '{name} : {p} % des parties avec un carry 3\u2605 ; en 2\u2605, place moyenne {avg}.'
+  ),
+  'tft.compVs.contested': t6(
+    'Spielt ein Zweiter {name}, verschlechtert sich der Schnitt von Platz {a} auf {b}.',
+    'If a second player goes {name}, the average worsens from {a} to {b}.',
+    '\uB2E4\uB978 \uD50C\uB808\uC774\uC5B4\uB3C4 {name}\uC744(\uB97C) \uD558\uBA74 \uD3C9\uADE0\uC774 {a}\uB4F1\uC5D0\uC11C {b}\uB4F1\uC73C\uB85C \uB098\uBE60\uC9D1\uB2C8\uB2E4.',
+    '\u82E5\u53E6\u4E00\u540D\u73A9\u5BB6\u4E5F\u73A9{name}\uFF0C\u5E73\u5747\u540D\u6B21\u4ECE{a}\u53D8\u5DEE\u5230{b}\u3002',
+    'Si otro jugador tambi\u00E9n va a {name}, la media empeora de {a} a {b}.',
+    'Si un second joueur part sur {name}, la moyenne se d\u00E9grade de {a} \u00E0 {b}.'
+  ),
+  'tft.compVs.components': t6('Bauteile der Carries', 'Carry components', '\uCE90\uB9AC \uC7AC\uB8CC', '\u4E3BC\u6563\u4EF6', 'Componentes del carry', 'Composants du carry'),
+  'tft.compVs.inBoth': t6('in beiden', 'in both', '\uC591\uCABD \uACF5\uD1B5', '\u4E24\u8005\u5171\u7528', 'en ambas', 'dans les deux'),
+  'tft.compVs.risk': t6('Risiko', 'Risk', '\uB9AC\uC2A4\uD06C', '\u98CE\u9669', 'Riesgo', 'Risque'),
+  'tft.compVs.row.star3': t6('Carry 3\u2605', 'Carry 3\u2605', '\uCE90\uB9AC 3\u2605', '\u4E3BC 3\u2605', 'Carry 3\u2605', 'Carry 3\u2605'),
+  'tft.compVs.row.contested': t6('Doppelt gespielt', 'Contested', '\uC911\uBCF5 \uD53D', '\u649E\u9635\u5BB9', 'Duplicada', 'Contest\u00E9e'),
+  'tft.compVs.row.endLevel': t6('End-Level', 'Final level', '\uCD5C\uC885 \uB808\uBCA8', '\u6700\u7EC8\u7B49\u7EA7', 'Nivel final', 'Niveau final'),
+  'tft.compVs.alone': t6('allein', 'alone', '\uB2E8\uB3C5', '\u5355\u72EC', 'sola', 'seule'),
+  'tft.compVs.twice': t6('zu zweit', 'with 2', '2\uBA85', '\u4E24\u4EBA', 'con 2', '\u00E0 deux'),
+  'tft.compVs.distribution': t6('Platz-Verteilung', 'Placement distribution', '\uB4F1\uC218 \uBD84\uD3EC', '\u540D\u6B21\u5206\u5E03', 'Distribuci\u00F3n de puestos', 'R\u00E9partition des places'),
+  'tft.compVs.trend': t6('Verlauf (7 Tage)', 'Trend (7 days)', '\uCD94\uC774 (7\uC77C)', '\u8D70\u52BF\uFF087\u5929\uFF09', 'Tendencia (7 d\u00EDas)', 'Tendance (7 jours)'),
   'tft.compare.traits': t6(
     'Synergie-Vergleich', 'Synergy Diff',
     '\uC2DC\uB108\uC9C0 \uBE44\uAD50', '\u7F81\u7ECA\u5BF9\u6BD4',

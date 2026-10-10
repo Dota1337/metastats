@@ -4,14 +4,15 @@ import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
-import { costColor as costColorOf } from '../../lib/tft-ui';
+import { costColor as costColorOf, coreFlexFrame } from '../../lib/tft-ui';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
-import { parseClusterKey } from '../../lib/tft-cluster';
+import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, splitCoreFlex } from '../../lib/tft-comp-roles';
+import CoreFlexGroups from './CoreFlexGroups';
 
 interface CompVelocity {
   deltaAvgPlace: number | null;
@@ -109,18 +110,26 @@ export default function CompCard({
       // lowest count as the carry.
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
-    // Sort: die benannten Carries in Namens-Reihenfolge zuerst, Rest nach
-    // count desc — damit matched die Reihenfolge der Units das Comp-Naming.
-    const rank = (cid: string) => { const i = named.indexOf(cid); return i < 0 ? named.length : i; };
+    // Die 9 meistgespielten, angezeigt wie in der Comp-Liste (User
+    // 2026-10-10, Board mit Core/Flex im Kopf): je Gruppe nach Kosten, bei
+    // gleichen Kosten nach Name. Der Carry bleibt am lila Rand erkennbar.
+    const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
+    const nameOf = (cid: string) =>
+      (assets?.champions[cid]?.name || prettyChar(cid)).toLowerCase();
     return all
+      .sort((a, b) => b._c - a._c)
+      .slice(0, 9)
       .sort((a, b) => {
-        const pa = rank(a.characterId);
-        const pb = rank(b.characterId);
-        if (pa !== pb) return pa - pb;
-        return b._c - a._c;
-      })
-      .slice(0, 9);
+        const costDelta = costOf(a.characterId) - costOf(b.characterId);
+        if (costDelta !== 0) return costDelta;
+        return nameOf(a.characterId).localeCompare(nameOf(b.characterId));
+      });
   })();
+  // Core/Flex wie in der Liste: Anteil aus typicalUnits/games dieser Ansicht;
+  // genannte Carries, Item-Traeger und 3★-Units stehen immer in Core.
+  const coreFlexKinds = coreFlexMap(comp.typicalUnits, comp.games);
+  const coreForced = forcedCoreIds(typicalUnits, roles, named, isComponent);
+  const coreFlexCounts = splitCoreFlex(typicalUnits, coreFlexKinds, coreForced);
 
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
   // Wird im Comp-Header als „(mit <Name>)" hinter den Carries angezeigt,
@@ -251,8 +260,12 @@ export default function CompCard({
             </span>
           </div>
 
-          <div className="flex flex-wrap items-start gap-1.5 mb-1.5">
-            {typicalUnits.map(u => {
+          <CoreFlexGroups
+            className="mb-1.5"
+            units={typicalUnits}
+            kinds={coreFlexKinds}
+            forceCore={coreForced}
+            renderUnit={u => {
               const ch = findChampion(assets, u.characterId);
               const isCarry = carrySet.has(u.characterId);
               const url = tftChampionTileUrl(assets, ch);
@@ -260,6 +273,9 @@ export default function CompCard({
               // Multiplicity ≥ 1.5 → Two-Tanky-Variante (zweite 2★-Kopie via
               // Augment). Backward-Compat: alte Snapshots ohne multiplicity → 1.
               const showDouble = (((u as unknown) as { multiplicity?: number }).multiplicity ?? 1) >= 1.5;
+              // 3★-Abzeichen wie in der Liste — sonst stuende eine Unit ohne
+              // sichtbaren Grund im Core-Rahmen.
+              const showThreeStar = isThreeStarUnit(u as unknown as { gamesWithUnit?: unknown; star3Games?: unknown });
               return (
                 // Unit-Link und Item-Links sind Geschwister, nicht verschachtelt:
                 // ein <a> im <a> ist ungültiges HTML und hat die Hydration
@@ -280,6 +296,11 @@ export default function CompCard({
                       style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
                     >
                       {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                      {showThreeStar && (
+                        <div className="absolute -top-1 -left-1 bg-[#e7c310] text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
+                          3★
+                        </div>
+                      )}
                       {showDouble && (
                         <div
                           className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
@@ -311,8 +332,18 @@ export default function CompCard({
                   )}
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
+          {(coreFlexCounts.core.length > 0 || coreFlexCounts.flex.length > 0) && (
+            <div className="flex items-center gap-3 text-[11px] tabular-nums text-fg-secondary">
+              {(['core', 'flex'] as const).map(k => coreFlexCounts[k].length > 0 && (
+                <span key={k} className="inline-flex items-center gap-1.5">
+                  <span className="inline-block w-3 h-3 rounded-[3px]" style={coreFlexFrame(k)} aria-hidden="true" />
+                  {coreFlexCounts[k].length} {t(`tft.comp.board.${k}`)}
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* typicalAugments-Block entfernt — Riot hat Augment-Stats untersagt.
               Daten kommen weiter in der API an (RPC unverändert), werden aber

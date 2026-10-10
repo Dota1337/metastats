@@ -21,10 +21,30 @@ const WARN = '#e0a040';
 
 const GROUP_ORDER: ItemGroup[] = ['standard', 'artifact', 'radiant', 'emblem', 'tactician'];
 const MAX_ITEMS: Record<ItemGroup, number> = { standard: 12, artifact: 6, radiant: 6, emblem: 6, tactician: 3 };
+// Zugeklappt (User 2026-10-10, Detailseite kuerzer): erste Zeilen je Gruppe,
+// der Rest ueber „weitere anzeigen" bis MAX_ITEMS.
+const SHORT_ITEMS: Record<ItemGroup, number> = { standard: 6, artifact: 3, radiant: 3, emblem: 3, tactician: 3 };
+// Unit-Wirkung zugeklappt: nur Units, die in mindestens so vielen Spielen stehen.
+const UNIT_EFFECT_MIN_PRESENCE = 0.10;
 const MAX_UNIT_TABS = 8;
 const MAX_COMBOS = 5;
 
 const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+
+/** „+ n weitere anzeigen" / „Weniger anzeigen" unter einer gekuerzten Liste. */
+function MoreToggle({ hidden, open, onToggle, t }: { hidden: number; open: boolean; onToggle: () => void; t: T }) {
+  if (!open && hidden <= 0) return null;
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="mt-2 text-[11px] text-fg-muted hover:text-white transition-colors"
+    >
+      {open ? t('tft.player.showLess') : t('tft.player.showMore').replace('{n}', String(hidden))}
+    </button>
+  );
+}
 
 function unitName(assets: TftAssetsBundle | null, cid: string) {
   return findChampion(assets, cid)?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
@@ -144,8 +164,14 @@ export function OutcomeItems({ outcome, assets, bucket, t }: {
     .sort((a, b) => b.itemCopies - a.itemCopies)
     .slice(0, MAX_UNIT_TABS);
   const [selected, setSelected] = useState<string | null>(null);
+  const [allItems, setAllItems] = useState(false);
   if (units.length === 0) return null;
   const unit: UnitOutcome = units.find(u => u.characterId === selected) ?? units[0];
+  const capOf = (g: ItemGroup) => (allItems ? MAX_ITEMS[g] : SHORT_ITEMS[g]);
+  const hiddenItems = GROUP_ORDER.reduce((n, g) => {
+    const all = Math.min(unit.items.filter(i => i.group === g).length, MAX_ITEMS[g]);
+    return n + Math.max(0, all - SHORT_ITEMS[g]);
+  }, 0);
 
   return (
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
@@ -189,7 +215,7 @@ export function OutcomeItems({ outcome, assets, bucket, t }: {
             </tr>
           </thead>
           {GROUP_ORDER.map(g => {
-            const rows = unit.items.filter(i => i.group === g).slice(0, MAX_ITEMS[g]);
+            const rows = unit.items.filter(i => i.group === g).slice(0, capOf(g));
             if (rows.length === 0) return null;
             return (
               <tbody key={g}>
@@ -206,6 +232,7 @@ export function OutcomeItems({ outcome, assets, bucket, t }: {
           })}
         </table>
       </div>
+      <MoreToggle hidden={hiddenItems} open={allItems} onToggle={() => setAllItems(v => !v)} t={t} />
 
       {unit.sets.length > 0 && (
         <div className="mt-4">
@@ -234,10 +261,15 @@ export function OutcomeItems({ outcome, assets, bucket, t }: {
 export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
-  const rows = outcome.units
+  const [showAll, setShowAll] = useState(false);
+  const all = outcome.units
     .filter(u => u.effect != null)
     .sort((a, b) => a.effect!.delta - b.effect!.delta);
-  if (rows.length === 0) return null;
+  if (all.length === 0) return null;
+  const main = all.filter(u => u.presence >= UNIT_EFFECT_MIN_PRESENCE);
+  // Steht keine Unit ueber der Schwelle, nicht kuerzen — sonst bliebe die Box leer.
+  const short = main.length > 0 ? main : all;
+  const rows = showAll ? all : short;
   return (
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.unitEffect')}</h2>
@@ -269,24 +301,30 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
           </tbody>
         </table>
       </div>
+      <MoreToggle hidden={all.length - short.length} open={showAll} onToggle={() => setShowAll(v => !v)} t={t} />
     </section>
   );
 }
 
 /** Endlevel der Boards, die Stage 5 erreicht haben. */
-export function OutcomeEndLevel({ outcome, t }: { outcome: CompOutcome; t: T }) {
+// bare: ohne eigene Box, als Teil der Leveln-Box der Detailseite.
+export function OutcomeEndLevel({ outcome, t, bare = false }: { outcome: CompOutcome; t: T; bare?: boolean }) {
   const rows = outcome.levelsStage5;
   if (rows.length < 2) return null;
   const best = Math.min(...rows.filter(r => r.games >= 30).map(r => r.avgPlacement));
+  const Wrap = bare ? 'div' : 'section';
   return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.endLevel')}</h2>
+    <Wrap className={bare ? '' : 'mt-5 bg-surface-base border border-border-subtle rounded p-4'}>
+      {bare
+        ? <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-1">{t('tft.comp.outcome.endLevel')}</div>
+        : <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.endLevel')}</h2>}
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-fg-muted text-[10px] uppercase tracking-widest">
+          <tr className="text-fg-muted text-[10px] uppercase tracking-widest whitespace-nowrap">
             <th className="text-left font-normal pb-1 pr-2">{t('tft.comp.outcome.level')}</th>
             <th className="text-left font-normal pb-1 px-2 w-1/3">{t('tft.comp.outcome.share')}</th>
-            <th className="text-right font-normal pb-1 px-2"><span className="sm:hidden">{t('tft.comp.outcome.avgShort')}</span><span className="hidden sm:inline">{t('tft.avgPlacement')}</span></th>
+            {/* bare = schmale Spalte: kurze Ueberschrift auch auf breiten Bildschirmen */}
+            <th className="text-right font-normal pb-1 px-2"><span className={bare ? '' : 'sm:hidden'}>{t('tft.comp.outcome.avgShort')}</span>{!bare && <span className="hidden sm:inline">{t('tft.avgPlacement')}</span>}</th>
             <th className="text-right font-normal pb-1 px-2">{t('tft.top4')}</th>
             <th className="text-right font-normal pb-1 pl-2 hidden sm:table-cell">{t('tft.top1')}</th>
           </tr>
@@ -312,6 +350,6 @@ export function OutcomeEndLevel({ outcome, t }: { outcome: CompOutcome; t: T }) 
           ))}
         </tbody>
       </table>
-    </section>
+    </Wrap>
   );
 }

@@ -15,9 +15,9 @@ import {
   significantLevelSteps,
 } from '../../lib/tft-comp-guides';
 
-// CompGuide — rendert die aus MetaTFT-Clustern abgeleiteten Build-Daten als
-// Stapel von Sub-Sektionen: Levelplan, Augments nach Tier, die meistgespielten
-// Early-Game-Boards mit Placement, und die Round-1-Carousel-Picks.
+// CompGuide — rendert die aus MetaTFT-Clustern abgeleiteten Build-Daten:
+// Levelplan, Augments nach Tier, die meistgespielten Early-Game-Boards mit
+// Placement, und die Round-1-Carousel-Picks (je ein eigener Teil, s. unten).
 // Difficulty-Badge sitzt im Header der Elternseite.
 //
 // Die Stage-Tipps der tftacademy-Fassung sind ersatzlos entfallen — MetaTFT
@@ -175,120 +175,118 @@ function EarlyOptionRow({
   );
 }
 
-export default function CompGuide({
-  guide,
-  assets,
-}: {
-  guide: CompGuideData;
-  assets: TftAssetsBundle | null;
-}) {
+// Die Guide-Teile stehen seit dem Umbau der Detailseite (User 2026-10-10,
+// Variante D) an verschiedenen Orten: Augments und Early Game links „In der
+// Runde", der Levelplan in der Leveln-Box rechts, die Carousel-Picks in der
+// Bauteil-Box. Deshalb einzelne Teile statt eines Stapels.
+
+/** Levelplan ohne eigene Box — Strategie-Zeile plus Level-Schritte. Beide
+    Haelften sind unabhaengig optional: unbekanntes Levelling-Kuerzel und zu
+    duenne Schritte fallen je einzeln weg, statt einen Wert zu erfinden. */
+export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
   const { t } = useI18n();
-  // Reihen nach Rarity (Prismatic → Gold → Silver): ein Angebot im Spiel hat
-  // immer eine Rarity, der Spieler sucht in genau einer Reihe. Der Grade
-  // dieser Comp steht als Buchstabe auf der Kachel.
-  const rarityRows = augmentRowsByRarity(guide, assets);
   const plan = parseLevelling(guide.levelling);
   const steps = significantLevelSteps(guide.levels);
   // Ein einzelner Schritt ist kein Plan — dann bleibt nur die Strategie-Zeile.
   const planSteps = steps.length >= 2 ? steps : [];
-
   const planLabel = plan
     ? plan.kind === 'standard'
       ? (t('tft.comp.levelling.standard') as string)
       : (t(`tft.comp.levelling.${plan.kind}`) as string).replace('{level}', String(plan.level))
     : null;
-
+  if (!planLabel && planSteps.length === 0) return null;
   return (
-    <>
-      {/* 0) Levelplan — die erste Frage in einer laufenden Runde ist „bleibe
-          ich auf diesem Level oder pushe ich?". Steht deshalb vor den
-          Augments. Beide Hälften sind unabhängig optional: unbekanntes
-          Levelling-Kürzel und zu dünne Schritte fallen je einzeln weg, statt
-          die ganze Sektion zu kippen oder einen Wert zu erfinden. */}
-      {(planLabel || planSteps.length > 0) && (
-        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelling')}</h2>
-          {planLabel && (
-            <div className="text-white text-sm font-semibold mb-3">{planLabel}</div>
-          )}
-          {planSteps.length > 0 && (
+    <div>
+      <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.levelling')}</div>
+      {planLabel && (
+        <div className="text-white text-sm font-semibold mb-2">{planLabel}</div>
+      )}
+      {planSteps.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {planSteps.map(step => (
+            <div
+              key={step.level}
+              className="flex flex-col items-center bg-surface-level-chip border border-border-subtle rounded px-2.5 py-1.5 min-w-[3.5rem]"
+            >
+              <div className="text-white text-xs font-semibold">
+                {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}
+              </div>
+              <div className="text-fg-muted text-[11px] tabular-nums">
+                {step.stage}-{step.round}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Augments — drei Reihen nach Rarity (Prismatic → Gold → Silver): ein Angebot
+    im Spiel hat immer eine Rarity, der Spieler sucht in genau einer Reihe. Der
+    Grade dieser Comp steht als Buchstabe auf der Kachel. Ohne Asset-Bundle
+    keine Sektion: die Rarity wird nicht geraten. */
+export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
+  const { t } = useI18n();
+  const rarityRows = augmentRowsByRarity(guide, assets);
+  if (rarityRows.length === 0) return null;
+  return (
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
+      <div className="flex flex-col gap-3">
+        {rarityRows.map(row => (
+          <div key={row.rarity} className="flex flex-col gap-1.5">
+            <div
+              className="text-[10px] uppercase tracking-wider font-semibold"
+              style={{ color: augmentTierBorderColor(row.rarity) }}
+            >
+              {t(`tft.comp.augments.rarity.${row.rarity}`)}
+            </div>
             <div className="flex flex-wrap gap-2">
-              {planSteps.map(step => (
-                <div
-                  key={step.level}
-                  className="flex flex-col items-center bg-surface-level-chip border border-border-subtle rounded px-2.5 py-1.5 min-w-[3.5rem]"
-                >
-                  <div className="text-white text-xs font-semibold">
-                    {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}
-                  </div>
-                  <div className="text-fg-muted text-[11px] tabular-nums">
-                    {step.stage}-{step.round}
-                  </div>
-                </div>
+              {row.augments.map(a => (
+                <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
               ))}
             </div>
-          )}
-        </section>
-      )}
-
-      {/* 1) Augments — drei Reihen nach Rarity. Ohne Asset-Bundle keine
-          Sektion: die Rarity wird nicht geraten. */}
-      {rarityRows.length > 0 && (
-        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
-          <div className="flex flex-col gap-3">
-            {rarityRows.map(row => (
-              <div key={row.rarity} className="flex flex-col gap-1.5">
-                <div
-                  className="text-[10px] uppercase tracking-wider font-semibold"
-                  style={{ color: augmentTierBorderColor(row.rarity) }}
-                >
-                  {t(`tft.comp.augments.rarity.${row.rarity}`)}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {row.augments.map(a => (
-                    <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
-        </section>
-      )}
+        ))}
+      </div>
+    </section>
+  );
+}
 
-      {/* 2) Early Game — die meistgespielten Opener-Boards dieser Comp mit
-          ihrem Durchschnittsplatz, damit der Spieler zwischen ihnen wählen
-          kann statt einen vorgesetzt zu bekommen. */}
-      <EarlyGameSection earlyByLevel={guide.earlyByLevel} assets={assets} t={t} />
+/** Early Game — die meistgespielten Opener-Boards dieser Comp mit ihrem
+    Durchschnittsplatz, damit der Spieler zwischen ihnen waehlen kann statt
+    einen vorgesetzt zu bekommen. */
+export function GuideEarlyGame({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
+  const { t } = useI18n();
+  return <EarlyGameSection earlyByLevel={guide.earlyByLevel} assets={assets} t={t} />;
+}
 
-      {/* 3) Carousel — welche Komponenten aus dem ersten Carousel zu dieser
-          Comp führen. Erste echte Entscheidung der Runde. */}
-      {guide.carousel.length > 0 && (
-        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.carousel')}</h2>
-          <div className="flex flex-wrap gap-3">
-            {guide.carousel.map((pick, i) => {
-              const meta = findItem(assets, pick.item);
-              const iconUrl = tftIconUrl(assets, meta?.icon);
-              return (
-                <a
-                  key={`${pick.item}-${i}`}
-                  href={`/tft/items/${encodeURIComponent(pick.item)}`}
-                  className="flex flex-col items-center w-12 hover:scale-105 transition"
-                  title={meta?.name || pick.item}
-                >
-                  <div className="w-10 h-10 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
-                    {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
-                  </div>
-                  {typeof pick.avg === 'number' && (
-                    <div className="text-fg-muted text-[10px] mt-0.5">{pick.avg.toFixed(2)}</div>
-                  )}
-                </a>
-              );
-            })}
-          </div>
-        </section>
-      )}
-    </>
+/** Carousel-Picks der ersten Runde ohne eigene Box — welche Komponenten zu
+    dieser Comp fuehren. Steht in der Bauteil-Box der Detailseite. */
+export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
+  if (guide.carousel.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-3">
+      {guide.carousel.map((pick, i) => {
+        const meta = findItem(assets, pick.item);
+        const iconUrl = tftIconUrl(assets, meta?.icon);
+        return (
+          <a
+            key={`${pick.item}-${i}`}
+            href={`/tft/items/${encodeURIComponent(pick.item)}`}
+            className="flex flex-col items-center w-12 hover:scale-105 transition"
+            title={meta?.name || pick.item}
+          >
+            <div className="w-10 h-10 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
+              {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
+            </div>
+            {typeof pick.avg === 'number' && (
+              <div className="text-fg-muted text-[10px] mt-0.5">{pick.avg.toFixed(2)}</div>
+            )}
+          </a>
+        );
+      })}
+    </div>
   );
 }

@@ -15,15 +15,16 @@ interface ChartData {
   avgStage: string;
 }
 
+// bare: nur das Diagramm, ohne Box und Ueberschrift (Leveln-Box der Detailseite).
 export default function CompEconChart({
   chartData,
+  bare = false,
 }: {
   chartData: ChartData[];
+  bare?: boolean;
 }) {
   const { t } = useI18n();
-  return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
+  const chart = (
       <div className="bg-surface-raised border border-border-subtle rounded p-3">
         <div style={{ width: '100%', height: 200 }}>
           <ResponsiveContainer>
@@ -82,6 +83,12 @@ export default function CompEconChart({
           <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
         </div>
       </div>
+  );
+  if (bare) return chart;
+  return (
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.econRoi')}</h2>
+      {chart}
     </section>
   );
 }

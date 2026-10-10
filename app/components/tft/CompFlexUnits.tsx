@@ -50,7 +50,8 @@ export default function CompFlexUnits({
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
         {t('tft.comp.flexUnits.title')}
       </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      {/* lg: eine Spalte — die Box steht dort in der schmalen rechten Spalte der Detailseite. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
         {units.map(u => {
           const ch = findChampion(assets, u.characterId);
           const url = tftChampionTileUrl(assets, ch);

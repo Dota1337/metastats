@@ -232,9 +232,6 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .opp-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .opp-stage { flex: none; color: var(--muted); font-size: 11px; }
 .opp-comp { display: flex; align-items: center; gap: 3px; min-width: 0; padding-top: 4px; }
-.opp-label { flex: 1; min-width: 0; margin-left: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.opp-label.likely { color: var(--muted); font-style: italic; }
-.opp-comp .tier { min-width: 20px; height: 20px; font-size: 11px; border-radius: 5px; }
 .unit.xs { width: 24px; height: 24px; border-width: 1px; }
 .unit.xs .star3 { top: -6px; font-size: 7px; }
 .star3.s2 { color: #c9d1e0; }

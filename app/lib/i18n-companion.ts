@@ -49,7 +49,7 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.pinned': t6('Comp-Overlay im Spiel', 'In-game comp overlay', '게임 내 조합 오버레이', '游戏内阵容浮窗', 'Superposición de composición', 'Superposition de compo en jeu'),
   'companion.settings.shop': t6('Shop-Markierung', 'Shop highlight', '상점 강조', '商店高亮', 'Resaltar tienda', 'Surbrillance boutique'),
   'companion.settings.matchups': t6('Nächster Gegner', 'Next opponent', '다음 상대', '下一个对手', 'Próximo rival', 'Prochain adversaire'),
-  'companion.settings.share': t6('Brett-Daten anonym teilen', 'Share board data anonymously', '보드 데이터 익명 공유', '匿名分享棋盘数据', 'Compartir datos del tablero de forma anónima', 'Partager les données du plateau anonymement'),
+  'companion.settings.share': t6('Brett-Daten für Statistiken teilen', 'Share board data for statistics', '통계용 보드 데이터 공유', '分享棋盘数据用于统计', 'Compartir datos del tablero para estadísticas', 'Partager les données du plateau pour les statistiques'),
   'companion.settings.language': t6('Sprache', 'Language', '언어', '语言', 'Idioma', 'Langue'),
   'companion.settings.hotkey': t6('Fenster ein/aus', 'Show/hide window', '창 표시/숨기기', '显示/隐藏窗口', 'Mostrar/ocultar ventana', 'Afficher/masquer la fenêtre'),
   'companion.settings.region': t6('Region der Daten', 'Data region', '데이터 지역', '数据区域', 'Región de datos', 'Région des données'),
@@ -61,7 +61,7 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.resetPos': t6('Zurücksetzen', 'Reset', '초기화', '重置', 'Restablecer', 'Réinitialiser'),
 
   'companion.overlay.target': t6('Ziel-Aufstellung', 'Target board', '목표 배치', '目标站位', 'Tablero objetivo', 'Placement cible'),
-  'companion.overlay.opponents': t6('Gegner-Comps', 'Opponent comps', '상대 조합', '对手阵容', 'Composiciones rivales', 'Compos adverses'),
+  'companion.overlay.opponents': t6('Gegner', 'Opponents', '상대', '对手', 'Rivales', 'Adversaires'),
 
   'companion.tab.units': t6('Units', 'Units', '유닛', '弈子', 'Unidades', 'Unités'),
   'companion.tab.items': t6('Items', 'Items', '아이템', '装备', 'Objetos', 'Objets'),
@@ -123,7 +123,6 @@ export const COMPANION_TRANSLATIONS = {
   'companion.track.unlikely': t6('als nächster Gegner unwahrscheinlich', 'unlikely as next opponent', '다음 상대일 가능성 낮음', '不太可能是下一个对手', 'poco probable como próximo rival', 'peu probable comme prochain adversaire'),
   'companion.picker.search': t6('Unit, Trait oder Comp', 'Unit, trait or comp', '유닛, 시너지 또는 조합', '弈子、羁绊或阵容', 'Unidad, rasgo o composición', 'Unité, trait ou compo'),
   'companion.picker.onBoard': t6('{n} auf dem Brett', '{n} on board', '보드에 {n}', '场上{n}个', '{n} en el tablero', '{n} sur le plateau'),
-  'companion.picker.contest': t6('{n} Gegner', '{n} opp.', '상대 {n}', '对手{n}', '{n} rivales', '{n} adv.'),
   'companion.picker.switch': t6('Comp wechseln', 'Switch comp', '조합 변경', '更换阵容', 'Cambiar composición', 'Changer de compo'),
   'companion.items.for': t6('für {item}', 'for {item}', '{item}용', '用于{item}', 'para {item}', 'pour {item}'),
   'companion.items.best': t6('beste Wahl', 'best pick', '최선', '最佳', 'mejor opción', 'meilleur choix'),
@@ -134,7 +133,6 @@ export const COMPANION_TRANSLATIONS = {
   'companion.ingame.hp': t6('Leben', 'HP', '체력', '血量', 'Vida', 'PV'),
   'companion.ingame.fought': t6('Zuletzt gegen', 'Last fought', '마지막 대전', '上次交手', 'Último duelo', 'Dernier duel'),
   'companion.ingame.rank': t6('Rang', 'Rank', '랭크', '段位', 'Rango', 'Rang'),
-  'companion.ingame.comp': t6('Comp', 'Comp', '조합', '阵容', 'Composición', 'Compo'),
   'companion.history.hits': t6('Spieler mit diesem Namen', 'Players with this name', '같은 이름의 플레이어', '同名玩家', 'Jugadores con este nombre', 'Joueurs avec ce nom'),
   'companion.tier.iron': t6('Iron', 'Iron', '아이언', '黑铁', 'Hierro', 'Fer'),
   'companion.tier.bronze': t6('Bronze', 'Bronze', '브론즈', '青铜', 'Bronce', 'Bronze'),

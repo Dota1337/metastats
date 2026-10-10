@@ -9,7 +9,7 @@ TFT-Begleiter mit den Daten von metastats.gg, aufgebaut wie die MetaTFT-App (0.8
   „Early Game“ (fruehe Boards Stufe 4-7) direkt in der Liste auf (ab 0.8.1).
   Sprache ohne eigene Wahl: Englisch.
 - **Im Spiel:** Reiter „Im Spiel“ mit allen Mitspielern (Leben, zuletzt gegen, Rang, letzte
-  Platzierungen, erkannte Comp). Anzeige je nach Einstellung auf dem zweiten Bildschirm, als
+  Platzierungen; seit 0.8.3 ohne erkannte Comp, Riot-Regeln). Anzeige je nach Einstellung auf dem zweiten Bildschirm, als
   Overlay ueber dem Spiel (`main_overlay`) oder als Desktop-Fenster.
 - **Overlays:** angeheftete Comp mit Comp-Auswahl (Suche, passende Comps zum eigenen Brett,
   Gegner mit denselben Carries), Gegner-Tracker (wann zuletzt gegen wen, wer als naechstes

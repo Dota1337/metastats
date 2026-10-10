@@ -1,6 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { recordBoard, ownRounds, findLocalMatch, toOppBoard, mergeOppBoard, sameOppBoard, flattenBoards, type Boards, type LocalMatch } from './boards.ts';
+import { readFileSync } from 'node:fs';
+import { recordBoard, ownRounds, findLocalMatch, flattenBoards, liveMatchId, type Boards, type LocalMatch } from './boards.ts';
+
+// Der Backfill liest die Startzeit mit genau diesem Muster; ein Name gehoert
+// nicht mehr in die Kennung.
+test('Behelfs-Kennung: Startzeit fuer den Backfill, sonst nur Zufall', () => {
+  const src = readFileSync(new URL('../../../../scripts/backfill-companion-placements.mjs', import.meta.url), 'utf8');
+  assert.ok(src.includes('/^LIVE_(\\d+)_/'), 'Muster im Backfill geaendert');
+  const id = liveMatchId(1_760_000_040_000);
+  assert.match(id, /^LIVE_1760000040000_[0-9a-f]{8}$/);
+  assert.equal(Number(/^LIVE_(\d+)_/.exec(id)![1]), 1_760_000_040_000);
+  assert.notEqual(liveMatchId(1), liveMatchId(1));
+  assert.equal(liveMatchId(5, () => 0), 'LIVE_5_00000000');
+});
 
 test('Eigene Runden: Feld roh 1..28 wird zu 0..27, Gegner und leere Felder fallen weg', () => {
   const b: Boards = new Map();
@@ -37,37 +50,3 @@ test('Gegner-Brett: je Runde bleibt der groesste Stand, das eigene Brett der let
   assert.equal(all.filter(o => o.kind === 'own').length, 1);
 });
 
-test('toOppBoard: jede Unit einmal mit hoechstem Stern, leere Felder fallen weg', () => {
-  const ob = toOppBoard([
-    { cell: 1, unit: 'B', level: 1, items: [] }, { cell: 2, unit: 'A', level: 2, items: [] },
-    { cell: 3, unit: 'B', level: 3, items: [] }, { cell: 4, unit: '', level: 1, items: [] },
-  ], 42, '4-2');
-  assert.deepEqual(ob, { units: [{ unit: 'A', level: 2 }, { unit: 'B', level: 3 }], round: 42, stage: '4-2' });
-});
-
-test('mergeOppBoard: gleiche Runde vereinigt, spaete Teilbretter verdraengen nichts', () => {
-  const u = (...ids: string[]) => ids.map(unit => ({ unit, level: 1 }));
-  const r42 = { units: u('A', 'B', 'C', 'D'), round: 42, stage: '4-2' };
-  // gleiche Runde, anderes Teilstueck → Vereinigung, Stern-Maximum
-  const same = mergeOppBoard(r42, { units: [{ unit: 'A', level: 2 }, { unit: 'E', level: 1 }], round: 42, stage: '4-2' });
-  assert.deepEqual(same.units.map(x => x.unit + x.level), ['A2', 'B1', 'C1', 'D1', 'E1']);
-  // spaetere Runde mit weniger Units → altes Brett bleibt
-  assert.equal(mergeOppBoard(r42, { units: u('A', 'B'), round: 51, stage: '5-1' }), r42);
-  // spaetere Runde mit mindestens so vielen Units → neues Brett
-  const later = { units: u('A', 'B', 'C', 'F'), round: 51, stage: '5-1' };
-  assert.equal(mergeOppBoard(r42, later), later);
-  // fruehere Runde und leeres Brett → ignoriert
-  assert.equal(mergeOppBoard(r42, { units: u('Z', 'Y', 'X', 'W', 'V'), round: 33, stage: '3-3' }), r42);
-  assert.equal(mergeOppBoard(r42, { units: [], round: 51, stage: '5-1' }), r42);
-  // nichts gemerkt → neues Brett
-  assert.equal(mergeOppBoard(undefined, later), later);
-});
-
-test('sameOppBoard vergleicht Units, Sterne, Runde und Stage', () => {
-  const a = { units: [{ unit: 'A', level: 1 }], round: 42, stage: '4-2' };
-  assert.equal(sameOppBoard(a, { ...a, units: [{ unit: 'A', level: 1 }] }), true);
-  assert.equal(sameOppBoard(a, { ...a, units: [{ unit: 'A', level: 2 }] }), false);
-  assert.equal(sameOppBoard(a, { ...a, round: 43 }), false);
-  assert.equal(sameOppBoard(a, undefined), false);
-  assert.equal(sameOppBoard(undefined, undefined), true);
-});

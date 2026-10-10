@@ -22,10 +22,8 @@ metastats.gg Companion brings the comps and stats of metastats.gg into Teamfight
 
 - Comps tier list with average placement, top 4 and win rate, units with items, level plan and
   recipes; units, items and early-game boards.
-- In game: pick a comp from a searchable list (comps that fit your board come first, contested
-  comps are marked), see its board per level, shop odds and recipes as a small overlay.
-- Opponent tracker: who you fought and when, who is unlikely to be next, recognized comps of
-  the boards you scouted; before stage 2-1 rank and recent placements from our database.
+- In game: pick a comp from a searchable list (comps that fit your board come first), see its board per level, shop odds and recipes as a small overlay.
+- Opponent tracker: who you fought and when, who is unlikely to be next; before stage 2-1 rank and recent placements from our database.
 - Item hints at item selection: which unit of your comp uses the item or what it builds into.
 - Shop highlight for units of your comp.
 - Main window on your second monitor, as overlay (one monitor) or as desktop window.

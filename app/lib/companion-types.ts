@@ -214,7 +214,7 @@ export interface CompanionLobbyEntry {
   lp: number | null;
   /** Letzte Platzierungen, neueste zuerst (bis 10). */
   recent: number[];
-  /** Haeufigste Carries der letzten Spiele (bis 5, auch Nicht-Champions; die App filtert). */
+  /** Seit App 0.8.3 immer leer (keine Mitspieler-Comps im Spiel); bleibt fuer 0.8.2, die das Feld liest. */
   carries: Array<{ unit: string; games: number }>;
 }
 

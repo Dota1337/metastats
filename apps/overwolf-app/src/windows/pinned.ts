@@ -3,7 +3,7 @@
 //
 // Ohne angeheftete Comp (oder nach ⇄) zeigt es die Comp-Auswahl: Suchfeld und
 // Liste, oben die Comps, von denen schon Units auf dem eigenen Brett stehen
-// (lib/comp-search.ts), dazu wie viele Gegner dieselben Carries spielen.
+// (lib/comp-search.ts).
 // × blendet das Overlay fuer diese Partie aus, die Comp bleibt angeheftet.
 // Liest nur aus dem gemeinsamen Speicher.
 import '../styles/app.css';
@@ -12,7 +12,7 @@ import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
 import { makeDraggable, fitSelf, tellBackground } from '../lib/ow.ts';
 import { compLevelling, positioningView, compRecipes } from '../lib/plan.ts';
-import { rankComps, contestCount, BOARD_MIN_SCORE } from '../lib/comp-search.ts';
+import { rankComps, BOARD_MIN_SCORE } from '../lib/comp-search.ts';
 import { h, clear, unitIcon, itemIcon, compUnits, tierBadge, levelTabs, levellingText } from '../lib/dom.ts';
 import { boardView } from '../lib/board-view.ts';
 import type { CompanionComp } from '../../../../app/lib/companion-types.ts';
@@ -65,16 +65,14 @@ function fillList(): void {
   const rows = rankComps(comps, live.myUnits, ui.query, lk).slice(0, PICKER_ROWS);
   clear(list, rows.map(r => {
     const c = r.comp;
-    const contest = contestCount(c, live.oppBoards, comps);
     const targets = new Set(c.reroll?.targets ?? []);
     return h('button', { class: r.score >= BOARD_MIN_SCORE ? 'picker-row fits' : 'picker-row', type: 'button', onclick: () => pick(c) },
       tierBadge(c.tier),
       h('span', { class: 'picker-carries' }, c.carries.map(id => unitIcon(id, lk, { star3: targets.has(id), size: 'xs' }))),
       h('span', { class: 'picker-text' },
         h('span', { class: 'picker-name', title: c.name }, c.name),
-        r.onBoard.length || contest ? h('span', { class: 'picker-chips' },
-          r.onBoard.length ? h('span', { class: 'tag ok' }, t('picker.onBoard', { n: r.onBoard.length })) : null,
-          contest ? h('span', { class: 'tag warn' }, t('picker.contest', { n: contest })) : null,
+        r.onBoard.length ? h('span', { class: 'picker-chips' },
+          h('span', { class: 'tag ok' }, t('picker.onBoard', { n: r.onBoard.length })),
         ) : null,
       ),
     );
@@ -181,10 +179,7 @@ function render(): void {
 
 const picking = () => !read('ms.pin') || ui.picking;
 // Fingerabdruck der Spieldaten, die die Auswahl-Liste beeinflussen.
-const boardSig = () => {
-  const l = read('ms.live');
-  return JSON.stringify([l.myUnits, Object.keys(l.oppBoards).map(k => [k, l.oppBoards[k].round])]);
-};
+const boardSig = () => JSON.stringify(read('ms.live').myUnits);
 let lastLevel = read('ms.live').level;
 let lastCollapsed = read('ms.settings').collapsed;
 let lastPicker = read('ms.settings').compPicker;
@@ -193,8 +188,8 @@ let lastBoards = boardSig();
 void boot(render);
 subscribe(['ms.pin', 'ms.pinDetail', 'ms.lookups', 'ms.comps', 'ms.live', 'ms.settings'], key => {
   if (key === 'ms.live') {
-    // In der Auswahl zaehlen eigenes Brett und Gegner-Bretter (nur die Liste
-    // neu fuellen), sonst nur die Stufe; Shop-Wechsel aendern nichts.
+    // In der Auswahl zaehlt das eigene Brett (nur die Liste neu fuellen),
+    // sonst nur die Stufe; Shop-Wechsel aendern nichts.
     if (picking()) {
       const sig = boardSig();
       if (sig === lastBoards) return;

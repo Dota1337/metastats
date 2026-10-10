@@ -9,7 +9,7 @@ const T = 1_760_000_000_000;
 const names = ['Me#EUW', 'A#EUW', 'B#EUW', 'C#EUW', 'D#EUW', 'E#EUW', 'F#EUW', 'G#EUW'];
 const snap: MatchSnapshot = {
   sessionId: 's1', classId: 28164, startedAt: T - 600_000, updatedAt: T - 30_000, stage: '3-2',
-  oppBoards: {}, roster: names.map(name => ({ name, health: 50, rank: null })), pvp: { '3-1': 'A#EUW' },
+  roster: names.map(name => ({ name, health: 50, rank: null })), pvp: { '3-1': 'A#EUW' },
   queueId: 1100, dismissed: ['shop'], submitted: false, mainHandled: true, wasTft: true,
   placement: null, matchId: null, handle: 'Me#EUW', starts: [],
 };
@@ -54,7 +54,7 @@ test('emptyMatchState deckt jedes Partie-Feld von ms.live ab', () => {
   const fields = [...block.matchAll(/^\s+(\w+):/gm)].map(m => m[1]).filter(f => f !== 'updatedAt').sort();
   assert.deepEqual(Object.keys(emptyMatchState()).sort(), fields);
   // Jeder Aufruf liefert frische Objekte (kein geteilter Zustand).
-  assert.notEqual(emptyMatchState().oppBoards, emptyMatchState().oppBoards);
+  assert.notEqual(emptyMatchState().roster, emptyMatchState().roster);
 });
 
 test('resumedFields uebernimmt das Gesehene', () => {

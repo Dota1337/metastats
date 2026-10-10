@@ -9,6 +9,9 @@
 // Laufs. Hier entsteht die Tabelle bei jedem Lauf vollstaendig aus den
 // Rohbeobachtungen — zweimal laufen ergibt dasselbe wie einmal.
 
+import { createHmac } from 'node:crypto';
+import { isValidRegion } from './regional-routing.mjs';
+
 // Spiegel von app/lib/tft-cluster.ts (parseClusterKey + compTraitFamilyKey).
 // Die Box laeuft auf Node 20 und kann die .ts-Datei nicht laden. Der Test in
 // companion-positions.test.mjs vergleicht beide Fassungen, damit sie nicht
@@ -36,6 +39,84 @@ export function isRiotHandle(observer) {
 }
 
 export const groupKey = (matchId, observer) => `${matchId}|${observer}`;
+
+// "EUW1_7881677153" → "euw1" (null, wenn der Teil vor dem _ keine Region ist)
+export function regionFromMatchId(matchId) {
+  const p = String(matchId).split('_')[0].toLowerCase();
+  return isValidRegion(p) ? p : null;
+}
+
+// ---------- Pseudonym statt Riot-Name (ab 10.10.2026) ----------
+//
+// Ist ein Spiel seiner Comp zugeordnet, braucht niemand mehr den Riot-Namen.
+// Der Aggregator schreibt die Zuordnung an die Zeilen und ersetzt den Namen
+// durch ein Pseudonym: HMAC ueber Match-ID und Namen mit einem Schluessel, der
+// nur auf der Box liegt (COMPANION_PSEUDONYM_KEY). Je Spiel statt je Person —
+// zwei Spiele desselben Spielers lassen sich nicht verknuepfen. Gleiche
+// Eingabe, gleiches Pseudonym: so erkennt der Aggregator einen spaeten zweiten
+// Upload desselben Spiels. Anonym ist das NICHT: Match-ID und Brett fuehren
+// ueber Riots oeffentliche Match-Daten zurueck zum Spieler.
+//
+// Eigene Vorsilbe und kein '#': sonst hielte resolvePuuid im Aggregator das
+// Pseudonym fuer eine Konto-ID der alten App.
+export const MIN_PSEUDONYM_KEY = 32;
+const PSEUDONYM_RE = /^p_[0-9a-f]{24}$/;
+
+export const isPseudonym = (observer) => typeof observer === 'string' && PSEUDONYM_RE.test(observer);
+
+export function pseudonym(matchId, observer, key) {
+  if (typeof key !== 'string' || key.length < MIN_PSEUDONYM_KEY) throw new Error('Pseudonym-Schluessel fehlt oder ist zu kurz');
+  const who = String(observer).trim().toLowerCase();
+  return `p_${createHmac('sha256', key).update(`${matchId}|${who}`).digest('hex').slice(0, 24)}`;
+}
+
+// Laenger als 48 h nach dem Hochladen bleibt kein Riot-Name stehen — auch
+// wenn die Zuordnung bis dahin nicht geklappt hat (das Spiel zaehlt dann nicht).
+export const PRIVACY_DEADLINE_MS = 48 * 60 * 60 * 1000;
+
+// Endgueltig ist nur ein Treffer oder „Spieler steht nicht in diesem Spiel“.
+// Alles andere — Riot kennt das Spiel noch nicht (Paket geht beim Ausscheiden
+// raus, das Spiel laeuft weiter), Konto nicht gefunden, Comp nicht erkannt,
+// Schluessel- oder Netzfehler — wird bis zur Frist wiederholt.
+export function isFinalClass(cls) {
+  return !!cls && (!!cls.clusterKey || cls.skip === 'not_in_match');
+}
+
+/**
+ * Soll diese Klartext-Gruppe jetzt versiegelt werden (Zuordnung schreiben,
+ * Name raus)? Gruppen ohne eigenes Brett brauchen keine Zuordnung.
+ * @param {{own:boolean, oldest:string}} group  oldest = fruehestes observed_at
+ */
+export function shouldSeal(group, cls, nowMs) {
+  if (!group.own) return true;
+  return isFinalClass(cls) || nowMs - Date.parse(group.oldest) >= PRIVACY_DEADLINE_MS;
+}
+
+/** Spalten, die die Zuordnung an den eigenen Zeilen festhalten. */
+export function classColumns(cls, nowIso) {
+  return {
+    cluster_key: cls?.clusterKey ?? null,
+    family_key: cls?.familyKey ?? null,
+    queue_id: cls?.queue ?? null,
+    classified_at: nowIso,
+  };
+}
+
+/** Gespeicherte Zuordnung einer eigenen Zeile, oder null wenn noch keine. */
+export function storedClass(row) {
+  if (!row?.classified_at) return null;
+  return { clusterKey: row.cluster_key ?? null, familyKey: row.family_key ?? null, queue: row.queue_id ?? null, stored: true };
+}
+
+// Steht dasselbe Spiel schon unter dem Pseudonym (spaeter zweiter Upload),
+// scheitert das Umbenennen am Unique-Index. Dann fallen nur die Klartext-
+// Zeilen weg, die dort schon stehen; neue Runden kommen dazu — genau wie
+// vorher beim Hochladen (ignoreDuplicates in der Submit-Route).
+const rowKey = (r) => `${r.kind}|${r.cell}|${r.unit}|${r.round}`;
+export function collidingIds(plainRows, sealedRows) {
+  const taken = new Set(sealedRows.map(rowKey));
+  return plainRows.filter(r => taken.has(rowKey(r))).map(r => r.id);
+}
 
 // Normale + Ranglisten-Spiele. Double Up (1160) und Hyper Roll (1130) haben
 // andere Bretter und gehoeren nicht in die Aufstellungs-Karte.

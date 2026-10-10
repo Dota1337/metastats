@@ -19,7 +19,7 @@ import { loadComps, loadLookups, loadCompDetail, loadItemStats, loadLobby, loadP
 import { show, close, front, moveTo, minimize, setTopmost, setPassThrough, obtain, isVisible } from '../lib/ow.ts';
 import { OVERLAY_NAMES, type OverlayName, type WindowName } from '../lib/windows.ts';
 import { enqueue, flush, clear, idbStore, type OutboxEntry, type SendResult } from '../lib/outbox.ts';
-import { recordBoard, flattenBoards, ownRounds, toOppBoard, mergeOppBoard, sameOppBoard, type Boards } from '../lib/boards.ts';
+import { recordBoard, flattenBoards, ownRounds, liveMatchId, type Boards } from '../lib/boards.ts';
 import { saveLocalMatch } from '../lib/history-store.ts';
 import { classifyLaunch, launchSource, type LaunchKind } from '../lib/launch.ts';
 import { rectFromGame, overlayBox } from '../lib/placement.ts';
@@ -147,7 +147,7 @@ async function submit(m: MatchData = match): Promise<void> {
   const timestamp = Date.now();
   // Startzeit statt Sendezeit: der Backfill vergleicht mit dem Spielbeginn.
   const seed = Math.floor(m.startedAt / 60000) * 60000;
-  const matchId = m.matchId || `LIVE_${seed}_${(m.handle || 'anon').slice(0, 8)}`;
+  const matchId = m.matchId || liveMatchId(seed);
   const body = JSON.stringify({
     matchId,
     // Nur eine sichere Region, sonst leer — der Backfill sucht dann selbst.
@@ -354,7 +354,7 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
     if (gd?.gameTime != null) {
       if (!match.matchId) {
         const seed = Math.floor((Date.now() - gd.gameTime * 1000) / 60000) * 60000;
-        match.matchId = `LIVE_${seed}_${(match.handle || 'anon').slice(0, 8)}`;
+        match.matchId = liveMatchId(seed);
       }
       const r = gameTimeToRound(gd.gameTime);
       if (r > match.round) match.round = r;
@@ -374,18 +374,9 @@ function onInfo(info: overwolf.games.events.InfoUpdates2Event): void {
   if (boardFeed?.opponent_board_pieces && !match.submitted) {
     const opp = p.opponent !== undefined ? p.opponent : live.opponent;
     const pieces = parseBoardPieces(boardFeed.opponent_board_pieces);
+    // Nur fuer die Aufstellungs-Statistik (ohne Gegnernamen, flattenBoards).
+    // Was die Gegner spielen, zeigt die App seit 0.8.3 nicht mehr (Riot-Regeln).
     recordBoard(match.boards, 'opp', match.round, opp, pieces);
-    // Vollstaendigstes Brett je Gegner fuer die Comp-Erkennung im Gegner-
-    // Overlay. Das Spiel meldet oft nur Teile davon; die werden zusammengefuehrt.
-    if (opp) {
-      const prev = live.oppBoards[opp];
-      const next = toOppBoard(pieces, match.round, p.stage ?? live.stage);
-      const merged = mergeOppBoard(prev, next);
-      if (Math.abs(next.units.length - (prev?.units.length ?? 0)) >= 2) {
-        log('opp board size', { opponent: opp, round: match.round, seen: next.units.length, before: prev?.units.length ?? 0, kept: merged.units.length });
-      }
-      if (!sameOppBoard(prev, merged)) p.oppBoards = { ...live.oppBoards, [opp]: merged };
-    }
   }
 
   // Gegner-Tracker: nur Spielerkaempfe (round_type PVP), je Stufe ein Gegner.
@@ -420,7 +411,7 @@ function onEvents(e: overwolf.games.events.NewGameEvents): void {
       match = { ...newMatch(), gameId: match.gameId, handle: match.handle, region: match.region };
       oppFresh = false;
       patchLive({
-        level: null, shop: [], stage: null, opponent: null, oppBoards: {}, roster: [], pvp: {}, roundKind: null,
+        level: null, shop: [], stage: null, opponent: null, roster: [], pvp: {}, roundKind: null,
         myUnits: [], dismissed: [], startedAt: match.startedAt,
       });
     } else if (ev.name === 'shop_visible' || ev.name === 'shop_hidden') {
@@ -506,7 +497,7 @@ function saveSnapshot(): void {
   if (!activeGame || pending || !live.wasTft) return;
   const snap: MatchSnapshot = {
     sessionId: activeGame.sessionId, classId: activeGame.classId, startedAt: match.startedAt, updatedAt: Date.now(),
-    stage: live.stage, oppBoards: live.oppBoards, roster: live.roster, pvp: live.pvp, queueId: live.queueId,
+    stage: live.stage, roster: live.roster, pvp: live.pvp, queueId: live.queueId,
     dismissed: live.dismissed, submitted: match.submitted, mainHandled, wasTft: live.wasTft,
     placement: match.placement, matchId: match.matchId, handle: match.handle, starts,
   };
@@ -538,12 +529,10 @@ function applyResume(snap: MatchSnapshot, reason: string): void {
   if (!match.region) match.region = regionFromHandle(match.handle);
   mainHandled = snap.mainHandled;
   const r = resumedFields(snap);
-  const boards = { ...r.oppBoards };
-  for (const [k, v] of Object.entries(live.oppBoards)) boards[k] = mergeOppBoard(boards[k], v);
   const wasTft = r.wasTft || live.wasTft;
-  log('resume', { reason, startedAt: snap.startedAt, boards: Object.keys(boards).length, pvp: Object.keys(r.pvp).length, mainHandled });
+  log('resume', { reason, startedAt: snap.startedAt, pvp: Object.keys(r.pvp).length, mainHandled });
   patchLive({
-    oppBoards: boards, roster: live.roster.length ? live.roster : r.roster, pvp: { ...r.pvp, ...live.pvp },
+    roster: live.roster.length ? live.roster : r.roster, pvp: { ...r.pvp, ...live.pvp },
     dismissed: [...new Set([...r.dismissed, ...live.dismissed])], startedAt: r.startedAt, wasTft,
     inTft: live.inTft || wasTft, queueId: live.queueId ?? snap.queueId,
   });

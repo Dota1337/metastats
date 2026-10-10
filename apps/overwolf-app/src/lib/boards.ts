@@ -17,50 +17,16 @@ export function recordBoard(boards: Boards, kind: 'own' | 'opp', round: number, 
   boards.set(key, pieces.map(p => ({ round, kind, ...p })));
 }
 
-// ---------- Gegner-Bretter fuer das Gegner-Overlay ----------
-
-export interface OppUnit { unit: string; level: number }
-// round: Stufe×10+Runde, in der das Brett gesehen wurde; stage: dieselbe Angabe
-// als "4-2", falls das Spiel sie gemeldet hat.
-export interface OppBoard { units: OppUnit[]; round: number; stage: string | null }
-
-// Jede Unit einmal, mit dem hoechsten Stern, den sie auf dem Brett hat.
-export function toOppBoard(pieces: BoardPiece[], round: number, stage: string | null): OppBoard {
-  const best = new Map<string, number>();
-  for (const p of pieces) {
-    if (!p.unit) continue;
-    best.set(p.unit, Math.max(best.get(p.unit) ?? 0, p.level || 1));
-  }
-  const units = [...best].map(([unit, level]) => ({ unit, level })).sort((a, b) => a.unit.localeCompare(b.unit));
-  return { units, round, stage };
-}
-
-// Neues Teilbrett in das gemerkte Brett eines Gegners einrechnen.
-// - gleiche Runde: Vereinigung, je Unit der hoechste Stern (Teilstuecke derselben Aufstellung)
-// - spaetere Runde: ersetzt nur, wenn sie mindestens so viele Units zeigt —
-//   sonst ist es meist ein Teilbrett, und das aeltere, vollstaendigere bleibt
-//   (mit seiner aelteren Stage, die das Overlay mit anzeigt)
-// - fruehere Runde: wird ignoriert
-export function mergeOppBoard(prev: OppBoard | null | undefined, next: OppBoard): OppBoard {
-  if (!prev || prev.units.length === 0) return next;
-  if (next.units.length === 0 || next.round < prev.round) return prev;
-  if (next.round === prev.round) {
-    const best = new Map(prev.units.map(u => [u.unit, u.level]));
-    for (const u of next.units) best.set(u.unit, Math.max(best.get(u.unit) ?? 0, u.level));
-    const units = [...best].map(([unit, level]) => ({ unit, level })).sort((a, b) => a.unit.localeCompare(b.unit));
-    return { units, round: prev.round, stage: prev.stage ?? next.stage };
-  }
-  return next.units.length >= prev.units.length ? next : prev;
-}
-
-export function sameOppBoard(a: OppBoard | null | undefined, b: OppBoard | null | undefined): boolean {
-  if (!a || !b) return a === b;
-  return a.round === b.round && a.stage === b.stage && a.units.length === b.units.length
-    && a.units.every((u, i) => u.unit === b.units[i].unit && u.level === b.units[i].level);
-}
-
 export function flattenBoards(boards: Boards): Observation[] {
   return [...boards.values()].flat();
+}
+
+// Behelfs-Kennung, solange das Spiel keine Match-ID meldet. Der Backfill liest
+// daraus nur die Startzeit (scripts/backfill-companion-placements.mjs); der
+// Rest ist Zufall — bis 0.8.2 stand dort der Anfang des Riot-Namens.
+export function liveMatchId(seedMs: number, rand: () => number = Math.random): string {
+  const tail = Array.from({ length: 8 }, () => Math.floor(rand() * 16).toString(16)).join('');
+  return `LIVE_${seedMs}_${tail}`;
 }
 
 // ---------- Eigene Spiele fuer den Spielverlauf ----------

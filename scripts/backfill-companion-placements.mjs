@@ -18,6 +18,12 @@
  *
  * Statusdatei liegt im StateDirectory der Unit. Laeuft per Timer alle 10 Min.
  *
+ * Datenschutz (seit 10.10.2026): Behelfs-Zeilen tragen den Riot-Namen, bis sie
+ * aufgeloest sind. Was 48 h nach dem Hochladen (observed_at, Serverzeit — die
+ * Zeit in der ID kommt von der Uhr des Spieler-PCs) noch offen ist, wird
+ * geloescht. Die Statusdatei fuehrt keine Riot-Namen mehr, die Logs auch nicht.
+ * Den Namen der aufgeloesten Zeilen ersetzt der Aggregator.
+ *
  *   node scripts/backfill-companion-placements.mjs [--dry-run]
  */
 
@@ -27,7 +33,7 @@ import { tmpdir } from 'node:os';
 import { getRegionalRouting, getAccountRouting, isValidRegion } from './lib/regional-routing.mjs';
 import { createRiotClient } from './lib/riot-client.mjs';
 import { riotWindowFor } from './lib/riot-limits.mjs';
-import { isRiotHandle } from './lib/companion-positions.mjs';
+import { isRiotHandle, regionFromMatchId, PRIVACY_DEADLINE_MS } from './lib/companion-positions.mjs';
 import { pickMatch, shouldRetryUnresolvable, MATCH_ALGO_VERSION } from './lib/companion-match-pick.mjs';
 
 function loadEnv() {
@@ -88,20 +94,29 @@ const sb = (path, init = {}) => fetch(`${SUPA_URL}${path}`, {
 async function riotFetch(url, label) {
   const res = await riot.fetch(url);
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`riot ${label} ${res.status}: ${body.slice(0, 100)}`);
+    // Riots 404 auf account-v1 wiederholt den gesuchten Namen — der gehoert nicht ins Log.
+    const body = label.startsWith('account') ? '' : `: ${(await res.text()).slice(0, 100)}`;
+    throw new Error(`riot ${label} ${res.status}${body}`);
   }
   return res.json();
 }
 
+// Nur `unresolvable` wird gespeichert. Bis 0.8.2 stand hier auch
+// `clusterByHandle` (Riot-Name → Weltregion); das faellt beim Laden weg.
 function loadState() {
-  try { return { unresolvable: {}, clusterByHandle: {}, ...JSON.parse(readFileSync(STATE_FILE, 'utf8')) }; } catch { return { unresolvable: {}, clusterByHandle: {} }; }
+  try { return { unresolvable: JSON.parse(readFileSync(STATE_FILE, 'utf8')).unresolvable || {} }; } catch { return { unresolvable: {} }; }
 }
 function saveState(state) {
   mkdirSync(STATE_DIR, { recursive: true });
-  writeFileSync(`${STATE_FILE}.tmp`, JSON.stringify(state));
+  writeFileSync(`${STATE_FILE}.tmp`, JSON.stringify({ unresolvable: state.unresolvable }));
   renameSync(`${STATE_FILE}.tmp`, STATE_FILE);
 }
+
+// Weltregion des letzten Treffers je Beobachter, nur fuer diesen Lauf.
+const clusterByHandle = new Map();
+
+// Behelfs-IDs der App bis 0.8.2 enden mit den ersten 8 Zeichen des Namens.
+const maskLive = (liveId) => liveId.replace(/^(LIVE_\d+_).*$/, '$1…');
 
 const puuidCache = new Map();
 async function resolvePuuid(handle, region) {
@@ -111,7 +126,7 @@ async function resolvePuuid(handle, region) {
   const accountCluster = region ? getAccountRouting(region) : 'europe';
   const account = await riotFetch(
     `https://${accountCluster}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
-    `account-v1 ${handle}`,
+    'account-v1',
   );
   puuidCache.set(handle, account.puuid);
   return account.puuid;
@@ -155,10 +170,20 @@ async function getPending() {
 
 const CLUSTERS = ['europe', 'americas', 'asia', 'sea'];
 
-// "EUW1_7881677153" → "euw1"
-function regionFromMatchId(matchId) {
-  const p = String(matchId).split('_')[0].toLowerCase();
-  return isValidRegion(p) ? p : null;
+/** Behelfs-Zeilen, die 48 h nach dem Hochladen noch offen sind, loeschen. Gibt die Anzahl zurueck. */
+async function deleteExpired() {
+  const cutoff = new Date(Date.now() - PRIVACY_DEADLINE_MS).toISOString();
+  const filter = `match_id=like.LIVE_*&observed_at=lt.${encodeURIComponent(cutoff)}`;
+  if (DRY_RUN) {
+    const res = await sb(`/rest/v1/tft_position_observations?select=id&${filter}`);
+    if (!res.ok) throw new Error(`Supabase GET abgelaufen: HTTP ${res.status}`);
+    return (await res.json()).length;
+  }
+  const res = await sb(`/rest/v1/tft_position_observations?select=id&${filter}`, {
+    method: 'DELETE', headers: { Prefer: 'return=representation' },
+  });
+  if (!res.ok) throw new Error(`Supabase DELETE abgelaufen: HTTP ${res.status} ${(await res.text()).slice(0, 120)}`);
+  return (await res.json()).length;
 }
 
 async function resolveOne({ liveId, handle, region }, state) {
@@ -170,7 +195,7 @@ async function resolveOne({ liveId, handle, region }, state) {
 
   // Bekannte Region zuerst, dann die beim letzten Treffer gemerkte Weltregion,
   // dann die uebrigen. Der Tag (#EUW) ist frei waehlbar, also nur ein Hinweis.
-  const hinted = [region && getRegionalRouting(region), state.clusterByHandle[handle]].filter(Boolean);
+  const hinted = [region && getRegionalRouting(region), clusterByHandle.get(handle)].filter(Boolean);
   const order = [...new Set([...hinted, ...CLUSTERS])];
 
   const startTime = Math.floor((seed - 30 * 60 * 1000) / 1000);
@@ -179,14 +204,14 @@ async function resolveOne({ liveId, handle, region }, state) {
   for (const cluster of order) {
     const ids = await riotFetch(
       `https://${cluster}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=0&count=20&startTime=${startTime}&endTime=${endTime}`,
-      `match-ids ${handle} ${cluster}`,
+      `match-ids ${cluster}`,
     );
     seen += ids.length;
     const details = [];
     for (const id of ids) details.push(await getMatchDetail(id, cluster));
     const best = pickMatch(seed, details, puuid);
     if (!best) continue;
-    state.clusterByHandle[handle] = cluster;
+    clusterByHandle.set(handle, cluster);
     const riotId = best.md.metadata.match_id;
     const p = best.md.info.participants.find(x => x.puuid === puuid);
     return { riotId, placement: p ? p.placement : null, delta: best.delta, region: region || regionFromMatchId(riotId) };
@@ -196,27 +221,35 @@ async function resolveOne({ liveId, handle, region }, state) {
 
 async function main() {
   const state = loadState();
+  const expired = await deleteExpired();
+  if (expired) console.log(`${expired} Behelfs-Zeilen aelter als 48 h ${DRY_RUN ? 'wuerden geloescht' : 'geloescht'}`);
+  const all = await getPending();
+  // Status nur fuer IDs, die es noch gibt — geloeschte nehmen ihren Eintrag mit.
+  const live = new Set(all.map(p => p.liveId));
+  for (const id of Object.keys(state.unresolvable)) if (!live.has(id)) delete state.unresolvable[id];
   // Aufgegebene IDs bleiben draussen — ausser `no_match_*` einer aelteren
   // Zuordnungsregel, die bekommen genau einen neuen Versuch (Eintrag traegt `v`).
-  const pending = (await getPending()).filter(p => shouldRetryUnresolvable(state.unresolvable[p.liveId]));
+  const pending = all.filter(p => shouldRetryUnresolvable(state.unresolvable[p.liveId]));
   if (pending.length === 0) {
+    if (!DRY_RUN) saveState(state);
     console.log('keine offenen LIVE_-IDs — fertig.');
     return;
   }
   console.log(`${pending.length} offene LIVE_-IDs`);
   let done = 0, failed = 0;
   for (const p of pending) {
+    const shown = maskLive(p.liveId);
     let r;
     try {
       r = await resolveOne(p, state);
     } catch (e) {
       failed++;
-      console.warn(`  ${p.liveId}: ${e.message}`);
+      console.warn(`  ${shown}: ${e.message}`);
       continue;
     }
-    if (r.pending) { console.log(`  ${p.liveId}: noch kein Riot-Spiel, naechster Lauf`); continue; }
+    if (r.pending) { console.log(`  ${shown}: noch kein Riot-Spiel, naechster Lauf`); continue; }
     if (r.unresolvable) {
-      console.log(`  ${p.liveId}: nicht aufloesbar (${r.unresolvable})`);
+      console.log(`  ${shown}: nicht aufloesbar (${r.unresolvable})`);
       if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: r.unresolvable, v: MATCH_ALGO_VERSION, at: new Date().toISOString() };
       continue;
     }
@@ -228,11 +261,11 @@ async function main() {
       `&observer_puuid=eq.${encodeURIComponent(p.handle)}&limit=1`);
     if (!dup.ok) { failed++; console.warn(`    Doppel-Pruefung fehlgeschlagen: ${dup.status}`); continue; }
     if ((await dup.json()).length > 0) {
-      console.log(`  ${p.liveId}: doppelt hochgeladen, ${r.riotId} ist schon da`);
+      console.log(`  ${shown}: doppelt hochgeladen, ${r.riotId} ist schon da`);
       if (!DRY_RUN) state.unresolvable[p.liveId] = { reason: `duplicate_of:${r.riotId}`, v: MATCH_ALGO_VERSION, at: new Date().toISOString() };
       continue;
     }
-    console.log(`  ${p.liveId} → ${r.riotId} (Platz ${r.placement}, ${Math.round(r.delta / 1000)} s Abstand)`);
+    console.log(`  ${shown} → ${r.riotId} (Platz ${r.placement}, ${Math.round(r.delta / 1000)} s Abstand)`);
     if (DRY_RUN) continue;
     const upd = await sb(
       `/rest/v1/tft_position_observations?match_id=eq.${encodeURIComponent(p.liveId)}&observer_puuid=eq.${encodeURIComponent(p.handle)}`,

@@ -3,7 +3,67 @@ import assert from 'node:assert/strict';
 import { compTraitFamilyKey } from '../../app/lib/tft-cluster.ts';
 import {
   familyKeyFromCluster, isRiotMatchId, isRiotHandle, aggregateCells, staleRows, groupKey, boardCell, isLateBoard,
+  regionFromMatchId, pseudonym, isPseudonym, shouldSeal, isFinalClass, classColumns, storedClass, collidingIds,
+  PRIVACY_DEADLINE_MS,
 } from './companion-positions.mjs';
+
+const KEY = 'k'.repeat(40);
+
+test('Pseudonym: je Spiel, gross/klein egal, eigene Vorsilbe, nie wie Riot-Name oder Konto-ID', () => {
+  const p = pseudonym('EUW1_1', 'Name#EUW', KEY);
+  assert.match(p, /^p_[0-9a-f]{24}$/);
+  assert.ok(isPseudonym(p));
+  assert.ok(!isRiotHandle(p));
+  assert.equal(pseudonym('EUW1_1', ' name#euw ', KEY), p);
+  assert.notEqual(pseudonym('EUW1_2', 'Name#EUW', KEY), p);
+  assert.notEqual(pseudonym('EUW1_1', 'Name#EUW', 'x'.repeat(40)), p);
+  assert.ok(!isPseudonym('Name#EUW'));
+  assert.ok(!isPseudonym('abc123puuid'));
+  assert.throws(() => pseudonym('EUW1_1', 'Name#EUW', ''));
+  assert.throws(() => pseudonym('EUW1_1', 'Name#EUW', 'zu-kurz'));
+  assert.throws(() => pseudonym('EUW1_1', 'Name#EUW', undefined));
+});
+
+test('Region aus der Match-ID', () => {
+  assert.equal(regionFromMatchId('EUW1_7881677153'), 'euw1');
+  assert.equal(regionFromMatchId('KR_1'), 'kr');
+  assert.equal(regionFromMatchId('LIVE_1_x'), null);
+});
+
+test('Versiegeln: Treffer und „nicht im Spiel“ sofort, alles andere erst nach 48 h', () => {
+  const now = Date.parse('2026-10-10T12:00:00Z');
+  const fresh = { own: true, oldest: '2026-10-10T11:00:00Z' };
+  const old = { own: true, oldest: new Date(now - PRIVACY_DEADLINE_MS).toISOString() };
+  const hit = { clusterKey: 'T@4_C', familyKey: 'T__C', queue: 1100 };
+  assert.ok(isFinalClass(hit));
+  assert.ok(shouldSeal(fresh, hit, now));
+  assert.ok(shouldSeal(fresh, { skip: 'not_in_match' }, now));
+  for (const c of [{ skip: 'match_404' }, { skip: 'no_account' }, { skip: 'unclassified' }, { transient: true }, undefined]) {
+    assert.ok(!shouldSeal(fresh, c, now), JSON.stringify(c));
+    assert.ok(shouldSeal(old, c, now), JSON.stringify(c));
+  }
+  // Nur Gegner-Bretter: keine Zuordnung noetig.
+  assert.ok(shouldSeal({ own: false, oldest: fresh.oldest }, undefined, now));
+});
+
+test('Zuordnung an der Zeile: schreiben und wieder lesen', () => {
+  const cols = classColumns({ clusterKey: 'T@4_C~A', familyKey: 'T__C', queue: 1100 }, '2026-10-10T12:00:00Z');
+  assert.deepEqual(cols, { cluster_key: 'T@4_C~A', family_key: 'T__C', queue_id: 1100, classified_at: '2026-10-10T12:00:00Z' });
+  assert.deepEqual(storedClass(cols), { clusterKey: 'T@4_C~A', familyKey: 'T__C', queue: 1100, stored: true });
+  assert.deepEqual(classColumns(undefined, 'x'), { cluster_key: null, family_key: null, queue_id: null, classified_at: 'x' });
+  assert.equal(storedClass({ cluster_key: 'T@4_C', classified_at: null }), null);
+});
+
+test('Zweiter Upload: nur die schon vorhandenen Zeilen fallen weg', () => {
+  const sealed = [{ id: 1, kind: 'own', cell: 3, unit: 'U1', round: 41 }, { id: 2, kind: 'opp', cell: 5, unit: 'U2', round: 41 }];
+  const plain = [
+    { id: 10, kind: 'own', cell: 3, unit: 'U1', round: 41 },   // schon da
+    { id: 11, kind: 'own', cell: 3, unit: 'U1', round: 42 },   // neue Runde
+    { id: 12, kind: 'opp', cell: 5, unit: 'U2', round: 41 },   // schon da
+    { id: 13, kind: 'own', cell: 5, unit: 'U2', round: 41 },   // andere Art
+  ];
+  assert.deepEqual(collidingIds(plain, sealed), [10, 12]);
+});
 
 test('Familien-Schluessel stimmt mit app/lib/tft-cluster.ts ueberein', () => {
   const keys = [

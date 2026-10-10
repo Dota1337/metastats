@@ -13,7 +13,6 @@
 // Startet die App dreimal in 2 Minuten, wird nicht fortgesetzt — sonst setzt
 // ein Stand, der den Absturz ausloest, sich endlos fort.
 import type { Live, RosterRow } from './store.ts';
-import type { OppBoard } from './boards.ts';
 import type { OverlayName } from './windows.ts';
 import { stageToRound } from './gep.ts';
 
@@ -23,7 +22,6 @@ export interface MatchSnapshot {
   startedAt: number;          // Beginn der Partie (eine Partie im Spielverlauf, nicht zwei)
   updatedAt: number;          // letzter Schreibstand
   stage: string | null;
-  oppBoards: Record<string, OppBoard>;
   roster: RosterRow[];
   pvp: Record<string, string>;
   queueId: number | null;
@@ -50,7 +48,7 @@ export type MatchFields = Omit<Live, 'updatedAt'>;
 export function emptyMatchState(): MatchFields {
   return {
     inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null,
-    oppBoards: {}, roster: [], lobby: null, startedAt: null, moving: false,
+    roster: [], lobby: null, startedAt: null, moving: false,
     roundKind: null, pvp: {}, queueId: null, dismissed: [], myUnits: [], wasTft: false,
   };
 }
@@ -98,10 +96,9 @@ export function decideResume(snap: MatchSnapshot | null | undefined, c: ResumeCo
 }
 
 // Alten Stand in den neuen einrechnen: was seit dem Neustart schon gesehen
-// wurde, bleibt (neuere Bretter gewinnen ueber mergeOppBoard im Aufrufer).
-export function resumedFields(snap: MatchSnapshot): Pick<Live, 'oppBoards' | 'roster' | 'pvp' | 'dismissed' | 'startedAt' | 'wasTft'> {
+// wurde, bleibt.
+export function resumedFields(snap: MatchSnapshot): Pick<Live, 'roster' | 'pvp' | 'dismissed' | 'startedAt' | 'wasTft'> {
   return {
-    oppBoards: snap.oppBoards ?? {},
     roster: snap.roster ?? [],
     pvp: snap.pvp ?? {},
     dismissed: snap.dismissed ?? [],

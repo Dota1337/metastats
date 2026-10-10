@@ -55,9 +55,12 @@ async function fetchWithNetRetry(url, init, log, attempt = 0) {
 
 // Ein Key, der jemals in einer URL stand, darf nicht ins Log. Der Client
 // loggt URLs an drei Stellen (net-retry, 429-Aufgabe, fetchJson-Fehler) —
-// journald auf der Box haelt die Zeilen wochenlang vor.
-function redact(url) {
-  return String(url).replace(/([?&]api_key=)[^&]*/g, '$1REDACTED');
+// journald auf der Box haelt die Zeilen wochenlang vor. Dasselbe gilt fuer
+// Riot-Namen im Pfad der Konto-Abfrage (Companion-Daten, Datenschutz).
+export function redact(url) {
+  return String(url)
+    .replace(/([?&]api_key=)[^&]*/g, '$1REDACTED')
+    .replace(/(\/by-riot-id\/)[^/?]+\/[^/?]+/g, '$1…');
 }
 
 export function createRiotClient(opts = {}) {

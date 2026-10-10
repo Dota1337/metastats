@@ -6,8 +6,6 @@
 // Reihenfolge: Comps mit mindestens 2 Treffern auf dem eigenen Brett zuerst
 // (2-Sterne-Units zaehlen doppelt), danach nach Tier.
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import type { OppBoard } from './boards.ts';
-import { recognizeComp } from './plan.ts';
 
 export const BOARD_MIN_SCORE = 2;
 const TIER_ORDER: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 };
@@ -49,15 +47,4 @@ export function rankComps(comps: CompanionComp[], mine: Array<{ id: string; star
     if (ah && a.score !== b.score) return b.score - a.score;
     return byTier(a, b);
   });
-}
-
-// Wie viele Gegner spielen sichtbar dieselben Carries (erkannte Comp)?
-export function contestCount(c: CompanionComp, oppBoards: Record<string, OppBoard>, comps: CompanionComp[]): number {
-  const mine = new Set(c.carries);
-  let n = 0;
-  for (const board of Object.values(oppBoards)) {
-    const rec = recognizeComp(board, comps);
-    if (rec && rec.carries.some(u => mine.has(u.unit))) n++;
-  }
-  return n;
 }

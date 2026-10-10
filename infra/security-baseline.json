@@ -28,10 +28,11 @@
       "titel": "Zwei Tabellen der Positions-Auswertung hat die grosse Abriegelung ausgelassen",
       "ort": "supabase/migrations/0055_revoke_anon_read.sql",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "In der Entzugsliste 0055:58-80 fehlen tft_position_observations und tft_position_aggregator_state (enthalten sind nur tft_position_comp_cell:74 und die Sicht tft_position_unit_cell:75). grep -rn -i 'tft_position_observations|tft_position_aggregator_state' supabase/migrations/*.sql | grep -iE 'revoke|grant|policy' findet ausser einem Kommentar in 0030:13 nichts. Der Zeilenschutz ist an (0022:18-20), eine Leseregel dafuer gibt es nicht (0022:22-23 legt nur eine fuer tft_position_comp_cell an).",
+      "status": "behoben",
+      "belegt_mit": "Migration 0090_tft_position_pseudonym.sql entzieht anon und authenticated alle Rechte auf tft_position_observations und tft_position_aggregator_state. Live geprueft 10.10.2026: information_schema.role_table_grants fuer beide Tabellen und beide Rollen = 0 Zeilen.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-09-19"
+      "zuletzt_gesehen": "2026-09-19",
+      "behoben_am": "2026-10-10"
     },
     {
       "id": "antwortbremse-schweigt-ohne-verlauf:answer-check",

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { matchesQuery, rankComps, boardScore, contestCount } from './comp-search.ts';
+import { matchesQuery, rankComps, boardScore } from './comp-search.ts';
 
 const lk: CompanionLookups = {
   v: 1, set: 18,
@@ -50,13 +50,6 @@ test('Brett-Treffer ab 2 (2★ doppelt) gehen vor das Tier', () => {
   // Mehr Treffer gewinnen.
   const many = [{ id: 'DA_18_Veigar', star: 1 }, { id: 'DA_18_Azir', star: 2 }, { id: 'DA_18_Varus', star: 2 }];
   assert.deepEqual(rankComps(comps, many, '', lk).map(r => r.comp.key), ['exe', 'lun', 'low']);
-});
-
-test('Contest: Gegner mit erkannter Comp und gleichem Carry', () => {
-  const board = { units: [{ unit: 'DA_18_Veigar', level: 2 }, { unit: 'DA_18_Azir', level: 2 }, { unit: 'DA_18_Zyra', level: 1 }, { unit: 'X1', level: 1 }, { unit: 'X2', level: 1 }], round: 41, stage: '4-1' };
-  const big = { ...exe, units: ['DA_18_Veigar', 'DA_18_Azir', 'DA_18_Zyra', 'X1', 'X2'].map(id => ({ id })) };
-  assert.equal(contestCount(big, { 'Opp#EUW': board }, [big, lun]), 1);
-  assert.equal(contestCount(lun, { 'Opp#EUW': board }, [big, lun]), 0);
 });
 
 test('Keine Augmente in der Suche', () => {

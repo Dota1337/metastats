@@ -16,9 +16,10 @@ export const maxDuration = 20;
 
 const MAX_NAMES = 8;
 const RECENT = 10;
-// Mehr als die App zeigt (3): sie laesst Nicht-Champions weg (gemessen u. a.
-// DA_Sentinel18 als carry_unit).
-const TOP_CARRIES = 5;
+// Keine Carries mehr (seit App 0.8.3, 10.10.2026): was Mitspieler spielen,
+// zeigt die App im Spiel nicht mehr (Riot-Regeln). Das Feld bleibt als leere
+// Liste, weil 0.8.2 es ohne Pruefung liest — so ist es dort sofort aus.
+const TOP_CARRIES = 0;
 // Normal und Ranked; Double Up, Hyper Roll usw. verzerren Platz und Carries.
 const QUEUES = new Set([1090, 1100]);
 const NO_STORE = { cdn: 'no-store', browser: 'no-store' };

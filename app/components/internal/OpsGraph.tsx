@@ -122,9 +122,9 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   'metastats-daily-crawl-catchup.service':
     'Sicherheits-Hook. Wenn der Daily-Crawl Mitternacht überquert (>24h Lauf), wäre der nächste Tages-Trigger geschluckt — dieser Service detektiert das und startet sofort einen Nachhol-Lauf.',
   'metastats-companion-backfill.service':
-    'Alle 10 Minuten. Verknüpft Overwolf-Companion-Position-Daten (LIVE_xxx synth-IDs) mit den echten Riot-Match-IDs sobald die Match in Match-V1 erscheint.',
+    'Alle 10 Minuten. Verknüpft Overwolf-Companion-Position-Daten (LIVE_xxx synth-IDs) mit den echten Riot-Match-IDs sobald die Match in Match-V1 erscheint. Löscht Behelfs-Zeilen, die 48 h nach dem Hochladen noch offen sind.',
   'metastats-position-aggregator.service':
-    'Alle 15 Minuten. Aggregiert tft_position_observations zu tft_position_comp_cell für die Position-Heatmaps in den Comp-Detail-Pages.',
+    'Alle 15 Minuten. Aggregiert tft_position_observations zu tft_position_comp_cell für die Position-Heatmaps in den Comp-Detail-Pages. Schreibt die Comp-Zuordnung an die Beobachtungen und ersetzt danach den Riot-Namen durch ein Pseudonym (spätestens 48 h nach dem Hochladen, sonst Exit 1).',
   'metastats-build-check.service':
     'Periodischer Smoke-Check der Crawler-Box (Node-Version, Disk-Space, env-File-Existenz). Reine Diagnose, schreibt nichts in die Pipeline.',
   'metastats-health.service':
@@ -800,6 +800,9 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   // position-aggregator: liest Beobachtungen + Match-Cache, schreibt die
   // comp-gebundene Zellzahl.
   addEdge('db:tft_position_observations', 'svc:metastats-position-aggregator.service', 'read',
+    svcWorking('metastats-position-aggregator.service'));
+  // Seit 10.10.2026 schreibt er auch zurueck: Zuordnung + Pseudonym (Datenschutz).
+  addEdge('svc:metastats-position-aggregator.service', 'db:tft_position_observations', 'write',
     svcWorking('metastats-position-aggregator.service'));
   addEdge('db:tft_player_match_cache', 'svc:metastats-position-aggregator.service', 'read',
     svcWorking('metastats-position-aggregator.service'));

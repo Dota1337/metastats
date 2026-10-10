@@ -21,7 +21,6 @@ import type {
   CompanionComp, CompanionCompDetail, CompanionCompsResponse, CompanionItemsResponse, CompanionLobbyEntry, CompanionLookups, CompanionPlayerResponse,
 } from '../../../../app/lib/companion-types.ts';
 import type { Lang } from './i18n.ts';
-import type { OppBoard } from './boards.ts';
 import type { RoundKind } from './gep.ts';
 import type { OverlayName } from './windows.ts';
 import type { MatchSnapshot } from './match-state.ts';
@@ -34,7 +33,7 @@ export type DisplayMode = 'auto' | 'overlay' | 'desktop';
 export interface Settings {
   pinned: boolean;     // Comp-Overlay im Spiel
   shop: boolean;       // Shop-Markierung
-  opponent: boolean;   // Gegner-Overlay: erkannte Comps der Gegner, auch ohne angeheftete Comp (ab 0.6)
+  opponent: boolean;   // Gegner-Overlay (Leben, letzter Kampf, Scout), auch ohne angeheftete Comp (ab 0.6)
   share: boolean;      // Brett-Daten senden
   region: string;
   lang: Lang | null;   // null = Englisch (Standard seit 0.8.1)
@@ -61,9 +60,8 @@ export interface Live {
   shopVisible: boolean;
   opponent: string | null;
   stage: string | null;
-  oppBoards: Record<string, OppBoard>; // Gegnername -> sein vollstaendigstes zuletzt gesehenes Brett
   roster: RosterRow[];  // alle acht Spieler mit Leben und Platz (leer bis zur ersten Meldung)
-  lobby: string | null; // Kennung der Partie, zu der oppBoards gehoert (Neustart mitten im Spiel)
+  lobby: string | null; // Kennung der laufenden Partie (Neustart mitten im Spiel)
   startedAt: number | null; // Beginn dieser Partie (Neustart mitten im Spiel: Spielverlauf bleibt eine Partie)
   moving: boolean;      // Verschiebe-Modus des Gegner-Overlays (nie ueber einen Neustart gerettet)
   updatedAt: number;
@@ -108,7 +106,7 @@ const DEFAULTS: { [K in StoreKey]: Schema[K] } = {
   'ms.comps': null,
   'ms.lookups': null,
   'ms.live': {
-    inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, oppBoards: {}, roster: [], lobby: null, startedAt: null, moving: false, updatedAt: 0,
+    inTft: false, level: null, shop: [], shopVisible: false, opponent: null, stage: null, roster: [], lobby: null, startedAt: null, moving: false, updatedAt: 0,
     roundKind: null, pvp: {}, queueId: null, dismissed: [], myUnits: [], wasTft: false,
   },
   'ms.me': null,
@@ -134,14 +132,12 @@ export function read<K extends StoreKey>(key: K): Schema[K] {
     const parsed = JSON.parse(raw) as Schema[K];
     if (key === 'ms.settings') return { ...DEFAULTS['ms.settings'], ...(parsed as Settings) } as Schema[K];
     if (key === 'ms.live') {
-      const live = { ...DEFAULTS['ms.live'], ...(parsed as Live) };
-      // Bis 0.6 stand je Gegner eine Liste von Unit-Kennungen; die wird verworfen.
-      const boards: Record<string, OppBoard> = {};
-      for (const [k, v] of Object.entries(live.oppBoards ?? {})) {
-        if (v && typeof v === 'object' && Array.isArray((v as OppBoard).units)) boards[k] = v as OppBoard;
-      }
+      // Bis 0.8.2 stand hier je Gegnername sein Brett (Comp-Erkennung). Das
+      // faellt ausdruecklich weg, sonst schriebe jedes Update es zurueck.
+      const { oppBoards: _dropped, ...rest } = parsed as Live & { oppBoards?: unknown };
+      const live = { ...DEFAULTS['ms.live'], ...rest };
       return {
-        ...live, oppBoards: boards, roster: Array.isArray(live.roster) ? live.roster : [],
+        ...live, roster: Array.isArray(live.roster) ? live.roster : [],
         pvp: live.pvp && typeof live.pvp === 'object' && !Array.isArray(live.pvp) ? live.pvp : {},
         dismissed: Array.isArray(live.dismissed) ? live.dismissed : [],
         myUnits: Array.isArray(live.myUnits) ? live.myUnits : [],

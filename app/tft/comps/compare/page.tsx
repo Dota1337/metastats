@@ -43,17 +43,31 @@ export default function TftCompsComparePage() {
     router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
   }, [region, bucket, pathname, router, search]);
 
+  // Rangwechsel (User 2026-10-10: „es passiert nichts"): ein noch nicht
+  // vorberechneter Rang braucht 3–15 s. Solange bleiben die alten Zahlen
+  // gedimmt stehen, und der cancelled-Guard vor den Settern verwirft die
+  // spaete Antwort eines vorher gewaehlten Rangs. „Laedt" = die gezeigten
+  // Daten gehoeren zu einer anderen Auswahl als der aktuellen (wie
+  // compFilters auf der Detailseite, kein setState im Effect-Rumpf).
+  const filterKey = `${slugA}|${slugB}|${region}|${bucket}|${days}`;
+  const [loadedKey, setLoadedKey] = useState('');
+  const loading = loadedKey !== filterKey;
   useEffect(() => {
     if (!slugA || !slugB) return;
+    let cancelled = false;
+    const key = `${slugA}|${slugB}|${region}|${bucket}|${days}`;
     const url = (slug: string) =>
       `/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=family`;
     Promise.all([
       fetch(url(slugA)).then(r => r.json()).catch(() => ({ comp: null })),
       fetch(url(slugB)).then(r => r.json()).catch(() => ({ comp: null })),
     ]).then(([a, b]) => {
+      if (cancelled) return;
       setCompA(a.comp || null);
       setCompB(b.comp || null);
+      setLoadedKey(key);
     });
+    return () => { cancelled = true; };
   }, [slugA, slugB, bucket, region, days]);
 
   const traitsA = useMemo(() => compA ? computeActiveTraits(compA.typicalUnits, compA.clusterKey, assets) : [], [compA, assets]);
@@ -87,8 +101,18 @@ export default function TftCompsComparePage() {
           </div>
         )}
 
+        {slugA && slugB && (compA === undefined || compB === undefined) && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" aria-busy="true">
+            {[0, 1].map(i => <div key={i} className="h-36 rounded bg-surface-base border border-border-subtle animate-pulse" />)}
+            {[0, 1, 2, 3].map(i => <div key={`d${i}`} className="h-20 lg:col-span-2 rounded bg-surface-base border border-border-subtle animate-pulse" />)}
+          </div>
+        )}
+
         {slugA && slugB && compA !== undefined && compB !== undefined && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div
+            className={`grid grid-cols-1 lg:grid-cols-2 gap-4 transition-opacity ${loading ? 'opacity-40 animate-pulse pointer-events-none' : ''}`}
+            aria-busy={loading}
+          >
             <CompPanel comp={compA} assets={assets} t={t} side="a" />
             <CompPanel comp={compB} assets={assets} t={t} side="b" />
             {compA && compB && (

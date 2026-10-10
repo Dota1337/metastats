@@ -31,6 +31,7 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 // of-Truth, parallel zu app/lib/tft-item-classes.ts).
 import { damageCarryItemsForSet, defensiveItemsForSet } from './tft-item-classes.mjs';
 import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
+import { familyKeyFromCluster } from './companion-positions.mjs';
 
 // Fertige Items fuer persistTopItems (DB-Tabelle tft_daily_unit_top_items,
 // Item-Reihe auf /tft/units). Raus: Bauteile, Embleme, Thief's Gloves und
@@ -235,6 +236,7 @@ export function emptyAggregate() {
     byTraitUnitCount: new Map(), // traitName -> Map<num_units, Map<bucket, TraitBucket>> — overcapping signal
     byComp: new Map(),     // clusterKey -> Map<bucket, CompBucket>
     byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
+    byFamilyPair: new Map(), // "bucket\0famLo\0famHi" -> Duelle je Familie und Rang (0092)
     participantsByBucket: new Map(), // bucket -> count (matches × 8). Exact denominator
                                      //   for pickRate; bypasses minCompGames filter
                                      //   that byComp roll-ups would impose.
@@ -819,7 +821,56 @@ export function aggregateMatch(rawMatch, agg, opts) {
     }
   }
 
+  // Duelle je Familie, nur im Rang des Matches (pro_pool nicht: doppelt gezaehlt).
+  if (agg.byFamilyPair) {
+    addFamilyPairs(agg.byFamilyPair, tierBucket,
+      compClass.map(c => c?.clusterKey ?? null), participants.map(p => p.placement));
+  }
+
   return true;
+}
+
+// Comp-Duelle je Familie und Rang (Tabelle tft_daily_comp_matchups, 0092).
+// Ein Vergleich je Spielerpaar mit verschiedener Familie (<trait>__<carry>,
+// wie familyKeyForMerge) — spielen zwei Spieler A und einer B, sind das zwei
+// Vergleiche. Zwei Varianten derselben Familie zaehlen nicht. Keine
+// Mindestzahl und keine Auswahl nach Ergebnis: die alte Paar-Liste
+// (byCompPair, finalize) verlor so die ausgeglichenen Paare.
+export function addFamilyPairs(map, bucket, clusterKeys, placements) {
+  const fams = clusterKeys.map(k => (k ? familyKeyFromCluster(k) : null));
+  for (let i = 0; i < fams.length; i++) {
+    const fa = fams[i];
+    if (!fa) continue;
+    for (let j = i + 1; j < fams.length; j++) {
+      const fb = fams[j];
+      if (!fb || fa === fb) continue;
+      const lo = fa < fb ? fa : fb;
+      const hi = fa < fb ? fb : fa;
+      const key = `${bucket}\u0000${lo}\u0000${hi}`;
+      let e = map.get(key);
+      if (!e) {
+        e = { bucket, a: lo, b: hi, games: 0, aBetter: 0, bBetter: 0 };
+        map.set(key, e);
+      }
+      e.games++;
+      const pi = placements[i] ?? 9;
+      const pj = placements[j] ?? 9;
+      const loPlace = fa === lo ? pi : pj;
+      const hiPlace = fa === lo ? pj : pi;
+      if (loPlace < hiPlace) e.aBetter++;
+      else if (hiPlace < loPlace) e.bBetter++;
+    }
+  }
+}
+
+// Beide Richtungen je Paar: „alle Gegner von X" ist dann ein Indexbereich.
+export function familyPairRows(map) {
+  const rows = [];
+  for (const e of map.values()) {
+    rows.push({ bucket: e.bucket, comp: e.a, opp: e.b, games: e.games, better: e.aBetter });
+    rows.push({ bucket: e.bucket, comp: e.b, opp: e.a, games: e.games, better: e.bBetter });
+  }
+  return rows;
 }
 
 // Roll up per-tier buckets into "all" and "master_plus" so the frontend can
@@ -944,6 +995,8 @@ export function finalize(agg, opts = {}) {
     byTraitUnitCount: {},
     byComp: {},
     compPairs: [],
+    // Nur fuer die DB (Writer Block 10), nicht fuer die JSON-Datei.
+    compMatchups: agg.byFamilyPair ? familyPairRows(agg.byFamilyPair) : [],
   };
 
   for (const [cid, buckets] of agg.byUnit) {

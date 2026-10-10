@@ -11,8 +11,66 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem, isOutcomeEmblem } from './tft-build-aggregator.mjs';
-import { chunkByBytes } from './tft-supabase-writer.mjs';
+import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem, isOutcomeEmblem, addFamilyPairs, familyPairRows } from './tft-build-aggregator.mjs';
+import { chunkByBytes, matchupKeepFrom } from './tft-supabase-writer.mjs';
+
+// Comp-Duelle (0092): je Spielerpaar, Familie statt Variante, gleiche Familie
+// zaehlt nicht, beide Richtungen, ohne Mindestzahl und ohne Ergebnis-Auswahl.
+test('addFamilyPairs: Familie, gleiche Familie raus, Mehrfach-Spieler, beide Richtungen', () => {
+  const map = new Map();
+  // Platz 1: Azir (Variante @3), Platz 2: Azir (@5 — gleiche Familie),
+  // Platz 3: Kayle, Platz 4: ohne Comp, Platz 5: Kayle.
+  addFamilyPairs(map, 'master',
+    ['DA_Exec@3_DA_Azir', 'DA_Exec@5_DA_Azir*3', 'DA_Eclipse@1_DA_Kayle', null, 'DA_Eclipse@2_DA_Kayle~aug'],
+    [1, 2, 3, 4, 5]);
+  assert.equal(map.size, 1, 'nur das Paar Azir/Kayle');
+  const [e] = [...map.values()];
+  // 2 Azir-Spieler x 2 Kayle-Spieler = 4 Vergleiche, Azir immer vorne.
+  assert.deepEqual(e, { bucket: 'master', a: 'DA_Eclipse__DA_Kayle', b: 'DA_Exec__DA_Azir', games: 4, aBetter: 0, bBetter: 4 });
+  const rows = familyPairRows(map);
+  assert.deepEqual(rows, [
+    { bucket: 'master', comp: 'DA_Eclipse__DA_Kayle', opp: 'DA_Exec__DA_Azir', games: 4, better: 0 },
+    { bucket: 'master', comp: 'DA_Exec__DA_Azir', opp: 'DA_Eclipse__DA_Kayle', games: 4, better: 4 },
+  ]);
+});
+
+test('addFamilyPairs: je Rang getrennt, ausgeglichenes Paar bleibt, fehlende Platzierung zaehlt fuer keinen', () => {
+  const map = new Map();
+  addFamilyPairs(map, 'master', ['T@1_A', 'U@1_B'], [1, 2]);
+  addFamilyPairs(map, 'master', ['T@1_A', 'U@1_B'], [2, 1]);
+  addFamilyPairs(map, 'challenger', ['T@1_A', 'U@1_B'], [1, 2]);
+  addFamilyPairs(map, 'challenger', ['T@1_A', 'U@1_B'], [undefined, undefined]);
+  const byBucket = Object.fromEntries([...map.values()].map(e => [e.bucket, e]));
+  // 50 % bleibt erhalten (die alte Liste haette es verworfen).
+  assert.deepEqual([byBucket.master.games, byBucket.master.aBetter, byBucket.master.bBetter], [2, 1, 1]);
+  assert.deepEqual([byBucket.challenger.games, byBucket.challenger.aBetter, byBucket.challenger.bBetter], [2, 1, 0]);
+});
+
+test('aggregateMatch/finalize: compMatchups nur im Rang des Matches, nie pro_pool', () => {
+  const agg = emptyAggregate();
+  const p = (i, trait, carry) => ({
+    puuid: `p${i}`, placement: i + 1, level: 8, last_round: 30, augments: [],
+    traits: [{ name: trait, num_units: 6, style: 3, tier_current: 3, tier_total: 4 }],
+    units: [{ character_id: carry, tier: 2, itemNames: ['TFT_Item_InfinityEdge', 'TFT_Item_GuinsoosRageblade', 'TFT_Item_Bloodthirster'] }],
+  });
+  aggregateMatch({
+    metadata: { match_id: 'EUW1_3' },
+    info: { queue_id: 1100, tft_set_number: 17, participants: [p(0, 'TFT17_Stargazer', 'TFT17_Lulu'), p(1, 'TFT17_Mecha', 'TFT17_Fiora')] },
+  }, agg, { tierBucket: 'diamond', currentSet: 17, proPuuids: new Set(['p0']) });
+  const out = finalize(agg, { minCompGames: 1, minUnitGames: 1 });
+  // Lobby hat einen Pro (p0): Comp-Statistik schreibt zusaetzlich pro_pool, die Duelle nicht.
+  assert.deepEqual(out.compMatchups, [
+    { bucket: 'diamond', comp: 'TFT17_Mecha__TFT17_Fiora', opp: 'TFT17_Stargazer__TFT17_Lulu', games: 1, better: 0 },
+    { bucket: 'diamond', comp: 'TFT17_Stargazer__TFT17_Lulu', opp: 'TFT17_Mecha__TFT17_Fiora', games: 1, better: 1 },
+  ]);
+});
+
+test('matchupKeepFrom: 10 Tage vor dem geschriebenen Tag, Monatsgrenze, kaputter Tag wirft', () => {
+  assert.equal(matchupKeepFrom('2026-10-11'), '2026-10-01');
+  assert.equal(matchupKeepFrom('2026-10-05'), '2026-09-25');
+  assert.equal(matchupKeepFrom('2026-10-11', 3), '2026-10-08');
+  assert.throws(() => matchupKeepFrom('kaputt'));
+});
 
 function unitWithItems(itemGames) {
   const agg = emptyAggregate();

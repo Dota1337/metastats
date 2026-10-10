@@ -39,7 +39,22 @@ export const DAILY_TABLES = [
   'tft_daily_trait_unitcount_stats',
   'tft_daily_crawl_meta',
   'tft_daily_comp_outcome',
+  'tft_daily_comp_matchups',
 ];
+
+// tft_daily_comp_matchups (0092): ~50k schmale Zeilen je Region und Tag —
+// 200er-Pakete waeren 250 Anfragen. Aufbewahrung: die Leser fragen hoechstens
+// 7 Tage ab (resolveFilters); aeltere Fenster nehmen den alten Weg ueber
+// tft_daily_comp_pairs.
+const MATCHUP_BATCH = 1000;
+const MATCHUP_KEEP_DAYS = 10;
+
+/** Erster Tag, der fuer `day` (YYYY-MM-DD) noch aufbewahrt wird. */
+export function matchupKeepFrom(day, keepDays = MATCHUP_KEEP_DAYS) {
+  const t = Date.parse(`${day}T00:00:00Z`);
+  if (!Number.isFinite(t)) throw new Error(`bad day ${day}`);
+  return new Date(t - keepDays * 86_400_000).toISOString().slice(0, 10);
+}
 
 // Transient-failure resilience (Backlog-Item 2, L1). A Supabase compute
 // saturation event answers with Cloudflare 522/504 or drops the connection
@@ -79,7 +94,38 @@ export function chunkByBytes(rows, maxBytes) {
   return chunks;
 }
 
-async function upsertRows(table, rows, conflictCols, log = console.log) {
+// Eine Anfrage mit den Wiederholungen oben; wirft nach dem letzten Versuch.
+async function requestWithRetry(url, init, label, log) {
+  for (let attempt = 0; ; attempt++) {
+    let res = null;
+    let netErr = null;
+    try {
+      res = await fetch(url, { ...init, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+    } catch (err) {
+      // fetch rejects on connection refused/reset (TypeError) or on the
+      // AbortSignal timeout (TimeoutError). Both are transient → retriable.
+      netErr = err;
+    }
+    if (res && res.ok) return;
+
+    const retriable = netErr != null || RETRY_STATUS.has(res.status);
+    if (retriable && attempt < RETRY_BACKOFF_MS.length) {
+      const waitMs = RETRY_BACKOFF_MS[attempt];
+      const reason = netErr ? `${netErr.name || 'fetch error'}` : `HTTP ${res.status}`;
+      log(`  [supabase] ${label} transient ${reason} — retry ${attempt + 1}/${RETRY_BACKOFF_MS.length} in ${waitMs / 1000}s`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    if (netErr) {
+      throw new Error(`Supabase ${label} failed: ${netErr.name || 'fetch error'} ${netErr.message || ''}`.trim());
+    }
+    const errBody = await res.text();
+    throw new Error(`Supabase ${label} failed: HTTP ${res.status} ${errBody.slice(0, 300)}`);
+  }
+}
+
+async function upsertRows(table, rows, conflictCols, log = console.log, batchSize = BATCH) {
   if (rows.length === 0) return;
   const headers = {
     apikey: SUPA_KEY,
@@ -87,43 +133,20 @@ async function upsertRows(table, rows, conflictCols, log = console.log) {
     'Content-Type': 'application/json',
     Prefer: 'resolution=merge-duplicates,return=minimal',
   };
-  for (let i = 0; i < rows.length; i += BATCH) {
-    const batch = rows.slice(i, i + BATCH);
-    const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${conflictCols}`;
-    const body = JSON.stringify(batch);
-    for (let attempt = 0; ; attempt++) {
-      let res = null;
-      let netErr = null;
-      try {
-        res = await fetch(url, {
-          method: 'POST',
-          headers,
-          body,
-          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        });
-      } catch (err) {
-        // fetch rejects on connection refused/reset (TypeError) or on the
-        // AbortSignal timeout (TimeoutError). Both are transient → retriable.
-        netErr = err;
-      }
-      if (res && res.ok) break;
-
-      const retriable = netErr != null || RETRY_STATUS.has(res.status);
-      if (retriable && attempt < RETRY_BACKOFF_MS.length) {
-        const waitMs = RETRY_BACKOFF_MS[attempt];
-        const reason = netErr ? `${netErr.name || 'fetch error'}` : `HTTP ${res.status}`;
-        log(`  [supabase] upsert ${table} transient ${reason} — retry ${attempt + 1}/${RETRY_BACKOFF_MS.length} in ${waitMs / 1000}s`);
-        await sleep(waitMs);
-        continue;
-      }
-
-      if (netErr) {
-        throw new Error(`Supabase upsert ${table} failed: ${netErr.name || 'fetch error'} ${netErr.message || ''}`.trim());
-      }
-      const errBody = await res.text();
-      throw new Error(`Supabase upsert ${table} failed: HTTP ${res.status} ${errBody.slice(0, 300)}`);
-    }
+  const url = `${SUPA_URL}/rest/v1/${table}?on_conflict=${conflictCols}`;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const body = JSON.stringify(rows.slice(i, i + batchSize));
+    await requestWithRetry(url, { method: 'POST', headers, body }, `upsert ${table}`, log);
   }
+}
+
+// filters: PostgREST-Filter je Spalte, z. B. { region: 'eq.euw1', day: 'lt.2026-10-01' }.
+// Ohne Filter verweigert die Funktion — ein DELETE ohne WHERE leert die Tabelle.
+async function deleteRows(table, filters, log = console.log) {
+  const qs = new URLSearchParams(filters).toString();
+  if (!qs) throw new Error(`deleteRows ${table}: kein Filter`);
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Prefer: 'return=minimal' };
+  await requestWithRetry(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers }, `delete ${table}`, log);
 }
 
 /**
@@ -359,5 +382,39 @@ export async function writeTftStatsToSupabase(opts) {
     log(`  [supabase] comp_outcome FAILED (non-fatal): ${e.message}`);
   }
 
+  // 10) Comp-Duelle je Familie und Rang (migration 0092). Abgefangen wie
+  // Block 8/9: ein Fehler kostet nur die Duelle dieses Tages, der Vertrag
+  // daily-crawl/comp-matchups meldet ihn.
+  try {
+    await writeCompMatchups({ region, day, patch, setNumber, compMatchups: payload.compMatchups, log });
+  } catch (e) {
+    log(`  [supabase] comp_matchups FAILED (non-fatal): ${e.message}`);
+  }
+
   log(`  [supabase] write complete for ${region} ${day}`);
+}
+
+/**
+ * Block 10 einzeln (auch fuer den Schreibtest mit eigener Test-Region). Erst
+ * die Zeilen dieser Region an diesem Tag loeschen — ein Wiederholungslauf mit
+ * anderer Stichprobe liesse sonst Paare des ersten Laufs stehen —, dann
+ * schreiben. Tage vor der Aufbewahrung raeumt derselbe Aufruf ab, nur fuer
+ * diese Region. Wirft bei Fehlern.
+ */
+export async function writeCompMatchups({ region, day, patch, setNumber, compMatchups, log = console.log }) {
+  if (!SUPA_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  const baseRow = { region, patch, set_number: setNumber, day };
+  const rows = [];
+  for (const e of compMatchups || []) {
+    if (e.bucket === 'pro_pool' || !PERSIST_BUCKETS.includes(e.bucket)) continue;
+    rows.push({ ...baseRow, bucket: e.bucket, comp_fam: e.comp, opp_fam: e.opp, games: e.games, better: e.better });
+  }
+  await deleteRows('tft_daily_comp_matchups',
+    { region: `eq.${region}`, day: `eq.${day}`, set_number: `eq.${setNumber}` }, log);
+  await deleteRows('tft_daily_comp_matchups',
+    { region: `eq.${region}`, day: `lt.${matchupKeepFrom(day)}` }, log);
+  log(`  [supabase] comp_matchups: ${rows.length} rows`);
+  await upsertRows('tft_daily_comp_matchups', rows,
+    'region,bucket,patch,set_number,day,comp_fam,opp_fam', log, MATCHUP_BATCH);
+  return rows.length;
 }

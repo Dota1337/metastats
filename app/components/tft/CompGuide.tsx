@@ -79,7 +79,8 @@ function AugmentTile({
 // Bauteil-Box, der Levelplan in der Leveln-Box. Deshalb einzelne Teile statt
 // eines Stapels.
 
-/** Levelplan ohne eigene Box — Strategie-Zeile plus Level-Schritte. Beide
+/** Levelplan ohne eigene Box — Strategie-Zeile, rechts daneben die Level-
+    Schritte (User 2026-10-10; bei zu wenig Platz rutschen sie darunter). Beide
     Haelften sind unabhaengig optional: unbekanntes Levelling-Kuerzel und zu
     duenne Schritte fallen je einzeln weg, statt einen Wert zu erfinden. */
 export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
@@ -95,11 +96,13 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
     : null;
   if (!planLabel && planSteps.length === 0) return null;
   return (
-    <div>
-      <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.levelling')}</div>
-      {planLabel && (
-        <div className="text-white text-sm font-semibold mb-2">{planLabel}</div>
-      )}
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+      <div>
+        <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.levelling')}</div>
+        {planLabel && (
+          <div className="text-white text-sm font-semibold">{planLabel}</div>
+        )}
+      </div>
       {planSteps.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {planSteps.map(step => (

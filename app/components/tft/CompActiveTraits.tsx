@@ -29,6 +29,7 @@ export default function CompActiveTraits({
   assets,
   bucket,
   variant = 'pills',
+  bare = false,
 }: {
   typicalUnits: TypicalUnit[] | undefined | null;
   clusterKey: string;
@@ -36,6 +37,9 @@ export default function CompActiveTraits({
   bucket?: string;
   /** 'list' = eine Zeile je Synergie, fuer die schmale rechte Spalte der Detailseite. */
   variant?: 'pills' | 'list';
+  /** Ohne eigene Box und Ueberschrift — Teil der Bauteil-Box der Detailseite
+      (User 2026-10-10), die Ueberschrift setzt die Seite. */
+  bare?: boolean;
 }) {
   const { t } = useI18n();
   const traits = useMemo(
@@ -46,11 +50,14 @@ export default function CompActiveTraits({
 
   if (traits.length === 0) return null;
 
+  const Frame = bare ? 'div' : 'section';
   return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
-        {t('tft.comp.activeTraits')}
-      </h2>
+    <Frame className={bare ? '' : 'mt-5 bg-surface-base border border-border-subtle rounded p-4'}>
+      {!bare && (
+        <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
+          {t('tft.comp.activeTraits')}
+        </h2>
+      )}
       <div className={variant === 'list' ? 'flex flex-col gap-1' : 'flex flex-wrap gap-2'}>
         {traits.map(tr => (
           <TraitPill
@@ -76,7 +83,7 @@ export default function CompActiveTraits({
           />
         );
       })()}
-    </section>
+    </Frame>
   );
 }
 

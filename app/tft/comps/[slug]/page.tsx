@@ -19,7 +19,8 @@ import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits
 import { GuideAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
-import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel } from '../../../components/tft/CompOutcome';
+import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect } from '../../../components/tft/CompOutcome';
+import { computeActiveTraits } from '../../../lib/tft-active-traits';
 
 // Recharts-Komponenten lazy via next/dynamic — sparen ~95 KB Bundle aus
 // initial-Load der Detail-Page (perf-critic-Verdict 2026-06-21). Skeleton
@@ -216,9 +217,26 @@ export default function TftCompDetailPage() {
     : null;
   const hasOutcomeItems: boolean = !!comp?.outcome
     && (comp.outcome.units || []).some((u: { itemCopies: number; items: unknown[] }) => u.itemCopies > 0 && u.items.length > 0);
-  // Gleiche Bedingung wie der Level-Board-Block in der linken Spalte.
+  // Gleiche Bedingung wie der Level-Board-Block „In der Runde".
   const hasLiveBoards: boolean = Array.isArray(comp?.levelOutcome) && comp.levelOutcome.length >= 2
     && (comp.levelOutcome as { games: number }[]).some(x => x.games > 0);
+  // Drei Spalten ab 1600 px (User 2026-10-10: „links und rechts noch Platz“):
+  // Unit-Wirkung neben den Items, Seite bis 1920 breit. Nur wenn die Unit-
+  // Wirkung etwas zeigt — sonst bliebe die dritte Spalte leer. Darunter passt
+  // sie nicht daneben (gemessen: Item-Tabelle braucht ~580 px, Unit-Wirkung
+  // ~430, Positionierung ~420) und bleibt in der Detail-Analyse.
+  const wide: boolean = hasUnitEffect(comp?.outcome);
+  // Detail-Analyse bei drei Spalten: die Boxen ohne Unit-Wirkung nebeneinander,
+  // so viele Spalten wie Boxen (keine leere Spalte). Gleiche Bedingungen wie
+  // die Boxen unten.
+  const analysisCount = comp ? [
+    comp.aggroIndex != null || !!comp.skillCapCategory,
+    !!(comp.deathStory && comp.roundHistogram && comp.roundHistogram.length > 0),
+    !!(comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0),
+  ].filter(Boolean).length : 0;
+  const analysisWideCols = analysisCount >= 3
+    ? 'min-[100rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]'
+    : analysisCount === 2 ? 'min-[100rem]:grid-cols-2' : 'min-[100rem]:grid-cols-1';
 
   // Carry-Star-Outcome — Reroll-Entscheidung Stage 3-5/3-6. Wird zweimal
   // gerendert: am Handy oben ueber den Spalten, am PC oben in der rechten Spalte.
@@ -288,65 +306,93 @@ export default function TftCompDetailPage() {
   // Bauteil-Prioritaet aus den Carry-Items plus die Carousel-Picks der ersten
   // Runde und die empfohlenen Augments aus dem Guide — frueher drei Boxen
   // (User 2026-10-10: zusammenlegen). Antwortet: „was greife ich frueh?"
+  // Rechts daneben die aktiven Synergien untereinander (User 2026-10-10), ab
+  // 1440 px. Gemessen: eine Synergie-Zeile braucht 235–291 px (EN–FR), die
+  // Augment-Reihe 344 px — die Liste bekommt ihre volle Breite, hoechstens
+  // 18.5rem (sonst wuerde eine aufgeklappte Synergie sie verbreitern; keine
+  // abgeschnittenen Namen), links bricht notfalls ein Augment um. Schmaler
+  // stehen die Synergien als Kacheln unter den Augments. Bei drei
+  // Spalten steht die Liste genau ueber der Unit-Wirkung (Subgrid).
   const componentsBox = comp ? (() => {
     const components = comp.carryItems && comp.carryItems.length > 0 && assets
       ? aggregateComponents(comp.carryItems, assets, 6)
       : [];
     const picks = guide && guide.carousel.length > 0 ? guide : null;
     const augGuide = guide && augmentRowsByRarity(guide, assets).length > 0 ? guide : null;
-    if (components.length === 0 && !picks && !augGuide) return null;
+    const hasTraits = computeActiveTraits(comp.typicalUnits, comp.clusterKey, assets).length > 0;
+    const traitProps = { typicalUnits: comp.typicalUnits, clusterKey: comp.clusterKey, assets, bucket };
+    const span = wide ? 'min-[100rem]:col-span-2 min-[100rem]:row-start-1' : '';
+    if (components.length === 0 && !picks && !augGuide) {
+      return hasTraits ? <div className={span}><CompActiveTraits {...traitProps} variant="list" /></div> : null;
+    }
     return (
-      <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-        <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
-        {components.length > 0 && assets && (
-          <div className="flex flex-wrap gap-2">
-            {components.map((c, i) => {
-              const meta = assets.items[c.component];
-              const url = tftIconUrl(assets, meta?.icon);
-              const pct = (c.weight * 100).toFixed(0);
-              const fromItemsTitle = c.fromItems
-                .slice(0, 4)
-                .map(it => assets.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
-                .join(' · ');
-              return (
-                <a
-                  key={c.component}
-                  href={`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`}
-                  title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
-                  className="flex flex-col items-center w-12 hover:scale-105 transition-transform"
-                >
-                  <div className="relative">
-                    {url ? (
-                      <img src={url} alt={meta?.name || ''} className="w-8 h-8 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-surface-overlay" />
-                    )}
-                    {i === 0 && (
-                      <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-surface-base px-1 rounded font-bold">1</span>
-                    )}
-                  </div>
-                  <div className="text-white text-[10px] mt-1 truncate max-w-full">
-                    {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
-                  </div>
-                  <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
-                    <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
-                  </div>
-                  <div className="text-fg-secondary text-[10px] tabular-nums">{pct}%</div>
-                </a>
-              );
-            })}
-          </div>
-        )}
-        {picks && (
-          <div className={components.length > 0 ? 'mt-4' : ''}>
-            <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.carousel')}</div>
-            <GuideCarouselPicks guide={picks} assets={assets} />
-          </div>
-        )}
-        {augGuide && (
-          <div id="cj-augments" data-jump="augments" className={`scroll-mt-16 ${components.length > 0 || picks ? 'mt-4' : ''}`}>
-            <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
-            <GuideAugments guide={augGuide} assets={assets} />
+      <section className={`mt-5 bg-surface-base border border-border-subtle rounded p-4 ${span} ${hasTraits
+        ? `min-[90rem]:grid min-[90rem]:grid-cols-[minmax(0,1fr)_fit-content(18.5rem)] min-[90rem]:gap-x-5 ${wide ? 'min-[100rem]:grid-cols-subgrid min-[100rem]:gap-x-6' : ''}`
+        : ''}`}>
+        <div className="min-w-0">
+          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
+          {components.length > 0 && assets && (
+            <div className="flex flex-wrap gap-2">
+              {components.map((c, i) => {
+                const meta = assets.items[c.component];
+                const url = tftIconUrl(assets, meta?.icon);
+                const pct = (c.weight * 100).toFixed(0);
+                const fromItemsTitle = c.fromItems
+                  .slice(0, 4)
+                  .map(it => assets.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
+                  .join(' · ');
+                return (
+                  <a
+                    key={c.component}
+                    href={`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`}
+                    title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
+                    className="flex flex-col items-center w-12 hover:scale-105 transition-transform"
+                  >
+                    <div className="relative">
+                      {url ? (
+                        <img src={url} alt={meta?.name || ''} className="w-8 h-8 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-surface-overlay" />
+                      )}
+                      {i === 0 && (
+                        <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-surface-base px-1 rounded font-bold">1</span>
+                      )}
+                    </div>
+                    <div className="text-white text-[10px] mt-1 truncate max-w-full">
+                      {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
+                    </div>
+                    <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
+                      <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="text-fg-secondary text-[10px] tabular-nums">{pct}%</div>
+                  </a>
+                );
+              })}
+            </div>
+          )}
+          {picks && (
+            <div className={components.length > 0 ? 'mt-4' : ''}>
+              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.carousel')}</div>
+              <GuideCarouselPicks guide={picks} assets={assets} />
+            </div>
+          )}
+          {augGuide && (
+            <div id="cj-augments" data-jump="augments" className={`scroll-mt-16 ${components.length > 0 || picks ? 'mt-4' : ''}`}>
+              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
+              <GuideAugments guide={augGuide} assets={assets} />
+            </div>
+          )}
+          {hasTraits && (
+            <div className="mt-4 min-[90rem]:hidden">
+              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.activeTraits')}</div>
+              <CompActiveTraits {...traitProps} bare />
+            </div>
+          )}
+        </div>
+        {hasTraits && (
+          <div className="hidden min-[90rem]:block min-w-0">
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.activeTraits')}</h2>
+            <CompActiveTraits {...traitProps} variant="list" bare />
           </div>
         )}
       </section>
@@ -354,7 +400,7 @@ export default function TftCompDetailPage() {
   })() : null;
 
   // Leveln in einer Box (User 2026-10-10: vorher vier Boxen) — Levelplan aus dem
-  // Guide, Kennzahlen, Endlevel der Boards in Stage 5, ROI je Level zugeklappt.
+  // Guide, Kennzahlen, Endlevel der Boards in Stage 5, Level-ROI (offen).
   const levelingBox = comp ? (() => {
     const lt = (comp.levelingTempo || []) as { level: number; share: number | null; avgLastRound: number | null; games: number }[];
     const validLt = lt.filter(p => p.share != null && p.games >= 10);
@@ -412,7 +458,7 @@ export default function TftCompDetailPage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
+      <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px]' : ''} mx-auto px-4 sm:px-6 py-6`}>
         <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
@@ -461,83 +507,107 @@ export default function TftCompDetailPage() {
                 Kopf, volle Breite: Name + Board mit Core/Flex (CompCard).
                 Direkt darunter das Wichtigste wie in der App (User
                 2026-10-10, „Positionen, Itemization etc. weiter nach oben"):
-                links Aufstellung + Leveln, rechts Items; am Handy Aufstellung,
-                Items, Leveln. Dann Varianten und zwei Spalten (Variante D):
-                links „In der Runde", rechts „Strategie" mit Synergien und
-                3★-Ergebnis oben, danach die Analyse. Am Handy erst links,
-                dann rechts — Synergien und 3★-Ergebnis stehen dort deshalb
-                zusaetzlich vor dem Raster.
+                links Aufstellung + Leveln, rechts Bauteile (mit Synergien)
+                und Items; am Handy Aufstellung, Bauteile, Items, Leveln. Dann
+                Varianten und zwei Spalten (Variante D): links „In der Runde",
+                rechts „Strategie" mit 3★-Ergebnis oben, danach die Analyse.
+                Am Handy erst links, dann rechts — das 3★-Ergebnis steht dort
+                deshalb zusaetzlich vor dem Raster.
                 ═══════════════════════════════════════════════════════════ */}
             <CompCard comp={comp} assets={assets} />
 
             <CompJumpBar rootId="cj-root" />
 
-            <div className="lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:items-start">
+            {/* Unterkanten buendig (User 2026-10-10, „beide Boxen
+                abschliessen"): die letzte Box jeder Spalte waechst bis zur
+                gemeinsamen Unterkante. Ab 1600 px (wide) drei Spalten:
+                #cj-items ueber Spalte 2–3 als Subgrid — Bauteil-Box ueber
+                beiden, darunter Items | Unit-Wirkung. Kein `hidden`/`contents`
+                auf Elementen mit id/data-jump (Sprungleiste, geteilte Links). */}
+            <div className={`lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-6 ${wide ? 'min-[100rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]' : ''}`}>
               <div id="cj-positioning" data-jump="positioning" className="scroll-mt-16 min-w-0 lg:col-start-1 lg:row-start-1">
                 {boardParams && (
                   <CompBoardPanel id="cj-board" params={boardParams} assets={assets} framed showPlan={false} hideWhenEmpty />
                 )}
               </div>
 
-              <div id="cj-items" data-jump="items" className="scroll-mt-16 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+              <div
+                id="cj-items"
+                data-jump="items"
+                className={`scroll-mt-16 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:flex lg:flex-col lg:[&>*:last-child]:grow ${wide
+                  ? 'min-[100rem]:col-[2/4] min-[100rem]:grid min-[100rem]:grid-cols-subgrid min-[100rem]:grid-rows-[auto_1fr]'
+                  : ''}`}
+              >
                 {componentsBox}
-                {/* Items je Unit — der erste Reiter ist der Carry. Die fruehere
-                    Box „Item-Sets am Carry" steht nur noch da, wenn es keine
-                    Items je Unit gibt. */}
-                {hasOutcomeItems && (
-                  <OutcomeItems
-                    outcome={comp.outcome} assets={assets} bucket={bucket} t={t}
-                    leadUnits={leadCarry ? [leadCarry] : []}
-                    itemCarriers={[...namedCompCarries, ...(compRoles?.carries || []), ...(compRoles?.itemCarriers || [])]}
-                  />
+                {/* Unit-Wirkung neben den Items nur bei drei Spalten; darunter
+                    steht sie in der Detail-Analyse. Vor den Items im DOM, damit
+                    die Items-Box unter 1600 die letzte (wachsende) bleibt. */}
+                {wide && (
+                  <div className="hidden min-[100rem]:flex min-[100rem]:flex-col min-[100rem]:col-start-2 min-[100rem]:row-start-2 min-w-0 [&>section]:grow">
+                    <OutcomeUnitEffect outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />
+                  </div>
                 )}
-                {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
-                {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
-                  <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-                    <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
-                        const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
-                        const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
-                        return (
-                          <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
-                                {t('tft.comp.itemSet')} {i + 1}
-                              </span>
-                              <span className="text-accent text-xs font-medium tabular-nums">
-                                {pct.toFixed(0)}%
-                              </span>
-                            </div>
-                            <div className="flex gap-1.5">
-                              {set.items.map((it, j) => {
-                                const meta = findItem(assets, it);
-                                const url = tftIconUrl(assets, meta?.icon);
-                                return (
-                                  <a
-                                    key={j}
-                                    href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
-                                    title={meta?.name || it}
-                                    className="hover:scale-110 transition"
-                                  >
-                                    {url ? (
-                                      <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
-                                    ) : (
-                                      <div className="w-8 h-8 rounded bg-surface-overlay" />
-                                    )}
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </section>
+                {(hasOutcomeItems || (comp.carryItems?.length ?? 0) > 0) && (
+                  <div className={`min-w-0 lg:flex lg:flex-col [&>section]:grow ${wide ? 'min-[100rem]:col-start-1 min-[100rem]:row-start-2' : ''}`}>
+                    {/* Items je Unit — der erste Reiter ist der Carry. Die fruehere
+                        Box „Item-Sets am Carry" steht nur noch da, wenn es keine
+                        Items je Unit gibt. */}
+                    {hasOutcomeItems && (
+                      <OutcomeItems
+                        outcome={comp.outcome} assets={assets} bucket={bucket} t={t}
+                        leadUnits={leadCarry ? [leadCarry] : []}
+                        itemCarriers={[...namedCompCarries, ...(compRoles?.carries || []), ...(compRoles?.itemCarriers || [])]}
+                      />
+                    )}
+                    {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
+                    {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
+                      <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                        <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
+                            const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
+                            const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
+                            return (
+                              <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
+                                    {t('tft.comp.itemSet')} {i + 1}
+                                  </span>
+                                  <span className="text-accent text-xs font-medium tabular-nums">
+                                    {pct.toFixed(0)}%
+                                  </span>
+                                </div>
+                                <div className="flex gap-1.5">
+                                  {set.items.map((it, j) => {
+                                    const meta = findItem(assets, it);
+                                    const url = tftIconUrl(assets, meta?.icon);
+                                    return (
+                                      <a
+                                        key={j}
+                                        href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                                        title={meta?.name || it}
+                                        className="hover:scale-110 transition"
+                                      >
+                                        {url ? (
+                                          <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
+                                        ) : (
+                                          <div className="w-8 h-8 rounded bg-surface-overlay" />
+                                        )}
+                                      </a>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    )}
+                  </div>
                 )}
               </div>
 
-              <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+              <div className="min-w-0 lg:col-start-1 lg:row-start-2 lg:flex lg:flex-col [&>section]:grow">
                 {levelingBox}
               </div>
             </div>
@@ -556,23 +626,12 @@ export default function TftCompDetailPage() {
               families={variantMode === 'family' ? comp?.mergedFamilies ?? null : null}
             />
 
-            {/* Synergien: am Handy hier als Pills, am PC als Liste rechts ueber
-                dem 3★-Ergebnis (User 2026-10-10). */}
-            <div className="lg:hidden">
-              <CompActiveTraits
-                typicalUnits={comp.typicalUnits}
-                clusterKey={comp.clusterKey}
-                assets={assets}
-                bucket={bucket}
-              />
-            </div>
-
-            {/* Links „In der Runde" steht nur noch, wenn es Level-Boards gibt —
-                die Augments sind seit 2026-10-10 in der Bauteil-Box. Ohne
-                Boards laufen die Strategie-Boxen in zwei Spalten, statt eine
-                Haelfte leer zu lassen (gemessen: 6 der 25 meistgespielten
-                Comps haben keine Boards). */}
-            <div className={hasLiveBoards ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start' : ''}>
+            {/* „In der Runde" (Level-Boards) steht ueber die volle Breite, nur
+                wenn es Boards gibt; darunter „Strategie" in zwei Spalten mit
+                buendigen Unterkanten (User 2026-10-10). Neben der Strategie-
+                Spalte waere die Boards-Box sonst bis zu 1000 px leer gestreckt
+                (gemessen Ezreal: Inhalt ~400 px, Strategie 1541 px). */}
+            <div>
               <div className={hasLiveBoards ? 'min-w-0' : 'hidden'}>
                 <BlockHeadline label={t('tft.comp.block.live')} />
 
@@ -700,99 +759,103 @@ export default function TftCompDetailPage() {
                 })()}
               </div>
 
-              <div className={hasLiveBoards ? 'min-w-0' : 'min-w-0 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid'}>
-                <div className="[column-span:all]"><BlockHeadline label={t('tft.comp.block.strategy')} /></div>
-                <div className="hidden lg:block">
-                  <CompActiveTraits
-                    typicalUnits={comp.typicalUnits}
-                    clusterKey={comp.clusterKey}
-                    assets={assets}
-                    bucket={bucket}
-                    variant="list"
-                  />
-                </div>
-                {carryStarBox && <div className="hidden lg:block">{carryStarBox}</div>}
-                {comp.outcome && <OutcomePlacement outcome={comp.outcome} t={t} />}
+              <div className="min-w-0 lg:flex lg:flex-col">
+                <BlockHeadline label={t('tft.comp.block.strategy')} />
+                {/* Zwei Gruppen nebeneinander: 3★-Ergebnis + Platzverteilung,
+                    Contested + Flex; die letzte Box jeder Gruppe waechst bis
+                    zur Unterkante. */}
+                <div className={!(carryStarBox || comp.outcome)
+                  ? 'lg:flex lg:flex-col lg:grow'
+                  : 'lg:grid lg:grid-cols-2 lg:gap-x-6 lg:grow'}>
+                  <div className="min-w-0 lg:flex lg:flex-col lg:[&>*:last-child]:grow">
+                    {carryStarBox && <div className="hidden lg:flex lg:flex-col [&>section]:grow">{carryStarBox}</div>}
+                    {comp.outcome && <OutcomePlacement outcome={comp.outcome} t={t} />}
+                  </div>
 
-                {/* Contested-Penalty — Solo/Duo/Triple Outcome-Cards. */}
-                {(comp.contestedOutcome && comp.contestedOutcome.length >= 2) && (() => {
-                  const solo = (comp.contestedOutcome as { contested: number; avgPlacement: number; games: number; top4Rate: number; top1Rate: number }[]).find((c) => c.contested === 1);
-                  const totalGames = (comp.contestedOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
-                  if (totalGames === 0) return null;
-                  return (
-                    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-                      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
-                        {(comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
-                          const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
-                          const delta = solo && solo.games > 0 && row.contested !== 1 ? row.avgPlacement - solo.avgPlacement : null;
-                          const accentColor = row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040';
-                          const label = row.contested === 1 ? t('tft.comp.contestedSolo')
-                                      : row.contested === 2 ? t('tft.comp.contestedDuo')
-                                      : t('tft.comp.contestedTriple');
-                          const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
-                          return (
-                            <div
-                              key={row.contested}
-                              className="bg-surface-raised border rounded p-3"
-                              style={{ borderColor: `${withAlpha(accentColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
-                            >
-                              <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>
-                                <div className="flex items-center gap-1.5">
-                                  {lowSample && (
-                                    <span
-                                      className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
-                                      style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
-                                      title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
-                                    >
-                                      {t('tft.comp.lowSample')}
-                                    </span>
-                                  )}
-                                  <span className="text-fg-muted text-[10px] tabular-nums">
-                                    {share.toFixed(0)}% · {row.games}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
-                                <div>
-                                  <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
-                                  <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
-                                  {delta != null && (
-                                    <div className="text-[10px] tabular-nums mt-0.5" style={{ color: delta > 0 ? '#e44040' : '#3ecf8e' }}>
-                                      {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                  <div className="min-w-0 lg:flex lg:flex-col lg:grow lg:[&>*:last-child]:grow">
+                    {/* Contested-Penalty — Solo/Duo/Triple Outcome-Cards. */}
+                    {(comp.contestedOutcome && comp.contestedOutcome.length >= 2) && (() => {
+                      const solo = (comp.contestedOutcome as { contested: number; avgPlacement: number; games: number; top4Rate: number; top1Rate: number }[]).find((c) => c.contested === 1);
+                      const totalGames = (comp.contestedOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
+                      if (totalGames === 0) return null;
+                      return (
+                        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
+                            {(comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
+                              const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
+                              const delta = solo && solo.games > 0 && row.contested !== 1 ? row.avgPlacement - solo.avgPlacement : null;
+                              const accentColor = row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040';
+                              const label = row.contested === 1 ? t('tft.comp.contestedSolo')
+                                          : row.contested === 2 ? t('tft.comp.contestedDuo')
+                                          : t('tft.comp.contestedTriple');
+                              const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
+                              return (
+                                <div
+                                  key={row.contested}
+                                  className="bg-surface-raised border rounded p-3"
+                                  style={{ borderColor: `${withAlpha(accentColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>
+                                    <div className="flex items-center gap-1.5">
+                                      {lowSample && (
+                                        <span
+                                          className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
+                                          style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
+                                          title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
+                                        >
+                                          {t('tft.comp.lowSample')}
+                                        </span>
+                                      )}
+                                      <span className="text-fg-muted text-[10px] tabular-nums">
+                                        {share.toFixed(0)}% · {row.games}
+                                      </span>
                                     </div>
-                                  )}
+                                  </div>
+                                  <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
+                                    <div>
+                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
+                                      <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
+                                      {delta != null && (
+                                        <div className="text-[10px] tabular-nums mt-0.5" style={{ color: delta > 0 ? '#e44040' : '#3ecf8e' }}>
+                                          {delta > 0 ? '+' : ''}{delta.toFixed(2)}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
+                                      <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
+                                    </div>
+                                    <div>
+                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
+                                      <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
-                                  <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
-                                </div>
-                                <div>
-                                  <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
-                                  <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  );
-                })()}
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })()}
 
-                <CompFlexUnits
-                  units={comp.flexUnits || []}
-                  assets={assets}
-                  bucket={bucket}
-                  t={t}
-                />
+                    <CompFlexUnits
+                      units={comp.flexUnits || []}
+                      assets={assets}
+                      bucket={bucket}
+                      t={t}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════
                 Detail-Analyse: Unit-Wirkung, Matchups, Comp-DNA, Spielverlauf
-                in zwei Spalten; Pro vs Solo und Trend voll breit.
+                in zwei Spalten, Unterkanten buendig; bei drei Spalten (wide)
+                steht die Unit-Wirkung oben neben den Items, die uebrigen
+                Boxen hier nebeneinander. Pro vs Solo und Trend voll breit.
                 ═══════════════════════════════════════════════════════════ */}
             <div id="cj-analysis" data-jump="analysis" className="scroll-mt-16">
               <BlockHeadline label={t('tft.comp.block.deep')} />
@@ -805,11 +868,11 @@ export default function TftCompDetailPage() {
                 und der Endpoint bleiben liegen, Zurueckholen ist ein Import
                 plus dieser eine Aufruf. */}
 
-            <div className="lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
-              <div className="min-w-0">
+            <div className={`lg:grid lg:grid-cols-2 lg:gap-x-6 ${wide ? analysisWideCols : ''}`}>
+              <div className={`min-w-0 lg:flex lg:flex-col [&>section]:grow ${wide ? 'min-[100rem]:hidden' : ''}`}>
                 {comp.outcome && <OutcomeUnitEffect outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
               </div>
-              <div className="min-w-0">
+              <div className={`min-w-0 lg:flex lg:flex-col lg:[&>*:last-child]:grow ${wide ? 'min-[100rem]:contents' : ''}`}>
                 {/* Comp-DNA: AggroIndex + SkillCap. Das Board mit Core/Flex steht
                     seit 2026-10-10 im Kopf (CompCard). */}
                 {(comp.aggroIndex != null || comp.skillCapCategory) && (
@@ -1199,16 +1262,16 @@ function BlockHeadline({ label }: { label: string }) {
     </div>
   );
 }
-// ROI je Level, zugeklappt in der Leveln-Box. Das Diagramm wird erst beim
-// Aufklappen gezeichnet — Recharts misst beim Start seine Breite, in einem
-// geschlossenen <details> waere die 0.
+// Level-ROI in der Leveln-Box, beim Laden offen (User 2026-10-10). Das
+// Diagramm wird nur gezeichnet, solange der Reiter offen ist — Recharts misst
+// beim Start seine Breite, in einem geschlossenen <details> waere die 0.
 function RoiDetails({ chartData, label }: {
   chartData: { label: string; share: number; avgRound: number | null; avgStage: string }[];
   label: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   return (
-    <details onToggle={e => setOpen(e.currentTarget.open)}>
+    <details open={open} onToggle={e => setOpen(e.currentTarget.open)}>
       <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-white select-none">{label}</summary>
       {open && <div className="mt-2"><CompEconChart chartData={chartData} bare /></div>}
     </details>

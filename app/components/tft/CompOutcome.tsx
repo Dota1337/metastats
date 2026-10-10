@@ -314,14 +314,20 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
 }
 
 /** Unit-Wirkung: nur Units, fuer die es eine Ohne-Seite gibt; beste zuerst. */
+/** Ob die Unit-Wirkung etwas zeigt — die Detailseite richtet danach ihr
+    Raster aus (ab 1600 px steht die Box neben den Items). */
+export function hasUnitEffect(outcome: CompOutcome | null | undefined): boolean {
+  return !!outcome && outcome.units.some(u => u.effect != null);
+}
+
 export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
   const [showAll, setShowAll] = useState(false);
+  if (!hasUnitEffect(outcome)) return null;
   const all = outcome.units
     .filter(u => u.effect != null)
     .sort((a, b) => a.effect!.delta - b.effect!.delta);
-  if (all.length === 0) return null;
   const main = all.filter(u => u.presence >= UNIT_EFFECT_MIN_PRESENCE);
   // Steht keine Unit ueber der Schwelle, nicht kuerzen — sonst bliebe die Box leer.
   const short = main.length > 0 ? main : all;

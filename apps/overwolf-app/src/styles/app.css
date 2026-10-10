@@ -95,6 +95,21 @@ input, select { font: inherit; color: var(--text); }
 .comp-stats { display: flex; gap: 12px; color: var(--muted); font-size: 12px; white-space: nowrap; }
 .comp-stats b { color: var(--text); font-weight: 600; }
 .comp-actions { display: flex; gap: 6px; }
+/* Units mit den Aufklapp-Knoepfen rechts daneben; zu schmal → Knoepfe in eigener Zeile. */
+.comp-body { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.comp-body > .units { flex: 1 1 auto; min-width: 0; }
+.comp-toggles { display: flex; gap: 6px; margin-left: auto; }
+.btn.toggle { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn.toggle.open { border-color: var(--accent); color: var(--accent); }
+.btn.toggle .caret { font-size: 10px; }
+/* Aufgeklappter Bereich (Positioning / Early Game) unter der Comp. */
+.comp-panel { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+.card > .comp-panel { border-top: 0; padding-top: 0; }
+.comp-panel.pos { align-items: center; }
+.comp-panel.pos h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; }
+.comp-panel.pos .lvl-tabs { margin-bottom: 0; }
+.comp-panel.pos .timing { justify-content: center; }
+.pos-plan { font-size: 13px; }
 
 .tier {
   display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 4px;
@@ -246,7 +261,16 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .hex.empty { background: var(--line); opacity: .55; }
 .hex.c1 { background: var(--c1); } .hex.c2 { background: var(--c2); } .hex.c3 { background: var(--c3); }
 .hex.c4 { background: var(--c4); } .hex.c5 { background: var(--c5); }
-.hex-in { width: 100%; height: 100%; background: var(--panel); clip-path: inherit; overflow: hidden; }
+.hex-in { position: relative; width: 100%; height: 100%; background: var(--panel); clip-path: inherit; overflow: hidden; }
+/* Name im Feld wie auf der Homepage (Positioning). */
+.hex-name {
+  position: absolute; left: 0; right: 0; bottom: 17%; padding: 0 2px; text-align: center; line-height: 1;
+  font-size: 9px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hex-name.long { font-size: 8px; }
+.board.pulse { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .45; } }
 .hex-in img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cell .stars { position: absolute; top: -5px; left: 50%; transform: translateX(-50%); font-size: 9px; letter-spacing: -1px; text-shadow: 0 0 2px #000; color: #c9d3e0; }
 .cell .stars.s3 { color: var(--c5); }
@@ -276,9 +300,6 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 5p
 .mu { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 3px 0; }
 .mu .comp-name { font-weight: 500; }
 .good { color: var(--good); } .bad { color: var(--bad); }
-.early-board { display: flex; align-items: center; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-.early-board:last-child { border-bottom: 0; }
-.early-board .units { flex: 1; padding-bottom: 8px; }
 .timing { display: flex; gap: 6px; flex-wrap: wrap; }
 .timing span { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font-size: 12px; }
 .match { cursor: pointer; }

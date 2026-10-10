@@ -72,10 +72,9 @@ export function settingsTab(): HTMLElement {
     ),
     h('div', { class: 'card settings' },
       selectRow(t('settings.region'), REGIONS.map(r => ({ value: r, label: regionLabel(r) })), s.region, v => patchSettings({ region: v })),
-      // „Automatisch“ = Sprache von Overwolf (lang null); vorher liess sich das
-      // nach einer Wahl nicht mehr zurueckstellen.
-      selectRow(t('settings.language'), [{ value: '', label: t('settings.langAuto') }, ...LANGS.map(l => ({ value: l.code, label: l.label }))],
-        s.lang ?? '', v => patchSettings({ lang: (v || null) as Lang | null })),
+      // Ohne Wahl (lang null) ist die App Englisch.
+      selectRow(t('settings.language'), LANGS.map(l => ({ value: l.code, label: l.label })),
+        s.lang ?? 'en', v => patchSettings({ lang: v as Lang })),
       toggleRow(t('settings.share'), 'share'),
     ),
   );

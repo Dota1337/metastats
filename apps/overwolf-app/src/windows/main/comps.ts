@@ -1,19 +1,30 @@
-// Reiter Comps: Liste wie bisher, Klick oeffnet die Detailansicht mit
-// Aufstellung, Items je Traeger, Stufenplan und Matchups.
+// Reiter Comps: Liste mit zwei Aufklapp-Bereichen je Comp (Positioning wie
+// auf der Homepage, Early Game), Klick auf Details oeffnet die Detailansicht
+// mit Aufstellung, Items je Traeger, Stufenplan und Matchups.
 import type { CompanionComp, CompanionCompDetail, CompanionLookups } from '../../../../../app/lib/companion-types.ts';
 import { read, write } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
 import { loadCompDetail, siteUrl } from '../../lib/api.ts';
 import { openExternal } from '../../lib/ow.ts';
-import { levelPlan, boardLevels, startLevel, shownLevels } from '../../lib/plan.ts';
+import { compLevelling, positioningView } from '../../lib/plan.ts';
 import { boardView } from '../../lib/board-view.ts';
-import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits, levelTabs } from '../../lib/dom.ts';
+import { h, clear, unitIcon, itemIcon, tierBadge, fmtAvg, fmtPct, compUnits, levelTabs, levellingText } from '../../lib/dom.ts';
 import { nav, go, lookups, comps, backBtn, fetchSlot, slotFallback, itemName, rerender } from './ctx.ts';
+import { earlyPanel } from './early.ts';
 
-export const listState = { query: '', loadFailed: false, retry: () => {} };
-// Gewaehlte Stufe der Aufstellung in der Detailansicht; springt beim Wechsel
-// der Comp auf deren Start-Stufe.
+type PanelKind = 'pos' | 'early';
+// open: der eine aufgeklappte Bereich der Liste (auch in der Detailansicht
+// derselben Comp offen). Liegt im Modul, damit Neuzeichnen und Suche ihn
+// nicht schliessen.
+export const listState = {
+  query: '', loadFailed: false, retry: () => {},
+  open: null as { key: string; kind: PanelKind } | null,
+};
+// Gewaehlte Stufe der Aufstellung (Detailansicht) und des Positioning-Bereichs
+// (Liste); 0 = noch nicht gewaehlt, dann der Startreiter. Springt beim
+// Wechsel der Comp zurueck.
 const boardUi = { key: '', level: 0 };
+const posUi = { key: '', level: 0 };
 
 export function recipeRow(item: string, parts: [string, string], lk: CompanionLookups | null, size: 'sm' | 'xs' = 'sm'): HTMLElement {
   return h('div', { class: 'recipe', title: itemName(item, lk) },
@@ -36,6 +47,55 @@ function pinBtn(c: CompanionComp, pinnedKey: string | null): HTMLElement {
   return h('button', { class: pinned ? 'btn primary' : 'btn', onclick: () => write('ms.pin', pinned ? null : c) }, pinned ? t('comps.unpin') : t('comps.pin'));
 }
 
+const isOpen = (c: CompanionComp, kind: PanelKind) => listState.open?.key === c.key && listState.open.kind === kind;
+
+// Auf- und Zuklappen ohne go(): go() springt an den Listenanfang. Einmal in
+// Sicht scrollen, nur beim Klick, nie beim Neuzeichnen durch ankommende Daten.
+function togglePanel(c: CompanionComp, kind: PanelKind): void {
+  listState.open = isOpen(c, kind) ? null : { key: c.key, kind };
+  rerender();
+  if (listState.open) document.getElementById('comp-open')?.scrollIntoView({ block: 'nearest' });
+}
+
+function panelToggle(c: CompanionComp, kind: PanelKind, label: string): HTMLElement {
+  const open = isOpen(c, kind);
+  const btn = h('button', { class: open ? 'btn toggle open' : 'btn toggle', type: 'button', 'aria-expanded': open ? 'true' : 'false', onclick: () => togglePanel(c, kind) },
+    label, h('span', { class: 'caret' }, open ? '▴' : '▾'));
+  // Vorladen nach 150 ms Zeigen wie auf der Homepage; ein Abruf fuer beide Bereiche.
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  btn.addEventListener('pointerenter', () => { timer = setTimeout(() => compDetailSlot(c, true), 150); });
+  btn.addEventListener('pointerleave', () => { if (timer) clearTimeout(timer); timer = null; });
+  return btn;
+}
+
+// Positioning wie auf der Homepage (CompBoardPanel): Reiter Stufe 7-9 mit
+// Anteil, Brett mit Namen, Levelplan und Stufen-Zeitpunkte. Beim Laden ein
+// leeres Brett in voller Groesse, damit nichts springt.
+function positioningPanel(c: CompanionComp): HTMLElement {
+  const lk = lookups();
+  const slot = compDetailSlot(c);
+  if (slot.state === 'error') return h('div', { class: 'comp-panel' }, slotFallback(detailSlotKey(c), slot));
+  const d = slot.state === 'ok' ? slot.data : null;
+  if (posUi.key !== c.key) { posUi.key = c.key; posUi.level = 0; }
+  const v = positioningView(c, d, posUi.level);
+  const timing = d ? d.positioning?.levelTiming ?? d.levelTiming : [];
+  return h('div', { class: 'comp-panel pos' },
+    h('h3', {}, t('comps.board')),
+    v.levels.length ? levelTabs(v.levels, v.level, v.share, l => { posUi.level = l; rerender(); }) : null,
+    !d ? boardView([], lk, 'md', { pulse: true })
+      : v.board.length ? boardView(v.board.map(b => ({ cell: b.cell, unit: b.unit })), lk, 'md', { names: true })
+        : h('div', { class: 'empty' }, '—'),
+    d ? h('div', { class: 'pos-plan' }, h('span', { class: 'muted' }, t('tools.levelPlan'), ': '), h('b', {}, levellingText(compLevelling(c, d)))) : null,
+    timing.length ? h('div', { class: 'timing' }, timing.map(x => h('span', {}, `${t('tools.level')} ${x.level} · ${x.stage}`))) : null,
+  );
+}
+
+function openPanel(c: CompanionComp): HTMLElement | null {
+  if (isOpen(c, 'pos')) return h('div', { id: 'comp-open' }, positioningPanel(c));
+  if (isOpen(c, 'early') && c.hasEarly) return h('div', { id: 'comp-open' }, earlyPanel(c));
+  return null;
+}
+
 function compRow(c: CompanionComp, lk: CompanionLookups | null, pinnedKey: string | null): HTMLElement {
   return h('article', { class: c.key === pinnedKey ? 'comp pinned' : 'comp' },
     h('div', { class: 'comp-head' },
@@ -52,7 +112,16 @@ function compRow(c: CompanionComp, lk: CompanionLookups | null, pinnedKey: strin
         pinBtn(c, pinnedKey),
       ),
     ),
-    compUnits(c, lk),
+    // Aufklapp-Knoepfe rechts neben den Units; reicht der Platz nicht, rutschen
+    // sie in eine eigene Zeile.
+    h('div', { class: 'comp-body' },
+      compUnits(c, lk),
+      h('div', { class: 'comp-toggles' },
+        panelToggle(c, 'pos', t('comps.board')),
+        c.hasEarly ? panelToggle(c, 'early', t('tab.early')) : null,
+      ),
+    ),
+    openPanel(c),
   );
 }
 
@@ -89,12 +158,16 @@ export function compsEmpty(): HTMLElement {
   return h('div', { class: 'spinner' });
 }
 
+// Die MetaTFT-Comp der Liste gehoert zum Schluessel: wechselt sie (neue
+// Generation), ist es ein anderes Detail.
 export function detailSlotKey(c: CompanionComp): string {
-  return `comp|${read('ms.settings').region}|${c.slug}`;
+  return `comp|${read('ms.settings').region}|${c.slug}|${c.guideId ?? 'none'}`;
 }
 
-export function compDetailSlot(c: CompanionComp) {
-  return fetchSlot<CompanionCompDetail>(detailSlotKey(c), () => loadCompDetail(c.slug, c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]));
+export function compDetailSlot(c: CompanionComp, quiet = false) {
+  return fetchSlot<CompanionCompDetail>(detailSlotKey(c),
+    () => loadCompDetail(c.slug, c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])], c.guideId ?? null),
+    { quiet });
 }
 
 // Aufstellung mit den Items und 3-Sternen der Comp-Liste; ohne Felder vom
@@ -138,14 +211,12 @@ function detailView(c: CompanionComp): HTMLElement {
   const pin = read('ms.pin');
   const slot = compDetailSlot(c);
   const d = slot.state === 'ok' ? slot.data : null;
-  const plan = levelPlan(c, lk);
-  const { levels, start } = boardLevels(plan);
-  // boardUi.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
+  // Reiter, Startstufe und Levelplan wie auf der Homepage (positioningView,
+  // compLevelling) — dieselbe Regel wie Liste und Overlay.
   if (boardUi.key !== c.key) { boardUi.key = c.key; boardUi.level = 0; }
-  const byLevel = d?.boardsByPlayerLevel;
-  const hasLevel = (l: number) => !!byLevel?.[String(l)]?.length;
-  const shown = shownLevels(levels, hasLevel);
-  const level = shown.includes(boardUi.level) ? boardUi.level : startLevel(shown, start, hasLevel);
+  const v = positioningView(c, d, boardUi.level);
+  const levelling = compLevelling(c, d);
+  const timing = d ? d.positioning?.levelTiming ?? d.levelTiming : [];
   const carriers = c.units.filter(u => u.items?.length);
   const strong = matchupList(c, true, lk);
   const weak = matchupList(c, false, lk);
@@ -156,15 +227,16 @@ function detailView(c: CompanionComp): HTMLElement {
       tierBadge(c.tier),
       h('div', { class: 'comp-name' }, c.name),
       pinBtn(c, pin?.key ?? null),
-      h('button', { class: 'btn ghost', onclick: () => go('early', { earlyKey: c.key }) }, t('tab.early')),
+      c.hasEarly ? panelToggle(c, 'early', t('tab.early')) : null,
       h('button', { class: 'btn ghost', onclick: () => openExternal(siteUrl(`/tft/comps/${encodeURIComponent(c.slug)}`)) }, t('comps.open')),
     ),
     statLine(c),
+    isOpen(c, 'early') && c.hasEarly ? h('div', { id: 'comp-open', class: 'card' }, earlyPanel(c)) : null,
     h('div', { class: 'detail-grid' },
       h('div', { class: 'card' },
         h('h3', {}, t('comps.board')),
-        d && shown.length ? levelTabs(shown, level, l => d.levels.find(x => x.level === l)?.share, l => { boardUi.level = l; rerender(); }) : null,
-        slot.state === 'loading' ? h('div', { class: 'spinner' }) : compBoard(c, d, lk, 'md', byLevel?.[String(level)] ?? d?.board ?? []),
+        v.levels.length ? levelTabs(v.levels, v.level, v.share, l => { boardUi.level = l; rerender(); }) : null,
+        slot.state === 'loading' ? h('div', { class: 'spinner' }) : compBoard(c, d, lk, 'md', v.board),
       ),
       carriers.length ? h('div', { class: 'card' },
         h('h3', {}, t('comps.carriers')),
@@ -180,16 +252,18 @@ function detailView(c: CompanionComp): HTMLElement {
     h('div', { class: 'detail-grid' },
       h('div', { class: 'card' },
         h('h3', {}, t('tools.levelPlan')),
-        h('p', { class: 'plan' },
-          plan.kind === 'reroll' ? t('plan.reroll', { n: plan.level }) : t(`plan.${plan.kind}`),
-          plan.avgLevel != null ? h('span', { class: 'muted' }, ` · ${t('plan.avgLevel')} ${plan.avgLevel.toFixed(1)}`) : null,
+        // Bis das Detail da ist, nicht den eigenen Plan zeigen und dann
+        // umspringen (MetaTFT-Plan weicht bei rund der Haelfte der Comps ab).
+        slot.state === 'loading' ? h('div', { class: 'spinner' }) : h('p', { class: 'plan' },
+          levellingText(levelling),
+          c.avgLevel != null ? h('span', { class: 'muted' }, ` · ${t('plan.avgLevel')} ${c.avgLevel.toFixed(1)}`) : null,
         ),
-        plan.kind === 'reroll'
-          ? h('div', { class: 'plan-targets' }, h('span', { class: 'muted' }, t('plan.threeStar')), plan.targets.map(id => unitIcon(id, lk, { star3: true, size: 'sm' })))
+        levelling.kind === 'reroll' && c.reroll?.targets.length
+          ? h('div', { class: 'plan-targets' }, h('span', { class: 'muted' }, t('plan.threeStar')), c.reroll.targets.map(id => unitIcon(id, lk, { star3: true, size: 'sm' })))
           : null,
-        d?.levelTiming.length ? h('div', {},
+        timing.length ? h('div', {},
           h('div', { class: 'recipe-group muted' }, t('comps.reach')),
-          h('div', { class: 'timing' }, d.levelTiming.map(x => h('span', {}, `${t('tools.level')} ${x.level} · ${x.stage}`))),
+          h('div', { class: 'timing' }, timing.map(x => h('span', {}, `${t('tools.level')} ${x.level} · ${x.stage}`))),
         ) : null,
         d?.levels.length ? h('div', {},
           h('div', { class: 'recipe-group muted' }, t('comps.endLevel')),

@@ -8,7 +8,8 @@ export interface BoardUnit { cell: number; unit: string; star?: number; items?: 
 
 const COST_CLASS = ['', 'c1', 'c2', 'c3', 'c4', 'c5'];
 
-export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size: 'md' | 'sm' = 'md'): HTMLElement {
+// names: Name im Feld wie auf der Homepage (Positioning der Comp-Liste).
+export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size: 'md' | 'sm' = 'md', opts: { names?: boolean; pulse?: boolean } = {}): HTMLElement {
   const byCell = new Map<number, BoardUnit>();
   for (const u of units) if (u.cell >= 0 && u.cell < 28 && !byCell.has(u.cell)) byCell.set(u.cell, u);
   const rows: HTMLElement[] = [];
@@ -23,6 +24,7 @@ export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size:
         h('div', { class: `hex ${COST_CLASS[c?.cost ?? 0] || ''}` },
           h('div', { class: 'hex-in' },
             c?.icon ? h('img', { src: c.icon, alt: name, loading: 'lazy' }) : h('span', { class: 'unit-fallback' }, name.slice(0, 3)),
+            opts.names ? h('span', { class: name.length > 8 ? 'hex-name long' : 'hex-name' }, name) : null,
           ),
         ),
         u.star && u.star >= 2 ? h('span', { class: `stars s${Math.min(u.star, 3)}` }, '★'.repeat(Math.min(u.star, 3))) : null,
@@ -32,5 +34,5 @@ export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size:
     // Im Spiel ist die hinterste Reihe nach rechts versetzt, dann im Wechsel.
     rows.push(h('div', { class: row % 2 === 0 ? 'board-row shift' : 'board-row' }, cells));
   }
-  return h('div', { class: `board ${size}` }, rows);
+  return h('div', { class: `board ${size}${opts.pulse ? ' pulse' : ''}` }, rows);
 }

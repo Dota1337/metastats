@@ -1,7 +1,9 @@
 // Stufenplan, Rezepte und Shop-Abgleich fuer die angeheftete Comp.
 // Reine Funktionen (plan.test.ts) — alles aus den Daten der Comp abgeleitet,
 // keine festen Zeitplaene.
-import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+import type {
+  CompanionBoardCell, CompanionComp, CompanionCompDetail, CompanionLevelling, CompanionLookups,
+} from '../../../../app/lib/companion-types.ts';
 import type { OppBoard, OppUnit } from './boards.ts';
 
 export type LevelPlan =
@@ -34,6 +36,50 @@ export function shownLevels(levels: number[], has: (l: number) => boolean): numb
 // sonst die Wunsch-Startstufe (dann zeigt die Seite die Gesamt-Aufstellung).
 export function startLevel(levels: number[], start: number, has: (l: number) => boolean): number {
   return levels.find(l => l >= start && has(l)) ?? levels.find(has) ?? start;
+}
+
+// Levelplan wie auf der Homepage (User 10.10.: „ueberall gleich“): der Plan
+// der MetaTFT-Comp aus dem Comp-Detail; ohne Anleitung oder solange das
+// Detail fehlt der eigene aus den Daten der Comp.
+export function compLevelling(comp: CompanionComp, detail: CompanionCompDetail | null | undefined): CompanionLevelling {
+  const p = detail?.positioning?.plan;
+  if (p) return p;
+  const own = levelPlan(comp);
+  return own.kind === 'reroll' ? { kind: 'reroll', level: own.level } : { kind: 'fast', level: own.kind === 'fast9' ? 9 : 8 };
+}
+
+export interface PositioningView {
+  levels: number[];
+  level: number | null;
+  share: (l: number) => number | undefined;
+  board: CompanionBoardCell[];
+}
+
+// Reiter, Stufe und Brett wie auf der Homepage: Stufe 7-9 ab 50 Spielen,
+// Start = meiste Top-4-Spiele. `picked` 0 = noch nicht gewaehlt. Antworten
+// ohne `positioning` (alter Stand im CDN): Stufen 7-9 des alten Felds, Start
+// Reroll 7, sonst 8. Ohne Brett fuer die Stufe die Gesamt-Aufstellung.
+export function positioningView(comp: CompanionComp, d: CompanionCompDetail | null, picked: number): PositioningView {
+  if (!d) return { levels: [], level: null, share: () => undefined, board: [] };
+  const pos = d.positioning;
+  if (pos) {
+    const levels = pos.levels.map(l => l.level);
+    const level = levels.includes(picked) ? picked : pos.defaultLevel ?? levels[0] ?? null;
+    return {
+      levels, level,
+      share: l => pos.levels.find(x => x.level === l)?.share,
+      board: (level != null ? pos.boardsByPlayerLevel[String(level)] : undefined) ?? d.board,
+    };
+  }
+  const { levels: all, start } = boardLevels(levelPlan(comp));
+  const has = (l: number) => !!d.boardsByPlayerLevel?.[String(l)]?.length;
+  const levels = shownLevels(all, has);
+  const level = levels.includes(picked) ? picked : levels.length ? startLevel(levels, start, has) : null;
+  return {
+    levels, level,
+    share: l => d.levels.find(x => x.level === l)?.share,
+    board: (level != null ? d.boardsByPlayerLevel?.[String(level)] : undefined) ?? d.board,
+  };
 }
 
 export interface Recipe { item: string; parts: [string, string] }

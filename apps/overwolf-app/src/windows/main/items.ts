@@ -5,8 +5,8 @@ import type { CompanionItemDetail, CompanionItemsResponse, CompanionLookups } fr
 import { read } from '../../lib/store.ts';
 import { t, lang } from '../../lib/i18n.ts';
 import { loadItem, loadItems } from '../../lib/api.ts';
-import { levelPlan, compRecipes, groupRecipes } from '../../lib/plan.ts';
-import { h, clear, unitIcon, itemIcon, fmtAvg, fmtPct } from '../../lib/dom.ts';
+import { compLevelling, compRecipes, groupRecipes } from '../../lib/plan.ts';
+import { h, clear, unitIcon, itemIcon, fmtAvg, fmtPct, levellingText } from '../../lib/dom.ts';
 import { nav, go, lookups, itemName, unitName, backBtn, fetchSlot, slotFallback, sortHead, rerender } from './ctx.ts';
 import { recipeRow, statLine } from './comps.ts';
 
@@ -85,7 +85,9 @@ function oddsView(): HTMLElement {
   const pin = read('ms.pin');
   const levels = Object.keys(lk?.shopOdds ?? {}).map(Number).sort((a, b) => a - b);
   const odds = lk?.shopOdds[ui.level];
-  const plan = pin ? levelPlan(pin, lk) : null;
+  // Levelplan wie ueberall: MetaTFT-Plan aus dem Detail der angehefteten Comp.
+  const pd = read('ms.pinDetail');
+  const plan = pin ? compLevelling(pin, pd && pd.key === pin.key ? pd.data : null) : null;
   return h('div', { class: 'card' },
     h('div', { class: 'level-pick' }, levels.map(l =>
       h('button', { class: l === ui.level ? 'chip active' : 'chip', onclick: () => { ui.level = l; rerender(); } }, String(l)),
@@ -96,7 +98,7 @@ function oddsView(): HTMLElement {
       h('tr', {}, h('th', {}, t('tools.copies')), [1, 2, 3, 4, 5].map(c => h('td', {}, lk?.bagSize[c] != null ? String(lk.bagSize[c]) : '—'))),
     ) : null,
     plan && pin ? h('p', { class: 'plan', style: 'margin-top:12px' },
-      pin.name, ': ', plan.kind === 'reroll' ? t('plan.reroll', { n: plan.level }) : t(`plan.${plan.kind}`),
+      pin.name, ': ', levellingText(plan),
     ) : null,
   );
 }

@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",

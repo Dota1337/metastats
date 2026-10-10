@@ -6,9 +6,10 @@ import { read } from '../../lib/store.ts';
 import { t } from '../../lib/i18n.ts';
 import { h } from '../../lib/dom.ts';
 
-export type Tab = 'ingame' | 'comps' | 'units' | 'items' | 'early' | 'history' | 'settings';
-// „Im Spiel“ steht nur waehrend einer TFT-Partie in der Seitenleiste.
-export const TABS: Tab[] = ['ingame', 'comps', 'units', 'items', 'early', 'history', 'settings'];
+export type Tab = 'ingame' | 'comps' | 'units' | 'items' | 'history' | 'settings';
+// „Im Spiel“ steht nur waehrend einer TFT-Partie in der Seitenleiste. Early
+// Game klappt seit 0.8.1 bei der Comp auf (Reiter Comps).
+export const TABS: Tab[] = ['ingame', 'comps', 'units', 'items', 'history', 'settings'];
 
 // Dasselbe Fenster laeuft auch als main_overlay ueber dem Spiel; dort laedt es
 // nie selbst (das Hintergrundfenster haelt ms.comps/ms.lookups aktuell).
@@ -19,7 +20,6 @@ export const nav = {
   compKey: null as string | null,   // offene Comp-Detailansicht
   unitId: null as string | null,
   itemId: null as string | null,
-  earlyKey: null as string | null,  // gewaehlte Comp im Early-Reiter, null = angeheftete
 };
 
 let renderFn: () => void = () => {};
@@ -55,16 +55,22 @@ export function backBtn(onclick: () => void): HTMLElement {
 
 // Abruf mit Ladezustand: Ergebnis wird je Schluessel gemerkt, der Reiter
 // zeichnet bei Ankunft neu. Fehler bleiben stehen, bis neu versucht wird.
+// quiet = Vorladen: bei Ankunft nur neu zeichnen, wenn der Slot inzwischen
+// gezeigt wird — sonst ersetzt das Neuzeichnen den Knopf unter der Maus.
 type Slot<T> = { state: 'loading' } | { state: 'ok'; data: T } | { state: 'error'; status: number | null };
 const slots = new Map<string, Slot<unknown>>();
+const quiet = new Set<string>();
 
-export function fetchSlot<T>(key: string, load: () => Promise<T>): Slot<T> {
+export function fetchSlot<T>(key: string, load: () => Promise<T>, opts: { quiet?: boolean } = {}): Slot<T> {
   const s = slots.get(key) as Slot<T> | undefined;
+  if (!opts.quiet) quiet.delete(key);
   if (s) return s;
+  if (opts.quiet) quiet.add(key);
   slots.set(key, { state: 'loading' });
+  const done = () => { if (!quiet.delete(key)) rerender(); };
   load().then(
-    data => { slots.set(key, { state: 'ok', data }); rerender(); },
-    e => { slots.set(key, { state: 'error', status: (e as { status?: number }).status ?? null }); rerender(); },
+    data => { slots.set(key, { state: 'ok', data }); done(); },
+    e => { slots.set(key, { state: 'error', status: (e as { status?: number }).status ?? null }); done(); },
   );
   return { state: 'loading' };
 }

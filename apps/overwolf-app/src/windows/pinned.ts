@@ -11,9 +11,9 @@ import { read, write, subscribe, patchSettings } from '../lib/store.ts';
 import { t } from '../lib/i18n.ts';
 import { boot } from '../lib/boot.ts';
 import { makeDraggable, fitSelf, tellBackground } from '../lib/ow.ts';
-import { levelPlan, boardLevels, startLevel, shownLevels, compRecipes } from '../lib/plan.ts';
+import { compLevelling, positioningView, compRecipes } from '../lib/plan.ts';
 import { rankComps, contestCount, BOARD_MIN_SCORE } from '../lib/comp-search.ts';
-import { h, clear, unitIcon, itemIcon, compUnits, tierBadge, levelTabs } from '../lib/dom.ts';
+import { h, clear, unitIcon, itemIcon, compUnits, tierBadge, levelTabs, levellingText } from '../lib/dom.ts';
 import { boardView } from '../lib/board-view.ts';
 import type { CompanionComp } from '../../../../app/lib/companion-types.ts';
 
@@ -129,7 +129,6 @@ function render(): void {
   makeDraggable(head);
   if (collapsed) { clear(root, h('div', { class: 'overlay' }, head)); fit(); return; }
 
-  const plan = levelPlan(pin, lk);
   const recipes = compRecipes(pin, lk);
   const odds = live.level != null ? lk?.shopOdds[live.level] : undefined;
   // Aufstellung und fruehes Board laedt das Hintergrundfenster; ohne sie
@@ -137,22 +136,20 @@ function render(): void {
   const pd = read('ms.pinDetail');
   const detail = pd && pd.key === pin.key ? pd.data : null;
   const byId = new Map(pin.units.map(u => [u.id, u]));
-  const { levels, start } = boardLevels(plan);
-  // ui.level 0 = noch nicht gewaehlt; dann die erste Stufe mit Brett ab der Startstufe.
+  // Reiter, Startstufe und Levelplan wie auf der Homepage und im Hauptfenster
+  // (positioningView, compLevelling). ui.level 0 = noch nicht gewaehlt.
   if (ui.key !== pin.key) { ui.key = pin.key; ui.level = 0; }
-  const hasLevel = (l: number) => !!detail?.boardsByPlayerLevel?.[String(l)]?.length;
-  const shown = shownLevels(levels, hasLevel);
-  const level = shown.includes(ui.level) ? ui.level : startLevel(shown, start, hasLevel);
-  // Ohne Brett fuer die Stufe (zu wenig Spiele oder alter Stand): die Gesamt-Aufstellung.
-  const board = detail?.boardsByPlayerLevel?.[String(level)] ?? detail?.board ?? [];
+  const view = positioningView(pin, detail, ui.level);
+  const board = view.board;
+  const levelling = compLevelling(pin, detail);
   const early = live.level != null && live.level >= 4 && live.level <= 7 ? detail?.early[String(live.level)]?.[0] : undefined;
 
   clear(root, h('div', { class: 'overlay' },
     head,
     detail && board.length
       ? h('div', {},
-        shown.length
-          ? levelTabs(shown, level, l => detail.levels.find(x => x.level === l)?.share, l => { ui.level = l; render(); })
+        view.levels.length
+          ? levelTabs(view.levels, view.level, view.share, l => { ui.level = l; render(); })
           : h('div', { class: 'ov-label' }, t('overlay.target')),
         boardView(board.map(b => ({ cell: b.cell, unit: b.unit, star: byId.get(b.unit)?.star3 ? 3 : undefined, items: byId.get(b.unit)?.items })), lk, 'sm'),
       )
@@ -163,8 +160,10 @@ function render(): void {
     ) : null,
     h('div', { class: 'ov-row' },
       h('span', { class: 'ov-label' }, t('tools.levelPlan')),
-      h('span', {}, plan.kind === 'reroll' ? t('plan.reroll', { n: plan.level }) : t(`plan.${plan.kind}`)),
-      plan.kind === 'reroll' ? h('span', { class: 'plan-targets' }, plan.targets.map(id => unitIcon(id, lk, { star3: true, size: 'sm' }))) : null,
+      h('span', {}, levellingText(levelling)),
+      levelling.kind === 'reroll' && pin.reroll?.targets.length
+        ? h('span', { class: 'plan-targets' }, pin.reroll.targets.map(id => unitIcon(id, lk, { star3: true, size: 'sm' })))
+        : null,
     ),
     odds ? h('div', { class: 'ov-row' },
       h('span', { class: 'ov-label' }, `${t('tools.level')} ${live.level}`),

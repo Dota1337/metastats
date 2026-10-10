@@ -36,14 +36,8 @@ export function t(key: ShortKey, vars?: Record<string, string | number>): string
   return s;
 }
 
-// Gewaehlte Sprache, sonst Overwolf-Sprache, sonst Browser-Sprache.
+// Gewaehlte Sprache, sonst immer Englisch (User 10.10.: „Standardsprache …
+// immer auf Englisch“) — nicht mehr die Sprache von Overwolf.
 export function resolveLang(chosen: Lang | null): Promise<Lang> {
-  if (chosen) return Promise.resolve(chosen);
-  return new Promise(res => {
-    try {
-      overwolf.settings.language.get(r => res(toLang(r?.language || navigator.language)));
-    } catch {
-      res(toLang(navigator.language));
-    }
-  });
+  return Promise.resolve(chosen ?? 'en');
 }

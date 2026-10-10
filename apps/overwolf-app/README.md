@@ -2,9 +2,12 @@
 
 TFT-Begleiter mit den Daten von metastats.gg, aufgebaut wie die MetaTFT-App (0.8).
 
-- **Hauptfenster (Alt+D):** Seitenleiste mit Im Spiel · Comps · Units · Items · Early Game ·
+- **Hauptfenster (Alt+D):** Seitenleiste mit Im Spiel · Comps · Units · Items ·
   Match History · Einstellungen, rechts die Live-Spalte mit dem eigenen Profil (Rang, letzte
   Platzierungen, letzte Bretter). Spielersuche auch ohne #Tag (Trefferliste mit Server).
+  Jede Comp klappt „Positioning“ (wie auf der Homepage: Stufe 7-9, Brett, Levelplan) und
+  „Early Game“ (fruehe Boards Stufe 4-7) direkt in der Liste auf (ab 0.8.1).
+  Sprache ohne eigene Wahl: Englisch.
 - **Im Spiel:** Reiter „Im Spiel“ mit allen Mitspielern (Leben, zuletzt gegen, Rang, letzte
   Platzierungen, erkannte Comp). Anzeige je nach Einstellung auf dem zweiten Bildschirm, als
   Overlay ueber dem Spiel (`main_overlay`) oder als Desktop-Fenster.

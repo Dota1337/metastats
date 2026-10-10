@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
-import { levelPlan, boardLevels, startLevel, shownLevels, compRecipes, shopMatches, groupRecipes } from './plan.ts';
+import type { CompanionComp, CompanionCompDetail, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+import { levelPlan, boardLevels, startLevel, shownLevels, compRecipes, shopMatches, groupRecipes, compLevelling, positioningView } from './plan.ts';
 
 const lookups: CompanionLookups = {
   v: 1, set: 18,
@@ -97,4 +97,59 @@ test('shownLevels: nur Stufen mit Brett, Reihenfolge bleibt', () => {
   assert.deepEqual(shownLevels([7, 8, 9], has([9])), [9]);
   assert.deepEqual(shownLevels([7, 8, 9], has([7, 9])), [7, 9]);
   assert.deepEqual(shownLevels([4, 5, 6, 7], has([6, 4])), [4, 6]);
+});
+
+function detail(over: Partial<CompanionCompDetail> = {}): CompanionCompDetail {
+  return {
+    v: 1, slug: 's', board: [{ unit: 'A', cell: 0 }], boardSource: 'metatft',
+    levels: [
+      { level: 7, share: 0.3, avg: 4, top4: 0.4, win: 0.1, games: 300 },
+      { level: 8, share: 0.5, avg: 4, top4: 0.5, win: 0.1, games: 500 },
+    ],
+    levelTiming: [], early: {}, ...over,
+  };
+}
+
+test('compLevelling: MetaTFT-Plan aus dem Detail, sonst der eigene', () => {
+  const c = { ...comp([{ id: 'A' }], 8.7), reroll: undefined };
+  const plan = { kind: 'reroll' as const, level: 7 };
+  const pos = { levels: [], boardsByPlayerLevel: {}, defaultLevel: null, levelling: 'lvl 7', plan, levelTiming: [] };
+  assert.deepEqual(compLevelling(c, detail({ positioning: pos })), plan);
+  // Ohne Anleitung (plan null), ohne Detail oder alter Stand: eigener Plan.
+  assert.deepEqual(compLevelling(c, detail({ positioning: { ...pos, plan: null } })), { kind: 'fast', level: 9 });
+  assert.deepEqual(compLevelling(c, null), { kind: 'fast', level: 9 });
+  assert.deepEqual(compLevelling({ ...comp([{ id: 'A' }]), reroll: { level: 6, targets: ['A'] } }, detail()), { kind: 'reroll', level: 6 });
+});
+
+test('positioningView: Reiter und Startstufe der Homepage, Wahl bleibt, Rueckfall auf Gesamt-Aufstellung', () => {
+  const b7 = [{ unit: 'B', cell: 7 }];
+  const b9 = [{ unit: 'D', cell: 9 }];
+  const d = detail({
+    positioning: {
+      levels: [{ level: 7, share: 0.3, games: 300, top4Rate: 0.4 }, { level: 9, share: 0.2, games: 200, top4Rate: 0.9 }],
+      boardsByPlayerLevel: { 7: b7, 9: b9 }, defaultLevel: 9, levelling: null, plan: null, levelTiming: [],
+    },
+  });
+  const c = comp([{ id: 'A' }]);
+  const v = positioningView(c, d, 0);
+  assert.deepEqual(v.levels, [7, 9]);
+  assert.equal(v.level, 9);
+  assert.deepEqual(v.board, b9);
+  assert.equal(v.share(7), 0.3);
+  assert.equal(positioningView(c, d, 7).level, 7);
+  // Gewaehlte Stufe ohne Reiter → Startreiter.
+  assert.equal(positioningView(c, d, 8).level, 9);
+  // Keine Reiter: Gesamt-Aufstellung.
+  const empty = positioningView(c, detail({ positioning: { ...d.positioning!, levels: [], boardsByPlayerLevel: {}, defaultLevel: null } }), 0);
+  assert.equal(empty.level, null);
+  assert.deepEqual(empty.board, d.board);
+  assert.deepEqual(positioningView(c, null, 0).levels, []);
+});
+
+test('positioningView: alter Stand ohne positioning nutzt Stufen 7-9 des alten Felds, Start 8', () => {
+  const d = detail({ boardsByPlayerLevel: { 5: [{ unit: 'A', cell: 1 }], 7: [{ unit: 'B', cell: 2 }], 8: [{ unit: 'D', cell: 3 }] } });
+  const v = positioningView(comp([{ id: 'A' }]), d, 0);
+  assert.deepEqual(v.levels, [7, 8]);
+  assert.equal(v.level, 8);
+  assert.equal(v.share(8), 0.5);
 });

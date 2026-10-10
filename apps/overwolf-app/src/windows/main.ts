@@ -15,7 +15,6 @@ import { nav, TABS, IS_OVERLAY, setRender, go, type Tab } from './main/ctx.ts';
 import { compsTab, listState } from './main/comps.ts';
 import { unitsTab } from './main/units.ts';
 import { itemsTab } from './main/items.ts';
-import { earlyTab } from './main/early.ts';
 import { historyTab, openPlayer } from './main/history.ts';
 import { settingsTab } from './main/settings.ts';
 import { ingameTab } from './main/ingame.ts';
@@ -56,9 +55,8 @@ function render(): void {
     : nav.tab === 'comps' ? compsTab()
       : nav.tab === 'units' ? unitsTab()
         : nav.tab === 'items' ? itemsTab()
-          : nav.tab === 'early' ? earlyTab()
-            : nav.tab === 'history' ? historyTab()
-              : settingsTab();
+          : nav.tab === 'history' ? historyTab()
+            : settingsTab();
   // Scroll-Stand halten, wenn nur nachgeladene Daten neu gezeichnet werden.
   const top = document.querySelector('.content')?.scrollTop ?? 0;
   // Ebenso Fokus und Cursor eines Suchfelds (data-keep), falls Daten waehrend
@@ -125,7 +123,8 @@ if (inGame()) nav.tab = 'ingame';
 listState.retry = () => void refresh(true);
 setRender(render);
 void boot(render).then(() => refresh());
-subscribe(['ms.comps', 'ms.lookups', 'ms.pin', 'ms.settings', 'ms.me', 'ms.profile', 'ms.lobby', 'ms.live'], key => {
+// ms.pinDetail: Levelplan der angehefteten Comp (Reiter Items).
+subscribe(['ms.comps', 'ms.lookups', 'ms.pin', 'ms.pinDetail', 'ms.settings', 'ms.me', 'ms.profile', 'ms.lobby', 'ms.live'], key => {
   if (key === 'ms.live') { onLive(); return; }
   if (key === 'ms.profile') { swapLive(); return; }
   if (key === 'ms.lobby' && nav.tab !== 'ingame') return;

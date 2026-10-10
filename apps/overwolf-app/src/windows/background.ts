@@ -1013,12 +1013,13 @@ async function loadPinDetail(force = false): Promise<void> {
     if (read('ms.pinDetail')) write('ms.pinDetail', null);
     return;
   }
-  const want = `${read('ms.settings').region}|${pin.key}`;
+  const want = `${read('ms.settings').region}|${pin.key}|${pin.guideId ?? ''}`;
   const cur = read('ms.pinDetail');
   if (!force && want === pinDetailFor && cur?.key === pin.key && Date.now() - cur.fetchedAt < REFRESH_MS) return;
   pinDetailFor = want;
   try {
-    const data = await loadCompDetail(pin.slug, pin.units.map(u => u.id), [...new Set([...pin.carries, ...pin.itemCarriers])]);
+    // Dieselbe MetaTFT-Comp wie die Comp-Liste (guide), wie im Hauptfenster.
+    const data = await loadCompDetail(pin.slug, pin.units.map(u => u.id), [...new Set([...pin.carries, ...pin.itemCarriers])], pin.guideId ?? null);
     if (read('ms.pin')?.key === pin.key) write('ms.pinDetail', { key: pin.key, fetchedAt: Date.now(), data });
   } catch (e) {
     pinDetailFor = '';

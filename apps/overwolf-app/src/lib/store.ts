@@ -37,7 +37,7 @@ export interface Settings {
   opponent: boolean;   // Gegner-Overlay: erkannte Comps der Gegner, auch ohne angeheftete Comp (ab 0.6)
   share: boolean;      // Brett-Daten senden
   region: string;
-  lang: Lang | null;   // null = Overwolf-Sprache
+  lang: Lang | null;   // null = Englisch (Standard seit 0.8.1)
   collapsed: boolean;  // Comp-Overlay zugeklappt
   // Lage des Gegner-Overlays als Anteil des Spielfensters (linke obere Ecke,
   // 0..1). null = Standardlage. Gesetzt im Verschiebe-Modus (ab 0.7).

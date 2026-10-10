@@ -5,10 +5,12 @@ import { useI18n, type TranslationKey } from '../../lib/i18n';
 // Detailseite: ab 1440 px im Kopf (CompCard, variant="header"), darunter als
 // Box in der Detail-Analyse (variant="box") — User 2026-10-10.
 //
-// Balken (User 2026-10-10, „nicht aussagekraeftig"): Mitte = Platz 4,5, der
-// Schnitt aller 8 Spieler einer Lobby. Gruen nach rechts = besser, rot nach
-// links = schlechter, voller halber Balken = 2 Plaetze. Vorher Min-Max-
-// normiert: der schlechteste Rang hatte immer 0 % — auch bei 0,01 Abstand.
+// Balken (User 2026-10-10): Look wie vorher (duenn, von links), aber auf der
+// ganzen Platz-Skala: voll = Platz 1, halb = Platz 4,5 (Schnitt aller 8
+// Spieler einer Lobby). Farbe aus dem Abstand zu 4,5: gruen besser, gelb
+// gleich, rot schlechter. Vorher Min-Max-normiert: der schlechteste Rang hatte
+// immer 0 % — auch bei 0,01 Abstand. Die Raenge liegen meist nur 0,1 Plaetze
+// auseinander; den Unterschied zeigt dann die Zahl daneben, nicht die Laenge.
 // Das Wort „Konstant / Skill-intensiv" ist weg: es kannte keine Richtung und
 // widersprach oft den Zahlen (Reviews 2026-10-10).
 
@@ -20,7 +22,7 @@ interface DnaComp {
 }
 
 const LOBBY_AVG = 4.5;
-const SCALE = 2;
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 // Raenge unter 30 Spielen schwanken um gut ±0,8 Plaetze; die API filtert seit
 // 2026-10-10 ebenfalls ab 30, aeltere Snapshots tragen noch Raenge ab 20.
 const MIN_RANK_GAMES = 30;
@@ -28,7 +30,8 @@ const MIN_RANK_GAMES = 30;
 const SOLID_RANK_GAMES = 100;
 
 function rankRows(comp: DnaComp): RankRow[] {
-  return (comp.skillCapBuckets ?? []).filter(b => b.games >= MIN_RANK_GAMES);
+  // Ohne Platzsumme rechnet die API NaN (route.ts, sum_placement / games).
+  return (comp.skillCapBuckets ?? []).filter(b => b.games >= MIN_RANK_GAMES && Number.isFinite(b.avgPlacement));
 }
 
 export function hasCompDna(comp: DnaComp | null | undefined): boolean {
@@ -43,9 +46,8 @@ function RankBars({ rows, twoCols }: { rows: RankRow[]; twoCols: boolean }) {
     <div className={`[&>*]:mb-1 ${twoCols ? '@lg:columns-2 @lg:gap-x-6' : ''}`}>
       {rows.map(bk => {
         const label = t(`tft.bucket.${bk.bucket}` as TranslationKey) || bk.bucket;
-        const delta = LOBBY_AVG - bk.avgPlacement;
-        const half = Math.min(1, Math.abs(delta) / SCALE) * 50;
-        const better = delta >= 0;
+        const share = clamp((8 - bk.avgPlacement) / 7, 0, 1);
+        const hue = Math.round(60 + 60 * clamp(LOBBY_AVG - bk.avgPlacement, -1, 1));
         return (
           <div
             key={bk.bucket}
@@ -54,16 +56,8 @@ function RankBars({ rows, twoCols }: { rows: RankRow[]; twoCols: boolean }) {
             title={`${label}: Ø ${bk.avgPlacement.toFixed(2)} · ${bk.games} ${t('tft.gamesShort')}`}
           >
             <span className="text-fg-secondary w-16 truncate">{label}</span>
-            <div className="relative flex-1 h-1.5 bg-surface-overlay rounded-sm">
-              <div
-                className="absolute inset-y-0 rounded-sm"
-                style={{
-                  left: better ? '50%' : `${50 - half}%`,
-                  width: `${half}%`,
-                  backgroundColor: better ? '#3ecf8e' : '#e44040',
-                }}
-              />
-              <div className="absolute -inset-y-0.5 left-1/2 w-px bg-fg-faint" aria-hidden="true" />
+            <div className="flex-1 h-1 bg-surface-overlay rounded overflow-hidden">
+              <div className="h-full" style={{ width: `${(share * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
             </div>
             <span className="text-white w-8 text-right">{bk.avgPlacement.toFixed(2)}</span>
             <span className="text-fg-faint w-10 text-right">({bk.games})</span>
@@ -107,7 +101,8 @@ export default function CompDna({ comp, variant, className = '' }: { comp: DnaCo
 
   if (variant === 'header') {
     return (
-      <div className="@container min-w-0 pl-4 border-l border-border-subtle">
+      // ml-6 + Raster-Luecke 16 px = 40 px bis zum Strich (User 2026-10-10: mehr Abstand zu den Werten).
+      <div className="@container min-w-0 ml-6 pl-6 border-l border-border-subtle">
         <div className="text-fg-muted text-[9px] uppercase tracking-widest mb-1.5">{t('tft.comp.compDna')}</div>
         <div className={aggro && rows.length > 0 ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-x-4' : ''}>
           <AggroBlock comp={comp} compact />

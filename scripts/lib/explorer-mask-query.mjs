@@ -7,8 +7,9 @@
 // Ablauf je Anfrage, auf der eigenen Verbindung:
 //  1. Zwischentabelle g (TEMP — nur diese Verbindung sieht sie): je Partie der
 //     Grundmenge (Region/Rang/Patch) die Bitmaske a ihrer Boards und f der
-//     gefilterten. Unit- und Trait-Filter wie heute (filterWhere), Item-Filter
-//     ueber mask_uk.
+//     gefilterten. Trait-Filter und Units mit Item-Zusatz oder exaktem Stern
+//     wie heute (filterWhere), uebrige Units ueber mask_um, Item-Filter ueber
+//     mask_uk.
 //  2. Kopf (Gesamt, Grundmenge, Abweichung) aus g.
 //  3. Zeilen: Units (auch Sterne), Items ohne Fokus, Traits (auch Uebercap)
 //     aus mask_um/mask_ui/mask_ut, je Partie mit f verundet. Die anderen
@@ -72,14 +73,37 @@ export function maskPlan(mask, q, compHash) {
   return { days, itemsLive };
 }
 
+// Frist der Live-Spur ab Eingang (Paket 6, Option 2). „Alle Patches + Filter"
+// auf dem Masken-Weg braucht mit einer beliebten Unit auch nach dem Umbau um
+// 15 s (Amumu, 10.10.: g 1,2 s + Zeilen 13,8 s, ohne CPU-Grenze) und bekommt
+// deshalb LONG_QUERY_TIMEOUT_MS (EXPLORER_LONG_TIMEOUT_MS, aus bei 0 oder <= 15 s);
+// alles andere QUERY_TIMEOUT_MS. minLeftMs: so viel Restzeit muss beim Platz
+// noch uebrig sein, sonst 504 ohne Rechnung — eine lange Anfrage, die erst nach
+// 15 s Warten drankaeme, haette kaum noch Zeit fuer ihre Rechnung.
+// Die Kette dahinter muss laenger warten: refresh-api 35 s, Vercel-Route 40 s.
+export const LONG_QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_LONG_TIMEOUT_MS || 0);
+export const LIVE_MIN_LEFT_MS = 2000;
+export const LONG_MIN_LEFT_MS = 15_000;
+export function liveBudget(holder, q, longMs = LONG_QUERY_TIMEOUT_MS) {
+  const long = longMs > QUERY_TIMEOUT_MS && q.patches.length === 0 && !!maskPlan(holder.mask, q, holder.compHash);
+  return long
+    ? { timeoutMs: longMs, minLeftMs: LONG_MIN_LEFT_MS, long: true }
+    : { timeoutMs: QUERY_TIMEOUT_MS, minLeftMs: LIVE_MIN_LEFT_MS, long: false };
+}
+
 // Tabelle oder Spalte fehlt (Datei anders als beim Laden): heutiger Weg in
 // derselben Anfrage. Zeitgrenze und Speicherfehler sind keine Strukturfehler.
 export const isStructuralError = (err) => /Catalog Error|Binder Error/.test(String(err?.message ?? err));
 
 // Anfrage ohne Teilsummen: Masken-Weg, wenn maskPlan passt, sonst runQuery.
-// Bei Strukturfehler Logzeile und heutiger Weg mit der Restfrist; bleiben
-// weniger als minLeftMs, 504 ohne zweite Rechnung. Liefert { result, src }.
-export async function runQueryWay(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm = false, minLeftMs = 0, log = () => {} } = {}) {
+// Bei Strukturfehler Logzeile und heutiger Weg mit der Restfrist, hoechstens
+// fallbackMaxMs (eine lange Frist gilt nur fuer den Masken-Weg; der heutige Weg
+// braucht fuer „alle Patches + Filter" weit laenger und hielte nur die Spur
+// fest); bleiben weniger als minLeftMs, 504 ohne zweite Rechnung. Liefert
+// { result, src }.
+export async function runQueryWay(holder, q, {
+  timeoutMs = QUERY_TIMEOUT_MS, warm = false, minLeftMs = 0, fallbackMaxMs = Infinity, log = () => {},
+} = {}) {
   const t0 = Date.now();
   const plan = maskPlan(holder.mask, q, holder.compHash);
   let left = timeoutMs;
@@ -88,7 +112,7 @@ export async function runQueryWay(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, war
       return { result: await runMaskQuery(holder, q, plan, { timeoutMs, warm }), src: 'mask' };
     } catch (err) {
       if (!isStructuralError(err)) throw err;
-      left = timeoutMs - (Date.now() - t0);
+      left = Math.min(timeoutMs - (Date.now() - t0), fallbackMaxMs);
       log(`Masken-Weg gescheitert, rechne wie bisher (Rest ${left} ms): ${String(err.message).split('\n')[0]} bei ${JSON.stringify(q)}`);
       if (left < Math.max(minLeftMs, 1)) { const e = new Error('timeout'); e.status = 504; throw e; }
     }
@@ -110,11 +134,24 @@ function dayRange(days, col) {
   return `${col} BETWEEN DATE '${a}' AND DATE '${b}'`;
 }
 
+// Unit-Filter ohne Item-Zusatz und ohne exakten Stern liest makeG aus mask_um
+// statt ueber die units-Tabelle (Amumu, alle Patches: 7,3 → 1,2 s, 0
+// Abweichungen bei 4.163.307 Partien). Maske = Boards mit hoechster Kopie auf
+// Stern s..4: „Stern >= s" trifft irgendeine Kopie genau dann, wenn die
+// hoechste ihn erreicht. Exakter Stern bleibt auf units — `star = ?` trifft
+// JEDE Kopie (Board mit 2★- und 3★-Kopie), m_s nur die hoechste.
+// EXPLORER_MASK_G=units schaltet zurueck auf die units-Tabelle.
+const MASK_G_ON = process.env.EXPLORER_MASK_G !== 'units';
+export const unitViaMask = (u, on = MASK_G_ON) =>
+  on && u.n == null && !u.se && u.it.length === 0 && u.nit.length === 0;
+export const unitMaskSql = (u) => `(${STAR_VALUES.filter(s => s >= (u.s ?? 1)).map(s => `m${s}`).join(' | ')})`;
+
 // g: je Partie der Grundmenge a = alle Boards, f = gefilterte. Parameter in
-// der Reihenfolge des SQL-Texts: Unit-/Trait-Filter, Grundmenge, Items.
+// der Reihenfolge des SQL-Texts: Unit-/Trait-Filter, Grundmenge, Items,
+// Units aus mask_um.
 async function makeG(conn, q, days) {
   const p = [];
-  const fw = filterWhere({ ...q, items: [] }, p);
+  const fw = filterWhere({ ...q, items: [], units: q.units.filter(u => !unitViaMask(u)) }, p);
   const sw = scopeWhere(q, p);
   const joins = [];
   const and = [];
@@ -122,6 +159,11 @@ async function makeG(conn, q, days) {
     joins.push(`LEFT JOIN (SELECT mid, m FROM mask_uk WHERE item = ? AND ${dayRange(days, 'day')}) k${i} ON k${i}.mid = g0.mid`);
     p.push(it.id);
     and.push(`${it.x ? '~' : ''}coalesce(k${i}.m, 0::UTINYINT)`);
+  });
+  q.units.filter(u => unitViaMask(u)).forEach((u, i) => {
+    joins.push(`LEFT JOIN (SELECT mid, ${unitMaskSql(u)} AS m FROM mask_um WHERE unit = ? AND ${dayRange(days, 'day')}) u${i} ON u${i}.mid = g0.mid`);
+    p.push(u.id);
+    and.push(`${u.x ? '~' : ''}coalesce(u${i}.m, 0::UTINYINT)`);
   });
   await conn.run(`
     CREATE TEMP TABLE g AS
@@ -190,24 +232,32 @@ function maskKeys(q) {
 
 // Zeilen aus den Masken; Summen und Reihenfolge wie liveRows, Referenzmenge =
 // gefilterte Boards (cs/cn = Platzsumme/Anzahl der Partie darin).
+// Erst je (Schluessel, hit, hit3, f) zaehlen, dann mit der Anzahl c gewichtet
+// summieren: alle Werte einer Partie haengen nur an diesen Masken, die Summen
+// bleiben also exakt; es gibt aber weit weniger Kombinationen als Partien
+// (Rang Diamond, alle Patches: 19,2 → 10,8 s, Amumu: 23,1 → 13,8 s, Zeilen
+// identisch). k entfaltet vorher die Sterne-/Uebercap-Listen, damit GROUP BY
+// auf fertigen Spalten laeuft.
 async function maskRows(conn, q, days, out, filtered, keys) {
   if (filtered.n === 0) { out.rows = []; out.refGames = 0; return; }
   const rows = (await conn.runAndReadAll(`
-    WITH gg AS (SELECT mid, f, bit_count(f)::INTEGER AS cn, ${ps('f')}::INTEGER AS cs FROM g WHERE f <> 0),
-    k AS (SELECT ${keys.sel}, gg.f, gg.cn, gg.cs FROM ${keys.from} m JOIN gg USING (mid) WHERE ${dayRange(days, 'm.day')}),
-    kh AS (SELECT key, sub, sub2, cn, cs, (mc & f) AS hit, (mc3 & f) AS hit3 FROM k),
-    kg AS (SELECT key, sub, sub2, cn, cs, bit_count(hit)::INTEGER AS n1, ${ps('hit')}::INTEGER AS s1,
+    WITH gg AS (SELECT mid, f FROM g WHERE f <> 0),
+    k AS (SELECT ${keys.sel}, gg.f FROM ${keys.from} m JOIN gg USING (mid) WHERE ${dayRange(days, 'm.day')}),
+    kc AS (SELECT key, sub, sub2, (mc & f) AS hit, (mc3 & f) AS hit3, f, count(*) AS c
+           FROM k WHERE (mc & f) <> 0 GROUP BY ALL),
+    kg AS (SELECT key, sub, sub2, c, bit_count(f)::INTEGER AS cn, ${ps('f')}::INTEGER AS cs,
+                  bit_count(hit)::INTEGER AS n1, ${ps('hit')}::INTEGER AS s1,
                   bit_count(hit & ${MASK_TOP4})::INTEGER AS t4, bit_count(hit & ${MASK_TOP1})::INTEGER AS t1,
                   bit_count(hit3)::INTEGER AS n3
-           FROM kh WHERE hit <> 0)
-    SELECT key, sub, sub2, count(*)::DOUBLE AS m1, sum(n1)::DOUBLE AS n1, sum(s1)::DOUBLE AS s1,
-           sum(t4)::DOUBLE AS t4, sum(t1)::DOUBLE AS t1,
-           sum(s1 * s1)::DOUBLE AS ss11, sum(s1 * n1)::DOUBLE AS sn11, sum(n1 * n1)::DOUBLE AS nn11,
-           sum(s1 * cs)::DOUBLE AS "s1S", sum(s1 * cn)::DOUBLE AS "s1N",
-           sum(n1 * cs)::DOUBLE AS "n1S", sum(n1 * cn)::DOUBLE AS "n1N", sum(n3)::DOUBLE AS n3
+           FROM kc)
+    SELECT key, sub, sub2, sum(c)::DOUBLE AS m1, sum(c * n1)::DOUBLE AS n1, sum(c * s1)::DOUBLE AS s1,
+           sum(c * t4)::DOUBLE AS t4, sum(c * t1)::DOUBLE AS t1,
+           sum(c * s1 * s1)::DOUBLE AS ss11, sum(c * s1 * n1)::DOUBLE AS sn11, sum(c * n1 * n1)::DOUBLE AS nn11,
+           sum(c * s1 * cs)::DOUBLE AS "s1S", sum(c * s1 * cn)::DOUBLE AS "s1N",
+           sum(c * n1 * cs)::DOUBLE AS "n1S", sum(c * n1 * cn)::DOUBLE AS "n1N", sum(c * n3)::DOUBLE AS n3
     FROM kg
     GROUP BY key, sub, sub2
-    HAVING sum(n1) >= ?
+    HAVING sum(c * n1) >= ?
     ${ROW_ORDER}
     LIMIT ?`, [ROW_MIN_BOARDS, ROW_LIMIT])).getRowObjectsJS();
   finishRows(out, rows, filtered);

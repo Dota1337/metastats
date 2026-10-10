@@ -13,12 +13,13 @@
 //
 // Last (Live-Spur): eine Abfrage zur Zeit (die Instanz hat ohnehin nur 2
 // Threads, zwei gleichzeitig bringen keinen Durchsatz), bis zu 8 warten, danach
-// 503. Die Frist laeuft ab Eingang: eine Besucher-Abfrage bekommt
-// QUERY_TIMEOUT_MS minus ihre Wartezeit; bleiben weniger als LIVE_MIN_LEFT_MS,
-// gibt es sofort 504 ohne Rechnung (refresh-api haette sie nicht mehr
-// abgeholt). Laeuft dieselbe
-// Ansicht schon, wartet eine weitere Anfrage auf diese Rechnung (hoechstens
-// WAIT_MS, unter der 20-s-Grenze von refresh-api), statt doppelt zu rechnen.
+// 503. Die Frist laeuft ab Eingang (liveBudget in explorer-mask-query.mjs):
+// QUERY_TIMEOUT_MS, fuer „alle Patches + Filter" auf dem Masken-Weg
+// LONG_QUERY_TIMEOUT_MS (EXPLORER_LONG_TIMEOUT_MS). Wer bis Frist minus
+// Mindest-Rest keinen Platz hat, verlaesst die Schlange mit 504 ohne Rechnung
+// (refresh-api haette sie nicht mehr abgeholt). Laeuft dieselbe Ansicht schon,
+// wartet eine weitere Anfrage auf diese Rechnung bis zu deren Frist + 1 s
+// (unter der 35-s-Grenze von refresh-api), statt doppelt zu rechnen.
 //
 // Tages-Teilsummen (Paket 5b): Ansichten ohne Board-Filter (kein Rang, keine
 // Unit/Item/Trait, kein Fokus) summiert der Dienst aus agg_rows/agg_head, die
@@ -56,7 +57,8 @@ import { readComponents as readComponentsFrom, componentsHash } from './lib/expl
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
-import { loadMask, runQueryWay } from './lib/explorer-mask-query.mjs';
+import { LIVE_MIN_LEFT_MS, liveBudget, loadMask, runQueryWay } from './lib/explorer-mask-query.mjs';
+import { makeLane } from './lib/explorer-lane.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -64,9 +66,9 @@ const DUCKDB_MODULE = process.env.EXPLORER_DUCKDB_MODULE
   || '/opt/metastats-explorer/node_modules/@duckdb/node-api/lib/index.js';
 const MAX_RUNNING = 1;
 const MAX_QUEUE = 8;
-const LIVE_MIN_LEFT_MS = 2000;
 const WARM_TIMEOUT_MS = Number(process.env.EXPLORER_WARM_TIMEOUT_MS || 300_000);
 const WAIT_MS = 18_000;
+const JOIN_GRACE_MS = 1000;
 const WARM_RETRY_PAUSE_MS = 60_000;
 const POLL_MS = 60_000;
 const CACHE_MAX = 400;
@@ -215,23 +217,7 @@ async function pollSwap() {
 
 // Zwei Spuren: live (1 laufend, 8 wartend) und Teilsummen (4/16). Eine
 // Summen-Abfrage braucht Millisekunden und soll nie hinter einer
-// 15-s-Live-Rechnung warten.
-// wait: das Vorwaermen stellt sich immer an, statt mit 503 abgewiesen zu werden.
-function makeLane(max, maxQueue) {
-  const lane = { running: 0, queue: [] };
-  lane.acquire = ({ wait = false } = {}) => {
-    if (lane.running < max) { lane.running++; return Promise.resolve(); }
-    if (!wait && lane.queue.length >= maxQueue) {
-      const e = new Error('busy'); e.status = 503; throw e;
-    }
-    return new Promise(resolve => lane.queue.push(resolve));
-  };
-  lane.release = () => {
-    const next = lane.queue.shift();
-    if (next) next(); else lane.running--;
-  };
-  return lane;
-}
+// 15-s-Live-Rechnung warten. makeLane: scripts/lib/explorer-lane.mjs.
 const liveLane = makeLane(MAX_RUNNING, MAX_QUEUE);
 const aggLane = makeLane(AGG_RUNNING, AGG_QUEUE);
 
@@ -370,11 +356,19 @@ const pending = new Map();
 
 // Rechnet q oder haengt sich an eine laufende Rechnung derselben Ansicht.
 // Deren Fehler gehen an alle Wartenden; ein Besucher, der nur mitwartet, gibt
-// nach WAIT_MS auf (504), die Rechnung selbst laeuft weiter.
+// 1 s nach der Frist dieser Rechnung auf (504) — vorher kommt ihr Ergebnis
+// oder ihr Fehler. Beim Vorwaermen (keine Besucher-Frist) nach WAIT_MS. Die
+// Rechnung selbst laeuft weiter.
 function compute(holder, q, key, { warm = false } = {}) {
   const inflight = pending.get(key);
-  if (inflight) return warm ? inflight : withDeadline(inflight, WAIT_MS);
+  if (inflight) {
+    if (warm) return inflight;
+    const ms = inflight.deadlineAt != null ? Math.max(0, inflight.deadlineAt + JOIN_GRACE_MS - Date.now()) : WAIT_MS;
+    return withDeadline(inflight, ms);
+  }
   const t0 = Date.now();
+  const budget = warm ? null : liveBudget(holder, q);
+  const deadlineAt = budget ? t0 + budget.timeoutMs : null;
   const p = (async () => {
     // Erst die Teilsummen in ihrer eigenen Spur; scheitert das (auch an der
     // 2-s-Grenze), rechnet dieselbe Anfrage live. Ist die Summen-Spur voll,
@@ -391,25 +385,27 @@ function compute(holder, q, key, { warm = false } = {}) {
         aggLane.release();
       }
     }
-    await liveLane.acquire({ wait: warm });
+    // Wartet hoechstens bis Frist minus Mindest-Rest, dann 504 ohne Platz.
+    await liveLane.acquire({ wait: warm, giveUpAt: budget ? deadlineAt - budget.minLeftMs : null });
     try {
       // Frist ab Eingang: was vor dem Platz verging (Warten in der Schlange,
-      // ein gescheiterter Summen-Versuch), geht von QUERY_TIMEOUT_MS ab. Die
+      // ein gescheiterter Summen-Versuch), geht von der Frist ab. Die
       // Startansichten behalten ihre eigene Grenze.
       let timeoutMs;
-      if (!warm) {
-        const waited = Date.now() - t0;
-        timeoutMs = QUERY_TIMEOUT_MS - waited;
-        if (timeoutMs < LIVE_MIN_LEFT_MS) {
-          log(`Frist verbraucht nach ${waited} ms Wartezeit, 504 ohne Rechnung: ${JSON.stringify(q)}`);
+      if (budget) {
+        timeoutMs = deadlineAt - Date.now();
+        if (timeoutMs < budget.minLeftMs) {
+          log(`Frist verbraucht nach ${Date.now() - t0} ms Wartezeit, 504 ohne Rechnung: ${JSON.stringify(q)}`);
           const e = new Error('timeout'); e.status = 504; throw e;
         }
+        if (budget.long) log(`lange Frist ${budget.timeoutMs} ms (Rest ${timeoutMs} ms): ${JSON.stringify(q)}`);
       }
       return await execute(holder, q, key, warm, null, timeoutMs);
     } finally {
       liveLane.release();
     }
   })();
+  if (deadlineAt != null) p.deadlineAt = deadlineAt;
   pending.set(key, p);
   const clear = () => { if (pending.get(key) === p) pending.delete(key); };
   p.then(clear, clear);
@@ -488,7 +484,8 @@ function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
 // Laeuft mit belegtem Slot; der Aufrufer gibt ihn frei.
 // days gesetzt = Summen-Weg (aggDays), sonst Masken-Weg oder live
 // (runQueryWay). timeoutMs = Restfrist der Live-Spur (compute); fehlt sie,
-// gilt QUERY_TIMEOUT_MS.
+// gilt QUERY_TIMEOUT_MS. Der Rueckfall nach einem Strukturfehler bekommt
+// hoechstens QUERY_TIMEOUT_MS, auch bei langer Frist.
 async function execute(holder, q, key, warm = false, days = null, timeoutMs = undefined) {
   holder.refs++;
   const t0 = Date.now();
@@ -497,7 +494,7 @@ async function execute(holder, q, key, warm = false, days = null, timeoutMs = un
       ? { result: await runAggQuery(holder, q, days, warm ? { timeoutMs: AGG_WARM_TIMEOUT_MS, warm: true } : {}), src: 'agg' }
       : await runQueryWay(holder, q, warm
         ? { timeoutMs: WARM_TIMEOUT_MS, warm: true, log }
-        : { timeoutMs, minLeftMs: LIVE_MIN_LEFT_MS, log });
+        : { timeoutMs, minLeftMs: LIVE_MIN_LEFT_MS, fallbackMaxMs: QUERY_TIMEOUT_MS, log });
     // Nicht aufzaehlbar: steht nicht im JSON, nur im Antwort-Kopf.
     Object.defineProperty(result, 'src', { value: src, enumerable: false });
     result.ms = Date.now() - t0;

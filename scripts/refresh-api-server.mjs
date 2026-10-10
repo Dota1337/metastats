@@ -488,7 +488,9 @@ function readBody(req) {
 const SET_NUMBER = CURRENT_SET;
 const QUEUE_RANKED = 1100;
 const EXPLORER_URL = process.env.EXPLORER_API_URL || 'http://127.0.0.1:4110/explore';
-const EXPLORER_TIMEOUT_MS = 20_000;
+// Laenger als die laengste Dienst-Frist (30 s fuer „alle Patches + Filter",
+// EXPLORER_LONG_TIMEOUT_MS) plus Mitwarten (+1 s); die Vercel-Route wartet 40 s.
+const EXPLORER_TIMEOUT_MS = 35_000;
 
 async function forwardExplore(rawBody, res) {
   let upstream;

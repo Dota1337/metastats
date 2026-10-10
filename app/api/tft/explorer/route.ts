@@ -16,6 +16,9 @@ import { parseExplorerParams, serializeExplorerQuery, toServiceBody } from '../.
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Fristen-Kette (Paket 6): Dienst bis 30 s („alle Patches + Filter"),
+// refresh-api 35 s, hier 40 s — die Funktion selbst darf etwas laenger leben.
+export const maxDuration = 60;
 
 const HETZNER_URL = process.env.HETZNER_REFRESH_URL;
 const TOKEN = process.env.REFRESH_API_TOKEN;
@@ -51,10 +54,16 @@ export async function GET(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify(toServiceBody(query)),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(40_000),
     });
-  } catch {
-    return NextResponse.json({ error: 'explorer_unavailable' }, { status: 503, headers: cacheHeaders(DEGRADED_CACHE_CONTROL) });
+  } catch (err) {
+    // Eigene Frist abgelaufen = Rechnung zu lang (504, die Seite zeigt
+    // „Zeitueberschreitung"); alles andere = Box nicht erreichbar (503).
+    const timeout = (err as { name?: string } | null)?.name === 'TimeoutError';
+    return NextResponse.json(
+      { error: timeout ? 'timeout' : 'explorer_unavailable' },
+      { status: timeout ? 504 : 503, headers: cacheHeaders(DEGRADED_CACHE_CONTROL) },
+    );
   }
 
   const data = await upstream.json().catch(() => null);

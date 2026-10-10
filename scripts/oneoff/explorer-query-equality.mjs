@@ -129,6 +129,9 @@ const CASES = [
   ['unit-stern-ab+itemzahl', { units: [{ id: 'DA_Amumu18', s: 2, n: 2 }] }],
   ['unit-items+ohne-items', { units: [{ id: 'DA_18_Diana', it: ['DA_SpearOfShojin'], nit: ['DA_GuinsoosRageblade'] }] }],
   ['unit-ausgeschlossen', { units: [{ id: 'DA_18_Diana' }, { id: 'DA_Amumu18', x: true }] }],
+  // Paket 6 Option 2: Unit-Filter ueber mask_um (Stern ab s, ausgeschlossen mit Stern).
+  ['unit-stern-ab', { units: [{ id: 'DA_Amumu18', s: 2 }] }],
+  ['unit-stern-ab-ausgeschlossen', { units: [{ id: 'DA_18_Diana' }, { id: 'DA_Amumu18', s: 3, x: true }] }],
   ['item+item-ausgeschlossen', { items: [{ id: 'DA_ThiefsGloves' }, { id: 'DA_Artifact_LightshieldCrest', x: true }] }],
   ['trait-stufe-genau+ausgeschlossen', { traits: [{ id: 'DA_18_Inferno', l: 2, le: true }, { id: 'DA_Juggernaut18', x: true }] }],
   ['trait-stufe-ab', { traits: [{ id: 'DA_18_Invoker', l: 2 }] }],

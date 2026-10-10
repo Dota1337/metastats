@@ -5,9 +5,14 @@
 // max laufend, bis zu maxQueue wartend, danach 503 ("busy").
 // wait: das Vorwaermen stellt sich immer an, statt abgewiesen zu werden.
 // giveUpAt (ms seit 1970): wer bis dahin keinen Platz hat, verlaesst die
-// Schlange mit 504. Vorher pruefte ein Wartender seine Frist erst nach der
-// Platzvergabe und hielt bis dahin einen Wartenplatz, auch wenn refresh-api
-// laengst aufgegeben hatte (Paket 6, Option 2).
+// Schlange mit 503 ("busy", queued) — die Seite zeigt dann „Server
+// ausgelastet", nicht „Abfrage zu aufwendig": gerechnet wurde nichts.
+// Vorher pruefte ein Wartender seine Frist erst nach der Platzvergabe und
+// hielt bis dahin einen Wartenplatz (Paket 6, Option 2).
+// Reihenfolge: frueheste Aufgabe zuerst, bei Gleichstand nach Ankunft,
+// Vorwaermen (ohne giveUpAt) zuletzt. Seit kurze Abfragen bis 32 s warten
+// duerfen, kaeme eine lange (Aufgabe nach 15 s) hinter spaeter eingetroffenen
+// kurzen sonst nie dran (logic-flow-critic, 10.10.).
 export function makeLane(max, maxQueue) {
   const lane = { running: 0, queue: [] };
   lane.acquire = ({ wait = false, giveUpAt = null } = {}) => {
@@ -16,16 +21,17 @@ export function makeLane(max, maxQueue) {
       const e = new Error('busy'); e.status = 503; throw e;
     }
     return new Promise((resolve, reject) => {
-      const entry = { resolve, timer: null };
+      const entry = { resolve, timer: null, at: giveUpAt ?? Infinity };
       if (giveUpAt != null) {
         entry.timer = setTimeout(() => {
           const i = lane.queue.indexOf(entry);
           if (i < 0) return;
           lane.queue.splice(i, 1);
-          const e = new Error('timeout'); e.status = 504; e.queued = true; reject(e);
+          const e = new Error('busy'); e.status = 503; e.queued = true; reject(e);
         }, Math.max(0, giveUpAt - Date.now()));
       }
-      lane.queue.push(entry);
+      const i = lane.queue.findIndex(x => x.at > entry.at);
+      if (i < 0) lane.queue.push(entry); else lane.queue.splice(i, 0, entry);
     });
   };
   lane.release = () => {

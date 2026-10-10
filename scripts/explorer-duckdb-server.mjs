@@ -14,12 +14,14 @@
 // Last (Live-Spur): eine Abfrage zur Zeit (die Instanz hat ohnehin nur 2
 // Threads, zwei gleichzeitig bringen keinen Durchsatz), bis zu 8 warten, danach
 // 503. Die Frist laeuft ab Eingang (liveBudget in explorer-mask-query.mjs):
-// QUERY_TIMEOUT_MS, fuer „alle Patches + Filter" auf dem Masken-Weg
-// LONG_QUERY_TIMEOUT_MS (EXPLORER_LONG_TIMEOUT_MS). Wer bis Frist minus
-// Mindest-Rest keinen Platz hat, verlaesst die Schlange mit 504 ohne Rechnung
-// (refresh-api haette sie nicht mehr abgeholt). Laeuft dieselbe Ansicht schon,
-// wartet eine weitere Anfrage auf diese Rechnung bis zu deren Frist + 1 s
-// (unter der 35-s-Grenze von refresh-api), statt doppelt zu rechnen.
+// kurze Abfragen warten bis LIVE_TOTAL_MS (32 s) auf den Platz und rechnen
+// hoechstens QUERY_TIMEOUT_MS, „alle Patches + Filter" auf dem Masken-Weg hat
+// LONG_QUERY_TIMEOUT_MS fuer beides. Die Schlange bedient die frueheste
+// Aufgabe zuerst (explorer-lane.mjs). Wer bis Frist minus Mindest-Rest keinen
+// Platz hat, verlaesst sie mit 503 „busy" ohne Rechnung. Laeuft dieselbe
+// Ansicht schon, wartet eine weitere Anfrage auf diese Rechnung bis zu deren
+// Frist + 1 s (joinWaitMs, unter der 35-s-Grenze von refresh-api), statt
+// doppelt zu rechnen.
 //
 // Tages-Teilsummen (Paket 5b): Ansichten ohne Board-Filter (kein Rang, keine
 // Unit/Item/Trait, kein Fokus) summiert der Dienst aus agg_rows/agg_head, die
@@ -57,7 +59,7 @@ import { readComponents as readComponentsFrom, componentsHash } from './lib/expl
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
-import { LIVE_MIN_LEFT_MS, liveBudget, loadMask, runQueryWay } from './lib/explorer-mask-query.mjs';
+import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
@@ -68,7 +70,6 @@ const MAX_RUNNING = 1;
 const MAX_QUEUE = 8;
 const WARM_TIMEOUT_MS = Number(process.env.EXPLORER_WARM_TIMEOUT_MS || 300_000);
 const WAIT_MS = 18_000;
-const JOIN_GRACE_MS = 1000;
 const WARM_RETRY_PAUSE_MS = 60_000;
 const POLL_MS = 60_000;
 const CACHE_MAX = 400;
@@ -358,13 +359,13 @@ const pending = new Map();
 // Deren Fehler gehen an alle Wartenden; ein Besucher, der nur mitwartet, gibt
 // 1 s nach der Frist dieser Rechnung auf (504) — vorher kommt ihr Ergebnis
 // oder ihr Fehler. Beim Vorwaermen (keine Besucher-Frist) nach WAIT_MS. Die
-// Rechnung selbst laeuft weiter.
+// Rechnung selbst laeuft weiter. Wer in der Schlange aufgibt oder beim Platz
+// weniger als den Mindest-Rest hat, bekommt 503 „busy" (queued).
 function compute(holder, q, key, { warm = false } = {}) {
   const inflight = pending.get(key);
   if (inflight) {
     if (warm) return inflight;
-    const ms = inflight.deadlineAt != null ? Math.max(0, inflight.deadlineAt + JOIN_GRACE_MS - Date.now()) : WAIT_MS;
-    return withDeadline(inflight, ms);
+    return withDeadline(inflight, joinWaitMs(inflight.deadlineAt, Date.now(), WAIT_MS));
   }
   const t0 = Date.now();
   const budget = warm ? null : liveBudget(holder, q);
@@ -389,16 +390,19 @@ function compute(holder, q, key, { warm = false } = {}) {
     await liveLane.acquire({ wait: warm, giveUpAt: budget ? deadlineAt - budget.minLeftMs : null });
     try {
       // Frist ab Eingang: was vor dem Platz verging (Warten in der Schlange,
-      // ein gescheiterter Summen-Versuch), geht von der Frist ab. Die
-      // Startansichten behalten ihre eigene Grenze.
+      // ein gescheiterter Summen-Versuch), geht von der Frist ab; die eigene
+      // Rechnung hoechstens computeMaxMs (slotTimeout). Die Startansichten
+      // behalten ihre eigene Grenze.
       let timeoutMs;
       if (budget) {
-        timeoutMs = deadlineAt - Date.now();
-        if (timeoutMs < budget.minLeftMs) {
-          log(`Frist verbraucht nach ${Date.now() - t0} ms Wartezeit, 504 ohne Rechnung: ${JSON.stringify(q)}`);
-          const e = new Error('timeout'); e.status = 504; throw e;
+        const waited = Date.now() - t0;
+        timeoutMs = slotTimeout(budget, deadlineAt);
+        if (timeoutMs == null) {
+          log(`Frist verbraucht nach ${waited} ms Wartezeit, 503 ohne Rechnung: ${JSON.stringify(q)}`);
+          const e = new Error('busy'); e.status = 503; e.queued = true; throw e;
         }
         if (budget.long) log(`lange Frist ${budget.timeoutMs} ms (Rest ${timeoutMs} ms): ${JSON.stringify(q)}`);
+        else if (waited >= 2000) log(`kurz nach ${waited} ms Wartezeit dran (Rechnung bis ${timeoutMs} ms): ${JSON.stringify(q)}`);
       }
       return await execute(holder, q, key, warm, null, timeoutMs);
     } finally {
@@ -465,14 +469,23 @@ const server = http.createServer(async (req, res) => {
   if (hit) return send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, { ...headers, 'X-Explorer-Source': hit.src ?? 'live' });
 
   const t0 = Date.now();
+  // Die Datei schon ab hier halten, nicht erst ab execute: eine Anfrage, die
+  // ueber den naechtlichen Tausch hinweg in der Schlange wartet, liefe sonst
+  // auf eine geschlossene Instanz (pollSwap schliesst bei refs 0).
+  holder.refs++;
   try {
     const result = await compute(holder, q, key);
     send(res, 200, { meta: holder.meta, query: q, ...result, cached: false }, { ...headers, 'X-Explorer-Source': result.src ?? 'live' });
   } catch (err) {
-    if (err.status === 503) return send(res, 503, { error: 'busy' }, { 'Retry-After': '5' });
+    if (err.status === 503) {
+      if (err.queued) log(`ausgelastet nach ${Date.now() - t0} ms in der Schlange, 503: ${JSON.stringify(q)}`);
+      return send(res, 503, { error: 'busy' }, { 'Retry-After': '5' });
+    }
     const interrupted = /interrupt/i.test(err.message || '');
     log(`Fehler (${Date.now() - t0} ms): ${err.message} bei ${JSON.stringify(q)}`);
     send(res, interrupted ? 504 : (err.status || 500), { error: interrupted ? 'timeout' : (err.status ? err.message : 'internal') });
+  } finally {
+    release(holder);
   }
 });
 

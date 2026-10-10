@@ -78,19 +78,45 @@ export function maskPlan(mask, q, compHash) {
 // 15 s (Amumu, 10.10.: g 1,2 s + Zeilen 13,8 s, ohne CPU-Grenze) und bekommt
 // deshalb LONG_QUERY_TIMEOUT_MS (Standard 30 s; EXPLORER_LONG_TIMEOUT_MS=0
 // oder <= 15 s schaltet ab — im Dienst gemessen 10.10. mit 15 s: 5 von 7
-// solcher Ansichten 504);
-// alles andere QUERY_TIMEOUT_MS. minLeftMs: so viel Restzeit muss beim Platz
-// noch uebrig sein, sonst 504 ohne Rechnung — eine lange Anfrage, die erst nach
-// 15 s Warten drankaeme, haette kaum noch Zeit fuer ihre Rechnung.
-// Die Kette dahinter muss laenger warten: refresh-api 35 s, Vercel-Route 40 s.
-export const LONG_QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_LONG_TIMEOUT_MS || 30_000);
+// solcher Ansichten 504).
+// Alle anderen rechnen hoechstens QUERY_TIMEOUT_MS, duerfen aber bis
+// LIVE_TOTAL_MS ab Eingang auf den Platz warten (10.10.: hinter einer langen
+// gab eine kurze nach 13 s mit 504 auf, obwohl sie selbst 1 s braucht);
+// EXPLORER_LIVE_TOTAL_MS <= 15 s = altes Verhalten.
+// minLeftMs: so viel Restzeit muss beim Platz noch uebrig sein, sonst Abbruch
+// ohne Rechnung — eine lange Anfrage, die erst nach 15 s Warten drankaeme,
+// haette kaum noch Zeit fuer ihre Rechnung.
+// Die Kette dahinter wartet laenger: refresh-api REFRESH_API_TIMEOUT_MS (steht
+// dort als EXPLORER_TIMEOUT_MS, der Test prueft den Gleichlauf), Route 40 s.
+// Mitwartende geben JOIN_GRACE_MS nach der Frist auf; beide Fristen sind
+// deshalb so gekappt, dass Frist + JOIN_GRACE_MS + 1 s Polster darunter bleibt.
+export const REFRESH_API_TIMEOUT_MS = 35_000;
+export const JOIN_GRACE_MS = 1000;
+export const MAX_TOTAL_MS = REFRESH_API_TIMEOUT_MS - JOIN_GRACE_MS - 1000;
+const capTotal = (ms) => Math.min(Number.isFinite(ms) ? ms : 0, MAX_TOTAL_MS);
+export const LONG_QUERY_TIMEOUT_MS = capTotal(Number(process.env.EXPLORER_LONG_TIMEOUT_MS || 30_000));
+export const LIVE_TOTAL_MS = capTotal(Number(process.env.EXPLORER_LIVE_TOTAL_MS || 32_000));
 export const LIVE_MIN_LEFT_MS = 2000;
 export const LONG_MIN_LEFT_MS = 15_000;
-export function liveBudget(holder, q, longMs = LONG_QUERY_TIMEOUT_MS) {
+// timeoutMs = Frist ab Eingang, computeMaxMs = Obergrenze der eigenen Rechnung.
+export function liveBudget(holder, q, longMs = LONG_QUERY_TIMEOUT_MS, totalMs = LIVE_TOTAL_MS) {
   const long = longMs > QUERY_TIMEOUT_MS && q.patches.length === 0 && !!maskPlan(holder.mask, q, holder.compHash);
-  return long
-    ? { timeoutMs: longMs, minLeftMs: LONG_MIN_LEFT_MS, long: true }
-    : { timeoutMs: QUERY_TIMEOUT_MS, minLeftMs: LIVE_MIN_LEFT_MS, long: false };
+  if (long) return { timeoutMs: longMs, computeMaxMs: longMs, minLeftMs: LONG_MIN_LEFT_MS, long: true };
+  return { timeoutMs: Math.max(QUERY_TIMEOUT_MS, totalMs), computeMaxMs: QUERY_TIMEOUT_MS, minLeftMs: LIVE_MIN_LEFT_MS, long: false };
+}
+
+// Rechenzeit beim Platz: Rest bis zur Frist, hoechstens computeMaxMs. null =
+// weniger als minLeftMs uebrig, die Anfrage gibt ohne Rechnung auf.
+export function slotTimeout(budget, deadlineAt, now = Date.now()) {
+  const left = deadlineAt - now;
+  if (left < budget.minLeftMs) return null;
+  return Math.min(budget.computeMaxMs, left);
+}
+
+// Wie lange eine weitere Anfrage auf die laufende Rechnung derselben Ansicht
+// wartet: bis deren Frist + JOIN_GRACE_MS; ohne Frist (Vorwaermen) fallbackMs.
+export function joinWaitMs(deadlineAt, now = Date.now(), fallbackMs = 18_000) {
+  return deadlineAt != null ? Math.max(0, deadlineAt + JOIN_GRACE_MS - now) : fallbackMs;
 }
 
 // Tabelle oder Spalte fehlt (Datei anders als beim Laden): heutiger Weg in

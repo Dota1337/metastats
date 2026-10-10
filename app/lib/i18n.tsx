@@ -244,6 +244,7 @@ const translations = {
   'tft.comp.jump.nav': t6('Abschnitte', 'Sections', '\uC139\uC158', '\u677F\u5757', 'Secciones', 'Sections'),
   'tft.comp.jump.augments': t6('Augments', 'Augments', '\uC99D\uAC15\uCCB4', '\u5F3A\u5316', 'Aumentos', 'Augmentations'),
   'tft.comp.jump.early': t6('Early Game', 'Early Game', '\uCD08\uBC18', '\u524D\u671F', 'Inicio', 'D\u00E9but'),
+  'tft.comp.jump.positioning': t6('Positionierung', 'Positioning', '\uBC30\uCE58', '\u7AD9\u4F4D', 'Posicionamiento', 'Placement'),
   'tft.comp.jump.items': t6('Items', 'Items', '\uC544\uC774\uD15C', '\u88C5\u5907', 'Objetos', 'Objets'),
   'tft.comp.jump.leveling': t6('Leveln', 'Leveling', '\uB808\uBCA8\uB9C1', '\u5347\u7EA7', 'Niveles', 'Niveaux'),
   'tft.comp.jump.analysis': t6('Analyse', 'Analysis', '\uBD84\uC11D', '\u5206\u6790', 'An\u00E1lisis', 'Analyse'),

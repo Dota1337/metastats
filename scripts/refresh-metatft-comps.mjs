@@ -134,8 +134,7 @@ async function fetchCompDetails(compId, generation, carries) {
     .filter(l => Number(l.level) >= 4 && l.stage)
     .map(l => ({ level: Number(l.level), stage: String(l.stage), round: String(l.round ?? ''), count: l.count ?? null }));
 
-  // Je Unit die meistgespielte Zelle (0-basiert wie PositionHeatmap erwartet:
-  // cell_1 ist Index 0).
+  // Je Unit die meistgespielte Zelle (0-basiert: cell_1 ist Index 0).
   const positions = {};
   for (const [unit, entry] of Object.entries(d.positioning?.units || {})) {
     const best = (entry?.positions || [])[0];

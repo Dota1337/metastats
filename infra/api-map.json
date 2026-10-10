@@ -1298,7 +1298,6 @@
       "usedBy": [
         "app/api/companion/v1/comp/route.ts",
         "app/api/tft/comps/board/route.ts",
-        "app/components/tft/PositionHeatmap.tsx",
         "next.config.ts"
       ]
     },

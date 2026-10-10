@@ -8,14 +8,17 @@ import { parseLevelling } from '../../lib/tft-comp-guides';
 import { useI18n } from '../../lib/i18n';
 import type { CompBoardResponse } from '../../api/tft/comps/board/route';
 
-// Aufstellungsbrett unter einer Zeile der Comp-Liste, aufgebaut wie die
-// Positions-Box bei MetaTFT: Reiter je Endstufe (Lv 7/8/9 mit Anteil der
-// Spiele), 4×7-Sechseck-Brett mit Portraet, Name und Kostenfarbe, darunter
-// der Levelplan. Anders als MetaTFT hat jede Stufe ihr eigenes Brett — die
-// Units, die auf dieser Stufe am haeufigsten standen.
+// Aufstellungsbrett unter einer Zeile der Comp-Liste und oben auf der
+// Comp-Detailseite, aufgebaut wie die Positions-Box bei MetaTFT: Reiter je
+// Endstufe (Lv 7/8/9 mit Anteil der Spiele), 4×7-Sechseck-Brett mit Portraet,
+// Name und Kostenfarbe, darunter der Levelplan. Anders als MetaTFT hat jede
+// Stufe ihr eigenes Brett — die Units, die auf dieser Stufe am haeufigsten
+// standen.
 //
 // Daten: /api/tft/comps/board (ein Abruf, ~3 KB). Zwischenspeicher je Comp und
 // Filter fuer die ganze Seite; der Knopf laedt beim Zeigen/Fokussieren vor.
+// Die Detailseite setzt `framed` (Rahmen wie ihre anderen Boxen), blendet den
+// Levelplan aus (ihre Leveln-Box zeigt ihn) und zeigt ohne Brett gar nichts.
 
 export interface CompBoardParams {
   slug: string;
@@ -190,11 +193,16 @@ function HexBoard({
 }
 
 export default function CompBoardPanel({
-  id, params, assets,
+  id, params, assets, framed = false, showPlan = true, hideWhenEmpty = false,
 }: {
   id: string;
   params: CompBoardParams;
   assets: TftAssetsBundle | null;
+  /** Rahmen und Ueberschrift wie die Boxen der Comp-Detailseite. */
+  framed?: boolean;
+  showPlan?: boolean;
+  /** Ohne Brett nichts zeigen statt „—". */
+  hideWhenEmpty?: boolean;
 }) {
   const { t } = useI18n();
   const [attempt, setAttempt] = useState(0);
@@ -232,10 +240,18 @@ export default function CompBoardPanel({
   };
 
   const empty = state.status === 'ready' && cells.size === 0;
+  if (empty && hideWhenEmpty) return null;
 
   return (
-    <div id={id} className="mt-1.5 mb-1 rounded-md border border-border-subtle bg-surface-base px-3 py-3 sm:px-4">
-      <h3 className="text-center text-fg-primary text-sm font-medium mb-2">{t('tft.comp.positioning')}</h3>
+    <div
+      id={id}
+      className={framed
+        ? 'mt-5 bg-surface-base border border-border-subtle rounded p-4'
+        : 'mt-1.5 mb-1 rounded-md border border-border-subtle bg-surface-base px-3 py-3 sm:px-4'}
+    >
+      {framed
+        ? <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.positioning')}</h2>
+        : <h3 className="text-center text-fg-primary text-sm font-medium mb-2">{t('tft.comp.positioning')}</h3>}
 
       {state.status === 'error' ? (
         <div className="flex justify-center py-6">
@@ -287,7 +303,7 @@ export default function CompBoardPanel({
             <HexBoard cells={cells} assets={assets} pulse={state.status === 'loading'} />
           </div>
 
-          {data && (planLabel || data.levelTiming.length > 0) && (
+          {showPlan && data && (planLabel || data.levelTiming.length > 0) && (
             <div className="mt-3 flex flex-col items-center gap-2">
               {planLabel && (
                 <div className="text-sm text-fg-secondary">

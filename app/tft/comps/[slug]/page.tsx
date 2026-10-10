@@ -12,7 +12,7 @@ import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import PositionHeatmap from '../../../components/tft/PositionHeatmap';
+import CompBoardPanel, { type CompBoardParams } from '../../../components/tft/CompBoardPanel';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
 import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
@@ -50,7 +50,7 @@ function ChartSkeleton({ height, className = '' }: { height: number; className?:
 import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
-import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey, compTraitFamilyKey } from '../../../lib/tft-cluster';
+import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
@@ -102,6 +102,11 @@ export default function TftCompDetailPage() {
   }, [region, bucket, pathname, router, search]);
 
   const [comp, setComp] = useState<any | null | undefined>(undefined);
+  // Filterstand, zu dem `comp` geladen wurde. Beim Filterwechsel bleibt die alte
+  // Comp stehen, bis die neue da ist — das Aufstellungsbrett fragt mit diesem
+  // Stand ab, nie mit neuen Filtern und alten Carries (perf-critic 2026-10-10),
+  // und bleibt dabei stehen statt kurz zu verschwinden.
+  const [compFilters, setCompFilters] = useState<{ slug: string; region: string; bucket: string; days: number } | null>(null);
   const [proComp, setProComp] = useState<any | null>(null);
   // Drei Zustaende statt boolean: 'empty' heisst "es gibt wirklich keine Daten",
   // 'error' heisst "die Antwort ist ausgeblieben" (RPC-Timeout, 5xx). Vorher
@@ -147,6 +152,7 @@ export default function TftCompDetailPage() {
       if (cancelled) return;
       setDataState(normal.hasData ? 'ok' : 'empty');
       setComp(normal.comp || null);
+      setCompFilters({ slug, region, bucket, days });
       setProComp(pro.comp || null);
     }).catch(() => {
       if (cancelled) return;
@@ -186,9 +192,24 @@ export default function TftCompDetailPage() {
   // Guide (MetaTFT) zur Comp: Augments, Early Game, Carousel-Picks, Levelplan.
   // Die Teile stehen seit 2026-10-10 an verschiedenen Orten der Seite.
   const guideParts = comp ? parseClusterKey(comp.clusterKey) : null;
-  const guide = comp && guideParts
+  const guideMatch = comp && guideParts
     ? findCompGuide(compGuidesBundle, { trait: guideParts.trait, carry: guideParts.carry },
-        (comp.typicalUnits || []).map((u: { characterId: string }) => u.characterId), namedCompCarries)?.guide ?? null
+        (comp.typicalUnits || []).map((u: { characterId: string }) => u.characterId), namedCompCarries)
+    : null;
+  const guide = guideMatch?.guide ?? null;
+
+  // Aufstellungsbrett oben (wie Liste und App, /api/tft/comps/board). Dieselbe
+  // MetaTFT-Comp wie Augments, Early Game und Levelplan der Seite — sonst
+  // stammten Brett und Levelplan aus verschiedenen Comps. Erst abfragen, wenn
+  // die Anleitungen geladen sind (sonst zwei Abrufe: erst ohne, dann mit Guide),
+  // und immer mit dem Filterstand, zu dem `comp` gehoert.
+  const boardParams: CompBoardParams | null = comp && compRoles && compGuidesBundle && compFilters
+    ? {
+        slug: compFilters.slug, patch: 'current', bucket: compFilters.bucket, days: compFilters.days, region: compFilters.region,
+        carries: [...new Set([...compRoles.carries, ...(compRoles.itemCarriers || [])])].filter(Boolean).slice(0, 6),
+        // Wie CompRow: ohne Anleitungs-Datei ordnet die Route selbst zu.
+        guide: compGuidesBundle.bundle ? guideMatch?.slug ?? null : undefined,
+      }
     : null;
   const hasOutcomeItems: boolean = !!comp?.outcome
     && (comp.outcome.units || []).some((u: { itemCopies: number; items: unknown[] }) => u.itemCopies > 0 && u.items.length > 0);
@@ -424,13 +445,84 @@ export default function TftCompDetailPage() {
         {comp && (
           <div id="cj-root">
             {/* ═══════════════════════════════════════════════════════════
-                Kopf, volle Breite: Name + Board mit Core/Flex (CompCard),
-                Varianten, Synergien. Darunter zwei Spalten (User 2026-10-10,
-                Variante D): links „In der Runde", rechts „Strategie", danach
+                Kopf, volle Breite: Name + Board mit Core/Flex (CompCard).
+                Direkt darunter das Wichtigste wie in der App (User
+                2026-10-10, „Positionen, Itemization etc. weiter nach oben"):
+                links Aufstellung + Leveln, rechts Items; am Handy Aufstellung,
+                Items, Leveln. Dann Varianten, Synergien und zwei Spalten
+                (Variante D): links „In der Runde", rechts „Strategie", danach
                 die Analyse. Am Handy erst links, dann rechts — das
-                3★-Ergebnis steht dort deshalb zusaetzlich oben.
+                3★-Ergebnis steht dort deshalb zusaetzlich nach dem Raster.
                 ═══════════════════════════════════════════════════════════ */}
             <CompCard comp={comp} assets={assets} />
+
+            <CompJumpBar rootId="cj-root" />
+
+            <div className="lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-6 lg:items-start">
+              <div id="cj-positioning" data-jump="positioning" className="scroll-mt-16 min-w-0 lg:col-start-1 lg:row-start-1">
+                {boardParams && (
+                  <CompBoardPanel id="cj-board" params={boardParams} assets={assets} framed showPlan={false} hideWhenEmpty />
+                )}
+              </div>
+
+              <div id="cj-items" data-jump="items" className="scroll-mt-16 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
+                {componentsBox}
+                {/* Items je Unit — der erste Reiter ist der Carry, seine 3er-Kombis
+                    ersetzen die fruehere Box „Item-Sets am Carry". Die steht nur
+                    noch da, wenn es keine Items je Unit gibt. */}
+                {hasOutcomeItems && <OutcomeItems outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
+                {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
+                {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
+                  <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                    <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
+                        const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
+                        const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
+                        return (
+                          <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
+                                {t('tft.comp.itemSet')} {i + 1}
+                              </span>
+                              <span className="text-accent text-xs font-medium tabular-nums">
+                                {pct.toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="flex gap-1.5">
+                              {set.items.map((it, j) => {
+                                const meta = findItem(assets, it);
+                                const url = tftIconUrl(assets, meta?.icon);
+                                return (
+                                  <a
+                                    key={j}
+                                    href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                                    title={meta?.name || it}
+                                    className="hover:scale-110 transition"
+                                  >
+                                    {url ? (
+                                      <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
+                                    ) : (
+                                      <div className="w-8 h-8 rounded bg-surface-overlay" />
+                                    )}
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+                {levelingBox}
+              </div>
+            </div>
+
+            {carryStarBox && <div className="lg:hidden">{carryStarBox}</div>}
 
             <VariantsSwitcher
               clusterKey={comp.clusterKey}
@@ -451,10 +543,6 @@ export default function TftCompDetailPage() {
               bucket={bucket}
             />
 
-            <CompJumpBar rootId="cj-root" />
-
-            {carryStarBox && <div className="lg:hidden">{carryStarBox}</div>}
-
             <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
               <div className="min-w-0">
                 <BlockHeadline label={t('tft.comp.block.live')} />
@@ -470,58 +558,6 @@ export default function TftCompDetailPage() {
                     <GuideEarlyGame guide={guide} assets={assets} />
                   </div>
                 )}
-
-                <div id="cj-items" data-jump="items" className="scroll-mt-16">
-                  {componentsBox}
-                  {/* Items je Unit — der erste Reiter ist der Carry, seine 3er-Kombis
-                      ersetzen die fruehere Box „Item-Sets am Carry". Die steht nur
-                      noch da, wenn es keine Items je Unit gibt. */}
-                  {hasOutcomeItems && <OutcomeItems outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
-              {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
-              {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
-                <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
-                      const totalCount = comp.carryItems.reduce((s: number, c: any) => s + (Number(c.count) || 0), 0);
-                      const pct = totalCount > 0 ? (Number(set.count) / totalCount) * 100 : 0;
-                      return (
-                        <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
-                              {t('tft.comp.itemSet')} {i + 1}
-                            </span>
-                            <span className="text-accent text-xs font-medium tabular-nums">
-                              {pct.toFixed(0)}%
-                            </span>
-                          </div>
-                          <div className="flex gap-1.5">
-                            {set.items.map((it, j) => {
-                              const meta = findItem(assets, it);
-                              const url = tftIconUrl(assets, meta?.icon);
-                              return (
-                                <a
-                                  key={j}
-                                  href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
-                                  title={meta?.name || it}
-                                  className="hover:scale-110 transition"
-                                >
-                                  {url ? (
-                                    <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded bg-surface-overlay" />
-                                  )}
-                                </a>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </section>
-              )}
-                </div>
 
                 {/* Boards by Activation-Level — End-Board pro Trait-Aktivierungs-
                     Stufe mit Stats. Kritisch für Cap-Decision Stage 4-5+. */}
@@ -651,7 +687,6 @@ export default function TftCompDetailPage() {
                 <BlockHeadline label={t('tft.comp.block.strategy')} />
                 {carryStarBox && <div className="hidden lg:block">{carryStarBox}</div>}
                 {comp.outcome && <OutcomePlacement outcome={comp.outcome} t={t} />}
-                {levelingBox}
 
                 {/* Contested-Penalty — Solo/Duo/Triple Outcome-Cards. */}
                 {(comp.contestedOutcome && comp.contestedOutcome.length >= 2) && (() => {
@@ -731,7 +766,7 @@ export default function TftCompDetailPage() {
 
             {/* ═══════════════════════════════════════════════════════════
                 Detail-Analyse: Unit-Wirkung, Matchups, Comp-DNA, Spielverlauf
-                in zwei Spalten; Pro vs Solo, Trend und Positionen voll breit.
+                in zwei Spalten; Pro vs Solo und Trend voll breit.
                 ═══════════════════════════════════════════════════════════ */}
             <div id="cj-analysis" data-jump="analysis" className="scroll-mt-16">
               <BlockHeadline label={t('tft.comp.block.deep')} />
@@ -950,23 +985,6 @@ export default function TftCompDetailPage() {
               onTrendDaysChange={setTrendDays}
               patchBoundary={patchBoundary}
             />
-
-            {/* Position Heatmap (Companion-Daten) */}
-            {comp.typicalUnits && comp.typicalUnits.length > 0 && (
-              <PositionHeatmap
-                units={comp.typicalUnits}
-                carryCharacterId={leadCarry ?? undefined}
-                clusterKey={(() => {
-                  // Eigene Familie zuerst, dann die der genannten Carries —
-                  // dieselbe Kandidatenliste wie beim Comp-Guide oben.
-                  const own = compTraitFamilyKey(comp.clusterKey);
-                  const parts = parseClusterKey(comp.clusterKey);
-                  const named = parts ? namedCompCarries.map(c => `${parts.trait}__${c}`) : [];
-                  return [...new Set([own, ...named])].join(',');
-                })()}
-                assets={assets}
-              />
-            )}
           </div>
         )}
       </div>

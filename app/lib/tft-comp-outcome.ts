@@ -30,7 +30,16 @@ export interface CompOutcomeRaw {
     it: Record<string, OutcomeTuple>;
     sets: Record<string, OutcomeTuple>;
   }>;
+  /** Spiele der Zeilen, die schon Embleme je Spiel zaehlen (Migration 0091). */
+  emblem_games?: number;
+  /** Emblem -> t = [n,s,q,t4,t1] je Spiel, h = Traeger-cid -> Spiele. */
+  emblems?: Record<string, { t: OutcomeTuple; h: Record<string, number> }>;
+  /** Zeilen im Fenster, die die Emblem-Zaehlung schon haben. */
+  rows_emblems?: number;
 }
+
+/** Antwort von get_tft_comp_emblems (0091), eigene Abfrage neben dem Outcome. */
+export type CompEmblemsRaw = Pick<CompOutcomeRaw, 'emblem_games' | 'emblems' | 'rows_emblems'>;
 
 export type ItemGroup = 'standard' | 'artifact' | 'radiant' | 'emblem' | 'tactician';
 export type ItemGrade = 'core' | 'strong' | 'optional' | 'weak' | null;
@@ -95,6 +104,27 @@ export interface LevelRow {
   top1Rate: number;
 }
 
+export interface CompEmblem {
+  item: string;
+  /** Spiele mit dem Emblem auf dem Brett (basis 'games') bzw. Kopien ('copies'). */
+  count: number;
+  /** Anteil der Spiele der Comp; null im Uebergang, dort gibt es nur Kopien. */
+  share: number | null;
+  avgPlacement: number;
+  top4Rate: number;
+  /** Wer das Emblem traegt, Anteil an `count`, meiste zuerst. */
+  holders: { characterId: string; share: number }[];
+  lowData: boolean;
+}
+
+export interface CompEmblems {
+  /** 'games' = je Spiel gezaehlt (ab 0091); 'copies' = Uebergang aus den Items je Unit. */
+  basis: 'games' | 'copies';
+  /** Nenner bei 'games': Spiele der Zeilen, die Embleme zaehlen. */
+  games: number;
+  rows: CompEmblem[];
+}
+
 export interface CompOutcome {
   games: number;
   lowData: boolean;
@@ -103,6 +133,7 @@ export interface CompOutcome {
   levels: LevelRow[];
   levelsStage5: LevelRow[];
   units: UnitOutcome[];
+  emblems: CompEmblems | null;
 }
 
 /** Gruppe fuer die Anzeige. Nur 'standard' bekommt eine Stufe. */
@@ -249,7 +280,90 @@ export function buildCompOutcome(raw: CompOutcomeRaw): CompOutcome {
     levels: levelRows(raw.level_stats),
     levelsStage5: levelRows(raw.level_stats_s5),
     units,
+    emblems: buildCompEmblems(raw, units),
   };
+}
+
+// Embleme der Comp (User 2026-10-10: „die 2-3 most played Emblems").
+export const EMBLEM_TOP = 3;
+const EMBLEM_HOLDERS = 3;
+
+/** Trait-Emblem, das auf einer Unit liegt. Embleme aus Augments (z. B.
+    DA_18_EmblemFloraFatalisAugment, gleicher Name wie das echte) zaehlen nicht —
+    das waere eine Augment-Statistik (feedback_no_augment_stats) —, ebenso die
+    Phantom-Gegenstaende der Set-18-Mechanik. Gleiche Regel wie
+    isOutcomeEmblem in scripts/lib/tft-build-aggregator.mjs. */
+export function isCompEmblem(apiName: string): boolean {
+  return outcomeItemGroup(apiName) === 'emblem' && !/Augment|Phantom/i.test(apiName);
+}
+
+type EmblemAcc = Map<string, { n: number; s: number; t4: number; h: Map<string, number> }>;
+
+/**
+ * Uebergang: Embleme aus den Items je Unit — nur Kopien mit 3 fertigen Items,
+ * deshalb ohne Anteil. Die Seite ruft das auch selbst auf, wenn eine
+ * gespeicherte Antwort von vor 0091 das Feld `emblems` noch nicht hat.
+ */
+export function compEmblemsFromUnits(units: readonly Pick<UnitOutcome, 'characterId' | 'items'>[]): CompEmblems | null {
+  const acc: EmblemAcc = new Map();
+  for (const u of units || []) {
+    for (const it of u.items || []) {
+      if (!isCompEmblem(it.item) || !(it.copies > 0)) continue;
+      const a = acc.get(it.item) ?? { n: 0, s: 0, t4: 0, h: new Map<string, number>() };
+      a.n += it.copies; a.s += it.avgPlacement * it.copies; a.t4 += it.top4Rate * it.copies;
+      a.h.set(u.characterId, (a.h.get(u.characterId) || 0) + it.copies);
+      acc.set(it.item, a);
+    }
+  }
+  return emblemRows(acc, 'copies', 0);
+}
+
+/**
+ * Top-Embleme der Comp. Je Spiel gezaehlt (0091) gilt erst, wenn JEDE
+ * Ergebnis-Zeile im Fenster die Zaehlung hat (User-Freigabe 2026-10-10: „Zahlen
+ * fuer 3 Tage erst nach 3 Tagen voll, bis dahin Kopien") — sonst stammten die
+ * Prozente nur aus den Regionen, die seit dem Einspielen gesammelt wurden.
+ * Anteil = Spiele mit Emblem / Spiele dieser Zeilen.
+ */
+export function buildCompEmblems(
+  raw: Pick<CompOutcomeRaw, 'rows_outcome' | 'emblem_games' | 'emblems' | 'rows_emblems'>,
+  units: readonly Pick<UnitOutcome, 'characterId' | 'items'>[],
+): CompEmblems | null {
+  const eg = num(raw.emblem_games);
+  const rowsOutcome = num(raw.rows_outcome);
+  const full = !!raw.emblems && rowsOutcome > 0 && num(raw.rows_emblems) >= rowsOutcome && eg >= OUTCOME_MIN_GAMES;
+  if (!full) return compEmblemsFromUnits(units);
+  const acc: EmblemAcc = new Map();
+  for (const [item, e] of Object.entries(raw.emblems || {})) {
+    if (!isCompEmblem(item)) continue;
+    const t = e?.t || [];
+    acc.set(item, {
+      n: num(t[0]), s: num(t[1]), t4: num(t[3]),
+      h: new Map(Object.entries(e?.h || {}).map(([cid, v]) => [cid, num(v)])),
+    });
+  }
+  return emblemRows(acc, 'games', eg);
+}
+
+function emblemRows(acc: EmblemAcc, basis: CompEmblems['basis'], eg: number): CompEmblems | null {
+  const rows: CompEmblem[] = [...acc.entries()]
+    .filter(([, a]) => a.n >= OUTCOME_MIN_GAMES)
+    .sort((x, y) => y[1].n - x[1].n || (x[0] < y[0] ? -1 : 1))
+    .slice(0, EMBLEM_TOP)
+    .map(([item, a]) => ({
+      item,
+      count: a.n,
+      share: basis === 'games' ? a.n / eg : null,
+      avgPlacement: a.s / a.n,
+      top4Rate: a.t4 / a.n,
+      holders: [...a.h.entries()]
+        .filter(([, v]) => v > 0)
+        .sort((x, y) => y[1] - x[1] || (x[0] < y[0] ? -1 : 1))
+        .slice(0, EMBLEM_HOLDERS)
+        .map(([characterId, v]) => ({ characterId, share: v / a.n })),
+      lowData: a.n < LOW_DATA_GAMES,
+    }));
+  return rows.length > 0 ? { basis, games: basis === 'games' ? eg : 0, rows } : null;
 }
 
 /** Untergrenze wie in der Comp-Liste (minGames=30). */

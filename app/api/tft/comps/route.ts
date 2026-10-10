@@ -25,7 +25,7 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
-import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw } from '../../../lib/tft-comp-outcome';
+import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
@@ -472,19 +472,31 @@ export async function GET(request: NextRequest) {
       // nicht jeder Tag im Fenster welche hat — sie nennen ihre eigene
       // Spielzahl. Kein Nachrechnen alter Tage (Einzelspiel-Speicher hat eine
       // andere Spielermenge und keinen Rang).
+      // Embleme der Comp (0091) in eigener, parallel laufender Abfrage: reisst
+      // sie ihr Zeitlimit, bleiben die anderen Bloecke stehen und die Seite
+      // nimmt den Uebergang aus den Items je Unit. Die Brett-Route braucht sie
+      // nicht und schickt ?emblems=0.
       let outcome: ReturnType<typeof buildCompOutcome> | null = null;
-      try {
-        const raw = await callRpc<CompOutcomeRaw>('get_tft_comp_outcome', {
-          p_cluster_keys: familySlugs,
-          p_regions: filters.regions,
-          p_buckets: filters.buckets,
-          p_days: filters.days,
-          p_patch: filters.patchFilter,
-          p_set: filters.setNumber,
-        }, 8000);
-        if (outcomeHasData(raw)) outcome = buildCompOutcome(raw);
-      } catch (e) {
-        console.warn('[tft/comps] comp_outcome skipped:', (e as Error).message);
+      const outcomeArgs = {
+        p_cluster_keys: familySlugs,
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patchFilter,
+        p_set: filters.setNumber,
+      };
+      const [oc, em] = await Promise.allSettled([
+        callRpc<CompOutcomeRaw>('get_tft_comp_outcome', outcomeArgs, 8000),
+        searchParams.get('emblems') === '0'
+          ? Promise.resolve(null)
+          : callRpc<CompEmblemsRaw>('get_tft_comp_emblems', outcomeArgs, 8000),
+      ]);
+      if (em.status === 'rejected') console.warn('[tft/comps] comp_emblems skipped:', (em.reason as Error)?.message);
+      if (oc.status === 'fulfilled') {
+        const emblems = em.status === 'fulfilled' && em.value ? em.value : {};
+        if (outcomeHasData(oc.value)) outcome = buildCompOutcome({ ...oc.value, ...emblems });
+      } else {
+        console.warn('[tft/comps] comp_outcome skipped:', (oc.reason as Error)?.message);
       }
       const comp = {
         ...baseComp(mergedRow, participants),

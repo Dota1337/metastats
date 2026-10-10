@@ -75,9 +75,9 @@ function AugmentTile({
 }
 
 // Die Guide-Teile stehen seit dem Umbau der Detailseite (User 2026-10-10,
-// Variante D) an verschiedenen Orten: Augments links „In der Runde", der
-// Levelplan in der Leveln-Box rechts, die Carousel-Picks in der
-// Bauteil-Box. Deshalb einzelne Teile statt eines Stapels.
+// Variante D) an verschiedenen Orten: Augments und Carousel-Picks in der
+// Bauteil-Box, der Levelplan in der Leveln-Box. Deshalb einzelne Teile statt
+// eines Stapels.
 
 /** Levelplan ohne eigene Box — Strategie-Zeile plus Level-Schritte. Beide
     Haelften sind unabhaengig optional: unbekanntes Levelling-Kuerzel und zu
@@ -124,32 +124,31 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
 /** Augments — drei Reihen nach Rarity (Prismatic → Gold → Silver): ein Angebot
     im Spiel hat immer eine Rarity, der Spieler sucht in genau einer Reihe. Der
     Grade dieser Comp steht als Buchstabe auf der Kachel. Ohne Asset-Bundle
-    keine Sektion: die Rarity wird nicht geraten. */
+    keine Sektion: die Rarity wird nicht geraten.
+    Ohne eigene Box, die Rarity steht links vor der Reihe — Teil der Bauteil-
+    Box der Detailseite (User 2026-10-10, etwa 120 px kuerzer als vorher). */
 export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
   const { t } = useI18n();
   const rarityRows = augmentRowsByRarity(guide, assets);
   if (rarityRows.length === 0) return null;
   return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.augments')}</h2>
-      <div className="flex flex-col gap-3">
-        {rarityRows.map(row => (
-          <div key={row.rarity} className="flex flex-col gap-1.5">
-            <div
-              className="text-[10px] uppercase tracking-wider font-semibold"
-              style={{ color: augmentTierBorderColor(row.rarity) }}
-            >
-              {t(`tft.comp.augments.rarity.${row.rarity}`)}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {row.augments.map(a => (
-                <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
-              ))}
-            </div>
+    <div className="flex flex-col gap-2">
+      {rarityRows.map(row => (
+        <div key={row.rarity} className="flex items-start gap-2">
+          <div
+            className="w-[5.5rem] shrink-0 pt-3 text-[10px] uppercase tracking-wide font-semibold truncate"
+            style={{ color: augmentTierBorderColor(row.rarity) }}
+          >
+            {t(`tft.comp.augments.rarity.${row.rarity}`)}
           </div>
-        ))}
-      </div>
-    </section>
+          <div className="flex flex-wrap gap-2 min-w-0">
+            {row.augments.map(a => (
+              <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

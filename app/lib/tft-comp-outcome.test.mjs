@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildCompOutcome, meanDiff, gradeItem, outcomeItemGroup, outcomeHasData,
+  buildCompOutcome, buildCompEmblems, compEmblemsFromUnits, meanDiff, gradeItem, outcomeItemGroup, outcomeHasData,
 } from './tft-comp-outcome.ts';
 
 const close = (a, b, eps = 1e-3) => assert.ok(Math.abs(a - b) < eps, `${a} != ${b}`);
@@ -87,6 +87,9 @@ test('buildCompOutcome: Items, Kombis, Unit-Wirkung je Level, Platzverteilung', 
   assert.equal(em.effect, null);
   close(em.avgPlacement, 2);
 
+  // 3 Kopien Blossom liegen unter 30 -> kein Comp-Emblem-Block.
+  assert.equal(o.emblems, null);
+
   assert.deepEqual(u.sets[0].items, ['GB', 'IE', 'IE']);
   close(u.sets[0].share, 0.2);
 });
@@ -95,6 +98,64 @@ test('buildCompOutcome: leere Antwort bricht nicht', () => {
   const o = buildCompOutcome({ games: 0, rows_outcome: 0, rows_stats: 0, placement_hist: [], level_stats: {}, level_stats_s5: {}, units: {} });
   assert.deepEqual(o.units, []);
   assert.deepEqual(o.levels, []);
+});
+
+test('buildCompEmblems: je Spiel, wenn alle Zeilen zaehlen; Augment/Phantom raus, Top 3', () => {
+  const counts = {
+    rows_outcome: 4, rows_emblems: 4,
+    emblem_games: 100,
+    emblems: {
+      DA_18_EmblemExecutioner: { t: [40, 100, 300, 30, 10], h: { Zyra: 30, Veigar: 12 } },
+      DA_18_EmblemBlackthorn: { t: [35, 140, 600, 15, 2], h: { Azir: 35 } },
+      DA_18_EmblemFloraFatalisAugment: { t: [90, 90, 90, 90, 90], h: { Azir: 90 } },
+      DA_PhantomEmblem18: { t: [80, 80, 80, 80, 80], h: { Azir: 80 } },
+      DA_18_EmblemInferno: { t: [29, 29, 29, 29, 29], h: { Azir: 29 } },
+    },
+  };
+  const e = buildCompEmblems(counts, []);
+  assert.equal(e.basis, 'games');
+  assert.equal(e.games, 100);
+  assert.deepEqual(e.rows.map(r => r.item), ['DA_18_EmblemExecutioner', 'DA_18_EmblemBlackthorn']);
+  const x = e.rows[0];
+  close(x.share, 0.4);
+  close(x.avgPlacement, 2.5);
+  close(x.top4Rate, 0.75);
+  assert.deepEqual(x.holders.map(h => h.characterId), ['Zyra', 'Veigar']);
+  close(x.holders[0].share, 0.75);
+  close(x.holders[1].share, 0.3);
+  assert.equal(x.lowData, true);
+  // Noch nicht jede Zeile zaehlt (eine Region von vor 0091) -> Uebergang, hier ohne Units: kein Block.
+  assert.equal(buildCompEmblems({ ...counts, rows_emblems: 3 }, []), null);
+});
+
+const UNITS = [
+  { characterId: 'Zyra', items: [
+    { item: 'DA_18_EmblemExecutioner', copies: 200, avgPlacement: 3.5, top4Rate: 0.6 },
+    { item: 'DA_InfinityEdge', copies: 500, avgPlacement: 4, top4Rate: 0.5 },
+    { item: 'DA_18_EmblemFloraFatalisAugment', copies: 300, avgPlacement: 2, top4Rate: 0.9 },
+  ] },
+  { characterId: 'Veigar', items: [{ item: 'DA_18_EmblemExecutioner', copies: 20, avgPlacement: 3, top4Rate: 0.5 }] },
+];
+
+test('buildCompEmblems: Uebergang aus Items je Unit als Kopien, ohne Anteil', () => {
+  // Alte Abfrage/Snapshot ohne Felder, zu wenig Zeilen, Abfrage gescheitert.
+  for (const raw of [{}, { rows_outcome: 4, rows_emblems: 2, emblem_games: 400, emblems: {} }, { rows_outcome: 4 }]) {
+    const e = buildCompEmblems(raw, UNITS);
+    assert.equal(e.basis, 'copies');
+    assert.equal(e.rows.length, 1);
+    const x = e.rows[0];
+    assert.equal(x.count, 220);
+    assert.equal(x.share, null);
+    close(x.avgPlacement, 760 / 220);
+    close(x.top4Rate, 130 / 220);
+    assert.deepEqual(x.holders.map(h => h.characterId), ['Zyra', 'Veigar']);
+    close(x.holders[0].share, 200 / 220);
+  }
+  // Gleiches Ergebnis direkt aus den Units (Seite, gespeicherte Antwort von vor 0091).
+  assert.equal(compEmblemsFromUnits(UNITS).rows[0].count, 220);
+  // Keine Embleme -> kein Block.
+  assert.equal(buildCompEmblems({ rows_outcome: 2, rows_emblems: 2, emblem_games: 500, emblems: {} }, []), null);
+  assert.equal(compEmblemsFromUnits([]), null);
 });
 
 test('outcomeHasData: ab 30 Spielen, auch bei Teil-Abdeckung', () => {

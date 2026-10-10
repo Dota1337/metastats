@@ -342,6 +342,9 @@ export async function writeTftStatsToSupabase(opts) {
           unit_levels: o.unitLevels,
           unit_items: o.unitItems,
           unit_sets: o.unitSets,
+          // 0091. Immer mitschicken (auch null): PostgREST verlangt in einem
+          // Paket dieselben Schluessel in jeder Zeile.
+          emblems: o.emblems ?? null,
         });
       }
     }

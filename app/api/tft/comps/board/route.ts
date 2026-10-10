@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
 
     const origin = request.nextUrl.origin;
     const inner = new URL('/api/tft/comps', origin);
-    inner.search = new URLSearchParams({ slug, patch, bucket, days, region, minGames: '30', variant: 'family' }).toString();
+    // emblems=0: die Emblem-Abfrage der Detailseite braucht das Brett nicht.
+    inner.search = new URLSearchParams({ slug, patch, bucket, days, region, minGames: '30', variant: 'family', emblems: '0' }).toString();
     const res = await compsGET(new NextRequest(inner));
     if (!res.ok) return degraded('comp_unavailable', 503);
     const body = await res.json().catch(() => null) as {

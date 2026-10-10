@@ -62,6 +62,20 @@ const STAGE5_FIRST_ROUND = 26;
 const OUTCOME_UNITS = 18;
 const OUTCOME_ITEMS_PER_UNIT = 20;
 const OUTCOME_SETS_PER_UNIT = 10;
+// Embleme der Comp (0091): je Spiel gezaehlt, egal wie viele Items die Unit
+// traegt — die 3-Item-Zaehlung oben sah z. B. Veigar mit Executioner-Emblem
+// nur in 23 von 218 Spielen. Set 18 hat 21 Trait-Embleme, 24 reicht fuer alle.
+const OUTCOME_EMBLEMS = 24;
+const OUTCOME_EMBLEM_HOLDERS = 5;
+// Kein Trait-Emblem zum Bauen: Embleme aus Augments (DA_18_EmblemFloraFatalis-
+// Augment heisst wie das echte, waere eine Augment-Statistik) und die
+// Phantom-Gegenstaende der Set-18-Mechanik („temporary emblem").
+const OUTCOME_EMBLEM_RE = /Emblem/i;
+const OUTCOME_EMBLEM_SKIP_RE = /Augment|Phantom/i;
+export function isOutcomeEmblem(apiName) {
+  const s = String(apiName || '');
+  return OUTCOME_EMBLEM_RE.test(s) && !OUTCOME_EMBLEM_SKIP_RE.test(s);
+}
 export function isOutcomeFinishedItem(apiName) {
   if (!apiName) return false;
   if (COMPONENT_ITEM_RE.test(apiName)) return false;
@@ -72,14 +86,20 @@ export function isOutcomeFinishedItem(apiName) {
 // Liest einen Spieler einmal aus; addOutcome() verteilt das Ergebnis dann auf
 // jeden Bucket. units: cid -> Liste der Kopien mit genau 3 fertigen Items
 // (jede Kopie sortiert). Eine Unit ohne solche Kopie steht mit leerer Liste
-// drin, damit sie als „auf dem Board" zaehlt.
+// drin, damit sie als „auf dem Board" zaehlt. emblems: Emblem -> Traeger-cids,
+// unabhaengig von der Item-Anzahl. Wird von allen Buckets geteilt — addOutcome
+// liest nur.
 function readOutcomeInput(p) {
   const units = new Map();
+  const emblems = new Map();
   for (const u of p.units || []) {
     const cid = u.character_id;
     if (!isPlayableUnitId(cid)) continue;
     const copies = getOrCreate(units, cid, () => []);
     const raw = Array.isArray(u.itemNames) ? u.itemNames : [];
+    for (const it of raw) {
+      if (isOutcomeEmblem(it)) getOrCreate(emblems, String(it), () => new Set()).add(cid);
+    }
     if (raw.some(it => THIEFS_GLOVES_RE.test(String(it || '')))) continue;
     const finished = raw.filter(isOutcomeFinishedItem);
     if (finished.length === 3) copies.push([...finished].sort());
@@ -88,6 +108,7 @@ function readOutcomeInput(p) {
     level: Number(p.level ?? 0),
     stage5: Number(p.last_round ?? 0) >= STAGE5_FIRST_ROUND,
     units,
+    emblems,
   };
 }
 
@@ -107,6 +128,13 @@ function addOutcome(cb, oc, placement, top4, top1) {
     };
     addLvl(cb.ocLevel);
     if (oc.stage5) addLvl(cb.ocLevelS5);
+  }
+  // Je Spiel einmal je Emblem; Traeger je Spiel einmal je cid.
+  for (const [item, cids] of oc.emblems || []) {
+    const ee = getOrCreate(cb.ocEmblems, item, () => ({ n: 0, s: 0, q: 0, t4: 0, t1: 0 }));
+    ee.n++; ee.s += placement; ee.q += sq; ee.t4 += t4; ee.t1 += t1;
+    const hm = getOrCreate(cb.ocEmblemHolders, item, () => new Map());
+    for (const cid of cids) hm.set(cid, (hm.get(cid) || 0) + 1);
   }
   for (const [cid, copies] of oc.units) {
     const ue = getOrCreate(cb.ocUnits, cid, () => ({ n: 0, s: 0, q: 0, t4: 0, t1: 0, n3: 0, s3: 0, q3: 0, t43: 0 }));
@@ -172,12 +200,29 @@ function serializeOutcome(b) {
       }
     }
   }
+  const games = placementHist.reduce((a, c) => a + c, 0);
+  // Spalte emblems (0091): g = Spiele dieser Zeile als Nenner, im selben
+  // Objekt wie die Zaehler — schreibt ein alter Lauf die Zeile neu, bleiben
+  // beide zusammen stehen statt auseinanderzulaufen. Immer ein Objekt, auch
+  // ohne Embleme, sonst fehlt die Zeile im Nenner.
+  const e = {};
+  const emb = b.ocEmblems instanceof Map ? b.ocEmblems : new Map();
+  for (const [it, ee] of [...emb.entries()].sort((a, c) => c[1].n - a[1].n || (a[0] < c[0] ? -1 : 1)).slice(0, OUTCOME_EMBLEMS)) {
+    const hm = b.ocEmblemHolders instanceof Map ? b.ocEmblemHolders.get(it) : null;
+    e[it] = {
+      t: tup(ee, ['n', 's', 'q', 't4', 't1']),
+      h: Object.fromEntries([...(hm || new Map()).entries()]
+        .sort((a, c) => c[1] - a[1] || (a[0] < c[0] ? -1 : 1))
+        .slice(0, OUTCOME_EMBLEM_HOLDERS)),
+    };
+  }
   return {
-    games: placementHist.reduce((a, c) => a + c, 0),
+    games,
     placementHist,
     levelStats: lvlObj(b.ocLevel),
     levelStatsS5: lvlObj(b.ocLevelS5),
     units, unitLevels, unitItems, unitSets,
+    emblems: { g: games, e },
   };
 }
 
@@ -297,6 +342,8 @@ function newCompBucket() {
     ocUnitLevels: new Map(),  // cid -> Map<level, {n,s,q}>
     ocUnitItems: new Map(),   // cid -> Map<item, {c,s,q,t4,k}>
     ocUnitSets: new Map(),    // cid -> Map<"a|b|c", {c,s,t4}>
+    ocEmblems: new Map(),     // Emblem -> {n,s,q,t4,t1}, je Spiel einmal (0091)
+    ocEmblemHolders: new Map(), // Emblem -> Map<cid, Spiele>
   };
 }
 

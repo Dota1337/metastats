@@ -51,7 +51,7 @@ import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
-import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, augmentRowsByRarity } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 
@@ -216,6 +216,9 @@ export default function TftCompDetailPage() {
     : null;
   const hasOutcomeItems: boolean = !!comp?.outcome
     && (comp.outcome.units || []).some((u: { itemCopies: number; items: unknown[] }) => u.itemCopies > 0 && u.items.length > 0);
+  // Gleiche Bedingung wie der Level-Board-Block in der linken Spalte.
+  const hasLiveBoards: boolean = Array.isArray(comp?.levelOutcome) && comp.levelOutcome.length >= 2
+    && (comp.levelOutcome as { games: number }[]).some(x => x.games > 0);
 
   // Carry-Star-Outcome — Reroll-Entscheidung Stage 3-5/3-6. Wird zweimal
   // gerendert: am Handy oben ueber den Spalten, am PC oben in der rechten Spalte.
@@ -283,14 +286,15 @@ export default function TftCompDetailPage() {
   })() : null;
 
   // Bauteil-Prioritaet aus den Carry-Items plus die Carousel-Picks der ersten
-  // Runde aus dem Guide — frueher zwei Boxen (User 2026-10-10: Doppeltes
-  // zusammenlegen). Antwortet: „welches Bauteil zuerst greifen?"
+  // Runde und die empfohlenen Augments aus dem Guide — frueher drei Boxen
+  // (User 2026-10-10: zusammenlegen). Antwortet: „was greife ich frueh?"
   const componentsBox = comp ? (() => {
     const components = comp.carryItems && comp.carryItems.length > 0 && assets
       ? aggregateComponents(comp.carryItems, assets, 6)
       : [];
     const picks = guide && guide.carousel.length > 0 ? guide : null;
-    if (components.length === 0 && !picks) return null;
+    const augGuide = guide && augmentRowsByRarity(guide, assets).length > 0 ? guide : null;
+    if (components.length === 0 && !picks && !augGuide) return null;
     return (
       <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.componentPriority')}</h2>
@@ -337,6 +341,12 @@ export default function TftCompDetailPage() {
           <div className={components.length > 0 ? 'mt-4' : ''}>
             <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.carousel')}</div>
             <GuideCarouselPicks guide={picks} assets={assets} />
+          </div>
+        )}
+        {augGuide && (
+          <div id="cj-augments" data-jump="augments" className={`scroll-mt-16 ${components.length > 0 || picks ? 'mt-4' : ''}`}>
+            <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
+            <GuideAugments guide={augGuide} assets={assets} />
           </div>
         )}
       </section>
@@ -471,9 +481,9 @@ export default function TftCompDetailPage() {
 
               <div id="cj-items" data-jump="items" className="scroll-mt-16 min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2">
                 {componentsBox}
-                {/* Items je Unit — der erste Reiter ist der Carry, seine 3er-Kombis
-                    ersetzen die fruehere Box „Item-Sets am Carry". Die steht nur
-                    noch da, wenn es keine Items je Unit gibt. */}
+                {/* Items je Unit — der erste Reiter ist der Carry. Die fruehere
+                    Box „Item-Sets am Carry" steht nur noch da, wenn es keine
+                    Items je Unit gibt. */}
                 {hasOutcomeItems && (
                   <OutcomeItems
                     outcome={comp.outcome} assets={assets} bucket={bucket} t={t}
@@ -557,17 +567,14 @@ export default function TftCompDetailPage() {
               />
             </div>
 
-            <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
-              <div className="min-w-0">
+            {/* Links „In der Runde" steht nur noch, wenn es Level-Boards gibt —
+                die Augments sind seit 2026-10-10 in der Bauteil-Box. Ohne
+                Boards laufen die Strategie-Boxen in zwei Spalten, statt eine
+                Haelfte leer zu lassen (gemessen: 6 der 25 meistgespielten
+                Comps haben keine Boards). */}
+            <div className={hasLiveBoards ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start' : ''}>
+              <div className={hasLiveBoards ? 'min-w-0' : 'hidden'}>
                 <BlockHeadline label={t('tft.comp.block.live')} />
-
-                {/* Guide aus MetaTFT: Augments. Das Early Game steht seit
-                    2026-10-10 als Reiter „Aufbau“ in der Positionierungs-Box. */}
-                {guide && (
-                  <div id="cj-augments" data-jump="augments" className="scroll-mt-16">
-                    <GuideAugments guide={guide} assets={assets} />
-                  </div>
-                )}
 
                 {/* Boards by Activation-Level — End-Board pro Trait-Aktivierungs-
                     Stufe mit Stats. Kritisch für Cap-Decision Stage 4-5+. */}
@@ -693,8 +700,8 @@ export default function TftCompDetailPage() {
                 })()}
               </div>
 
-              <div className="min-w-0">
-                <BlockHeadline label={t('tft.comp.block.strategy')} />
+              <div className={hasLiveBoards ? 'min-w-0' : 'min-w-0 lg:columns-2 lg:gap-x-6 [&>*]:break-inside-avoid'}>
+                <div className="[column-span:all]"><BlockHeadline label={t('tft.comp.block.strategy')} /></div>
                 <div className="hidden lg:block">
                   <CompActiveTraits
                     typicalUnits={comp.typicalUnits}

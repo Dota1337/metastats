@@ -9,9 +9,9 @@
     "routes": 87,
     "groups": 30,
     "tables": 36,
-    "rpcs": 29,
+    "rpcs": 30,
     "files": 14,
-    "edges": 523,
+    "edges": 525,
     "unused": 7,
     "unresolved": 1
   },
@@ -2041,6 +2041,12 @@
       "declared": true
     },
     {
+      "id": "fn:get_tft_comp_emblems",
+      "kind": "rpc",
+      "label": "get_tft_comp_emblems",
+      "declared": true
+    },
+    {
       "id": "fn:get_tft_comp_outcome",
       "kind": "rpc",
       "label": "get_tft_comp_outcome",
@@ -3197,6 +3203,11 @@
     {
       "from": "api:/api/tft/comps",
       "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_emblems",
       "kind": "calls"
     },
     {
@@ -4642,6 +4653,11 @@
     {
       "from": "fn:get_tft_comp_daily_trend",
       "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_emblems",
+      "to": "db:tft_daily_comp_outcome",
       "kind": "reads"
     },
     {

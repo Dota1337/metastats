@@ -11,7 +11,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem } from './tft-build-aggregator.mjs';
+import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem, isOutcomeEmblem } from './tft-build-aggregator.mjs';
 import { chunkByBytes } from './tft-supabase-writer.mjs';
 
 function unitWithItems(itemGames) {
@@ -150,6 +150,57 @@ test('Comp-Outcome: 3-Item-Kopien, Doppel-Items, Thief\'s Gloves/Trank/Bauteil r
   // Summons sind keine Units.
   assert.equal(o.units.tft17_bardfollower, undefined);
   assert.deepEqual(o.unitLevels.TFT17_KhaZix, { 9: [1, 1, 1], 8: [1, 5, 25] });
+  // Ohne Embleme trotzdem ein Objekt mit Nenner — sonst fehlt die Zeile im Nenner.
+  assert.deepEqual(o.emblems, { g: 2, e: {} });
+});
+
+// Embleme der Comp (0091): je Spiel einmal, egal wie viele Items die Unit
+// traegt; zwei Traeger in einem Spiel zaehlen das Spiel einmal; Augment-Embleme
+// und Phantom-Gegenstaende zaehlen nicht.
+test('Comp-Outcome: Embleme je Spiel mit Traegern, ohne Augment/Phantom', () => {
+  const IE = 'TFT_Item_InfinityEdge';
+  const GB = 'TFT_Item_Guardbreaker';
+  const EM = 'TFT17_Item_StargazerEmblemItem';
+  const unit = (id, items, tier = 2) => ({ character_id: id, tier, itemNames: items });
+  const participant = (i, placement, level, lastRound, units) => ({
+    puuid: `p${i}`, placement, level, last_round: lastRound, augments: [],
+    traits: [{ name: 'TFT17_Stargazer', num_units: 6, style: 3, tier_current: 3, tier_total: 4 }],
+    units,
+  });
+  const p0 = participant(0, 1, 9, 30, [
+    unit('TFT17_KhaZix', [IE, IE, GB], 3),
+    unit('TFT17_Samira', [EM]),
+    unit('TFT17_Lulu', ['DA_18_EmblemFloraFatalisAugment']),
+    unit('TFT17_Nami', [EM]), unit('TFT17_Jax', ['DA_PhantomEmblem18']),
+  ]);
+  const p1 = participant(1, 5, 8, 20, [
+    unit('TFT17_KhaZix', [IE, GB, 'DA_Component_BFSword'], 3),
+    unit('TFT17_Samira', [EM, 'TFT_Item_WarmogsArmor']),
+    unit('TFT17_Lulu', []), unit('TFT17_Nami', []), unit('TFT17_Jax', []),
+  ]);
+  const agg = emptyAggregate();
+  aggregateMatch({
+    metadata: { match_id: 'EUW1_3' },
+    info: { queue_id: 1100, tft_set_number: 17, game_version: 'Version 17.1', participants: [p0, p1] },
+  }, agg, { tierBucket: 'diamond', currentSet: 17, proPuuids: new Set() });
+  const comps = finalize(agg, { minCompGames: 1, minUnitGames: 1 }).byComp;
+  const keys = Object.keys(comps);
+  assert.equal(keys.length, 1, `eine Comp erwartet, bekam ${keys.join(', ')}`);
+  const o = comps[keys[0]].diamond.outcome;
+  // n=2 Spiele, s=1+5, q=1+25, Top 4 und Sieg nur p0.
+  assert.deepEqual(o.emblems, {
+    g: 2,
+    e: { [EM]: { t: [2, 6, 26, 1, 1], h: { TFT17_Samira: 2, TFT17_Nami: 1 } } },
+  });
+  // Die 3-Item-Zaehlung bleibt unberuehrt: Samira hat nie 3 fertige Items.
+  assert.equal(o.unitItems.TFT17_Samira, undefined);
+});
+
+test('isOutcomeEmblem: Trait-Embleme ja, Augment-Embleme und Phantom nein', () => {
+  for (const it of ['DA_18_EmblemExecutioner', 'TFT17_Item_StargazerEmblemItem']) assert.equal(isOutcomeEmblem(it), true, it);
+  for (const it of ['DA_18_EmblemFloraFatalisAugment', 'DA_PhantomEmblem18', 'DA_PhantomEmblemUpgrade18', 'TFT_Item_InfinityEdge', '', null]) {
+    assert.equal(isOutcomeEmblem(it), false, String(it));
+  }
 });
 
 test('isOutcomeFinishedItem: Embleme ja, Traenke/Booster/Bauteile nein', () => {

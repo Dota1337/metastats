@@ -1,15 +1,17 @@
 'use client';
 // Neue Bloecke der Comp-Detailseite aus get_tft_comp_outcome (Migration 0078):
-// Platzverteilung, Items je Unit mit Stufe und 3er-Kombis, Unit-Wirkung,
-// Endlevel. Rechnung in app/lib/tft-comp-outcome.ts — hier nur Anzeige.
+// Platzverteilung, Items je Unit mit Stufe, Unit-Wirkung, Endlevel. Die
+// 3er-Kombis sind seit 2026-10-10 weg (User: die Aufstellung oben zeigt die
+// Items schon) — das API-Feld `sets` bleibt. Rechnung in app/lib/tft-comp-outcome.ts — hier nur Anzeige.
 // Wirkung = Ø Platz mit − Ø Platz ohne; negativ ist gut.
 import { useState } from 'react';
 import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TranslationKey } from '../../lib/i18n';
 import { costColor } from '../../lib/tft-ui';
 import TftItemIcon from './TftItemIcon';
+import { compEmblemsFromUnits } from '../../lib/tft-comp-outcome';
 import type {
-  CompOutcome, Effect, ItemGrade, ItemGroup, ItemOutcome, UnitOutcome,
+  CompEmblem, CompEmblems, CompOutcome, Effect, ItemGrade, ItemGroup, ItemOutcome, UnitOutcome,
 } from '../../lib/tft-comp-outcome';
 
 type T = (k: TranslationKey) => string;
@@ -19,7 +21,10 @@ const BAD = '#e44040';
 const GOLD = '#e0c75a';
 const WARN = '#e0a040';
 
-const GROUP_ORDER: ItemGroup[] = ['standard', 'artifact', 'radiant', 'emblem', 'tactician'];
+// Embleme stehen nicht je Unit, sondern einmal fuer die ganze Comp direkt
+// unter den Artefakten (User 2026-10-10) — sonst dasselbe Emblem doppelt mit
+// anderer Zahl.
+const GROUP_ORDER: ItemGroup[] = ['standard', 'artifact', 'radiant', 'tactician'];
 const MAX_ITEMS: Record<ItemGroup, number> = { standard: 12, artifact: 6, radiant: 6, emblem: 6, tactician: 3 };
 // Zugeklappt (User 2026-10-10, Detailseite kuerzer): erste Zeilen je Gruppe,
 // der Rest ueber „weitere anzeigen" bis MAX_ITEMS.
@@ -27,7 +32,6 @@ const SHORT_ITEMS: Record<ItemGroup, number> = { standard: 6, artifact: 3, radia
 // Unit-Wirkung zugeklappt: nur Units, die in mindestens so vielen Spielen stehen.
 const UNIT_EFFECT_MIN_PRESENCE = 0.10;
 const MAX_UNIT_TABS = 8;
-const MAX_COMBOS = 5;
 
 const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
 
@@ -155,7 +159,53 @@ function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssets
   );
 }
 
-/** Items je Unit: Unit waehlen, darunter Items nach Gruppe und die haeufigsten 3er-Kombis. */
+/** Ein Emblem der Comp: wer es traegt (bis 3 Units mit Anteil), wie oft, Ø Platz.
+    Keine Wirkung/Stufe — das Emblem haengt am Trait, nicht an einer Unit. */
+function EmblemRow({ e, basis, assets, bucket, t }: {
+  e: CompEmblem; basis: CompEmblems['basis']; assets: TftAssetsBundle | null; bucket: string; t: T;
+}) {
+  const name = assets?.items[e.item]?.name || e.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
+  return (
+    <tr className="border-t border-border-subtle">
+      <td className="py-1.5 pr-1 sm:pr-2">
+        {/* flex-wrap: Traeger rutschen bei wenig Platz unter den Namen, statt
+            die Tabelle breiter als die Box zu machen. */}
+        <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-1 min-w-0">
+          <a href={`/tft/items/${encodeURIComponent(e.item)}?bucket=${bucket}`} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
+            <TftItemIcon apiName={e.item} assets={assets} className="w-7 h-7 flex-shrink-0" />
+            <span className="hidden sm:inline text-white truncate sm:max-w-[10rem]">{name}</span>
+          </a>
+          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            {e.holders.map(h => (
+              <span key={h.characterId} className="flex items-center gap-0.5" title={`${unitName(assets, h.characterId)} ${pct(h.share)}`}>
+                <UnitTile cid={h.characterId} assets={assets} size="w-5 h-5" />
+                <span className="text-fg-muted text-[10px] tabular-nums">{pct(h.share)}</span>
+              </span>
+            ))}
+          </span>
+          {e.lowData && <LowData t={t} />}
+        </div>
+      </td>
+      <td className="py-1.5 px-1 sm:px-2 text-right tabular-nums text-fg-secondary">
+        {basis === 'games' && e.share != null ? pct(e.share) : (
+          // Zahl und Wort untereinander — nebeneinander macht es die Spalte am
+          // Handy so breit, dass rechts die Stufen abgeschnitten werden.
+          <>
+            <span className="block">{e.count}</span>
+            <span className="block text-[10px] text-fg-muted leading-tight">{t('tft.comp.outcome.copies')}</span>
+          </>
+        )}
+      </td>
+      <td className="py-1.5 px-1 sm:px-2 text-right tabular-nums text-white">{e.avgPlacement.toFixed(2)}</td>
+      <td className="py-1.5 px-1 sm:px-2 text-right tabular-nums text-fg-secondary hidden sm:table-cell">{pct(e.top4Rate)}</td>
+      <td className="py-1.5 px-1 sm:px-2 text-right text-fg-muted">—</td>
+      <td className="py-1.5 pl-1 sm:pl-2 text-right text-fg-muted">—</td>
+    </tr>
+  );
+}
+
+/** Items je Unit: Unit waehlen, darunter Items nach Gruppe; die Embleme der
+    Comp stehen in jedem Reiter gleich unter den Artefakten. */
 export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemCarriers = [] }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
   /** Fest vorn in dieser Reihenfolge (Detailseite: der Haupt-Carry). */
@@ -177,6 +227,9 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
   const [allItems, setAllItems] = useState(false);
   if (units.length === 0) return null;
   const unit: UnitOutcome = units.find(u => u.characterId === selected) ?? units[0];
+  // Gespeicherte Antworten von vor 0091 haben das Feld nicht — dann der
+  // Uebergang aus den Items je Unit.
+  const emblems = outcome.emblems === undefined ? compEmblemsFromUnits(outcome.units) : outcome.emblems;
   const capOf = (g: ItemGroup) => (allItems ? MAX_ITEMS[g] : SHORT_ITEMS[g]);
   const hiddenItems = GROUP_ORDER.reduce((n, g) => {
     const all = Math.min(unit.items.filter(i => i.group === g).length, MAX_ITEMS[g]);
@@ -224,10 +277,9 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
               <th className="text-right font-normal pb-1 pl-1 sm:pl-2">{t('tft.comp.outcome.grade')}</th>
             </tr>
           </thead>
-          {GROUP_ORDER.map(g => {
+          {GROUP_ORDER.flatMap(g => {
             const rows = unit.items.filter(i => i.group === g).slice(0, capOf(g));
-            if (rows.length === 0) return null;
-            return (
+            const block = rows.length === 0 ? null : (
               <tbody key={g}>
                 {g !== 'standard' && (
                   <tr>
@@ -239,32 +291,24 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
                 {rows.map(it => <ItemRow key={it.item} it={it} assets={assets} bucket={bucket} t={t} />)}
               </tbody>
             );
+            if (g !== 'artifact' || !emblems) return [block];
+            return [block, (
+              <tbody key="compEmblem">
+                <tr>
+                  <td colSpan={6} className="pt-3 pb-1 text-fg-muted text-[10px] uppercase tracking-widest">
+                    {t('tft.comp.outcome.group.compEmblem')}
+                    {emblems.basis === 'games' && (
+                      <span className="normal-case tracking-normal tabular-nums"> · {emblems.games} {t('tft.gamesShort')}</span>
+                    )}
+                  </td>
+                </tr>
+                {emblems.rows.map(e => <EmblemRow key={e.item} e={e} basis={emblems.basis} assets={assets} bucket={bucket} t={t} />)}
+              </tbody>
+            )];
           })}
         </table>
       </div>
       <MoreToggle hidden={hiddenItems} open={allItems} onToggle={() => setAllItems(v => !v)} t={t} />
-
-      {unit.sets.length > 0 && (
-        <div className="mt-4">
-          <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.outcome.combos')}</div>
-          {/* Eine Zeile je Kombi — im Raster ueberlappten Zahlen und Hinweis. */}
-          <div className="flex flex-col gap-1.5">
-            {unit.sets.slice(0, MAX_COMBOS).map(s => (
-              <div key={s.items.join('|')} className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded px-2 py-1.5">
-                <div className="flex gap-1 shrink-0">
-                  {s.items.map((it, j) => <TftItemIcon key={j} apiName={it} assets={assets} className="w-7 h-7" />)}
-                </div>
-                {s.copies < 200 && <LowData t={t} />}
-                {/* Feste Breiten, damit Ø und Anteil ueber alle Zeilen buendig stehen. */}
-                <div className="ml-auto flex items-center gap-3 text-[11px] tabular-nums whitespace-nowrap">
-                  <span className="min-w-[3rem] text-right"><span className="text-fg-muted">{t('tft.comp.outcome.avgShort')} </span><span className="text-white">{s.avgPlacement.toFixed(2)}</span></span>
-                  <span className="min-w-[4.5rem] text-right text-fg-muted">{pct(s.share)} · {s.copies}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -3521,6 +3521,268 @@ const translations = {
     'Cette politique peut \u00EAtre mise \u00E0 jour selon les exigences l\u00E9gales.'
   ),
 
+  // \u2500 Companion-App: Datenschutz + Nutzungsbedingungen (/companion/privacy, /companion/terms)
+  // Inhalt nach dem Stand von App 0.8.3: Brett-Daten abschaltbar, Riot-Name nach
+  // spaetestens 48 h pseudonymisiert (scripts/aggregate-position-observations.mjs),
+  // Behelfs-Zeilen ohne Spielkennung nach 48 h geloescht (backfill-companion-placements.mjs).
+  'legal.companionPrivacy.title': t6(
+    'Datenschutz \u00B7 Companion App', 'Privacy Policy \u00B7 Companion App', '\uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68 \u00B7 Companion \uC571',
+    '\u9690\u79C1\u653F\u7B56 \u00B7 Companion \u5E94\u7528', 'Pol\u00EDtica de privacidad \u00B7 App Companion', 'Politique de confidentialit\u00E9 \u00B7 App Companion'
+  ),
+  'legal.companion.updated': t6(
+    'Stand: 10. Oktober 2026', 'Last updated: 10 October 2026', '\uCD5C\uC885 \uC218\uC815: 2026\uB144 10\uC6D4 10\uC77C',
+    '\u66F4\u65B0\u65E5\u671F\uFF1A2026\u5E7410\u670810\u65E5', '\u00DAltima actualizaci\u00F3n: 10 de octubre de 2026', 'Derni\u00E8re mise \u00E0 jour : 10 octobre 2026'
+  ),
+  'legal.companionPrivacy.intro': t6(
+    'Diese Erkl\u00E4rung gilt f\u00FCr die metastats.gg Companion App f\u00FCr Overwolf. F\u00FCr die Website metastats.gg gilt die allgemeine Datenschutzerkl\u00E4rung.',
+    'This policy covers the metastats.gg Companion app for Overwolf. The website metastats.gg is covered by our general privacy policy.',
+    '\uC774 \uBC29\uCE68\uC740 Overwolf\uC6A9 metastats.gg Companion \uC571\uC5D0 \uC801\uC6A9\uB429\uB2C8\uB2E4. metastats.gg \uC6F9\uC0AC\uC774\uD2B8\uC5D0\uB294 \uC77C\uBC18 \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4.',
+    '\u672C\u58F0\u660E\u9002\u7528\u4E8E Overwolf \u5E73\u53F0\u4E0A\u7684 metastats.gg Companion \u5E94\u7528\u3002metastats.gg \u7F51\u7AD9\u9002\u7528\u6211\u4EEC\u7684\u901A\u7528\u9690\u79C1\u653F\u7B56\u3002',
+    'Esta pol\u00EDtica se aplica a la app metastats.gg Companion para Overwolf. Para el sitio web metastats.gg rige nuestra pol\u00EDtica de privacidad general.',
+    'Cette politique s\u2019applique \u00E0 l\u2019app metastats.gg Companion pour Overwolf. Le site metastats.gg est couvert par notre politique de confidentialit\u00E9 g\u00E9n\u00E9rale.'
+  ),
+  'legal.companionPrivacy.generalLink': t6(
+    'Allgemeine Datenschutzerkl\u00E4rung', 'General privacy policy', '\uC77C\uBC18 \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68',
+    '\u901A\u7528\u9690\u79C1\u653F\u7B56', 'Pol\u00EDtica de privacidad general', 'Politique de confidentialit\u00E9 g\u00E9n\u00E9rale'
+  ),
+  'legal.companionPrivacy.readHeading': t6(
+    'Was die App im Spiel liest', 'What the app reads during a game', '\uAC8C\uC784 \uC911 \uC571\uC774 \uC77D\uB294 \uC815\uBCF4',
+    '\u5E94\u7528\u5728\u6E38\u620F\u4E2D\u8BFB\u53D6\u7684\u4FE1\u606F', 'Qu\u00E9 lee la app durante la partida', 'Ce que l\u2019app lit pendant une partie'
+  ),
+  'legal.companionPrivacy.readText': t6(
+    '\u00DCber die Overwolf-Schnittstelle f\u00FCr Spieldaten liest die App deinen Riot-Namen, deine Stufe, deinen Shop und dein Brett, die Bretter der Gegner, gegen die du k\u00E4mpfst, Namen und Leben der Mitspieler sowie die Item-Auswahl. Vom League-Client liest sie den Spielmodus. Die App liest keinen Spielspeicher und fragt keine Augment-Daten ab.',
+    'Through Overwolf\u2019s game data interface the app reads your Riot name, level, shop and board, the boards of the opponents you fight, the names and health of the other players, and item choices. From the League client it reads the game mode. The app does not read game memory and does not request augment data.',
+    'Overwolf \uAC8C\uC784 \uB370\uC774\uD130 \uC778\uD130\uD398\uC774\uC2A4\uB97C \uD1B5\uD574 \uC571\uC740 \uB0B4 Riot \uC774\uB984, \uB808\uBCA8, \uC0C1\uC810\uACFC \uBCF4\uB4DC, \uC804\uD22C \uC0C1\uB300\uC758 \uBCF4\uB4DC, \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4\uC758 \uC774\uB984\uACFC \uCCB4\uB825, \uC544\uC774\uD15C \uC120\uD0DD\uC744 \uC77D\uC2B5\uB2C8\uB2E4. League \uD074\uB77C\uC774\uC5B8\uD2B8\uC5D0\uC11C\uB294 \uAC8C\uC784 \uBAA8\uB4DC\uB97C \uC77D\uC2B5\uB2C8\uB2E4. \uC571\uC740 \uAC8C\uC784 \uBA54\uBAA8\uB9AC\uB97C \uC77D\uC9C0 \uC54A\uC73C\uBA70 \uC99D\uAC15 \uB370\uC774\uD130\uB97C \uC694\uCCAD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u5E94\u7528\u901A\u8FC7 Overwolf \u7684\u6E38\u620F\u6570\u636E\u63A5\u53E3\u8BFB\u53D6\u4F60\u7684 Riot \u540D\u79F0\u3001\u7B49\u7EA7\u3001\u5546\u5E97\u548C\u68CB\u76D8\u3001\u4E0E\u4F60\u4EA4\u6218\u7684\u5BF9\u624B\u68CB\u76D8\u3001\u5176\u4ED6\u73A9\u5BB6\u7684\u540D\u79F0\u548C\u8840\u91CF\u4EE5\u53CA\u88C5\u5907\u9009\u62E9\u3002\u5E94\u7528\u4ECE League \u5BA2\u6237\u7AEF\u8BFB\u53D6\u6E38\u620F\u6A21\u5F0F\u3002\u5E94\u7528\u4E0D\u8BFB\u53D6\u6E38\u620F\u5185\u5B58\uFF0C\u4E5F\u4E0D\u8BF7\u6C42\u5F3A\u5316\u7B26\u6587\u6570\u636E\u3002',
+    'A trav\u00E9s de la interfaz de datos de juego de Overwolf, la app lee tu nombre de Riot, tu nivel, tu tienda y tu tablero, los tableros de los rivales contra los que luchas, los nombres y la vida de los dem\u00E1s jugadores y la selecci\u00F3n de objetos. Del cliente de League lee el modo de juego. La app no lee la memoria del juego ni solicita datos de aumentos.',
+    'Via l\u2019interface de donn\u00E9es de jeu d\u2019Overwolf, l\u2019app lit votre nom Riot, votre niveau, votre boutique et votre plateau, les plateaux des adversaires que vous affrontez, les noms et les points de vie des autres joueurs ainsi que les choix d\u2019objets. Depuis le client League, elle lit le mode de jeu. L\u2019app ne lit pas la m\u00E9moire du jeu et ne demande aucune donn\u00E9e d\u2019augment.'
+  ),
+  'legal.companionPrivacy.localHeading': t6(
+    'Was auf deinem Rechner bleibt', 'What stays on your computer', '\uB0B4 \uCEF4\uD4E8\uD130\uC5D0\uB9CC \uC800\uC7A5\uB418\uB294 \uC815\uBCF4',
+    '\u4EC5\u4FDD\u5B58\u5728\u4F60\u7535\u8111\u4E0A\u7684\u6570\u636E', 'Qu\u00E9 se queda en tu ordenador', 'Ce qui reste sur votre ordinateur'
+  ),
+  'legal.companionPrivacy.localText': t6(
+    'Einstellungen, die angeheftete Comp, die Bretter deiner Partien und ein technisches Protokoll der App werden nur auf deinem Rechner gespeichert und nicht an uns gesendet.',
+    'Settings, your pinned comp, the boards of your games and a technical log of the app are stored on your computer only and are not sent to us.',
+    '\uC124\uC815, \uACE0\uC815\uD55C \uC870\uD569, \uB0B4 \uAC8C\uC784\uC758 \uBCF4\uB4DC, \uC571\uC758 \uAE30\uC220 \uB85C\uADF8\uB294 \uB0B4 \uCEF4\uD4E8\uD130\uC5D0\uB9CC \uC800\uC7A5\uB418\uBA70 \uB2F9\uC0AC\uB85C \uC804\uC1A1\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u8BBE\u7F6E\u3001\u56FA\u5B9A\u7684\u9635\u5BB9\u3001\u4F60\u5BF9\u5C40\u4E2D\u7684\u68CB\u76D8\u4EE5\u53CA\u5E94\u7528\u7684\u6280\u672F\u65E5\u5FD7\u4EC5\u4FDD\u5B58\u5728\u4F60\u7684\u7535\u8111\u4E0A\uFF0C\u4E0D\u4F1A\u53D1\u9001\u7ED9\u6211\u4EEC\u3002',
+    'Los ajustes, la composici\u00F3n fijada, los tableros de tus partidas y un registro t\u00E9cnico de la app se guardan solo en tu ordenador y no se nos env\u00EDan.',
+    'Les param\u00E8tres, la compo \u00E9pingl\u00E9e, les plateaux de vos parties et un journal technique de l\u2019app sont stock\u00E9s uniquement sur votre ordinateur et ne nous sont pas envoy\u00E9s.'
+  ),
+  'legal.companionPrivacy.sentHeading': t6(
+    'Was an metastats.gg gesendet wird', 'What is sent to metastats.gg', 'metastats.gg\uB85C \uC804\uC1A1\uB418\uB294 \uC815\uBCF4',
+    '\u53D1\u9001\u5230 metastats.gg \u7684\u6570\u636E', 'Qu\u00E9 se env\u00EDa a metastats.gg', 'Ce qui est envoy\u00E9 \u00E0 metastats.gg'
+  ),
+  'legal.companionPrivacy.boardHeading': t6(
+    'Brett-Daten f\u00FCr Statistiken (abschaltbar)', 'Board data for statistics (can be turned off)', '\uD1B5\uACC4\uC6A9 \uBCF4\uB4DC \uB370\uC774\uD130 (\uB04C \uC218 \uC788\uC74C)',
+    '\u7528\u4E8E\u7EDF\u8BA1\u7684\u68CB\u76D8\u6570\u636E\uFF08\u53EF\u5173\u95ED\uFF09', 'Datos del tablero para estad\u00EDsticas (desactivables)', 'Donn\u00E9es du plateau pour les statistiques (d\u00E9sactivables)'
+  ),
+  'legal.companionPrivacy.boardText': t6(
+    'Ist in den Einstellungen \u201EBrett-Daten f\u00FCr Statistiken teilen\u201C eingeschaltet (Standard), sendet die App nach jeder Partie: Spielkennung, Region, deinen Riot-Namen, deine Platzierung, die App-Version und je Brett und Runde die Units mit Feld, Sternen und Items. F\u00FCr die Bretter der Gegner werden keine Namen gesendet. Daraus berechnen wir, wo Units in erfolgreichen Comps stehen (Positioning auf metastats.gg und in der App).',
+    'If \u201CShare board data for statistics\u201D is on in the settings (default), the app sends after each game: the match ID, region, your Riot name, your placement, the app version and, for each board and round, the units with their cell, stars and items. No names are sent for opponent boards. We use this to calculate where units stand in successful comps (positioning on metastats.gg and in the app).',
+    '\uC124\uC815\uC5D0\uC11C "\uD1B5\uACC4\uC6A9 \uBCF4\uB4DC \uB370\uC774\uD130 \uACF5\uC720"\uAC00 \uCF1C\uC838 \uC788\uC73C\uBA74(\uAE30\uBCF8\uAC12) \uC571\uC740 \uB9E4 \uAC8C\uC784 \uD6C4 \uAC8C\uC784 ID, \uC9C0\uC5ED, \uB0B4 Riot \uC774\uB984, \uB0B4 \uC21C\uC704, \uC571 \uBC84\uC804, \uADF8\uB9AC\uACE0 \uBCF4\uB4DC\uC640 \uB77C\uC6B4\uB4DC\uBCC4 \uC720\uB2DB\uC758 \uCE78, \uBCC4 \uB4F1\uAE09, \uC544\uC774\uD15C\uC744 \uC804\uC1A1\uD569\uB2C8\uB2E4. \uC0C1\uB300 \uBCF4\uB4DC\uC5D0 \uB300\uD574\uC11C\uB294 \uC774\uB984\uC744 \uC804\uC1A1\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC774 \uB370\uC774\uD130\uB85C \uC131\uACF5\uD55C \uC870\uD569\uC5D0\uC11C \uC720\uB2DB\uC774 \uC5B4\uB514\uC5D0 \uBC30\uCE58\uB418\uB294\uC9C0 \uACC4\uC0B0\uD569\uB2C8\uB2E4(metastats.gg\uC640 \uC571\uC758 \uBC30\uCE58 \uC815\uBCF4).',
+    '\u5982\u679C\u5728\u8BBE\u7F6E\u4E2D\u5F00\u542F\u4E86\u201C\u5206\u4EAB\u68CB\u76D8\u6570\u636E\u7528\u4E8E\u7EDF\u8BA1\u201D\uFF08\u9ED8\u8BA4\u5F00\u542F\uFF09\uFF0C\u5E94\u7528\u4F1A\u5728\u6BCF\u5C40\u7ED3\u675F\u540E\u53D1\u9001\uFF1A\u5BF9\u5C40 ID\u3001\u5730\u533A\u3001\u4F60\u7684 Riot \u540D\u79F0\u3001\u4F60\u7684\u540D\u6B21\u3001\u5E94\u7528\u7248\u672C\uFF0C\u4EE5\u53CA\u6BCF\u4E2A\u68CB\u76D8\u548C\u56DE\u5408\u4E2D\u5F08\u5B50\u7684\u683C\u5B50\u3001\u661F\u7EA7\u548C\u88C5\u5907\u3002\u5BF9\u624B\u68CB\u76D8\u4E0D\u4F1A\u53D1\u9001\u4EFB\u4F55\u540D\u79F0\u3002\u6211\u4EEC\u636E\u6B64\u8BA1\u7B97\u5F08\u5B50\u5728\u6210\u529F\u9635\u5BB9\u4E2D\u7684\u7AD9\u4F4D\uFF08metastats.gg \u548C\u5E94\u7528\u4E2D\u7684\u7AD9\u4F4D\u4FE1\u606F\uFF09\u3002',
+    'Si en los ajustes est\u00E1 activado \u00ABCompartir datos del tablero para estad\u00EDsticas\u00BB (por defecto), la app env\u00EDa tras cada partida: el ID de la partida, la regi\u00F3n, tu nombre de Riot, tu posici\u00F3n final, la versi\u00F3n de la app y, por cada tablero y ronda, las unidades con su casilla, estrellas y objetos. De los tableros rivales no se env\u00EDan nombres. Con ello calculamos d\u00F3nde se colocan las unidades en las composiciones exitosas (posicionamiento en metastats.gg y en la app).',
+    'Si \u00AB Partager les donn\u00E9es du plateau pour les statistiques \u00BB est activ\u00E9 dans les param\u00E8tres (par d\u00E9faut), l\u2019app envoie apr\u00E8s chaque partie : l\u2019identifiant de la partie, la r\u00E9gion, votre nom Riot, votre classement, la version de l\u2019app et, pour chaque plateau et chaque manche, les unit\u00E9s avec leur case, leurs \u00E9toiles et leurs objets. Aucun nom n\u2019est envoy\u00E9 pour les plateaux adverses. Nous en d\u00E9duisons o\u00F9 les unit\u00E9s sont plac\u00E9es dans les compos qui r\u00E9ussissent (placement sur metastats.gg et dans l\u2019app).'
+  ),
+  'legal.companionPrivacy.boardStorage': t6(
+    'Um eine Partie einer Comp zuzuordnen, fragen wir sie \u00FCber die Schnittstelle von Riot Games ab. Sp\u00E4testens 48 Stunden nach dem Hochladen ersetzen wir deinen Riot-Namen durch ein Pseudonym (eine Zeichenfolge, aus der sich der Name nicht ablesen l\u00E4sst) und l\u00F6schen deine Platzierung. Brett-Daten ohne Spielkennung, die sich keiner Partie zuordnen lassen, l\u00F6schen wir nach 48 Stunden. Die pseudonymisierten Positionen und die daraus berechneten Statistiken bewahren wir auf, solange wir sie f\u00FCr die Statistiken brauchen.',
+    'To assign a game to a comp, we look it up through the Riot Games API. At the latest 48 hours after the upload we replace your Riot name with a pseudonym (a string from which the name cannot be read) and delete your placement. Board data without a match ID that cannot be assigned to a game is deleted after 48 hours. We keep the pseudonymised positions and the statistics calculated from them for as long as we need them for the statistics.',
+    '\uAC8C\uC784\uC744 \uC870\uD569\uC5D0 \uC5F0\uACB0\uD558\uAE30 \uC704\uD574 Riot Games API\uB85C \uD574\uB2F9 \uAC8C\uC784\uC744 \uC870\uD68C\uD569\uB2C8\uB2E4. \uC5C5\uB85C\uB4DC \uD6C4 \uB2A6\uC5B4\uB3C4 48\uC2DC\uAC04 \uC548\uC5D0 Riot \uC774\uB984\uC744 \uAC00\uBA85(\uC774\uB984\uC744 \uC54C\uC544\uBCFC \uC218 \uC5C6\uB294 \uBB38\uC790\uC5F4)\uC73C\uB85C \uBC14\uAFB8\uACE0 \uC21C\uC704\uB97C \uC0AD\uC81C\uD569\uB2C8\uB2E4. \uAC8C\uC784 ID\uAC00 \uC5C6\uC5B4 \uC5B4\uB5A4 \uAC8C\uC784\uC5D0\uB3C4 \uC5F0\uACB0\uD560 \uC218 \uC5C6\uB294 \uBCF4\uB4DC \uB370\uC774\uD130\uB294 48\uC2DC\uAC04 \uD6C4 \uC0AD\uC81C\uD569\uB2C8\uB2E4. \uAC00\uBA85 \uCC98\uB9AC\uB41C \uBC30\uCE58 \uB370\uC774\uD130\uC640 \uC774\uB97C \uBC14\uD0D5\uC73C\uB85C \uACC4\uC0B0\uD55C \uD1B5\uACC4\uB294 \uD1B5\uACC4\uC5D0 \uD544\uC694\uD55C \uB3D9\uC548 \uBCF4\uAD00\uD569\uB2C8\uB2E4.',
+    '\u4E3A\u4E86\u5C06\u5BF9\u5C40\u5F52\u5165\u67D0\u4E2A\u9635\u5BB9\uFF0C\u6211\u4EEC\u4F1A\u901A\u8FC7 Riot Games API \u67E5\u8BE2\u8BE5\u5BF9\u5C40\u3002\u4E0A\u4F20\u540E\u6700\u8FDF 48 \u5C0F\u65F6\uFF0C\u6211\u4EEC\u4F1A\u5C06\u4F60\u7684 Riot \u540D\u79F0\u66FF\u6362\u4E3A\u5047\u540D\uFF08\u4E00\u4E32\u65E0\u6CD5\u770B\u51FA\u540D\u79F0\u7684\u5B57\u7B26\uFF09\u5E76\u5220\u9664\u4F60\u7684\u540D\u6B21\u3002\u6CA1\u6709\u5BF9\u5C40 ID\u3001\u65E0\u6CD5\u5F52\u5165\u4EFB\u4F55\u5BF9\u5C40\u7684\u68CB\u76D8\u6570\u636E\u4F1A\u5728 48 \u5C0F\u65F6\u540E\u5220\u9664\u3002\u5047\u540D\u5316\u7684\u7AD9\u4F4D\u6570\u636E\u53CA\u7531\u6B64\u8BA1\u7B97\u7684\u7EDF\u8BA1\u6570\u636E\uFF0C\u6211\u4EEC\u4F1A\u5728\u7EDF\u8BA1\u9700\u8981\u671F\u95F4\u4FDD\u7559\u3002',
+    'Para asignar una partida a una composici\u00F3n, la consultamos a trav\u00E9s de la API de Riot Games. Como m\u00E1ximo 48 horas despu\u00E9s de la subida sustituimos tu nombre de Riot por un seud\u00F3nimo (una cadena de la que no se puede leer el nombre) y borramos tu posici\u00F3n final. Los datos de tablero sin ID de partida que no se pueden asignar a ninguna partida se borran a las 48 horas. Conservamos las posiciones seudonimizadas y las estad\u00EDsticas calculadas con ellas mientras las necesitemos para las estad\u00EDsticas.',
+    'Pour rattacher une partie \u00E0 une compo, nous la consultons via l\u2019API de Riot Games. Au plus tard 48 heures apr\u00E8s l\u2019envoi, nous rempla\u00E7ons votre nom Riot par un pseudonyme (une cha\u00EEne de caract\u00E8res qui ne permet pas de lire le nom) et supprimons votre classement. Les donn\u00E9es de plateau sans identifiant de partie qui ne peuvent \u00EAtre rattach\u00E9es \u00E0 aucune partie sont supprim\u00E9es apr\u00E8s 48 heures. Nous conservons les positions pseudonymis\u00E9es et les statistiques qui en sont tir\u00E9es tant que nous en avons besoin pour les statistiques.'
+  ),
+  'legal.companionPrivacy.profileHeading': t6(
+    'Profil, Spielersuche und Mitspieler', 'Profile, player search and lobby players', '\uD504\uB85C\uD544, \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9, \uAC19\uC740 \uAC8C\uC784\uC758 \uD50C\uB808\uC774\uC5B4',
+    '\u4E2A\u4EBA\u8D44\u6599\u3001\u73A9\u5BB6\u641C\u7D22\u548C\u540C\u5C40\u73A9\u5BB6', 'Perfil, b\u00FAsqueda de jugadores y jugadores de la partida', 'Profil, recherche de joueurs et joueurs de la partie'
+  ),
+  'legal.companionPrivacy.profileText': t6(
+    'F\u00FCr dein Profil sendet die App deinen Riot-Namen an metastats.gg; Rang und Spielverlauf laden wir \u00FCber die Schnittstelle von Riot Games und speichern sie wie bei der Spielersuche auf metastats.gg zwischen. Bei der Spielersuche wird der eingegebene Name gesendet. Zu Beginn einer Partie sendet die App die Riot-Namen deiner Mitspieler, um Rang und letzte Platzierungen aus unserer Datenbank zu zeigen (abschaltbar). Daf\u00FCr gibt es keinen Abruf bei Riot Games, und wir speichern diese Namen nicht.',
+    'For your profile the app sends your Riot name to metastats.gg; we load rank and match history through the Riot Games API and cache them as for the player search on metastats.gg. The player search sends the name you enter. At the start of a game the app sends the Riot names of the other players to show their rank and recent placements from our database (can be turned off). This makes no request to Riot Games, and we do not store these names.',
+    '\uD504\uB85C\uD544\uC744 \uC704\uD574 \uC571\uC740 \uB0B4 Riot \uC774\uB984\uC744 metastats.gg\uB85C \uC804\uC1A1\uD569\uB2C8\uB2E4. \uB7AD\uD06C\uC640 \uC804\uC801\uC740 Riot Games API\uB85C \uBD88\uB7EC\uC624\uBA70 metastats.gg\uC758 \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9\uACFC \uB9C8\uCC2C\uAC00\uC9C0\uB85C \uC784\uC2DC \uC800\uC7A5\uD569\uB2C8\uB2E4. \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9 \uC2DC\uC5D0\uB294 \uC785\uB825\uD55C \uC774\uB984\uC774 \uC804\uC1A1\uB429\uB2C8\uB2E4. \uAC8C\uC784\uC774 \uC2DC\uC791\uB418\uBA74 \uC571\uC740 \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4\uC758 \uB7AD\uD06C\uC640 \uCD5C\uADFC \uC21C\uC704\uB97C \uB2F9\uC0AC \uB370\uC774\uD130\uBCA0\uC774\uC2A4\uC5D0\uC11C \uBCF4\uC5EC \uC8FC\uAE30 \uC704\uD574 \uADF8\uB4E4\uC758 Riot \uC774\uB984\uC744 \uC804\uC1A1\uD569\uB2C8\uB2E4(\uB04C \uC218 \uC788\uC74C). \uC774\uB54C Riot Games\uC5D0\uB294 \uC694\uCCAD\uD558\uC9C0 \uC54A\uC73C\uBA70 \uC774 \uC774\uB984\uB4E4\uC740 \uC800\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u4E3A\u4E86\u663E\u793A\u4F60\u7684\u4E2A\u4EBA\u8D44\u6599\uFF0C\u5E94\u7528\u4F1A\u5C06\u4F60\u7684 Riot \u540D\u79F0\u53D1\u9001\u5230 metastats.gg\uFF1B\u6211\u4EEC\u901A\u8FC7 Riot Games API \u52A0\u8F7D\u6BB5\u4F4D\u548C\u5BF9\u5C40\u8BB0\u5F55\uFF0C\u5E76\u50CF metastats.gg \u4E0A\u7684\u73A9\u5BB6\u641C\u7D22\u4E00\u6837\u8FDB\u884C\u7F13\u5B58\u3002\u73A9\u5BB6\u641C\u7D22\u4F1A\u53D1\u9001\u4F60\u8F93\u5165\u7684\u540D\u79F0\u3002\u5BF9\u5C40\u5F00\u59CB\u65F6\uFF0C\u5E94\u7528\u4F1A\u53D1\u9001\u5176\u4ED6\u73A9\u5BB6\u7684 Riot \u540D\u79F0\uFF0C\u4EE5\u4FBF\u4ECE\u6211\u4EEC\u7684\u6570\u636E\u5E93\u663E\u793A\u4ED6\u4EEC\u7684\u6BB5\u4F4D\u548C\u6700\u8FD1\u540D\u6B21\uFF08\u53EF\u5173\u95ED\uFF09\u3002\u6B64\u8FC7\u7A0B\u4E0D\u4F1A\u5411 Riot Games \u53D1\u51FA\u8BF7\u6C42\uFF0C\u6211\u4EEC\u4E5F\u4E0D\u4F1A\u4FDD\u5B58\u8FD9\u4E9B\u540D\u79F0\u3002',
+    'Para tu perfil, la app env\u00EDa tu nombre de Riot a metastats.gg; cargamos el rango y el historial a trav\u00E9s de la API de Riot Games y los guardamos en cach\u00E9 como en la b\u00FAsqueda de jugadores de metastats.gg. La b\u00FAsqueda de jugadores env\u00EDa el nombre que introduces. Al empezar una partida, la app env\u00EDa los nombres de Riot de los dem\u00E1s jugadores para mostrar su rango y sus \u00FAltimas posiciones desde nuestra base de datos (desactivable). Esto no genera ninguna consulta a Riot Games y no guardamos esos nombres.',
+    'Pour votre profil, l\u2019app envoie votre nom Riot \u00E0 metastats.gg ; nous chargeons le rang et l\u2019historique via l\u2019API de Riot Games et les mettons en cache comme pour la recherche de joueurs sur metastats.gg. La recherche de joueurs envoie le nom saisi. Au d\u00E9but d\u2019une partie, l\u2019app envoie les noms Riot des autres joueurs afin d\u2019afficher leur rang et leurs derniers classements depuis notre base de donn\u00E9es (d\u00E9sactivable). Aucune requ\u00EAte n\u2019est envoy\u00E9e \u00E0 Riot Games et nous ne conservons pas ces noms.'
+  ),
+  'legal.companionPrivacy.svcVercel': t6(
+    'Vercel Inc. (USA), Rechenzentrum Frankfurt \u2014 Hosting der Schnittstellen, die die App abruft.',
+    'Vercel Inc. (USA), Frankfurt data centre \u2014 hosting of the interfaces the app calls.',
+    'Vercel Inc.(\uBBF8\uAD6D), \uD504\uB791\uD06C\uD478\uB974\uD2B8 \uB370\uC774\uD130 \uC13C\uD130 \u2014 \uC571\uC774 \uD638\uCD9C\uD558\uB294 \uC778\uD130\uD398\uC774\uC2A4 \uD638\uC2A4\uD305.',
+    'Vercel Inc.\uFF08\u7F8E\u56FD\uFF09\uFF0C\u6CD5\u5170\u514B\u798F\u6570\u636E\u4E2D\u5FC3 \u2014 \u6258\u7BA1\u5E94\u7528\u8C03\u7528\u7684\u63A5\u53E3\u3002',
+    'Vercel Inc. (EE. UU.), centro de datos de Fr\u00E1ncfort \u2014 alojamiento de las interfaces que usa la app.',
+    'Vercel Inc. (\u00C9tats-Unis), centre de donn\u00E9es de Francfort \u2014 h\u00E9bergement des interfaces appel\u00E9es par l\u2019app.'
+  ),
+  'legal.companionPrivacy.svcSupabase': t6(
+    'Supabase, Rechenzentrum Irland \u2014 Datenbank f\u00FCr die Brett-Daten.',
+    'Supabase, Ireland data centre \u2014 database for the board data.',
+    'Supabase, \uC544\uC77C\uB79C\uB4DC \uB370\uC774\uD130 \uC13C\uD130 \u2014 \uBCF4\uB4DC \uB370\uC774\uD130\uC6A9 \uB370\uC774\uD130\uBCA0\uC774\uC2A4.',
+    'Supabase\uFF0C\u7231\u5C14\u5170\u6570\u636E\u4E2D\u5FC3 \u2014 \u5B58\u50A8\u68CB\u76D8\u6570\u636E\u7684\u6570\u636E\u5E93\u3002',
+    'Supabase, centro de datos de Irlanda \u2014 base de datos de los datos del tablero.',
+    'Supabase, centre de donn\u00E9es en Irlande \u2014 base de donn\u00E9es des donn\u00E9es du plateau.'
+  ),
+  'legal.companionPrivacy.svcHetzner': t6(
+    'Hetzner Online GmbH, Rechenzentrum Helsinki (Finnland) \u2014 eigener Server, der die Brett-Daten auswertet und pseudonymisiert. Seine Protokolle enthalten keine Riot-Namen und werden nach 30 Tagen gel\u00F6scht.',
+    'Hetzner Online GmbH, Helsinki data centre (Finland) \u2014 our own server that evaluates and pseudonymises the board data. Its logs contain no Riot names and are deleted after 30 days.',
+    'Hetzner Online GmbH, \uD5EC\uC2F1\uD0A4 \uB370\uC774\uD130 \uC13C\uD130(\uD540\uB780\uB4DC) \u2014 \uBCF4\uB4DC \uB370\uC774\uD130\uB97C \uBD84\uC11D\uD558\uACE0 \uAC00\uBA85 \uCC98\uB9AC\uD558\uB294 \uC790\uCCB4 \uC11C\uBC84. \uC11C\uBC84 \uB85C\uADF8\uC5D0\uB294 Riot \uC774\uB984\uC774 \uC5C6\uC73C\uBA70 30\uC77C \uD6C4 \uC0AD\uC81C\uB429\uB2C8\uB2E4.',
+    'Hetzner Online GmbH\uFF0C\u8D6B\u5C14\u8F9B\u57FA\u6570\u636E\u4E2D\u5FC3\uFF08\u82AC\u5170\uFF09\u2014 \u6211\u4EEC\u81EA\u5DF1\u7684\u670D\u52A1\u5668\uFF0C\u8D1F\u8D23\u5206\u6790\u68CB\u76D8\u6570\u636E\u5E76\u8FDB\u884C\u5047\u540D\u5316\u3002\u5176\u65E5\u5FD7\u4E0D\u542B Riot \u540D\u79F0\uFF0C30 \u5929\u540E\u5220\u9664\u3002',
+    'Hetzner Online GmbH, centro de datos de Helsinki (Finlandia) \u2014 servidor propio que analiza y seudonimiza los datos del tablero. Sus registros no contienen nombres de Riot y se borran a los 30 d\u00EDas.',
+    'Hetzner Online GmbH, centre de donn\u00E9es d\u2019Helsinki (Finlande) \u2014 notre propre serveur qui analyse et pseudonymise les donn\u00E9es du plateau. Ses journaux ne contiennent aucun nom Riot et sont supprim\u00E9s apr\u00E8s 30 jours.'
+  ),
+  'legal.companionPrivacy.svcRiot': t6(
+    'Riot Games, Inc. (USA) \u2014 Spieldaten-Schnittstelle: Riot-Namen und Spielkennungen f\u00FCr Profil, Spielersuche und die Zuordnung der Partien.',
+    'Riot Games, Inc. (USA) \u2014 game data API: Riot names and match IDs for profile, player search and assigning games.',
+    'Riot Games, Inc.(\uBBF8\uAD6D) \u2014 \uAC8C\uC784 \uB370\uC774\uD130 API: \uD504\uB85C\uD544, \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9, \uAC8C\uC784 \uC5F0\uACB0\uC744 \uC704\uD55C Riot \uC774\uB984\uACFC \uAC8C\uC784 ID.',
+    'Riot Games, Inc.\uFF08\u7F8E\u56FD\uFF09\u2014 \u6E38\u620F\u6570\u636E API\uFF1A\u7528\u4E8E\u4E2A\u4EBA\u8D44\u6599\u3001\u73A9\u5BB6\u641C\u7D22\u548C\u5BF9\u5C40\u5F52\u7C7B\u7684 Riot \u540D\u79F0\u4E0E\u5BF9\u5C40 ID\u3002',
+    'Riot Games, Inc. (EE. UU.) \u2014 API de datos de juego: nombres de Riot e ID de partida para el perfil, la b\u00FAsqueda y la asignaci\u00F3n de partidas.',
+    'Riot Games, Inc. (\u00C9tats-Unis) \u2014 API de donn\u00E9es de jeu : noms Riot et identifiants de partie pour le profil, la recherche et le rattachement des parties.'
+  ),
+  'legal.companionPrivacy.svcCdragon': t6(
+    'CommunityDragon \u2014 Profilbilder l\u00E4dt die App direkt von raw.communitydragon.org; dabei erh\u00E4lt der Dienst deine IP-Adresse.',
+    'CommunityDragon \u2014 the app loads profile icons directly from raw.communitydragon.org, which receives your IP address.',
+    'CommunityDragon \u2014 \uC571\uC740 \uD504\uB85C\uD544 \uC544\uC774\uCF58\uC744 raw.communitydragon.org\uC5D0\uC11C \uC9C1\uC811 \uBD88\uB7EC\uC624\uBA70, \uC774\uB54C \uD574\uB2F9 \uC11C\uBE44\uC2A4\uAC00 IP \uC8FC\uC18C\uB97C \uBC1B\uC2B5\uB2C8\uB2E4.',
+    'CommunityDragon \u2014 \u5E94\u7528\u76F4\u63A5\u4ECE raw.communitydragon.org \u52A0\u8F7D\u5934\u50CF\uFF0C\u8BE5\u670D\u52A1\u4F1A\u56E0\u6B64\u83B7\u5F97\u4F60\u7684 IP \u5730\u5740\u3002',
+    'CommunityDragon \u2014 la app carga los iconos de perfil directamente desde raw.communitydragon.org, que recibe tu direcci\u00F3n IP.',
+    'CommunityDragon \u2014 l\u2019app charge les ic\u00F4nes de profil directement depuis raw.communitydragon.org, qui re\u00E7oit votre adresse IP.'
+  ),
+  'legal.companionPrivacy.svcOverwolf': t6(
+    'Overwolf \u2014 Plattform, auf der die App l\u00E4uft. Zus\u00E4tzlich gilt die Datenschutzerkl\u00E4rung von Overwolf:',
+    'Overwolf \u2014 the platform the app runs on. Overwolf\u2019s privacy policy also applies:',
+    'Overwolf \u2014 \uC571\uC774 \uC2E4\uD589\uB418\uB294 \uD50C\uB7AB\uD3FC. Overwolf \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68\uB3C4 \uC801\uC6A9\uB429\uB2C8\uB2E4:',
+    'Overwolf \u2014 \u5E94\u7528\u8FD0\u884C\u7684\u5E73\u53F0\u3002\u540C\u65F6\u9002\u7528 Overwolf \u7684\u9690\u79C1\u653F\u7B56\uFF1A',
+    'Overwolf \u2014 plataforma en la que funciona la app. Tambi\u00E9n se aplica la pol\u00EDtica de privacidad de Overwolf:',
+    'Overwolf \u2014 plateforme sur laquelle fonctionne l\u2019app. La politique de confidentialit\u00E9 d\u2019Overwolf s\u2019applique \u00E9galement :'
+  ),
+  'legal.companionPrivacy.basisHeading': t6(
+    'Rechtsgrundlage', 'Legal basis', '\uBC95\uC801 \uADFC\uAC70', '\u6CD5\u5F8B\u4F9D\u636E', 'Base jur\u00EDdica', 'Base l\u00E9gale'
+  ),
+  'legal.companionPrivacy.basisText': t6(
+    'Profil, Spielersuche und Mitspieler-Anzeige stellen wir bereit, weil du diese Funktionen nutzt (Art. 6 Abs. 1 lit. b und f DSGVO). Die Brett-Daten verarbeiten wir aufgrund unseres berechtigten Interesses an \u00F6ffentlichen Positionierungs-Statistiken (Art. 6 Abs. 1 lit. f DSGVO). Du kannst jederzeit widersprechen, indem du den Schalter in den Einstellungen ausschaltest; danach sendet die App keine Brett-Daten mehr.',
+    'We provide profile, player search and the lobby player display because you use these features (Art. 6(1)(b) and (f) GDPR). We process board data based on our legitimate interest in public positioning statistics (Art. 6(1)(f) GDPR). You can object at any time by turning off the switch in the settings; the app then stops sending board data.',
+    '\uD504\uB85C\uD544, \uD50C\uB808\uC774\uC5B4 \uAC80\uC0C9, \uAC19\uC740 \uAC8C\uC784 \uD50C\uB808\uC774\uC5B4 \uD45C\uC2DC\uB294 \uC774\uC6A9\uC790\uAC00 \uD574\uB2F9 \uAE30\uB2A5\uC744 \uC0AC\uC6A9\uD558\uAE30 \uB54C\uBB38\uC5D0 \uC81C\uACF5\uD569\uB2C8\uB2E4(GDPR 6\uC870 1\uD56D b \uBC0F f). \uBCF4\uB4DC \uB370\uC774\uD130\uB294 \uACF5\uAC1C \uBC30\uCE58 \uD1B5\uACC4\uC5D0 \uB300\uD55C \uB2F9\uC0AC\uC758 \uC815\uB2F9\uD55C \uC774\uC775\uC5D0 \uADFC\uAC70\uD558\uC5EC \uCC98\uB9AC\uD569\uB2C8\uB2E4(GDPR 6\uC870 1\uD56D f). \uC124\uC815\uC5D0\uC11C \uC2A4\uC704\uCE58\uB97C \uB044\uBA74 \uC5B8\uC81C\uB4E0\uC9C0 \uBC18\uB300\uD560 \uC218 \uC788\uC73C\uBA70, \uC774\uD6C4 \uC571\uC740 \uBCF4\uB4DC \uB370\uC774\uD130\uB97C \uB354 \uC774\uC0C1 \uC804\uC1A1\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u6211\u4EEC\u63D0\u4F9B\u4E2A\u4EBA\u8D44\u6599\u3001\u73A9\u5BB6\u641C\u7D22\u548C\u540C\u5C40\u73A9\u5BB6\u663E\u793A\uFF0C\u662F\u56E0\u4E3A\u4F60\u4F7F\u7528\u4E86\u8FD9\u4E9B\u529F\u80FD\uFF08GDPR \u7B2C 6 \u6761\u7B2C 1 \u6B3E b \u9879\u548C f \u9879\uFF09\u3002\u6211\u4EEC\u57FA\u4E8E\u5BF9\u516C\u5F00\u7AD9\u4F4D\u7EDF\u8BA1\u7684\u6B63\u5F53\u5229\u76CA\u5904\u7406\u68CB\u76D8\u6570\u636E\uFF08GDPR \u7B2C 6 \u6761\u7B2C 1 \u6B3E f \u9879\uFF09\u3002\u4F60\u53EF\u4EE5\u968F\u65F6\u5728\u8BBE\u7F6E\u4E2D\u5173\u95ED\u5F00\u5173\u4EE5\u63D0\u51FA\u53CD\u5BF9\uFF0C\u4E4B\u540E\u5E94\u7528\u5C06\u4E0D\u518D\u53D1\u9001\u68CB\u76D8\u6570\u636E\u3002',
+    'Ofrecemos el perfil, la b\u00FAsqueda y la vista de jugadores de la partida porque usas estas funciones (art. 6.1.b y f RGPD). Tratamos los datos del tablero por nuestro inter\u00E9s leg\u00EDtimo en estad\u00EDsticas p\u00FAblicas de posicionamiento (art. 6.1.f RGPD). Puedes oponerte en cualquier momento desactivando el interruptor en los ajustes; a partir de entonces la app deja de enviar datos del tablero.',
+    'Nous fournissons le profil, la recherche et l\u2019affichage des joueurs de la partie parce que vous utilisez ces fonctions (art. 6, par. 1, b et f RGPD). Nous traitons les donn\u00E9es du plateau sur la base de notre int\u00E9r\u00EAt l\u00E9gitime \u00E0 publier des statistiques de placement (art. 6, par. 1, f RGPD). Vous pouvez vous y opposer \u00E0 tout moment en d\u00E9sactivant l\u2019interrupteur dans les param\u00E8tres ; l\u2019app n\u2019envoie alors plus de donn\u00E9es du plateau.'
+  ),
+  'legal.companionPrivacy.rightObject': t6(
+    'Widerspruch gegen die Verarbeitung (Art. 21)', 'Objection to processing (Art. 21)', '\uCC98\uB9AC \uBC18\uB300 (21\uC870)',
+    '\u53CD\u5BF9\u5904\u7406\uFF08\u7B2C 21 \u6761\uFF09', 'Oposici\u00F3n al tratamiento (art. 21)', 'Opposition au traitement (art. 21)'
+  ),
+  'legal.companionPrivacy.termsLink': t6(
+    'Nutzungsbedingungen der App', 'App terms of use', '\uC571 \uC774\uC6A9 \uC57D\uAD00',
+    '\u5E94\u7528\u4F7F\u7528\u6761\u6B3E', 'Condiciones de uso de la app', 'Conditions d\u2019utilisation de l\u2019app'
+  ),
+  'legal.companionTerms.title': t6(
+    'Nutzungsbedingungen \u00B7 Companion App', 'Terms of Use \u00B7 Companion App', '\uC774\uC6A9 \uC57D\uAD00 \u00B7 Companion \uC571',
+    '\u4F7F\u7528\u6761\u6B3E \u00B7 Companion \u5E94\u7528', 'Condiciones de uso \u00B7 App Companion', 'Conditions d\u2019utilisation \u00B7 App Companion'
+  ),
+  'legal.companionTerms.scopeHeading': t6(
+    'Geltungsbereich', 'Scope', '\uC801\uC6A9 \uBC94\uC704', '\u9002\u7528\u8303\u56F4', '\u00C1mbito', 'Champ d\u2019application'
+  ),
+  'legal.companionTerms.scopeText': t6(
+    'Diese Bedingungen gelten f\u00FCr die metastats.gg Companion App f\u00FCr Overwolf (\u201EApp\u201C) in der jeweils aktuellen Version. Mit Installation und Nutzung erkennst du sie an.',
+    'These terms apply to the current version of the metastats.gg Companion app for Overwolf (\u201Capp\u201D). By installing and using the app you accept them.',
+    '\uBCF8 \uC57D\uAD00\uC740 Overwolf\uC6A9 metastats.gg Companion \uC571("\uC571")\uC758 \uCD5C\uC2E0 \uBC84\uC804\uC5D0 \uC801\uC6A9\uB429\uB2C8\uB2E4. \uC571\uC744 \uC124\uCE58\uD558\uACE0 \uC0AC\uC6A9\uD558\uBA74 \uBCF8 \uC57D\uAD00\uC5D0 \uB3D9\uC758\uD558\uB294 \uAC83\uC785\uB2C8\uB2E4.',
+    '\u672C\u6761\u6B3E\u9002\u7528\u4E8E Overwolf \u5E73\u53F0\u4E0A metastats.gg Companion \u5E94\u7528\uFF08\u201C\u5E94\u7528\u201D\uFF09\u7684\u5F53\u524D\u7248\u672C\u3002\u5B89\u88C5\u5E76\u4F7F\u7528\u672C\u5E94\u7528\u5373\u8868\u793A\u4F60\u63A5\u53D7\u672C\u6761\u6B3E\u3002',
+    'Estas condiciones se aplican a la versi\u00F3n actual de la app metastats.gg Companion para Overwolf (\u00ABapp\u00BB). Al instalarla y usarla las aceptas.',
+    'Ces conditions s\u2019appliquent \u00E0 la version actuelle de l\u2019app metastats.gg Companion pour Overwolf (\u00AB app \u00BB). En l\u2019installant et en l\u2019utilisant, vous les acceptez.'
+  ),
+  'legal.companionTerms.featuresHeading': t6(
+    'Funktionen', 'Features', '\uAE30\uB2A5', '\u529F\u80FD', 'Funciones', 'Fonctionnalit\u00E9s'
+  ),
+  'legal.companionTerms.featuresText': t6(
+    'Die App zeigt Comps und Statistiken von metastats.gg im Spiel: Comp-Tierliste, Positioning, Item-Hinweise, eine Markierung im Shop und einen Gegner-Tracker (Leben, letzter Kampf, vor Stufe 2-1 Rang und letzte Platzierungen). Sie zeigt keine Augment-Daten, keine Gewinnchancen und nicht, welche Comps deine Gegner spielen. Ist \u201EBrett-Daten f\u00FCr Statistiken teilen\u201C eingeschaltet, sendet sie Brett-Daten f\u00FCr Statistiken (siehe Datenschutzerkl\u00E4rung der App).',
+    'The app shows comps and statistics from metastats.gg in game: comp tier list, positioning, item hints, a shop highlight and an opponent tracker (health, last fight, and before stage 2-1 rank and recent placements). It shows no augment data, no win chances and not which comps your opponents play. If \u201CShare board data for statistics\u201D is on, it sends board data for statistics (see the app privacy policy).',
+    '\uC571\uC740 \uAC8C\uC784 \uC911 metastats.gg\uC758 \uC870\uD569\uACFC \uD1B5\uACC4\uB97C \uBCF4\uC5EC \uC90D\uB2C8\uB2E4: \uC870\uD569 \uD2F0\uC5B4 \uB9AC\uC2A4\uD2B8, \uBC30\uCE58, \uC544\uC774\uD15C \uD78C\uD2B8, \uC0C1\uC810 \uD45C\uC2DC, \uC0C1\uB300 \uD2B8\uB798\uCEE4(\uCCB4\uB825, \uB9C8\uC9C0\uB9C9 \uC804\uD22C, 2-1 \uB2E8\uACC4 \uC804\uC5D0\uB294 \uB7AD\uD06C\uC640 \uCD5C\uADFC \uC21C\uC704). \uC99D\uAC15 \uB370\uC774\uD130, \uC2B9\uB9AC \uD655\uB960, \uC0C1\uB300\uAC00 \uC5B4\uB5A4 \uC870\uD569\uC744 \uD558\uB294\uC9C0\uB294 \uD45C\uC2DC\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. "\uD1B5\uACC4\uC6A9 \uBCF4\uB4DC \uB370\uC774\uD130 \uACF5\uC720"\uAC00 \uCF1C\uC838 \uC788\uC73C\uBA74 \uD1B5\uACC4\uC6A9 \uBCF4\uB4DC \uB370\uC774\uD130\uB97C \uC804\uC1A1\uD569\uB2C8\uB2E4(\uC571 \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68 \uCC38\uC870).',
+    '\u5E94\u7528\u5728\u6E38\u620F\u4E2D\u663E\u793A metastats.gg \u7684\u9635\u5BB9\u548C\u7EDF\u8BA1\u6570\u636E\uFF1A\u9635\u5BB9\u68AF\u961F\u699C\u3001\u7AD9\u4F4D\u3001\u88C5\u5907\u63D0\u793A\u3001\u5546\u5E97\u6807\u8BB0\u548C\u5BF9\u624B\u8FFD\u8E2A\uFF08\u8840\u91CF\u3001\u4E0A\u6B21\u4EA4\u6218\uFF0C\u4EE5\u53CA 2-1 \u9636\u6BB5\u524D\u7684\u6BB5\u4F4D\u548C\u6700\u8FD1\u540D\u6B21\uFF09\u3002\u5E94\u7528\u4E0D\u663E\u793A\u5F3A\u5316\u7B26\u6587\u6570\u636E\u3001\u80DC\u7387\u9884\u6D4B\uFF0C\u4E5F\u4E0D\u663E\u793A\u5BF9\u624B\u5728\u73A9\u4EC0\u4E48\u9635\u5BB9\u3002\u5F00\u542F\u201C\u5206\u4EAB\u68CB\u76D8\u6570\u636E\u7528\u4E8E\u7EDF\u8BA1\u201D\u540E\uFF0C\u5E94\u7528\u4F1A\u53D1\u9001\u7528\u4E8E\u7EDF\u8BA1\u7684\u68CB\u76D8\u6570\u636E\uFF08\u89C1\u5E94\u7528\u9690\u79C1\u653F\u7B56\uFF09\u3002',
+    'La app muestra en la partida composiciones y estad\u00EDsticas de metastats.gg: tier list de composiciones, posicionamiento, consejos de objetos, una marca en la tienda y un seguimiento de rivales (vida, \u00FAltimo combate y, antes de la fase 2-1, rango y \u00FAltimas posiciones). No muestra datos de aumentos, ni probabilidades de victoria, ni qu\u00E9 composiciones juegan tus rivales. Si \u00ABCompartir datos del tablero para estad\u00EDsticas\u00BB est\u00E1 activado, env\u00EDa datos del tablero para estad\u00EDsticas (ver la pol\u00EDtica de privacidad de la app).',
+    'L\u2019app affiche en jeu les compos et statistiques de metastats.gg : tier list des compos, placement, conseils d\u2019objets, un rep\u00E8re dans la boutique et un suivi des adversaires (points de vie, dernier combat et, avant l\u2019\u00E9tape 2-1, rang et derniers classements). Elle n\u2019affiche ni donn\u00E9es d\u2019augments, ni chances de victoire, ni les compos jou\u00E9es par vos adversaires. Si \u00AB Partager les donn\u00E9es du plateau pour les statistiques \u00BB est activ\u00E9, elle envoie des donn\u00E9es du plateau pour les statistiques (voir la politique de confidentialit\u00E9 de l\u2019app).'
+  ),
+  'legal.companionTerms.riotHeading': t6(
+    'Beziehung zu Riot Games', 'Relationship with Riot Games', 'Riot Games\uC640\uC758 \uAD00\uACC4',
+    '\u4E0E Riot Games \u7684\u5173\u7CFB', 'Relaci\u00F3n con Riot Games', 'Relation avec Riot Games'
+  ),
+  'legal.companionTerms.riotText': t6(
+    'metastats.gg wird nicht von Riot Games unterst\u00FCtzt und gibt nicht die Ansichten von Riot Games oder von Personen wieder, die offiziell an der Produktion oder Verwaltung von Riot-Games-Eigentum beteiligt sind. Riot Games und alle zugeh\u00F6rigen Marken sind Marken oder eingetragene Marken von Riot Games, Inc. Die App nutzt nur die offizielle Overwolf-Plattform, liest keinen Spielspeicher und ver\u00E4ndert das Spiel nicht.',
+    'metastats.gg isn\u2019t endorsed by Riot Games and doesn\u2019t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. Riot Games, and all associated properties are trademarks or registered trademarks of Riot Games, Inc. The app only uses the official Overwolf platform, does not read game memory and does not modify the game.',
+    'metastats.gg\uB294 Riot Games\uC758 \uBCF4\uC99D\uC744 \uBC1B\uC9C0 \uC54A\uC558\uC73C\uBA70 Riot Games \uB610\uB294 Riot Games \uC790\uC0B0\uC758 \uC81C\uC791\u00B7\uAD00\uB9AC\uC5D0 \uACF5\uC2DD\uC801\uC73C\uB85C \uAD00\uC5EC\uD55C \uC0AC\uB78C\uC758 \uACAC\uD574\uB098 \uC758\uACAC\uC744 \uBC18\uC601\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. Riot Games \uBC0F \uAD00\uB828 \uC790\uC0B0\uC740 Riot Games, Inc.\uC758 \uC0C1\uD45C \uB610\uB294 \uB4F1\uB85D \uC0C1\uD45C\uC785\uB2C8\uB2E4. \uC571\uC740 \uACF5\uC2DD Overwolf \uD50C\uB7AB\uD3FC\uB9CC \uC0AC\uC6A9\uD558\uBA70 \uAC8C\uC784 \uBA54\uBAA8\uB9AC\uB97C \uC77D\uAC70\uB098 \uAC8C\uC784\uC744 \uBCC0\uACBD\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    'metastats.gg \u672A\u83B7\u5F97 Riot Games \u7684\u8BA4\u53EF\uFF0C\u4E5F\u4E0D\u4EE3\u8868 Riot Games \u6216\u4EFB\u4F55\u6B63\u5F0F\u53C2\u4E0E\u5236\u4F5C\u6216\u7BA1\u7406 Riot Games \u8D44\u4EA7\u7684\u4EBA\u5458\u7684\u89C2\u70B9\u6216\u610F\u89C1\u3002Riot Games \u53CA\u6240\u6709\u76F8\u5173\u8D44\u4EA7\u5747\u4E3A Riot Games, Inc. \u7684\u5546\u6807\u6216\u6CE8\u518C\u5546\u6807\u3002\u672C\u5E94\u7528\u4EC5\u4F7F\u7528\u5B98\u65B9 Overwolf \u5E73\u53F0\uFF0C\u4E0D\u8BFB\u53D6\u6E38\u620F\u5185\u5B58\uFF0C\u4E5F\u4E0D\u4FEE\u6539\u6E38\u620F\u3002',
+    'metastats.gg no est\u00E1 respaldado por Riot Games y no refleja las opiniones de Riot Games ni de nadie que participe oficialmente en la producci\u00F3n o gesti\u00F3n de las propiedades de Riot Games. Riot Games y todas las propiedades asociadas son marcas comerciales o marcas registradas de Riot Games, Inc. La app solo usa la plataforma oficial de Overwolf, no lee la memoria del juego y no modifica el juego.',
+    'metastats.gg n\u2019est pas approuv\u00E9 par Riot Games et ne refl\u00E8te pas les opinions de Riot Games ni de quiconque participant officiellement \u00E0 la production ou \u00E0 la gestion des propri\u00E9t\u00E9s de Riot Games. Riot Games et toutes les propri\u00E9t\u00E9s associ\u00E9es sont des marques commerciales ou d\u00E9pos\u00E9es de Riot Games, Inc. L\u2019app utilise uniquement la plateforme officielle Overwolf, ne lit pas la m\u00E9moire du jeu et ne modifie pas le jeu.'
+  ),
+  'legal.companionTerms.dutiesHeading': t6(
+    'Deine Pflichten', 'Your obligations', '\uC774\uC6A9\uC790\uC758 \uC758\uBB34', '\u4F60\u7684\u4E49\u52A1', 'Tus obligaciones', 'Vos obligations'
+  ),
+  'legal.companionTerms.dutyUnmodified': t6(
+    'Du nutzt keine ver\u00E4nderte Version der App.',
+    'You do not use a modified version of the app.',
+    '\uBCC0\uACBD\uB41C \uBC84\uC804\uC758 \uC571\uC744 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u4F60\u4E0D\u4F7F\u7528\u7ECF\u8FC7\u4FEE\u6539\u7684\u5E94\u7528\u7248\u672C\u3002',
+    'No usas una versi\u00F3n modificada de la app.',
+    'Vous n\u2019utilisez pas de version modifi\u00E9e de l\u2019app.'
+  ),
+  'legal.companionTerms.dutyTools': t6(
+    'Du nutzt die App nicht zusammen mit Programmen, die gegen die Regeln von Riot Games versto\u00DFen.',
+    'You do not use the app together with programs that break Riot Games\u2019 rules.',
+    'Riot Games\uC758 \uADDC\uCE59\uC744 \uC704\uBC18\uD558\uB294 \uD504\uB85C\uADF8\uB7A8\uACFC \uD568\uAED8 \uC571\uC744 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u4F60\u4E0D\u5C06\u672C\u5E94\u7528\u4E0E\u8FDD\u53CD Riot Games \u89C4\u5219\u7684\u7A0B\u5E8F\u4E00\u8D77\u4F7F\u7528\u3002',
+    'No usas la app junto con programas que infrinjan las normas de Riot Games.',
+    'Vous n\u2019utilisez pas l\u2019app avec des programmes qui enfreignent les r\u00E8gles de Riot Games.'
+  ),
+  'legal.companionTerms.dutyHarass': t6(
+    'Du nutzt Angaben aus der App nicht, um andere Spieler zu bel\u00E4stigen.',
+    'You do not use information from the app to harass other players.',
+    '\uC571\uC758 \uC815\uBCF4\uB97C \uB2E4\uB978 \uD50C\uB808\uC774\uC5B4\uB97C \uAD34\uB86D\uD788\uB294 \uB370 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u4F60\u4E0D\u5229\u7528\u5E94\u7528\u4E2D\u7684\u4FE1\u606F\u9A9A\u6270\u5176\u4ED6\u73A9\u5BB6\u3002',
+    'No usas la informaci\u00F3n de la app para acosar a otros jugadores.',
+    'Vous n\u2019utilisez pas les informations de l\u2019app pour harceler d\u2019autres joueurs.'
+  ),
+  'legal.companionTerms.availabilityHeading': t6(
+    'Verf\u00FCgbarkeit und Updates', 'Availability and updates', '\uC774\uC6A9 \uAC00\uB2A5\uC131 \uBC0F \uC5C5\uB370\uC774\uD2B8',
+    '\u53EF\u7528\u6027\u4E0E\u66F4\u65B0', 'Disponibilidad y actualizaciones', 'Disponibilit\u00E9 et mises \u00E0 jour'
+  ),
+  'legal.companionTerms.availabilityText': t6(
+    'Die App ist kostenlos. Wir k\u00F6nnen Funktionen \u00E4ndern, Updates ausliefern oder die App einstellen. Eine bestimmte Verf\u00FCgbarkeit sichern wir nicht zu.',
+    'The app is free. We may change features, ship updates or discontinue the app. We do not guarantee any particular availability.',
+    '\uC571\uC740 \uBB34\uB8CC\uC785\uB2C8\uB2E4. \uB2F9\uC0AC\uB294 \uAE30\uB2A5\uC744 \uBCC0\uACBD\uD558\uAC70\uB098 \uC5C5\uB370\uC774\uD2B8\uB97C \uBC30\uD3EC\uD558\uAC70\uB098 \uC571 \uC81C\uACF5\uC744 \uC911\uB2E8\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uD2B9\uC815 \uC218\uC900\uC758 \uC774\uC6A9 \uAC00\uB2A5\uC131\uC744 \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u672C\u5E94\u7528\u514D\u8D39\u3002\u6211\u4EEC\u53EF\u80FD\u4F1A\u66F4\u6539\u529F\u80FD\u3001\u53D1\u5E03\u66F4\u65B0\u6216\u505C\u6B62\u63D0\u4F9B\u5E94\u7528\u3002\u6211\u4EEC\u4E0D\u4FDD\u8BC1\u4EFB\u4F55\u7279\u5B9A\u7684\u53EF\u7528\u6027\u3002',
+    'La app es gratuita. Podemos cambiar funciones, publicar actualizaciones o dejar de ofrecer la app. No garantizamos ninguna disponibilidad concreta.',
+    'L\u2019app est gratuite. Nous pouvons modifier des fonctionnalit\u00E9s, publier des mises \u00E0 jour ou arr\u00EAter l\u2019app. Nous ne garantissons aucune disponibilit\u00E9 particuli\u00E8re.'
+  ),
+  'legal.companionTerms.liabilityHeading': t6(
+    'Haftung', 'Liability', '\uCC45\uC784', '\u8D23\u4EFB', 'Responsabilidad', 'Responsabilit\u00E9'
+  ),
+  'legal.companionTerms.liabilityText': t6(
+    'F\u00FCr Vorsatz und grobe Fahrl\u00E4ssigkeit haften wir nach den gesetzlichen Vorschriften. Im \u00DCbrigen haften wir nicht f\u00FCr Sch\u00E4den durch die Nutzung oder Nicht-Verf\u00FCgbarkeit der App. Die angezeigten Statistiken sind Durchschnittswerte und keine Garantie f\u00FCr ein Spielergebnis.',
+    'We are liable for intent and gross negligence in accordance with statutory law. Otherwise we are not liable for damage caused by using the app or by it being unavailable. The statistics shown are averages and no guarantee of any game result.',
+    '\uACE0\uC758 \uBC0F \uC911\uACFC\uC2E4\uC5D0 \uB300\uD574\uC11C\uB294 \uBC95\uB960\uC5D0 \uB530\uB77C \uCC45\uC784\uC744 \uC9D1\uB2C8\uB2E4. \uADF8 \uBC16\uC5D0 \uC571 \uC0AC\uC6A9\uC774\uB098 \uC774\uC6A9 \uBD88\uAC00\uB85C \uC778\uD55C \uC190\uD574\uC5D0 \uB300\uD574\uC11C\uB294 \uCC45\uC784\uC9C0\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uD45C\uC2DC\uB418\uB294 \uD1B5\uACC4\uB294 \uD3C9\uADE0\uAC12\uC774\uBA70 \uAC8C\uC784 \uACB0\uACFC\uB97C \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u5BF9\u4E8E\u6545\u610F\u548C\u91CD\u5927\u8FC7\u5931\uFF0C\u6211\u4EEC\u4F9D\u6CD5\u627F\u62C5\u8D23\u4EFB\u3002\u9664\u6B64\u4E4B\u5916\uFF0C\u6211\u4EEC\u4E0D\u5BF9\u56E0\u4F7F\u7528\u5E94\u7528\u6216\u5E94\u7528\u4E0D\u53EF\u7528\u800C\u9020\u6210\u7684\u635F\u5931\u8D1F\u8D23\u3002\u663E\u793A\u7684\u7EDF\u8BA1\u6570\u636E\u4E3A\u5E73\u5747\u503C\uFF0C\u4E0D\u4FDD\u8BC1\u4EFB\u4F55\u5BF9\u5C40\u7ED3\u679C\u3002',
+    'Respondemos por dolo y negligencia grave conforme a la ley. En los dem\u00E1s casos no respondemos de da\u00F1os derivados del uso de la app o de su falta de disponibilidad. Las estad\u00EDsticas mostradas son promedios y no garantizan ning\u00FAn resultado.',
+    'Nous sommes responsables en cas de faute intentionnelle et de n\u00E9gligence grave conform\u00E9ment \u00E0 la loi. Pour le reste, nous ne sommes pas responsables des dommages li\u00E9s \u00E0 l\u2019utilisation de l\u2019app ou \u00E0 son indisponibilit\u00E9. Les statistiques affich\u00E9es sont des moyennes et ne garantissent aucun r\u00E9sultat.'
+  ),
+  'legal.companionTerms.privacyHeading': t6(
+    'Datenschutz', 'Privacy', '\uAC1C\uC778\uC815\uBCF4', '\u9690\u79C1', 'Privacidad', 'Confidentialit\u00E9'
+  ),
+  'legal.companionTerms.privacyText': t6(
+    'Welche Daten die App verarbeitet, steht in der Datenschutzerkl\u00E4rung der App:',
+    'Which data the app processes is described in the app privacy policy:',
+    '\uC571\uC774 \uCC98\uB9AC\uD558\uB294 \uB370\uC774\uD130\uB294 \uC571 \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC\uBC29\uCE68\uC5D0 \uC124\uBA85\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4:',
+    '\u5E94\u7528\u5904\u7406\u54EA\u4E9B\u6570\u636E\uFF0C\u8BF7\u89C1\u5E94\u7528\u9690\u79C1\u653F\u7B56\uFF1A',
+    'Qu\u00E9 datos trata la app se explica en la pol\u00EDtica de privacidad de la app:',
+    'Les donn\u00E9es trait\u00E9es par l\u2019app sont d\u00E9crites dans la politique de confidentialit\u00E9 de l\u2019app :'
+  ),
+  'legal.companionTerms.finalHeading': t6(
+    'Schlussbestimmungen', 'Final provisions', '\uCD5C\uC885 \uC870\uD56D', '\u6700\u7EC8\u6761\u6B3E', 'Disposiciones finales', 'Dispositions finales'
+  ),
+  'legal.companionTerms.finalText': t6(
+    'Es gilt das Recht der Bundesrepublik Deutschland. Sind einzelne Bestimmungen unwirksam, bleiben die \u00FCbrigen wirksam.',
+    'German law applies. If individual provisions are invalid, the remaining provisions remain valid.',
+    '\uB3C5\uC77C \uBC95\uB960\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4. \uC77C\uBD80 \uC870\uD56D\uC774 \uBB34\uD6A8\uC778 \uACBD\uC6B0\uC5D0\uB3C4 \uB098\uBA38\uC9C0 \uC870\uD56D\uC740 \uC720\uD6A8\uD569\uB2C8\uB2E4.',
+    '\u9002\u7528\u5FB7\u610F\u5FD7\u8054\u90A6\u5171\u548C\u56FD\u6CD5\u5F8B\u3002\u4E2A\u522B\u6761\u6B3E\u65E0\u6548\u65F6\uFF0C\u5176\u4F59\u6761\u6B3E\u4ECD\u7136\u6709\u6548\u3002',
+    'Se aplica el derecho alem\u00E1n. Si alguna disposici\u00F3n no es v\u00E1lida, las dem\u00E1s siguen siendo v\u00E1lidas.',
+    'Le droit allemand s\u2019applique. Si certaines dispositions sont invalides, les autres restent valables.'
+  ),
+
   // \u2500 Cookie banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'cookie.title': t6(
     'Cookies', 'Cookies', '\uCFE0\uD0A4', 'Cookie', 'Cookies', 'Cookies'

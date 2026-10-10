@@ -228,6 +228,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
@@ -250,6 +251,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
@@ -273,6 +275,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
@@ -294,6 +297,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/regions.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
@@ -318,6 +322,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
@@ -339,6 +344,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",
@@ -360,6 +366,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/regions.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
@@ -383,6 +390,7 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-roll-odds.ts",

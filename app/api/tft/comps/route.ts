@@ -1053,11 +1053,12 @@ function enrichComp(r: CompRow) {
     };
   })();
   // Skill-Cap-Index (Sprint 2.3): spread of avgPlacement across rank-buckets
-  // (only buckets with ≥ 20 games). Higher = execution-dependent.
+  // (only buckets with ≥ 30 games). Higher = execution-dependent.
   const buckets = r.bucket_breakdown || {};
   const bucketAvgs: { bucket: string; games: number; avgPlacement: number }[] = [];
   for (const [bk, v] of Object.entries(buckets)) {
-    if (!v || (v as any).games < 20) continue;
+    // ≥ 30 wie MIN_GAMES_PER_OUTCOME_CARD (2026-10-10, vorher 20: ±1 Platz Zufallsfehler).
+    if (!v || (v as any).games < 30) continue;
     const games = Number((v as any).games);
     const sumP = Number((v as any).sum_placement);
     bucketAvgs.push({ bucket: bk, games, avgPlacement: sumP / games });

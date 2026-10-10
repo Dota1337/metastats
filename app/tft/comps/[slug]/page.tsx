@@ -20,6 +20,7 @@ import { GuideAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../comp
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect } from '../../../components/tft/CompOutcome';
+import CompDna, { hasCompDna } from '../../../components/tft/CompDna';
 import { computeActiveTraits } from '../../../lib/tft-active-traits';
 
 // Recharts-Komponenten lazy via next/dynamic — sparen ~95 KB Bundle aus
@@ -228,9 +229,8 @@ export default function TftCompDetailPage() {
   const wide: boolean = hasUnitEffect(comp?.outcome);
   // Detail-Analyse bei drei Spalten: die Boxen ohne Unit-Wirkung nebeneinander,
   // so viele Spalten wie Boxen (keine leere Spalte). Gleiche Bedingungen wie
-  // die Boxen unten.
+  // die Boxen unten. Die Comp-DNA zaehlt nicht: ab 1440 px steht sie im Kopf.
   const analysisCount = comp ? [
-    comp.aggroIndex != null || !!comp.skillCapCategory,
     !!(comp.deathStory && comp.roundHistogram && comp.roundHistogram.length > 0),
     !!(comp.counters && ((comp.counters.beats?.length ?? 0) + (comp.counters.losesTo?.length ?? 0)) > 0),
   ].filter(Boolean).length : 0;
@@ -458,7 +458,11 @@ export default function TftCompDetailPage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
-      <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px]' : ''} mx-auto px-4 sm:px-6 py-6`}>
+      {/* wide: Rand waechst bis 3 cm (auf 1920 px / 53–54 cm ≈ 108 px, User
+          2026-10-10), aber nur so weit, dass 1552 px Inhalt fuer die drei
+          Spalten bleiben (Unit-Wirkung ≥ 460, Items ≥ 580). Prozent statt vw,
+          damit die Scrollleiste nicht mitzaehlt. */}
+      <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px] min-[100rem]:px-[clamp(1.5rem,calc((100%_-_1552px)_/_2),108px)]' : ''} mx-auto px-4 sm:px-6 py-6`}>
         <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
@@ -514,7 +518,7 @@ export default function TftCompDetailPage() {
                 Am Handy erst links, dann rechts — das 3★-Ergebnis steht dort
                 deshalb zusaetzlich vor dem Raster.
                 ═══════════════════════════════════════════════════════════ */}
-            <CompCard comp={comp} assets={assets} />
+            <CompCard comp={comp} assets={assets} dna={hasCompDna(comp) ? <CompDna comp={comp} variant="header" /> : undefined} />
 
             <CompJumpBar rootId="cj-root" />
 
@@ -873,66 +877,8 @@ export default function TftCompDetailPage() {
                 {comp.outcome && <OutcomeUnitEffect outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
               </div>
               <div className={`min-w-0 lg:flex lg:flex-col lg:[&>*:last-child]:grow ${wide ? 'min-[100rem]:contents' : ''}`}>
-                {/* Comp-DNA: AggroIndex + SkillCap. Das Board mit Core/Flex steht
-                    seit 2026-10-10 im Kopf (CompCard). */}
-                {(comp.aggroIndex != null || comp.skillCapCategory) && (
-                  <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-                    <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.compDna')}</h2>
-                    <div className={`grid grid-cols-1 ${comp.aggroIndex != null && comp.skillCapCategory ? 'lg:grid-cols-2' : ''} gap-4`}>
-                      {comp.aggroIndex != null && (
-                        <div className="bg-surface-raised border border-border-subtle rounded p-3">
-                          <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
-                          <div className="flex items-baseline gap-1.5 mt-1">
-                            <span className="text-white text-2xl font-medium tabular-nums">{comp.aggroIndex.toFixed(2)}</span>
-                            <span className="text-fg-muted text-[11px]">{t('tft.comp.aggro.perGame')}</span>
-                          </div>
-                          {comp.aggroLobbyAverage != null && (
-                            <div className="text-fg-faint text-[10px] tabular-nums mt-0.5">
-                              {t('tft.comp.aggro.lobbyAvg')}: {comp.aggroLobbyAverage.toFixed(2)}
-                            </div>
-                          )}
-                          <div className="text-[#c39bff] text-[11px] mt-1.5">
-                            {comp.aggroIndex >= 1.2 ? t('tft.comp.aggro.push')
-                              : comp.aggroIndex >= 0.7 ? t('tft.comp.aggro.balanced')
-                              : t('tft.comp.aggro.econ')}
-                          </div>
-                        </div>
-                      )}
-                      {comp.skillCapCategory && (
-                        <div className="bg-surface-raised border border-border-subtle rounded p-3">
-                          <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.skillCap')}</div>
-                          <div className="text-white text-lg font-medium mt-1">
-                            {comp.skillCapCategory === 'high' ? t('tft.comp.skillCap.execution')
-                              : comp.skillCapCategory === 'moderate' ? t('tft.comp.skillCap.medium')
-                              : t('tft.comp.skillCap.consistent')}
-                          </div>
-                          {comp.skillCapBuckets && comp.skillCapBuckets.length > 0 && (() => {
-                            const minP = Math.min(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
-                            const maxP = Math.max(...comp.skillCapBuckets.map((b: any) => b.avgPlacement));
-                            const range = Math.max(0.01, maxP - minP);
-                            return (
-                              <div className="space-y-1 mt-2">
-                                {comp.skillCapBuckets.map((bk: any) => {
-                                  const norm = 1 - ((bk.avgPlacement - minP) / range);
-                                  const hue = Math.round(120 * norm);
-                                  return (
-                                    <div key={bk.bucket} className="flex items-center gap-2 text-[10px] tabular-nums">
-                                      <span className="text-fg-secondary w-16 truncate">{t(`tft.bucket.${bk.bucket}` as TranslationKey) || bk.bucket}</span>
-                                      <div className="flex-1 h-1 bg-surface-overlay rounded overflow-hidden">
-                                        <div className="h-full" style={{ width: `${(norm * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
-                                      </div>
-                                      <span className="text-white w-10 text-right">{bk.avgPlacement.toFixed(2)}</span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                )}
+                {/* Comp-DNA: ab 1440 px im Kopf (CompCard), darunter hier. */}
+                <CompDna comp={comp} variant="box" className="min-[90rem]:hidden" />
 
                 {/* Death-Round + Survival */}
                 {comp.deathStory && comp.roundHistogram && comp.roundHistogram.length > 0 && (() => {

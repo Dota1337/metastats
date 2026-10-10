@@ -55,7 +55,7 @@ function tierBadge(avgPlacement: number | null): { label: string; color: string;
 }
 
 export default function CompCard({
-  comp, rank, assets, href, showVelocity = false, velocityShift = 0,
+  comp, rank, assets, href, showVelocity = false, velocityShift = 0, dna,
 }: {
   comp: Comp;
   rank?: number;
@@ -66,6 +66,9 @@ export default function CompCard({
   // velocity dropdown actually has a visible effect.
   showVelocity?: boolean;
   velocityShift?: number;
+  // Comp-DNA rechts neben den Werten, nur ab 1440 px (User 2026-10-10);
+  // darunter zeigt die Detailseite sie in der Analyse.
+  dna?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -131,6 +134,13 @@ export default function CompCard({
   const coreFlexKinds = coreFlexMap(comp.typicalUnits, comp.games);
   const coreForced = forcedCoreIds(typicalUnits, roles, named, isComponent);
   const coreFlexCounts = splitCoreFlex(typicalUnits, coreFlexKinds, coreForced);
+  const hasLegend = coreFlexCounts.core.length > 0 || coreFlexCounts.flex.length > 0;
+  const legendItems = (['core', 'flex'] as const).map(k => coreFlexCounts[k].length > 0 && (
+    <span key={k} className="inline-flex items-center gap-1.5">
+      <span className="inline-block w-3 h-3 rounded-[3px]" style={coreFlexFrame(k)} aria-hidden="true" />
+      {coreFlexCounts[k].length} {t(`tft.comp.board.${k}`)}
+    </span>
+  ));
 
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
   // Wird im Comp-Header als „(mit <Name>)" hinter den Carries angezeigt,
@@ -178,8 +188,10 @@ export default function CompCard({
       className={`block bg-surface-base border border-border-subtle rounded-lg p-3 hover:border-accent-a40 transition-colors ${interactiveClass}`}
     >
       {/* Mobile: stack the carry header → units row → stats column vertically.
-          Desktop: original 3-column grid keeps it dense. */}
-      <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] gap-3 sm:gap-4 sm:items-center">
+          Desktop: original 3-column grid keeps it dense. Ab 1440 px (User
+          2026-10-10): Core/Flex untereinander und die Werte direkt rechts
+          neben dem Board, rechts davon die Comp-DNA (Rest der Breite). */}
+      <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] min-[90rem]:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-3 sm:gap-4 sm:items-center">
         <div className="flex items-center gap-3">
           {rank != null && <div className="text-fg-muted text-sm font-medium w-6 text-center">{rank}</div>}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg font-bold text-base"
@@ -335,20 +347,20 @@ export default function CompCard({
               );
             }}
           />
-          {(coreFlexCounts.core.length > 0 || coreFlexCounts.flex.length > 0) && (
-            <div className="flex items-center gap-3 text-[11px] tabular-nums text-fg-secondary">
-              {(['core', 'flex'] as const).map(k => coreFlexCounts[k].length > 0 && (
-                <span key={k} className="inline-flex items-center gap-1.5">
-                  <span className="inline-block w-3 h-3 rounded-[3px]" style={coreFlexFrame(k)} aria-hidden="true" />
-                  {coreFlexCounts[k].length} {t(`tft.comp.board.${k}`)}
-                </span>
-              ))}
+          {hasLegend && (
+            <div className="flex items-center gap-3 text-[11px] tabular-nums text-fg-secondary min-[90rem]:hidden">
+              {legendItems}
             </div>
           )}
 
           {/* typicalAugments-Block entfernt — Riot hat Augment-Stats untersagt.
               Daten kommen weiter in der API an (RPC unverändert), werden aber
               nicht mehr UI-seitig dargestellt. */}
+        </div>
+
+        {/* Ab 1440 px: Core/Flex untereinander neben dem Board. */}
+        <div className="hidden min-[90rem]:flex flex-col gap-1.5 text-[11px] tabular-nums text-fg-secondary">
+          {hasLegend && legendItems}
         </div>
 
         {/* Stats: horizontal pills on mobile (wraps if needed),
@@ -372,6 +384,8 @@ export default function CompCard({
             />
           </div>
         </div>
+
+        {dna && <div className="hidden min-[90rem]:block min-w-0">{dna}</div>}
       </div>
     </div>
   );

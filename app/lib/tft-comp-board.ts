@@ -6,14 +6,48 @@
 // Reine Funktionen ohne Netz und ohne next/server: die Routen reichen den
 // Abruf der Feld-Anteile als Funktion herein (tft-comp-board.test.mjs). Darf
 // deshalb auch im Browser landen.
-import { resolveGuideId, type CompGuidesBundle } from './tft-comp-guides';
-import type { CompanionBoardCell, CompanionCompDetail, CompanionEarlyBoard } from './companion-types';
+import { parseLevelling, resolveGuideId, significantLevelSteps, type CompGuidesBundle } from './tft-comp-guides';
+import type {
+  CompanionBoardCell, CompanionCompDetail, CompanionEarlyBoard, CompanionPositioning,
+} from './companion-types';
 
 export type CellShares = Record<string, Array<{ cell: number; share: number }>>;
 export type BoardSource = CompanionCompDetail['boardSource'];
 
 export const BOARD_UNIT_RE = /^[A-Za-z0-9_]{2,60}$/;
 export const BOARD_FAMILY_RE = /^[\w@]+_[A-Za-z0-9_]+$/;
+// MetaTFT-Comp-ID (wie by-units ?guide=).
+export const GUIDE_ID_RE = /^\d{1,12}$/;
+
+// Positioning wie auf der Homepage (Comp-Liste, App): Reiter Stufe 7-9, je
+// mindestens 50 Spiele der Comp auf der Stufe. Fruehe Boards ab 50 Spielen.
+export const POSITIONING_LEVELS: [number, number] = [7, 9];
+export const POSITIONING_MIN_GAMES = 50;
+export const EARLY_MIN_GAMES = 50;
+
+/**
+ * `?guide=` der Aufrufer: die MetaTFT-Comp, die ihre Comp-Zeile zeigt.
+ * 'none' = die Zeile hat keine (null), eine ID = diese, sonst undefined
+ * (die Route ordnet selbst zu).
+ */
+export function parseGuideParam(raw: string | null | undefined): string | null | undefined {
+  if (raw === 'none') return null;
+  return raw && GUIDE_ID_RE.test(raw) ? raw : undefined;
+}
+
+type GuideDetail = CompGuidesBundle['details'][string];
+
+/** Fruehe Boards je Spielerstufe ab `min` Spielen — Liste (hasEarly) und Detail. */
+export function earlyBoards(detail: GuideDetail | null | undefined, min = EARLY_MIN_GAMES): Record<string, CompanionEarlyBoard[]> {
+  const early: Record<string, CompanionEarlyBoard[]> = {};
+  for (const [lvl, list] of Object.entries(detail?.earlyByLevel || {})) {
+    const boards = (list || [])
+      .filter(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= min)
+      .map(o => ({ units: o.units, games: o.count ?? 0, avg: o.avg == null ? null : Number(o.avg.toFixed(2)) }));
+    if (boards.length > 0) early[lvl] = boards;
+  }
+  return early;
+}
 // by-units nimmt hoechstens 12 Units je Anfrage.
 const SHARES_CHUNK = 12;
 
@@ -133,6 +167,14 @@ export interface CompBoardsOptions {
   boardUnits?: string[];
   /** Weitere Carries fuer die MetaTFT-Zuordnung (App: Carries + Item-Traeger). */
   extraCarries?: string[];
+  /**
+   * MetaTFT-Comp der Comp-Zeile (parseGuideParam). Liste und Detail ordnen
+   * sonst mit verschiedenen Units zu (Zeile: ihr Brett, Detail: die ganze
+   * Familie) und landen bei verschiedenen Anleitungen. null = keine
+   * Anleitung; undefined oder eine ID, die es in der Datei nicht (mehr) gibt
+   * = selbst zuordnen.
+   */
+  guideId?: string | null;
 }
 
 export interface CompBoards {
@@ -159,7 +201,11 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
   const boardUnits = opts.boardUnits && opts.boardUnits.length > 0 ? opts.boardUnits : typical;
 
   const familyCarries = families.map(f => f.split('__')[1]).filter((c): c is string => !!c);
-  const guideId = guides
+  // Nur IDs aus guides.comps zaehlen: details ist ein Objekt aus JSON,
+  // details['constructor'] waere sonst auch „vorhanden“.
+  const pinned = opts.guideId === null ? null
+    : opts.guideId && guides?.comps.some(c => c.id === opts.guideId) ? opts.guideId : undefined;
+  const guideId = pinned !== undefined ? pinned : guides
     ? resolveGuideId(guides, families, typical, [...new Set([...(opts.extraCarries || []), ...familyCarries])])
     : null;
 
@@ -205,13 +251,61 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
   const levelTiming = (details?.levels || [])
     .filter(l => Number.isFinite(l.level) && l.stage && l.round)
     .map(l => ({ level: l.level, stage: `${l.stage}-${l.round}` }));
-  const early: Record<string, CompanionEarlyBoard[]> = {};
-  for (const [lvl, list] of Object.entries(details?.earlyByLevel || {})) {
-    const boards = (list || [])
-      .filter(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= opts.earlyMinGames)
-      .map(o => ({ units: o.units, games: o.count ?? 0, avg: o.avg == null ? null : Number(o.avg.toFixed(2)) }));
-    if (boards.length > 0) early[lvl] = boards;
-  }
+  const early = earlyBoards(details, opts.earlyMinGames);
 
   return { families, guideId, board, boardSource, ...(boardsByPlayerLevel ? { boardsByPlayerLevel } : {}), levelTiming, early };
+}
+
+/** Endbretter der Stufen in [lo, hi] mit mindestens `minGames` Spielen der Comp. */
+export function pickLevelBoards(
+  byLevel: Record<string, CompanionBoardCell[]> | undefined,
+  levels: Array<{ level: number; games: number }> | undefined,
+  [lo, hi]: [number, number],
+  minGames: number,
+): Record<string, CompanionBoardCell[]> | undefined {
+  let out: Record<string, CompanionBoardCell[]> | undefined;
+  for (const l of levels || []) {
+    const b = byLevel?.[String(l.level)];
+    if (b && l.level >= lo && l.level <= hi && l.games >= minGames) (out ??= {})[String(l.level)] = b;
+  }
+  return out;
+}
+
+/**
+ * Positioning wie auf der Homepage, fuer Comp-Liste (/api/tft/comps/board) und
+ * App (/api/companion/v1/comp): Reiter 7-9 ab 50 Spielen, Startreiter mit den
+ * meisten Top-4-Spielen, Levelplan und Levelschritte der MetaTFT-Comp, die
+ * auch die Positionen liefert. Die Schritte gefiltert wie auf der Detailseite
+ * (significantLevelSteps, erst ab zwei Schritten): Stufen, die kaum ein
+ * Spieler erreicht, waeren eine erfundene Genauigkeit.
+ */
+export function compPositioning(
+  boards: Pick<CompBoards, 'guideId' | 'boardsByPlayerLevel'>,
+  outcomeLevels: Array<{ level: number; games: number; share: number; top4Rate: number }> | undefined,
+  guides: Pick<CompGuidesBundle, 'comps' | 'details'> | null,
+): CompanionPositioning {
+  const byLevel = pickLevelBoards(boards.boardsByPlayerLevel, outcomeLevels, POSITIONING_LEVELS, POSITIONING_MIN_GAMES) || {};
+  const levels = (outcomeLevels || [])
+    .filter(l => byLevel[String(l.level)])
+    .sort((a, b) => a.level - b.level)
+    .map(l => ({
+      level: l.level,
+      share: Number(l.share.toFixed(3)),
+      games: l.games,
+      top4Rate: Number(l.top4Rate.toFixed(3)),
+    }));
+  const guideComp = boards.guideId ? guides?.comps.find(c => c.id === boards.guideId) : undefined;
+  const steps = guideComp ? significantLevelSteps(guides?.details[guideComp.id]?.levels || []) : [];
+  const levelTiming = steps.length >= 2
+    ? steps.filter(s => Number.isFinite(s.level) && s.stage && s.round).map(s => ({ level: s.level, stage: `${s.stage}-${s.round}` }))
+    : [];
+  const levelling = guideComp?.levelling ?? null;
+  return {
+    levels,
+    boardsByPlayerLevel: byLevel,
+    defaultLevel: defaultLevel(levels),
+    levelling,
+    plan: parseLevelling(levelling),
+    levelTiming,
+  };
 }

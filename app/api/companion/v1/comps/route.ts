@@ -11,8 +11,8 @@ import { callRpc, resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { resolveGuideId } from '../../../../lib/tft-comp-guides';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import {
-  COMPANION_API_VERSION, buildCompanionVs, companionJson, companionPreflight, toCompanionComp,
-  type CompanionCompsResponse, type CompPairInput,
+  COMPANION_API_VERSION, EARLY_MIN_GAMES, buildCompanionVs, companionJson, companionPreflight, earlyBoards,
+  toCompanionComp, type CompanionCompsResponse, type CompPairInput,
 } from '../../../../lib/companion-api';
 
 export const maxDuration = 60;
@@ -78,20 +78,17 @@ export async function GET(request: NextRequest) {
   };
   const vs = buildCompanionVs(out.comps, pairs);
   for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];
-  // Anleitung: dieselbe Zuordnung wie Comp-Route und Seite. `guideId` und
-  // `guides` misst der Abdeckungs-Vertrag (scripts/lib/guide-coverage.mjs).
-  // Early Game vorhanden: mindestens ein fruehes Board ab 50 Spielen
-  // (EARLY_MIN_GAMES der Comp-Route).
+  // Anleitung: dieselbe Zuordnung wie die Comp-Zeile der Seite (am Brett der
+  // Zeile). Die App schickt sie ans Detail mit (?guide=), damit Early Game,
+  // Levelplan und Positionen dort aus derselben MetaTFT-Comp kommen. `guideId`
+  // und `guides` misst der Abdeckungs-Vertrag (scripts/lib/guide-coverage.mjs).
   const guides = loadGuidesFromDisk();
   out.guides = guides ? { set: guides.set, clusterId: guides.clusterId ?? null, fetchedAt: guides.fetchedAt } : null;
   if (guides) {
     for (const c of out.comps) {
       const id = resolveGuideId(guides, c.members ?? [c.key], c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]);
       if (id) c.guideId = id;
-      const early = id ? guides.details[id]?.earlyByLevel : undefined;
-      if (early && Object.values(early).some(opts => (opts || []).some(o => Array.isArray(o.units) && o.units.length > 0 && (o.count ?? 0) >= 50))) {
-        c.hasEarly = true;
-      }
+      if (id && Object.keys(earlyBoards(guides.details[id], EARLY_MIN_GAMES)).length > 0) c.hasEarly = true;
     }
   }
   return companionJson(out, { cdn: 'public, s-maxage=1800, stale-while-revalidate=21600' });

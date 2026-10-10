@@ -13,7 +13,8 @@ import { GET as byUnitsGET } from '../../../tft/positions/by-units/route';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import { LOW_DATA_GAMES } from '../../../../lib/tft-comp-outcome';
 import {
-  BOARD_UNIT_RE, COMPANION_API_VERSION, buildCompBoards, companionJson, companionPreflight, companionStats,
+  BOARD_UNIT_RE, COMPANION_API_VERSION, EARLY_MIN_GAMES, POSITIONING_MIN_GAMES,
+  buildCompBoards, companionJson, companionPreflight, companionStats, compPositioning, parseGuideParam, pickLevelBoards,
   type CellShares, type CompanionCompDetail,
 } from '../../../../lib/companion-api';
 
@@ -21,7 +22,6 @@ export const maxDuration = 60;
 
 const NO_STORE = { cdn: 'no-store', browser: 'no-store' };
 const CACHE = { cdn: 'public, s-maxage=1800, stale-while-revalidate=21600' };
-const EARLY_MIN_GAMES = 50;
 
 export function OPTIONS() {
   return companionPreflight();
@@ -80,18 +80,24 @@ export async function GET(request: NextRequest) {
     return pj?.hasData && pj.units ? { units: pj.units, source: pj.source ?? null } : null;
   };
 
-  // Endbrett je Spielerstufe (Umschalter in der App): Stufen 5-9 mit
-  // mindestens LOW_DATA_GAMES Spielen der Comp auf der Stufe.
+  // Endbretter je Spielerstufe 5-9 ab 50 Spielen in EINEM Durchgang: daraus
+  // das Positioning wie auf der Homepage (7-9 ab 50) und fuer Apps bis 0.8.0
+  // das alte Feld (5-9 ab LOW_DATA_GAMES). Das Brett einer Stufe haengt nicht
+  // von den anderen Stufen ab (tft-comp-board.test.mjs).
+  // Ab 0.8.1 schickt die App die MetaTFT-Comp ihrer Comp-Zeile mit (?guide=).
+  const guides = loadGuidesFromDisk();
   const boards = await buildCompBoards({
     comp,
     fetchShares,
-    guides: loadGuidesFromDisk(),
+    guides,
     levelRange: [5, 9],
-    minLevelGames: LOW_DATA_GAMES,
+    minLevelGames: POSITIONING_MIN_GAMES,
     earlyMinGames: EARLY_MIN_GAMES,
     boardUnits: askedUnits,
     extraCarries: askedCarries,
+    guideId: parseGuideParam(sp.get('guide')),
   });
+  const legacyBoards = pickLevelBoards(boards.boardsByPlayerLevel, comp.outcome?.levels, [5, 9], LOW_DATA_GAMES);
 
   const out: CompanionCompDetail = {
     v: COMPANION_API_VERSION,
@@ -105,7 +111,9 @@ export async function GET(request: NextRequest) {
     })),
     levelTiming: boards.levelTiming,
     early: boards.early,
-    ...(boards.boardsByPlayerLevel ? { boardsByPlayerLevel: boards.boardsByPlayerLevel } : {}),
+    ...(legacyBoards ? { boardsByPlayerLevel: legacyBoards } : {}),
+    positioning: compPositioning(boards, comp.outcome?.levels, guides),
+    guideId: boards.guideId,
   };
   // Ohne Ergebnis-Bloecke (Zeitlimit der Abfrage) nicht zwischenspeichern,
   // sonst fehlt der Umschalter eine halbe Stunde lang.

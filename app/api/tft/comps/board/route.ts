@@ -15,34 +15,22 @@ import {
   cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL,
 } from '../../../../lib/api-cache';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
-import { significantLevelSteps } from '../../../../lib/tft-comp-guides';
 import type { LevelRow } from '../../../../lib/tft-comp-outcome';
 import {
-  BOARD_UNIT_RE, buildCompBoards, defaultLevel, type BoardSource, type CellShares,
+  BOARD_UNIT_RE, EARLY_MIN_GAMES, POSITIONING_LEVELS, POSITIONING_MIN_GAMES,
+  buildCompBoards, compPositioning, parseGuideParam, type BoardSource, type CellShares,
 } from '../../../../lib/tft-comp-board';
-import type { CompanionBoardCell } from '../../../../lib/companion-types';
+import type { CompanionBoardCell, CompanionPositioning } from '../../../../lib/companion-types';
 
 export const maxDuration = 60;
 
-// Reiter der Seite: Stufe 7, 8, 9, je mindestens 50 Spiele der Comp auf der
-// Stufe (darunter faellt der Reiter weg).
-const LEVEL_RANGE: [number, number] = [7, 9];
-const MIN_LEVEL_GAMES = 50;
-const EARLY_MIN_GAMES = 50;
-
-export interface CompBoardResponse {
+// Reiter, Startreiter, Levelplan und Levelschritte: compPositioning (dieselbe
+// Regel wie in der App, Stufe 7-9 ab 50 Spielen).
+export interface CompBoardResponse extends CompanionPositioning {
   slug: string;
   boardSource: BoardSource;
   /** Gesamtbrett aus den typischen Units — nur genutzt, wenn keine Stufe ein eigenes Brett hat. */
   board: CompanionBoardCell[];
-  /** Stufen mit eigenem Brett, aufsteigend; share = Anteil der Spiele, die auf der Stufe enden. */
-  levels: Array<{ level: number; share: number; games: number; top4Rate: number }>;
-  boardsByPlayerLevel: Record<string, CompanionBoardCell[]>;
-  defaultLevel: number | null;
-  /** MetaTFT-Kuerzel der Strategie ("lvl 7", "Fast 8", "Standard"); Anzeige ueber parseLevelling. */
-  levelling: string | null;
-  /** Levelschritte wie auf der Detailseite (significantLevelSteps), nicht alle wie in der App. */
-  levelTiming: Array<{ level: number; stage: string }>;
 }
 
 // Fehlerantwort: die Edge haelt sie 10 s (schuetzt vor Wiederholungs-Stuermen),
@@ -110,41 +98,20 @@ export async function GET(request: NextRequest) {
       comp,
       fetchShares,
       guides,
-      levelRange: LEVEL_RANGE,
-      minLevelGames: MIN_LEVEL_GAMES,
+      levelRange: POSITIONING_LEVELS,
+      minLevelGames: POSITIONING_MIN_GAMES,
       earlyMinGames: EARLY_MIN_GAMES,
       extraCarries: carries,
+      // Anleitung der Comp-Zeile (CompRow), damit Brett und Levelplan zur
+      // Zeile passen.
+      guideId: parseGuideParam(sp.get('guide')),
     });
-
-    const byLevel = boards.boardsByPlayerLevel || {};
-    const levels = (comp.outcome?.levels || [])
-      .filter(l => byLevel[String(l.level)])
-      .sort((a, b) => a.level - b.level)
-      .map(l => ({
-        level: l.level,
-        share: Number(l.share.toFixed(3)),
-        games: l.games,
-        top4Rate: Number(l.top4Rate.toFixed(3)),
-      }));
-
-    // Levelplan derselben MetaTFT-Comp, die auch die Positionen liefert. Die
-    // Schritte gefiltert wie auf der Detailseite (CompGuide): Stufen, die kaum
-    // ein Spieler erreicht, waeren eine erfundene Genauigkeit.
-    const guideComp = boards.guideId ? guides?.comps.find(c => c.id === boards.guideId) : undefined;
-    const steps = boards.guideId ? significantLevelSteps(guides?.details[boards.guideId]?.levels || []) : [];
-    const levelTiming = steps.length >= 2
-      ? steps.filter(s => Number.isFinite(s.level) && s.stage && s.round).map(s => ({ level: s.level, stage: `${s.stage}-${s.round}` }))
-      : [];
 
     const out: CompBoardResponse = {
       slug,
       boardSource: boards.boardSource,
       board: boards.board,
-      levels,
-      boardsByPlayerLevel: byLevel,
-      defaultLevel: defaultLevel(levels),
-      levelling: guideComp?.levelling ?? null,
-      levelTiming,
+      ...compPositioning(boards, comp.outcome?.levels, guides),
     };
     // Ohne Ergebnis-Block (Zeitlimit der Abfrage) fehlen die Stufen-Reiter —
     // dann nicht stundenlang zwischenspeichern.

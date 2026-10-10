@@ -15,7 +15,11 @@ import assert from 'node:assert/strict';
 import {
   boardLayout,
   buildCompBoards,
+  compPositioning,
   defaultLevel,
+  earlyBoards,
+  parseGuideParam,
+  pickLevelBoards,
   resolveBoard,
   unitsAtPlayerLevel,
 } from './tft-comp-board.ts';
@@ -184,4 +188,97 @@ test('buildCompBoards: ohne Feld-Anteile kein Brett und keine Quelle', async () 
   assert.deepEqual(out.board, []);
   assert.equal(out.boardSource, null);
   assert.equal(out.boardsByPlayerLevel, undefined);
+});
+
+// Zweite MetaTFT-Comp, die die Zeile festnageln kann (die eigene Zuordnung
+// faende g1 ueber den Familien-Eintrag).
+const GUIDES2 = {
+  ...GUIDES,
+  comps: [...GUIDES.comps, { id: 'g2', units: ['TFT17_X'], games: 500, levelling: 'Fast 8' }],
+  details: {
+    ...GUIDES.details,
+    g2: {
+      levels: [{ level: 8, stage: '4', round: '2', count: 100 }],
+      earlyByLevel: { 5: [{ units: ['TFT17_C'], count: 80, avg: 3.5 }] },
+      carousel: [], positions: {}, rerolls: null,
+    },
+  },
+};
+
+test('parseGuideParam: none = keine Anleitung, Ziffern = ID, alles andere = selbst zuordnen', () => {
+  assert.equal(parseGuideParam('none'), null);
+  assert.equal(parseGuideParam('426032'), '426032');
+  assert.equal(parseGuideParam('constructor'), undefined);
+  assert.equal(parseGuideParam('1234567890123'), undefined);
+  assert.equal(parseGuideParam(''), undefined);
+  assert.equal(parseGuideParam(null), undefined);
+});
+
+test('buildCompBoards: festgenagelte Anleitung gilt fuer Positionen, Levelschritte und Early', async () => {
+  const opts = { comp: fixtureComp(), guides: GUIDES2, levelRange: [7, 9], minLevelGames: 50, earlyMinGames: 50 };
+  const pinned = fakeShares();
+  const a = await buildCompBoards({ ...opts, fetchShares: pinned.fn, guideId: 'g2' });
+  assert.equal(a.guideId, 'g2');
+  assert.ok(pinned.calls.every(c => c.ctx.guide === 'g2'));
+  assert.deepEqual(a.early, { 5: [{ units: ['TFT17_C'], games: 80, avg: 3.5 }] });
+  assert.deepEqual(a.levelTiming, [{ level: 8, stage: '4-2' }]);
+
+  // null: die Zeile hat keine Anleitung — dann auch das Detail nicht.
+  const none = fakeShares();
+  const b = await buildCompBoards({ ...opts, fetchShares: none.fn, guideId: null });
+  assert.equal(b.guideId, null);
+  assert.ok(none.calls.every(c => c.ctx.guide === null));
+  assert.deepEqual(b.early, {});
+  assert.deepEqual(b.levelTiming, []);
+
+  // Unbekannte ID (alte Generation) und Objekt-Schluessel: selbst zuordnen.
+  for (const guideId of ['999', 'constructor', undefined]) {
+    const c = await buildCompBoards({ ...opts, fetchShares: fakeShares().fn, guideId });
+    assert.equal(c.guideId, 'g1', String(guideId));
+  }
+});
+
+test('compPositioning: Reiter 7-9 ab 50 Spielen, Startreiter, Levelplan — gleich, egal mit welchem Bereich gebaut', async () => {
+  const levels = fixtureComp().outcome.levels;
+  const page = await buildCompBoards({
+    comp: fixtureComp(), fetchShares: fakeShares().fn, guides: GUIDES,
+    levelRange: [7, 9], minLevelGames: 50, earlyMinGames: 50,
+  });
+  const app = await buildCompBoards({
+    comp: fixtureComp(), fetchShares: fakeShares().fn, guides: GUIDES,
+    levelRange: [5, 9], minLevelGames: 30, earlyMinGames: 50,
+  });
+  const p = compPositioning(page, levels, GUIDES);
+  assert.deepEqual(compPositioning(app, levels, GUIDES), p);
+  // Stufe 6 liegt ausserhalb, Stufe 9 hat nur 49 Spiele.
+  assert.deepEqual(p.levels.map(l => l.level), [7, 8]);
+  assert.deepEqual(Object.keys(p.boardsByPlayerLevel), ['7', '8']);
+  // 7: 300 × 0,4 = 120, 8: 200 × 0,7 = 140.
+  assert.equal(p.defaultLevel, 8);
+  assert.equal(p.levelling, 'lvl 7');
+  assert.deepEqual(p.plan, { kind: 'reroll', level: 7 });
+  // Schritt ohne Stage faellt weg, die anderen beiden bleiben.
+  assert.deepEqual(p.levelTiming, [{ level: 5, stage: '2-1' }, { level: 7, stage: '4-1' }]);
+
+  // Ohne Anleitung: kein Levelplan, keine Schritte, Bretter bleiben.
+  const bare = compPositioning({ ...page, guideId: null }, levels, GUIDES);
+  assert.equal(bare.plan, null);
+  assert.deepEqual(bare.levelTiming, []);
+  assert.deepEqual(Object.keys(bare.boardsByPlayerLevel), ['7', '8']);
+});
+
+test('pickLevelBoards: altes App-Feld (5-9 ab 200) aus dem gemeinsamen Durchgang', async () => {
+  const out = await buildCompBoards({
+    comp: fixtureComp(), fetchShares: fakeShares().fn, guides: GUIDES,
+    levelRange: [5, 9], minLevelGames: 30, earlyMinGames: 50,
+  });
+  const legacy = pickLevelBoards(out.boardsByPlayerLevel, fixtureComp().outcome.levels, [5, 9], 200);
+  assert.deepEqual(Object.keys(legacy), ['7', '8']);
+  assert.deepEqual(legacy['7'], out.boardsByPlayerLevel['7']);
+  assert.equal(pickLevelBoards(out.boardsByPlayerLevel, [], [5, 9], 200), undefined);
+});
+
+test('earlyBoards: ab der Mindestzahl, leere Boards fallen weg', () => {
+  assert.deepEqual(earlyBoards(GUIDES.details.g1, 50), { 4: [{ units: ['TFT17_B'], games: 50, avg: 4.12 }] });
+  assert.deepEqual(earlyBoards(undefined), {});
 });

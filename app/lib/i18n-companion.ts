@@ -32,9 +32,10 @@ export const COMPANION_TRANSLATIONS = {
   'companion.tools.copies': t6('Kopien je Unit', 'Copies per unit', '유닛당 개수', '每个弈子数量', 'Copias por unidad', 'Exemplaires par unité'),
   'companion.tools.cost': t6('Kosten', 'Cost', '비용', '费用', 'Coste', 'Coût'),
 
-  'companion.plan.reroll': t6('Auf Stufe {n} bleiben und rollen', 'Stay on level {n} and roll', '{n}레벨에서 리롤', '停在 {n} 级刷新', 'Quédate en nivel {n} y rolea', 'Restez niveau {n} et rollez'),
-  'companion.plan.fast8': t6('Schnell auf Stufe 8', 'Fast to level 8', '빠르게 8레벨', '速升 8 级', 'Rápido a nivel 8', 'Rapide niveau 8'),
-  'companion.plan.fast9': t6('Schnell auf Stufe 9', 'Fast to level 9', '빠르게 9레벨', '速升 9 级', 'Rápido a nivel 9', 'Rapide niveau 9'),
+  // Levelplan: dieselben Texte wie tft.comp.levelling.* der Homepage.
+  'companion.levelling.reroll': t6('Level {n} Reroll', 'Level {n} reroll', '{n}레벨 리롤', '{n} 级 Reroll', 'Reroll en nivel {n}', 'Reroll au niveau {n}'),
+  'companion.levelling.fast': t6('Schnell auf Level {n}', 'Fast to level {n}', '빠르게 {n}레벨', '快速 {n} 级', 'Subir rápido a nivel {n}', 'Montée rapide au niveau {n}'),
+  'companion.levelling.standard': t6('Standard-Kurve', 'Standard curve', '표준 진행', '标准节奏', 'Curva estándar', 'Courbe standard'),
   'companion.plan.avgLevel': t6('Ø Endstufe', 'Avg final level', '평균 최종 레벨', '平均最终等级', 'Nivel final medio', 'Niveau final moy.'),
   'companion.plan.threeStar': t6('3-Sterne-Ziel', '3-star target', '3성 목표', '三星目标', 'Objetivo 3 estrellas', 'Objectif 3 étoiles'),
 
@@ -95,7 +96,6 @@ export const COMPANION_TRANSLATIONS = {
   'companion.items.recipe': t6('Rezept', 'Recipe', '조합법', '合成', 'Receta', 'Recette'),
   'companion.items.bestUsers': t6('Beste Träger', 'Best carriers', '추천 유닛', '最佳携带者', 'Mejores portadores', 'Meilleurs porteurs'),
 
-  'companion.early.pick': t6('Comp', 'Comp', '조합', '阵容', 'Composición', 'Compo'),
   'companion.early.boards': t6('Häufigste Boards', 'Most played boards', '가장 많이 쓰인 보드', '最常用站位', 'Tableros más jugados', 'Plateaux les plus joués'),
 
   'companion.history.more': t6('Weitere Spiele', 'More games', '더 보기', '更多对局', 'Más partidas', 'Plus de parties'),
@@ -117,7 +117,6 @@ export const COMPANION_TRANSLATIONS = {
   'companion.settings.compPicker': t6('Comp-Auswahl im Spiel', 'In-game comp picker', '게임 내 조합 선택', '游戏内阵容选择', 'Selector de composición en partida', 'Choix de compo en jeu'),
   'companion.settings.items': t6('Hilfe bei der Item-Auswahl', 'Item choice help', '아이템 선택 도움', '装备选择帮助', 'Ayuda al elegir objetos', "Aide au choix d'objets"),
   'companion.settings.scout': t6('Mitspieler zu Spielbeginn', 'Lobby players at game start', '게임 시작 시 로비 플레이어', '开局时的房间玩家', 'Jugadores de la sala al inicio', 'Joueurs du lobby en début de partie'),
-  'companion.settings.langAuto': t6('Automatisch', 'Automatic', '자동', '自动', 'Automático', 'Automatique'),
   'companion.track.now': t6('dran', 'now', '현재', '当前', 'ahora', 'maintenant'),
   'companion.track.ago': t6('vor {n}', '{n} ago', '{n}라운드 전', '{n}轮前', 'hace {n}', 'il y a {n}'),
   'companion.track.never': t6('noch nicht', 'not yet', '아직', '尚未', 'aún no', 'pas encore'),

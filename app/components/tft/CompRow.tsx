@@ -96,6 +96,7 @@ export default function CompRow({
   onCompareToggle = null,
   roles: rolesProp = null,
   boardToggle = null,
+  onGuide,
 }: {
   comp: Comp;
   rank: number;
@@ -126,6 +127,9 @@ export default function CompRow({
   // CompFamilyRow unter der Zeile — ausserhalb des role=link-Containers.
   // onPrefetch laedt beim Zeigen/Fokussieren vor (150 ms Verzoegerung).
   boardToggle?: { expanded: boolean; onToggle: () => void; onPrefetch?: () => void; controlsId: string } | null;
+  // Meldet die MetaTFT-Comp dieser Zeile (null = keine), sobald die
+  // Anleitungen geladen sind — das Aufstellungsbrett nagelt sie fest.
+  onGuide?: (guideId: string | null) => void;
 }) {
   const { t } = useI18n();
   const router = useRouter();
@@ -187,6 +191,10 @@ export default function CompRow({
   const guideMatch = parts
     ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, (comp.typicalUnits || []).map(u => u.characterId), named)
     : null;
+  const guideSlug = guideBundle?.bundle ? guideMatch?.slug ?? null : undefined;
+  useEffect(() => {
+    if (onGuide && guideSlug !== undefined) onGuide(guideSlug);
+  }, [onGuide, guideSlug]);
   // „(mit X)" nur, wenn X nicht schon im Namen steht.
   const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;

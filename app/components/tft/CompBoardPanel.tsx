@@ -24,6 +24,8 @@ export interface CompBoardParams {
   days: number;
   region: string;
   carries: string[];
+  /** MetaTFT-Comp der Comp-Zeile, null = keine; undefined = noch unbekannt (Route ordnet selbst zu). */
+  guide?: string | null;
 }
 
 type BoardData = CompBoardResponse | null;
@@ -39,6 +41,7 @@ function boardUrl(p: CompBoardParams): string {
     slug: p.slug, patch: p.patch, bucket: p.bucket, days: String(p.days), region: p.region,
   });
   if (p.carries.length > 0) qs.set('carries', p.carries.join(','));
+  if (p.guide !== undefined) qs.set('guide', p.guide ?? 'none');
   return `/api/tft/comps/board?${qs.toString()}`;
 }
 

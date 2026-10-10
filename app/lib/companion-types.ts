@@ -163,6 +163,34 @@ export interface CompanionCompDetail {
    * und 7/8/9, je ab 200 Spielen; ab 0.6). Fehlt = nur `board`.
    */
   boardsByPlayerLevel?: Record<string, CompanionBoardCell[]>;
+  /** Positioning wie auf der Homepage (ab 0.8.1, fehlt in alten CDN-Antworten). */
+  positioning?: CompanionPositioning;
+  /** Zugeordnete MetaTFT-Comp, null = keine (ab 0.8.1). */
+  guideId?: string | null;
+}
+
+/** Levelplan der MetaTFT-Comp ("lvl 7" = reroll 7, "Fast 8", "Standard"). */
+export type CompanionLevelling =
+  | { kind: 'reroll'; level: number }
+  | { kind: 'fast'; level: number }
+  | { kind: 'standard' };
+
+/**
+ * Positioning einer Comp wie auf der Homepage (compPositioning in
+ * app/lib/tft-comp-board.ts) — Comp-Liste der Seite und App.
+ */
+export interface CompanionPositioning {
+  /** Stufen 7-9 mit eigenem Brett (ab 50 Spielen), aufsteigend; share = Anteil der Spiele, die auf der Stufe enden. */
+  levels: Array<{ level: number; share: number; games: number; top4Rate: number }>;
+  boardsByPlayerLevel: Record<string, CompanionBoardCell[]>;
+  /** Startreiter: Stufe mit den meisten Top-4-Spielen. */
+  defaultLevel: number | null;
+  /** MetaTFT-Kuerzel der Strategie, roh. */
+  levelling: string | null;
+  /** Dasselbe zerlegt (parseLevelling). */
+  plan: CompanionLevelling | null;
+  /** Bedeutende Levelschritte (significantLevelSteps), leer unter zwei Schritten. */
+  levelTiming: Array<{ level: number; stage: string }>;
 }
 
 export interface CompanionLobbyPlayer {

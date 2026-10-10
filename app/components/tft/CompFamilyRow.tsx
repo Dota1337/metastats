@@ -81,6 +81,9 @@ export default function CompFamilyRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
+  // MetaTFT-Comp der Hauptzeile (CompRow meldet sie); undefined bis die
+  // Anleitungen geladen sind, dann ordnet die Board-Route selbst zu.
+  const [guide, setGuide] = useState<string | null | undefined>(undefined);
   const boardId = `comp-board-${useId().replace(/:/g, '')}`;
   const familyRoles = { carries: family.carries, tanks: family.tanks, itemCarriers: family.itemCarriers };
 
@@ -91,8 +94,8 @@ export default function CompFamilyRow({
   const boardParams = useMemo<CompBoardParams>(() => {
     const key = [...family.variants].sort((a, b) => (b.games || 0) - (a.games || 0))[0] ?? family.mainComp;
     const carries = [...new Set([...(family.carries || []), ...(family.itemCarriers || [])])].filter(Boolean).slice(0, 6);
-    return { slug: key.slug, patch, bucket, days: days ?? 3, region, carries };
-  }, [family.variants, family.mainComp, family.carries, family.itemCarriers, patch, bucket, days, region]);
+    return { slug: key.slug, patch, bucket, days: days ?? 3, region, carries, guide };
+  }, [family.variants, family.mainComp, family.carries, family.itemCarriers, patch, bucket, days, region, guide]);
   const boardToggle = {
     expanded: boardOpen,
     onToggle: () => setBoardOpen(o => !o),
@@ -117,6 +120,7 @@ export default function CompFamilyRow({
           onCompareToggle={onCompareToggle}
           roles={familyRoles}
           boardToggle={boardToggle}
+          onGuide={setGuide}
         />
         {boardPanel}
       </div>
@@ -152,6 +156,7 @@ export default function CompFamilyRow({
         onCompareToggle={onCompareToggle}
         roles={familyRoles}
         boardToggle={boardToggle}
+        onGuide={setGuide}
       />
       {boardPanel}
 

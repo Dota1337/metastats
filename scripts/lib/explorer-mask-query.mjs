@@ -200,35 +200,47 @@ async function headFromG(conn) {
   };
 }
 
-// Schluessel je Partie aus einer Masken-Tabelle: key/sub/sub2 wie keySelect,
-// mc = Boards mit dem Schluessel, mc3 = davon mit hoechstem Stern >= 3 (nur
-// Units ohne Sterne-Split, fuer den 3★-Anteil). Sterne und Uebercap per
-// zweier gleich langer unnest (DuckDB legt sie zeilenweise nebeneinander);
-// der letzte Eintrag ist die Summenzeile (Sterne) bzw. Uebercap leer.
+// Schluessel je Partie aus einer Masken-Tabelle, schon mit der Partie-Maske f
+// verundet. sel = Spalten von k (cols = ihre Namen), any = Zeile traegt etwas
+// bei, expand = aus den gezaehlten Zeilen key/sub/sub2 wie keySelect,
+// hit = Boards mit dem Schluessel, hit3 = davon mit hoechstem Stern >= 3 (nur
+// Units ohne Sterne-Split, fuer den 3★-Anteil). Sterne und Uebercap werden
+// erst NACH dem Zaehlen per zweier gleich langer unnest entfaltet (DuckDB legt
+// sie zeilenweise nebeneinander) — vorher verfuenffachten sie die Zeilen, die
+// gezaehlt werden (Amumu, alle Patches, Sterne: > 30 s im Dienst). Der letzte
+// Eintrag ist die Summenzeile (Sterne) bzw. Uebercap leer.
 function maskKeys(q) {
-  const col = (c) => `m.${c}`;
-  const or = (cols) => `(${cols.map(col).join(' | ')})`;
+  const or = (xs) => `(${xs.join(' | ')})`;
+  const masked = (cols) => cols.map((c, i) => `(m.${c} & gg.f) AS x${i}`);
+  const xs = (cols) => cols.map((_, i) => `x${i}`);
+  const plain = (key, sub, hit, hit3 = '0::UTINYINT') => ({
+    sel: [`${key} AS key`, `${sub} AS sub`, `(${hit} & gg.f) AS hit`, `(${hit3} & gg.f) AS hit3`],
+    cols: ['key', 'sub', 'hit', 'hit3'],
+    any: 'hit',
+    expand: 'key, sub, NULL::INTEGER AS sub2, hit, hit3',
+  });
   const um = MASK_BIT_COLS.mask_um;
   const ut = MASK_BIT_COLS.mask_ut;
-  const none = '0::UTINYINT AS mc3';
+  const m = (cols) => or(cols.map(c => `m.${c}`));
   if (q.tab === 'units' && q.split === 'star') {
-    return { from: 'mask_um', sel: `m.unit AS key, unnest([${STAR_VALUES.join(', ')}, NULL]::INTEGER[]) AS sub, NULL::INTEGER AS sub2,
-      unnest([${um.map(col).join(', ')}, ${or(um)}]) AS mc, ${none}` };
+    return {
+      from: 'mask_um', sel: ['m.unit AS key', ...masked(um)], cols: ['key', ...xs(um)], any: or(xs(um)),
+      expand: `key, unnest([${STAR_VALUES.join(', ')}, NULL]::INTEGER[]) AS sub, NULL::INTEGER AS sub2,
+        unnest([${xs(um).join(', ')}, ${or(xs(um))}]) AS hit, 0::UTINYINT AS hit3`,
+    };
   }
   if (q.tab === 'units') {
-    const hi = STAR_VALUES.filter(s => s >= 3).map(s => `m${s}`);
-    return { from: 'mask_um', sel: `m.unit AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2, ${or(um)} AS mc, ${or(hi)} AS mc3` };
+    return { from: 'mask_um', ...plain('m.unit', 'NULL::INTEGER', m(um), m(STAR_VALUES.filter(s => s >= 3).map(s => `m${s}`))) };
   }
-  if (q.tab === 'items') {
-    return { from: 'mask_ui', sel: `m.item AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2, m.m AS mc, ${none}` };
-  }
+  if (q.tab === 'items') return { from: 'mask_ui', ...plain('m.item', 'NULL::INTEGER', 'm.m') };
   if (q.tab === 'traits' && q.split === 'over') {
-    return { from: 'mask_ut', sel: `m.trait AS key, m.lvl::INTEGER AS sub, unnest([${OVER_VALUES.join(', ')}, NULL]::INTEGER[]) AS sub2,
-      unnest([${ut.map(col).join(', ')}]) AS mc, ${none}` };
+    return {
+      from: 'mask_ut', sel: ['m.trait AS key', 'm.lvl::INTEGER AS sub', ...masked(ut)], cols: ['key', 'sub', ...xs(ut)], any: or(xs(ut)),
+      expand: `key, sub, unnest([${OVER_VALUES.join(', ')}, NULL]::INTEGER[]) AS sub2,
+        unnest([${xs(ut).join(', ')}]) AS hit, 0::UTINYINT AS hit3`,
+    };
   }
-  if (q.tab === 'traits') {
-    return { from: 'mask_ut', sel: `m.trait AS key, m.lvl::INTEGER AS sub, NULL::INTEGER AS sub2, ${or(ut)} AS mc, ${none}` };
-  }
+  if (q.tab === 'traits') return { from: 'mask_ut', ...plain('m.trait', 'm.lvl::INTEGER', m(ut)) };
   return null;
 }
 
@@ -238,20 +250,22 @@ function maskKeys(q) {
 // summieren: alle Werte einer Partie haengen nur an diesen Masken, die Summen
 // bleiben also exakt; es gibt aber weit weniger Kombinationen als Partien
 // (Rang Diamond, alle Patches: 19,2 → 10,8 s, Amumu: 23,1 → 13,8 s, Zeilen
-// identisch). k entfaltet vorher die Sterne-/Uebercap-Listen, damit GROUP BY
-// auf fertigen Spalten laeuft.
+// identisch). Sterne/Uebercap entfaltet kx erst nach dem Zaehlen; gleiche
+// (key, sub, sub2, hit, f) aus verschiedenen kc-Zeilen stoeren nicht, die
+// Summen sind linear in c.
 async function maskRows(conn, q, days, out, filtered, keys) {
   if (filtered.n === 0) { out.rows = []; out.refGames = 0; return; }
+  const cols = keys.cols.join(', ');
   const rows = (await conn.runAndReadAll(`
     WITH gg AS (SELECT mid, f FROM g WHERE f <> 0),
-    k AS (SELECT ${keys.sel}, gg.f FROM ${keys.from} m JOIN gg USING (mid) WHERE ${dayRange(days, 'm.day')}),
-    kc AS (SELECT key, sub, sub2, (mc & f) AS hit, (mc3 & f) AS hit3, f, count(*) AS c
-           FROM k WHERE (mc & f) <> 0 GROUP BY ALL),
+    k AS (SELECT ${keys.sel.join(', ')}, gg.f FROM ${keys.from} m JOIN gg USING (mid) WHERE ${dayRange(days, 'm.day')}),
+    kc AS (SELECT ${cols}, f, count(*) AS c FROM k WHERE ${keys.any} <> 0 GROUP BY ${cols}, f),
+    kx AS (SELECT ${keys.expand}, f, c FROM kc),
     kg AS (SELECT key, sub, sub2, c, bit_count(f)::INTEGER AS cn, ${ps('f')}::INTEGER AS cs,
                   bit_count(hit)::INTEGER AS n1, ${ps('hit')}::INTEGER AS s1,
                   bit_count(hit & ${MASK_TOP4})::INTEGER AS t4, bit_count(hit & ${MASK_TOP1})::INTEGER AS t1,
                   bit_count(hit3)::INTEGER AS n3
-           FROM kc)
+           FROM kx WHERE hit <> 0)
     SELECT key, sub, sub2, sum(c)::DOUBLE AS m1, sum(c * n1)::DOUBLE AS n1, sum(c * s1)::DOUBLE AS s1,
            sum(c * t4)::DOUBLE AS t4, sum(c * t1)::DOUBLE AS t1,
            sum(c * s1 * s1)::DOUBLE AS ss11, sum(c * s1 * n1)::DOUBLE AS sn11, sum(c * n1 * n1)::DOUBLE AS nn11,

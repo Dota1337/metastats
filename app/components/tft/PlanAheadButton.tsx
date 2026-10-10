@@ -61,8 +61,9 @@ export default function PlanAheadButton({
     ? t('tft.planAhead.failed')
     : t('tft.planAhead.copy');
 
-  // Bei copied: kurzes grünes Checkmark; bei failed rotes ×; sonst Listen-Icon
-  // (drei stacked bars wie ein in-game team-planner cheatsheet aussieht).
+  // Bei copied: kurzes grünes Checkmark; bei failed rotes ×; sonst das
+  // uebliche Kopier-Zeichen (zwei versetzte Blaetter) — User 2026-10-10:
+  // „Copy Team" mit einem Zeichen, das sofort als Kopieren erkennbar ist.
   return (
     <button
       type="button"
@@ -79,11 +80,9 @@ export default function PlanAheadButton({
       } ${className}`}
     >
       {status === 'copied' ? '✓' : status === 'failed' ? '✕' : (
-        // Cheatsheet-Icon: drei horizontale Linien wie der TFT-Sidebar-Plan
-        <svg width={iconPx} height={iconPx} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-          <line x1="2" y1="3" x2="10" y2="3" />
-          <line x1="2" y1="6" x2="10" y2="6" />
-          <line x1="2" y1="9" x2="7" y2="9" />
+        <svg width={iconPx} height={iconPx} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
         </svg>
       )}
     </button>

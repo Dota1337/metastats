@@ -288,7 +288,7 @@ const translations = {
   'tft.cost.mid': t6('Mid (3)', 'Mid (3)', '\uC911\uAC04 (3)', '\u4E2D\u8D39 (3)', 'Mid (3)', 'Mid (3)'),
   'tft.cost.fast8': t6('Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)', 'Fast 8/9 (4-5)'),
   // In-Game Plan-Ahead Code Export (Riot Team Planner)
-  'tft.planAhead.copy': t6('Plan-Ahead-Code', 'Plan Ahead code', 'Plan Ahead \uCF54\uB4DC', 'Plan Ahead \u4EE3\u7801', 'C\u00F3digo Plan Ahead', 'Code Plan Ahead'),
+  'tft.planAhead.copy': t6('Team kopieren', 'Copy Team', '\uD300 \uBCF5\uC0AC', '\u590D\u5236\u9635\u5BB9', 'Copiar equipo', 'Copier l\u2019\u00E9quipe'),
   'tft.planAhead.copied': t6('Kopiert!', 'Copied!', '\uBCF5\uC0AC\uB428!', '\u5DF2\u590D\u5236!', '\u00A1Copiado!', 'Copi\u00E9 !'),
   'tft.planAhead.failed': t6('Fehlgeschlagen', 'Failed', '\uC2E4\uD328', '\u5931\u8D25', 'Fall\u00F3', '\u00C9chec'),
   'tft.planAhead.export': t6('In-Game-Code exportieren', 'Export in-game code', '\uC778\uAC8C\uC784 \uCF54\uB4DC \uB0B4\uBCF4\uB0B4\uAE30', '\u5BFC\u51FA\u6E38\u620F\u5185\u4EE3\u7801', 'Exportar c\u00F3digo en juego', 'Exporter code in-game'),

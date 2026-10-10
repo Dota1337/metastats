@@ -15,7 +15,7 @@ import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, type CompRoles } from '../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, type CompRoles } from '../../lib/tft-comp-roles';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
@@ -434,7 +434,7 @@ export default function CompRow({
           className="col-span-full order-last sm:col-span-1 sm:order-none"
           units={typicalUnits}
           kinds={comp.coreFlex}
-          forceCore={named}
+          forceCore={forcedCoreIds(typicalUnits, roles, named, isComponent)}
           renderUnit={u => {
             const ch = findChampion(assets, u.characterId);
             const isCarry = carrySet.has(u.characterId);

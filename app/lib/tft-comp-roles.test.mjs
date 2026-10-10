@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   computeRoles, namedCarries, shownItems, sumUnits, resolveFamilies, roleItemSets, componentCheckFromItems,
-  coreFlexKind, coreFlexMap, unitPresence, splitCoreFlex,
+  coreFlexKind, coreFlexMap, unitPresence, splitCoreFlex, forcedCoreIds,
 } from './tft-comp-roles.ts';
 
 const opts = { set: 18, isComponent: (a) => a === 'DA_BFSword' };
@@ -181,4 +181,23 @@ test('splitCoreFlex ohne Einteilung: keine Rahmen, auch nicht fuer genannte Carr
   for (const kinds of [undefined, null, {}]) {
     assert.deepEqual(splitCoreFlex(units, kinds, ['A']), { core: [], flex: [], rest: units });
   }
+});
+
+test('forcedCoreIds: genannte Carries, Units mit gezeigten Items und 3★-Units — wie die Kachel', () => {
+  const units = [
+    u('Azir', 100, { DA_JeweledGauntlet: 90 }),
+    u('Rammus', 46, { DA_Warmogs: 40 }, { star3Games: 36 }),          // Items + 3★
+    u('Hecarim', 40, { DA_Warmogs: 2 }, { star3Games: 22 }),          // 3★ (55 %), keine gezeigten Items
+    u('Yorick', 44, { DA_Warmogs: 1 }, { star3Games: 0 }),            // weder noch
+    u('Teemo', 40, { DA_BFSword: 30 }, { star3Games: 21 }),           // 52,5 % unter 55 %, nur Komponente
+    u('Kobuko', 4, {}, { star3Games: 4 }),                            // unter 5 Spielen kein Abzeichen
+  ];
+  const roles = { carries: ['Azir'], tanks: [], itemCarriers: ['Azir', 'Rammus', 'Teemo'] };
+  assert.deepEqual(forcedCoreIds(units, roles, ['Azir'], opts.isComponent), ['Azir', 'Rammus', 'Hecarim']);
+  // Rahmen und Kachel nutzen dieselbe Funktion: gezeigte Items => Core
+  for (const x of units) {
+    const marked = shownItems(x, roles, opts.isComponent, 3).length > 0 || ['Rammus', 'Hecarim'].includes(x.characterId);
+    if (marked) assert.ok(forcedCoreIds(units, roles, [], opts.isComponent).includes(x.characterId), x.characterId);
+  }
+  assert.deepEqual(forcedCoreIds(null, roles, ['Azir']), ['Azir']);
 });

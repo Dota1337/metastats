@@ -9,6 +9,7 @@
 // auf der falschen.
 
 import { damageCarryItemsForSet, defensiveItemsForSet } from './tft-item-classes';
+import { isThreeStarUnit } from './tft-cluster';
 
 export const CARRY_MIN_GAMES = 30;
 export const CARRY_MIN_PRESENCE = 0.5;   // Anteil der Comp-Spiele mit dieser Unit
@@ -227,6 +228,26 @@ export function splitCoreFlex<T extends { characterId: string }>(
     (k ? out[k] : out.rest).push(u);
   }
   return out;
+}
+
+// Wer unabhaengig vom Anteil in Core steht (User 2026-10-10: Rammus mit Items
+// und 3★ Hecarim im Flex-Rahmen sind falsch): genannte Carries, Units mit
+// gezeigten Items und Units mit 3★-Abzeichen. Items und Abzeichen aus
+// denselben Funktionen wie die Kachel (shownItems, isThreeStarUnit) — der
+// Rahmen widerspricht so nie dem, was die Kachel zeigt. Das Abzeichen kippt
+// mit der 55-%-Schwelle je Filter, der Rahmen kippt mit.
+export function forcedCoreIds(
+  units: ReadonlyArray<RoleUnit & { star3Games?: unknown }> | null | undefined,
+  roles: CompRoles,
+  named: readonly string[],
+  isComponent: IsComponent = () => false,
+): string[] {
+  const out = new Set(named);
+  for (const u of units || []) {
+    if (!u?.characterId) continue;
+    if (shownItems(u, roles, isComponent, 1).length > 0 || isThreeStarUnit(u)) out.add(u.characterId);
+  }
+  return [...out];
 }
 
 // Units mehrerer Varianten zu einer Family-Sicht aufsummieren.

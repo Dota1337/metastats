@@ -52,7 +52,7 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../l
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey, compTraitFamilyKey } from '../../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, unitPresence, splitCoreFlex, type RoleUnit } from '../../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, unitPresence, splitCoreFlex, forcedCoreIds, type RoleUnit } from '../../../lib/tft-comp-roles';
 import { coreFlexFrame } from '../../../lib/tft-ui';
 import CoreFlexGroups from '../../../components/tft/CoreFlexGroups';
 
@@ -175,11 +175,15 @@ export default function TftCompDetailPage() {
 
   // Carries an den Items erkannt (tft-comp-roles), wie Liste und Kopfzeile —
   // der Key-Carry lag bei Zwei-Carry-Comps oft auf der falschen Unit.
-  const namedCompCarries: string[] = comp
-    ? namedCarries(
-        computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent: componentCheckFromItems(assets?.items), keyCarry: parseClusterKey(comp.clusterKey)?.carry }),
-        parseClusterKey(comp.clusterKey)?.carry,
-      )
+  const compIsComponent = componentCheckFromItems(assets?.items);
+  const compRoles = comp
+    ? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent: compIsComponent, keyCarry: parseClusterKey(comp.clusterKey)?.carry })
+    : null;
+  const namedCompCarries: string[] = compRoles ? namedCarries(compRoles, parseClusterKey(comp.clusterKey)?.carry) : [];
+  // Core-Rahmen der Comp-DNA wie in der Liste: genannte Carries, Item-Traeger,
+  // 3★-Units. star3Games kommt summiert aus der API (nicht ueber sumUnits).
+  const dnaForceCore: string[] = compRoles
+    ? forcedCoreIds(comp.typicalUnits, compRoles, namedCompCarries, compIsComponent)
     : [];
   const leadCarry: string | null = namedCompCarries[0] || null;
 
@@ -700,7 +704,7 @@ export default function TftCompDetailPage() {
                   <BoardCompositionPanel
                     units={comp.typicalUnits || []}
                     games={comp.games || 0}
-                    named={namedCompCarries}
+                    forceCore={dnaForceCore}
                     assets={assets}
                     t={t as (k: string) => string}
                   />
@@ -1111,17 +1115,18 @@ function DeathKpi({ label, value, sub, accent }: { label: string; value: string;
 // (CoreFlexGroups), innen die Kostenfarbe. Einteilung aus typicalUnits/games
 // dieser Ansicht (Familie bzw. ?variant=exact), gemessen an Spielen mit der
 // Unit — nicht am Server-Feld boardComposition, das Kopien zaehlt. Genannte
-// Carries stehen in Core; die Prozentzahl bleibt der echte Anteil.
+// Carries, Item-Traeger und 3★-Units (forceCore, forcedCoreIds) stehen in Core;
+// die Prozentzahl bleibt der echte Anteil.
 function BoardCompositionPanel({
   units,
   games,
-  named,
+  forceCore,
   assets,
   t,
 }: {
   units: RoleUnit[];
   games: number;
-  named: string[];
+  forceCore: string[];
   assets: TftAssetsBundle | null;
   t: (k: string) => string;
 }) {
@@ -1129,7 +1134,7 @@ function BoardCompositionPanel({
   const slots = units
     .filter(u => kinds[u.characterId])
     .map(u => ({ characterId: u.characterId, pct: Math.round((unitPresence(u, games) ?? 0) * 100) }));
-  const groups = splitCoreFlex(slots, kinds, named);
+  const groups = splitCoreFlex(slots, kinds, forceCore);
   const kindOf = (cid: string) => (groups.core.some(s => s.characterId === cid) ? 'core' : 'flex');
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3 mb-3">
@@ -1147,7 +1152,7 @@ function BoardCompositionPanel({
       <CoreFlexGroups
         units={slots}
         kinds={kinds}
-        forceCore={named}
+        forceCore={forceCore}
         renderUnit={s => {
           const ch = findChampion(assets, s.characterId);
           const url = tftChampionTileUrl(assets, ch);

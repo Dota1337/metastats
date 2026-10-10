@@ -16,7 +16,7 @@ import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
 import {
   COMPANION_API_VERSION,
-  type CompanionComp, type CompanionCompUnit, type CompanionLobbyPlayer,
+  type CompanionComp, type CompanionCompUnit, type CompanionLobbyEntry, type CompanionLobbyPlayer,
   type CompanionLookups, type CompanionMatch, type CompanionStats, type CompanionVs,
 } from './companion-types';
 
@@ -333,4 +333,49 @@ export function toCompanionMatch(m: RawMatch, puuid: string, opts: { lobby?: boo
       }));
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Mitspieler der laufenden Partie (/api/companion/v1/lobby, ab 0.8).
+
+export interface LobbyAccount {
+  puuid: string; tagLine: string; region: string | null;
+  tier: string | null; division: string | null; lp: number | null;
+}
+
+/**
+ * Konto zu Name#Tag aus den Treffern der exakten Namenssuche. Riot-IDs sind
+ * weltweit eindeutig; mehrere Treffer mit gleichem Tag sind alte Eintraege.
+ * Vorrang hat die Region der Partie, sonst die Reihenfolge der Suche.
+ */
+export function pickLobbyAccount<T extends LobbyAccount>(hits: T[], tag: string, region: string | null): T | null {
+  const norm = (s: string) => s.normalize('NFKC').trim().toLowerCase();
+  const same = hits.filter(h => norm(h.tagLine) === norm(tag));
+  const r = region ? region.toLowerCase() : null;
+  return same.find(h => r != null && h.region === r) ?? same[0] ?? null;
+}
+
+/** Eintrag je Mitspieler: Rang, Platzierungen (neueste zuerst) und die haeufigsten Carries. */
+export function toLobbyEntry(
+  name: string,
+  a: LobbyAccount | null,
+  games: Array<{ placement: number; carry: string | null }>,
+  maxCarries = 3,
+): CompanionLobbyEntry {
+  const counts = new Map<string, number>();
+  for (const g of games) if (g.carry) counts.set(g.carry, (counts.get(g.carry) ?? 0) + 1);
+  // Gleichstand: zuerst gespielt = zuletzt gespielt (games ist neueste zuerst).
+  const carries = [...counts.entries()]
+    .sort((x, y) => y[1] - x[1])
+    .slice(0, maxCarries)
+    .map(([unit, n]) => ({ unit, games: n }));
+  return {
+    name,
+    found: a != null,
+    tier: a?.tier ?? null,
+    division: a?.division ?? null,
+    lp: a?.lp ?? null,
+    recent: games.map(g => g.placement),
+    carries,
+  };
 }

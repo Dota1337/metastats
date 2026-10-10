@@ -2,6 +2,8 @@
 // (Normal + Ranked), je Spiel die eigene Zeile und die ganze Lobby (alle 8
 // Spieler mit Platz, Stufe, Traits, Units und Items). Weiterblaettern ueber
 // ?start=. Nutzt die Spieler- und Match-Routen der Seite im selben Prozess.
+// lobby=0 (ab 0.8, Live-Spalte): ohne Mitspieler und ohne deren Namen —
+// spart je Spiel bis zu 8 Riot-Abrufe.
 import { NextRequest } from 'next/server';
 import { GET as summonerGET } from '../../../tft/summoner/route';
 import { GET as matchesGET } from '../../../tft/matches/route';
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
   if (!/^[^#]{1,32}#[^#]{1,8}$/.test(name)) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'bad_name' }, { status: 400, ...NO_STORE });
   }
+  const withLobby = sp.get('lobby') !== '0';
   const startRaw = parseInt(sp.get('start') || '0', 10);
   const start = Number.isFinite(startRaw) ? Math.max(0, Math.min(110, startRaw)) : 0;
   const origin = request.nextUrl.origin;
@@ -55,12 +58,13 @@ export async function GET(request: NextRequest) {
     const mUrl = new URL('/api/tft/matches', origin);
     mUrl.searchParams.set('ids', ids.join(','));
     mUrl.searchParams.set('queue', 'all');
+    if (!withLobby) mUrl.searchParams.set('riotIds', '0');
     if (s.region) mUrl.searchParams.set('region', s.region);
     const mRes = await matchesGET(new NextRequest(mUrl));
     if (mRes.ok) {
       const m = await mRes.json().catch(() => null) as { matches?: Parameters<typeof toCompanionMatch>[0][] } | null;
       matches = (m?.matches || [])
-        .map(x => toCompanionMatch(x, puuid, { lobby: true }))
+        .map(x => toCompanionMatch(x, puuid, { lobby: withLobby }))
         .filter((x): x is CompanionMatch => x != null && x.queue != null && HISTORY_QUEUES.has(x.queue))
         .sort((a, b) => b.at - a.at);
     }

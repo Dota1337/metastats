@@ -21,6 +21,8 @@ import {
   toCompanionLookups,
   unitsAtPlayerLevel,
   toCompanionMatch,
+  pickLobbyAccount,
+  toLobbyEntry,
   COMPANION_CORS_HEADERS,
   SITE_ORIGIN,
 } from './companion-api.ts';
@@ -192,4 +194,31 @@ test('unitsAtPlayerLevel: die haeufigsten Units auf der Stufe, hoechstens so vie
   assert.deepEqual(unitsAtPlayerLevel(units, 7), ['B', 'A', 'D']);
   assert.deepEqual(unitsAtPlayerLevel(units, 8), ['C', 'A']);
   assert.deepEqual(unitsAtPlayerLevel(units.concat(Array.from({ length: 10 }, (_, i) => ({ characterId: `X${i}`, levelGames: { 5: i + 1 } }))), 5).length, 5);
+});
+
+test('pickLobbyAccount: Tag ohne Gross/Klein, Region der Partie zuerst, sonst erster Treffer', () => {
+  const hits = [
+    { puuid: 'a', tagLine: 'EUW', region: 'na1', tier: 'GOLD', division: 'I', lp: 10 },
+    { puuid: 'b', tagLine: 'euw', region: 'euw1', tier: null, division: null, lp: null },
+    { puuid: 'c', tagLine: 'KR1', region: 'kr', tier: null, division: null, lp: null },
+  ];
+  assert.equal(pickLobbyAccount(hits, 'EUW', 'EUW1')?.puuid, 'b');
+  assert.equal(pickLobbyAccount(hits, 'euw', null)?.puuid, 'a');
+  assert.equal(pickLobbyAccount(hits, 'EUW', 'kr')?.puuid, 'a');
+  assert.equal(pickLobbyAccount(hits, 'TR1', 'tr1'), null);
+});
+
+test('toLobbyEntry: Rang, Platzierungen und haeufigste Carries; unbekannt = leer', () => {
+  const acc = { puuid: 'a', tagLine: 'EUW', region: 'euw1', tier: 'MASTER', division: 'I', lp: 120 };
+  const games = [
+    { placement: 1, carry: 'X' }, { placement: 5, carry: 'Y' }, { placement: 2, carry: 'X' },
+    { placement: 8, carry: null }, { placement: 3, carry: 'Z' }, { placement: 4, carry: 'W' },
+  ];
+  const e = toLobbyEntry('A#EUW', acc, games);
+  assert.deepEqual(e.recent, [1, 5, 2, 8, 3, 4]);
+  assert.deepEqual(e.carries, [{ unit: 'X', games: 2 }, { unit: 'Y', games: 1 }, { unit: 'Z', games: 1 }]);
+  assert.equal(e.found, true);
+  assert.equal(e.tier, 'MASTER');
+  const none = toLobbyEntry('B#EUW', null, []);
+  assert.deepEqual(none, { name: 'B#EUW', found: false, tier: null, division: null, lp: null, recent: [], carries: [] });
 });

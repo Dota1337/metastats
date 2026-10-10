@@ -173,3 +173,38 @@ export interface CompanionLobbyPlayer {
   traits: Array<{ id: string; units: number; style: number }>;
   units: Array<{ id: string; star: number; items: string[] }>;
 }
+
+// ---------------------------------------------------------------------------
+// Ab Companion 0.8: Mitspieler der laufenden Partie und Namenssuche.
+
+/** Ein Mitspieler aus unserer Datenbank (keine Riot-Abrufe). */
+export interface CompanionLobbyEntry {
+  name: string;            // "Name#Tag" wie angefragt
+  found: boolean;          // im Namensverzeichnis gefunden
+  tier: string | null;     // Rang, nur wenn in den letzten 14 Tagen gesehen
+  division: string | null;
+  lp: number | null;
+  /** Letzte Platzierungen, neueste zuerst (bis 10). */
+  recent: number[];
+  /** Haeufigste Carries der letzten Spiele (bis 5, auch Nicht-Champions; die App filtert). */
+  carries: Array<{ unit: string; games: number }>;
+}
+
+export interface CompanionLobbyResponse {
+  v: number;
+  set: number | null;
+  players: CompanionLobbyEntry[];
+}
+
+export interface CompanionSearchHit {
+  name: string;            // "Name#Tag"
+  region: string;          // Plattform, z. B. euw1
+  tier: string | null;
+  division: string | null;
+  lp: number | null;
+}
+
+export interface CompanionSearchResponse {
+  v: number;
+  hits: CompanionSearchHit[];
+}

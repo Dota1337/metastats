@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
   const start = parseInt(searchParams.get('start') || '0', 10);
   const count = Math.min(parseInt(searchParams.get('count') || '10', 10), 30);
   const queueOverride = searchParams.get('queue');
+  // riotIds=0: Namen der Mitspieler nicht aufloesen (bis zu 8 Riot-Abrufe je
+  // Spiel). Nutzt die Overwolf-App fuer das eigene Profil ohne Lobby.
+  const resolveIds = searchParams.get('riotIds') !== '0';
 
   let ids: string[] = [];
   if (idsParam) {
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
   // partial failures (rate limit on individual lookups) by leaving the field
   // null for participants we couldn't resolve.
   const allPuuids = new Set<string>();
-  for (const s of summaries) for (const p of s.participants) allPuuids.add(p.puuid);
+  if (resolveIds) for (const s of summaries) for (const p of s.participants) allPuuids.add(p.puuid);
   const idMap: Record<string, string> = {};
   await Promise.all([...allPuuids].map(async pp => {
     try {

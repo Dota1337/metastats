@@ -367,6 +367,12 @@ export async function callRpc<T = any>(
       const body = await res.text();
       throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`);
     }
+    // PostgREST kappt Tabellen-Antworten bei 1000 Zeilen und meldet das mit
+    // 206 + Content-Range (gemessen an get_tft_comp_pairs: 0-999/10159). Die
+    // Antwort bleibt gueltig, aber unvollstaendig — nur melden.
+    if (res.status === 206) {
+      console.warn(`[rpc] ${fn} truncated: content-range ${res.headers.get('content-range') ?? '?'}`);
+    }
     return (await res.json()) as T;
   } catch (e) {
     if ((e as any)?.name === 'AbortError') {

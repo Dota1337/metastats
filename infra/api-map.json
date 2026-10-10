@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 87,
+    "routes": 88,
     "groups": 30,
-    "tables": 36,
-    "rpcs": 30,
+    "tables": 37,
+    "rpcs": 31,
     "files": 14,
-    "edges": 525,
+    "edges": 536,
     "unused": 7,
     "unresolved": 1
   },
@@ -30,7 +30,7 @@
     },
     {
       "name": "tft/comps",
-      "count": 7
+      "count": 8
     },
     {
       "name": "internal",
@@ -252,9 +252,11 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/i18n.tsx",
+        "app/lib/snapshot-lookup.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-comp-matchups-server.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-supabase-reader.ts",
@@ -805,6 +807,7 @@
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-comp-matchups-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -874,6 +877,25 @@
       "used": true,
       "usedBy": [
         "app/tft/comps/community/page.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/tft/comps/duel",
+      "kind": "route",
+      "label": "/api/tft/comps/duel",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/duel/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-comp-matchups-server.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/tft/comps/compare/page.tsx"
       ]
     },
     {
@@ -1736,6 +1758,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_daily_comp_matchups",
+      "kind": "table",
+      "label": "tft_daily_comp_matchups",
+      "declared": true
+    },
+    {
       "id": "db:tft_daily_comp_outcome",
       "kind": "table",
       "label": "tft_daily_comp_outcome",
@@ -2045,6 +2073,12 @@
       "id": "fn:get_tft_comp_emblems",
       "kind": "rpc",
       "label": "get_tft_comp_emblems",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_matchups",
+      "kind": "rpc",
+      "label": "get_tft_comp_matchups",
       "declared": true
     },
     {
@@ -2378,6 +2412,11 @@
     },
     {
       "from": "api:/api/companion/v1/comps",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
       "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
     },
@@ -2424,6 +2463,11 @@
     {
       "from": "api:/api/companion/v1/comps",
       "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
+      "to": "fn:get_tft_comp_matchups",
       "kind": "calls"
     },
     {
@@ -3213,6 +3257,11 @@
     },
     {
       "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_matchups",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_outcome",
       "kind": "calls"
     },
@@ -3300,6 +3349,41 @@
       "from": "api:/api/tft/comps/community/[id]/upvote",
       "to": "db:tft_public_comps",
       "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "fn:get_tft_comp_matchups",
+      "kind": "calls"
     },
     {
       "from": "api:/api/tft/comps/share",
@@ -4659,6 +4743,11 @@
     {
       "from": "fn:get_tft_comp_emblems",
       "to": "db:tft_daily_comp_outcome",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_matchups",
+      "to": "db:tft_daily_comp_matchups",
       "kind": "reads"
     },
     {

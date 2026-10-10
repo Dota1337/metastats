@@ -12,9 +12,10 @@ import { resolveGuideId, guideStyleFromUnits } from '../../../../lib/tft-comp-gu
 import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import {
-  COMPANION_API_VERSION, EARLY_MIN_GAMES, buildCompanionVs, companionJson, companionPreflight, earlyBoards,
-  toCompanionComp, type CompanionCompsResponse, type CompPairInput,
+  COMPANION_API_VERSION, EARLY_MIN_GAMES, buildCompanionVs, buildCompanionVsFromMatchups, companionJson,
+  companionPreflight, earlyBoards, toCompanionComp, type CompanionCompsResponse, type CompPairInput,
 } from '../../../../lib/companion-api';
+import { fetchCompMatchups } from '../../../../lib/tft-comp-matchups-server';
 
 export const maxDuration = 60;
 
@@ -22,6 +23,39 @@ const NO_STORE = { cdn: 'no-store', browser: 'no-store' };
 
 export function OPTIONS() {
   return companionPreflight();
+}
+
+// Matchups zwischen den gezeigten Comps: dieselben Familien-Duelle je Rang wie
+// die Gegnerlisten der Detailseite. Solange das Fenster keine neuen Tage hat,
+// die alte Paar-Abfrage (ohne Rang, ab 10 Spielen je Sub-Cluster-Paar).
+// Scheitert beides, fehlen nur die Matchups.
+async function companionVs(
+  comps: CompanionCompsResponse['comps'],
+  filtersPromise: ReturnType<typeof resolveFilters>,
+): Promise<ReturnType<typeof buildCompanionVs>> {
+  let f: Awaited<typeof filtersPromise>;
+  try {
+    f = await filtersPromise;
+  } catch (e) {
+    console.warn('[companion/comps] matchups skipped:', (e as Error).message);
+    return {};
+  }
+  const fams = [...new Set(comps.flatMap(c => c.members ?? [c.key]))];
+  try {
+    const m = await fetchCompMatchups(f, fams, fams);
+    if (m.days > 0) return buildCompanionVsFromMatchups(comps, m.rows);
+  } catch (e) {
+    console.warn('[companion/comps] comp_matchups skipped, old pairs:', (e as Error).message);
+  }
+  try {
+    const pairs = await callRpc<CompPairInput[]>('get_tft_comp_pairs', {
+      p_regions: f.regions, p_days: f.days, p_patch: f.patchFilter, p_set: f.setNumber, p_min_games: 10,
+    }, 20000);
+    return buildCompanionVs(comps, pairs);
+  } catch (e) {
+    console.warn('[companion/comps] pairs skipped:', (e as Error).message);
+    return {};
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -38,19 +72,13 @@ export async function GET(request: NextRequest) {
     patch: 'current', bucket, days: String(days), region, bucketAuto: '1', source: 'data',
   }).toString();
 
-  // Matchups: dieselbe Paar-Abfrage wie die Detailseite (ohne Rang, ab 10
-  // Spielen je Sub-Cluster-Paar). Scheitert sie, fehlen nur die Matchups.
-  const pairsPromise = resolveFilters(inner.searchParams)
-    .then(f => callRpc<CompPairInput[]>('get_tft_comp_pairs', {
-      p_regions: f.regions, p_days: f.days, p_patch: f.patchFilter, p_set: f.setNumber, p_min_games: 10,
-    }, 20000))
-    .catch(e => { console.warn('[companion/comps] pairs skipped:', (e as Error).message); return [] as CompPairInput[]; });
+  const filtersPromise = resolveFilters(inner.searchParams);
+  filtersPromise.catch(() => {});
 
-  const [res, assets, cutoffBundle, pairs] = await Promise.all([
+  const [res, assets, cutoffBundle] = await Promise.all([
     compsGET(new NextRequest(inner)),
     fetch(`${origin}/tft-assets.json`).then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null)).catch(() => null),
     fetch(`${origin}/tft-tier-cutoffs.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
-    pairsPromise,
   ]);
   if (!res.ok) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'comps_unavailable' }, { status: 503, ...NO_STORE });
@@ -77,7 +105,7 @@ export async function GET(request: NextRequest) {
     generatedAt: new Date().toISOString(),
     comps: shown.map(f => toCompanionComp(f, assets, cutoffs)),
   };
-  const vs = buildCompanionVs(out.comps, pairs);
+  const vs = await companionVs(out.comps, filtersPromise);
   for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];
   // Anleitung: dieselbe Zuordnung wie die Comp-Zeile der Seite (am Brett der
   // Zeile). Die App schickt sie ans Detail mit (?guide=), damit Early Game,

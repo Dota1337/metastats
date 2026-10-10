@@ -2788,6 +2788,27 @@ const translations = {
   'tft.compVs.twice': t6('zu zweit', 'with 2', '2\uBA85', '\u4E24\u4EBA', 'con 2', '\u00E0 deux'),
   'tft.compVs.distribution': t6('Platz-Verteilung', 'Placement distribution', '\uB4F1\uC218 \uBD84\uD3EC', '\u540D\u6B21\u5206\u5E03', 'Distribuci\u00F3n de puestos', 'R\u00E9partition des places'),
   'tft.compVs.trend': t6('Verlauf (7 Tage)', 'Trend (7 days)', '\uCD94\uC774 (7\uC77C)', '\u8D70\u52BF\uFF087\u5929\uFF09', 'Tendencia (7 d\u00EDas)', 'Tendance (7 jours)'),
+  // Duell + Gegner (Familien-Duelle je Rang, Migration 0092).
+  'tft.compVs.duel': t6('Direktes Duell', 'Head-to-head', '\uB9DE\uB300\uACB0', '\u76F4\u63A5\u5BF9\u51B3', 'Duelo directo', 'Duel direct'),
+  'tft.compVs.ahead': t6('{p} % vorn', '{p}% ahead', '{p}% \uC55E\uC12C', '{p}% \u9886\u5148', '{p} % por delante', '{p} % devant'),
+  'tft.compVs.comparisons': t6('{n} Vergleiche', '{n} comparisons', '\uBE44\uAD50 {n}\uD68C', '{n} \u6B21\u5BF9\u6BD4', '{n} comparaciones', '{n} comparaisons'),
+  'tft.compVs.duelWins': t6(
+    '{name} landet im direkten Duell \u00F6fter vorn.', '{name} finishes ahead more often head-to-head.',
+    '\uB9DE\uB300\uACB0\uC5D0\uC11C\uB294 {name}\uC774(\uAC00) \uB354 \uC790\uC8FC \uC55E\uC12D\uB2C8\uB2E4.', '\u76F4\u63A5\u5BF9\u51B3\u4E2D {name} \u66F4\u5E38\u6392\u540D\u9760\u524D\u3002',
+    '{name} queda por delante m\u00E1s a menudo en el duelo directo.', '{name} finit plus souvent devant en duel direct.'
+  ),
+  'tft.compVs.duelEven': t6(
+    'Im direkten Duell ausgeglichen.', 'Even head-to-head.',
+    '\uB9DE\uB300\uACB0\uC740 \uB300\uB4F1\uD569\uB2C8\uB2E4.', '\u76F4\u63A5\u5BF9\u51B3\u52BF\u5747\u529B\u654C\u3002',
+    'Igualados en el duelo directo.', '\u00C9quilibr\u00E9 en duel direct.'
+  ),
+  'tft.compVs.duelUnclear': t6(
+    'Im direkten Duell noch kein klarer Unterschied.', 'No clear difference head-to-head yet.',
+    '\uB9DE\uB300\uACB0\uC5D0\uC11C\uB294 \uC544\uC9C1 \uB69C\uB837\uD55C \uCC28\uC774\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.', '\u76F4\u63A5\u5BF9\u51B3\u4E2D\u6682\u65E0\u660E\u663E\u5DEE\u5F02\u3002',
+    'A\u00FAn sin diferencia clara en el duelo directo.', 'Pas encore de diff\u00E9rence nette en duel direct.'
+  ),
+  'tft.compVs.opponents': t6('Gegner', 'Opponents', '\uC0C1\uB300 \uC870\uD569', '\u5BF9\u624B\u9635\u5BB9', 'Rivales', 'Adversaires'),
+  'tft.compVs.alsoName': t6('auch {name}', 'also {name}', '{name}\uB3C4', '{name} \u4E5F\u662F', 'tambi\u00E9n {name}', 'aussi {name}'),
   'tft.compare.traits': t6(
     'Synergie-Vergleich', 'Synergy Diff',
     '\uC2DC\uB108\uC9C0 \uBE44\uAD50', '\u7F81\u7ECA\u5BF9\u6BD4',

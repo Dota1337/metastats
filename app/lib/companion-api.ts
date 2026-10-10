@@ -14,6 +14,7 @@ import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBund
 import { componentCheckFromItems, namedCarries, shownItems } from './tft-comp-roles';
 import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
+import { matchupVerdict, type MatchupRow } from './tft-comp-matchups';
 import {
   COMPANION_API_VERSION,
   type CompanionComp, type CompanionCompUnit, type CompanionLobbyEntry, type CompanionLobbyPlayer,
@@ -133,6 +134,41 @@ export function buildCompanionVs(
     if (v.games < minGames) continue;
     const [a, b] = k.split('\u0000');
     (out[a] ||= {})[b] = [v.games, Number((v.ahead / v.games).toFixed(3))];
+  }
+  return out;
+}
+
+/**
+ * Matchups aus den Familien-Duellen (Migration 0092, je Rang gezaehlt). Die
+ * Zeilen stehen in beiden Richtungen; jede Richtung wird fuer sich summiert.
+ * Nur klare Matchups — dieselben Schwellen wie die Gegnerlisten der Seite
+ * (tft-comp-matchups.ts): ab 100 Vergleichen, Abstand zu 50 % ueber der
+ * Unsicherheit. Die App zeigt alles ueber 50 % als stark, darunter als schwach.
+ */
+export function buildCompanionVsFromMatchups(
+  comps: Array<Pick<CompanionComp, 'key' | 'members'>>,
+  rows: ReadonlyArray<MatchupRow>,
+): Record<string, Record<string, CompanionVs>> {
+  const owner = new Map<string, string>();
+  for (const c of comps) for (const m of c.members ?? [c.key]) if (!owner.has(m)) owner.set(m, c.key);
+  const acc = new Map<string, { games: number; ahead: number }>();
+  for (const [comp, opp, g, b] of rows) {
+    const a = owner.get(comp);
+    const o = owner.get(opp);
+    if (!a || !o || a === o) continue;
+    const k = `${a}\u0000${o}`;
+    const cur = acc.get(k) ?? { games: 0, ahead: 0 };
+    cur.games += Number(g) || 0;
+    cur.ahead += Number(b) || 0;
+    acc.set(k, cur);
+  }
+  const out: Record<string, Record<string, CompanionVs>> = {};
+  for (const [k, v] of acc) {
+    const rate = v.games > 0 ? v.ahead / v.games : 0.5;
+    const verdict = matchupVerdict(v.games, rate);
+    if (verdict !== 'ahead' && verdict !== 'behind') continue;
+    const [a, o] = k.split('\u0000');
+    (out[a] ||= {})[o] = [v.games, Number(rate.toFixed(3))];
   }
   return out;
 }

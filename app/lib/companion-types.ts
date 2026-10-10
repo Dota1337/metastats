@@ -30,7 +30,8 @@ export interface CompanionComp {
   units: CompanionCompUnit[];
   /** Alle <trait>__<carry>, die in dieser Comp zusammengelegt sind (Anker zuerst). */
   members?: string[];
-  /** Matchups gegen andere Comps der Liste (Schluessel = deren key), ab 30 Spielen. */
+  /** Matchups gegen andere Comps der Liste (Schluessel = deren key): nur klare (ab 100
+   *  Vergleichen, Abstand zu 50 % ueber der Unsicherheit); alter Rueckweg ab 30 Spielen. */
   vs?: Record<string, CompanionVs>;
   /** Reroll-Comp: auf `level` bleiben, bis `targets` 3 Sterne haben (ab 0.6). */
   reroll?: { level: number; targets: string[] };

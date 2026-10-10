@@ -13,6 +13,8 @@ import { costColor as costColorOf } from '../../../lib/tft-ui';
 import { computeActiveTraits, activeTraitStyleColor, type ActiveTrait } from '../../../lib/tft-active-traits';
 import { aggregateComponents, type CarryItemSet } from '../../../lib/tft-components';
 import type { CompareTrendPoint } from '../../../components/tft/CompareTrendChart';
+import { familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
+import { familyParts, MATCHUP_MIN_N, type MatchupVerdict } from '../../../lib/tft-comp-matchups';
 
 // Comp-Comparison-View — zwei Comps nebeneinander. Zugang via URL-Param
 // `?a=<slug>&b=<slug>` oder Compare-Button der Liste.
@@ -22,7 +24,9 @@ import type { CompareTrendPoint } from '../../../components/tft/CompareTrendChar
 // Bauteile → Risiko → Zahlen → Platz-Verteilung → Verlauf → Synergien.
 // Alle Werte kommen aus der Detail-Antwort, die die Seite ohnehin laedt.
 // Saetze im Kurzurteil nur, wenn der Unterschied groesser ist als der Zufall
-// (data-skeptic 2026-10-10). Das Duell folgt mit dem Sammler-Umbau.
+// (data-skeptic 2026-10-10). Duell und Gegner (2026-10-11) aus
+// /api/tft/comps/duel, nach den Teams: Familien-Duelle je Rang, gezeigt ab
+// 100 Vergleichen, Schwellen in tft-comp-matchups.ts.
 
 const CompareTrendChart = dynamic(() => import('../../../components/tft/CompareTrendChart'), {
   ssr: false,
@@ -63,9 +67,27 @@ interface CompData {
   contestedOutcome?: ContestedRow[];
   outcome?: { placementShare?: number[]; levelsStage5?: LevelRow[] };
   aliasedFromFamily?: { mergedFrom?: string[] };
+  mergedFamilies?: string[];
 }
 // Kopf der Detail-Antwort (neben `comp`): aktueller Patch und sein Starttag.
 interface PatchFilters { patch?: string | null; patchStartDay?: string | null }
+// Antwort von /api/tft/comps/duel.
+interface DuelEdge { fam: string; slug: string | null; games: number; rate: number }
+interface DuelSide { strong: DuelEdge[]; weak: DuelEdge[] }
+interface DuelData {
+  days: number;
+  duel: { games: number; aAhead: number; rate: number; verdict: MatchupVerdict | null } | null;
+  a: DuelSide | null;
+  b: DuelSide | null;
+}
+
+// Familien einer Comp fuer die Duell-Route (Zwei-Carry-Familien zusammen).
+function familiesParam(comp: CompData): string {
+  const fams = Array.isArray(comp.mergedFamilies) && comp.mergedFamilies.length > 0
+    ? comp.mergedFamilies
+    : [familyKeyForMerge(comp.clusterKey)];
+  return fams.slice(0, 4).join(',');
+}
 
 // Streuung der Platzierung aus der Platz-Verteilung 1–8.
 function placeSd(share: number[] | null | undefined): number | null {
@@ -120,7 +142,7 @@ function familySlugsParam(comp: CompData): string {
 }
 
 export default function TftCompsComparePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -192,6 +214,26 @@ export default function TftCompsComparePage() {
     return () => { cancelled = true; };
   }, [compA, compB, slugA, slugB, region, bucket]);
 
+  // Duell + Gegner: braucht die Familien aus der Detail-Antwort. Gezeigt wird
+  // nur eine Antwort, die zur aktuellen Auswahl gehoert (cancelled-Guard wie
+  // oben, Schluessel gegen spaete Antworten eines vorherigen Rangs).
+  const famsA = compA ? familiesParam(compA) : '';
+  const famsB = compB ? familiesParam(compB) : '';
+  const duelKey = `${famsA}|${famsB}|${region}|${bucket}|${days}`;
+  const [duel, setDuel] = useState<{ key: string; data: DuelData | null } | null>(null);
+  useEffect(() => {
+    if (!famsA || !famsB || famsA === famsB) return;
+    let cancelled = false;
+    const key = `${famsA}|${famsB}|${region}|${bucket}|${days}`;
+    fetch(`/api/tft/comps/duel?a=${encodeURIComponent(famsA)}&b=${encodeURIComponent(famsB)}&region=${region}&bucket=${bucket}&days=${days}`)
+      .then(r => (r.ok ? r.json() as Promise<DuelData> : null))
+      .catch(() => null)
+      .then(data => { if (!cancelled) setDuel({ key, data }); });
+    return () => { cancelled = true; };
+  }, [famsA, famsB, region, bucket, days]);
+  const duelData = duel?.key === duelKey ? duel.data : null;
+  const duelPending = !!famsA && !!famsB && famsA !== famsB && duel?.key !== duelKey;
+
   const traitsA = useMemo(() => compA ? computeActiveTraits(compA.typicalUnits, compA.clusterKey, assets) : [], [compA, assets]);
   const traitsB = useMemo(() => compB ? computeActiveTraits(compB.typicalUnits, compB.clusterKey, assets) : [], [compB, assets]);
 
@@ -250,6 +292,15 @@ export default function TftCompsComparePage() {
             <CompPanel comp={compB} assets={assets} t={t} side="b" sharedIds={sharedIds} />
             {compA && compB && (
               <>
+                {duelPending && (
+                  <div className="h-24 col-span-1 lg:col-span-2 rounded bg-surface-base border border-border-subtle animate-pulse" />
+                )}
+                {duelData && (
+                  <>
+                    <DuelCompare data={duelData} nameA={nameA} nameB={nameB} bucketLabel={t(`tft.bucket.${bucket}` as TranslationKey)} lang={lang} t={t} />
+                    <OpponentsCompare data={duelData} nameA={nameA} nameB={nameB} assets={assets} bucket={bucket} t={t} />
+                  </>
+                )}
                 <ComponentsCompare compA={compA} compB={compB} nameA={nameA} nameB={nameB} assets={assets} t={t} />
                 <RiskCompare compA={compA} compB={compB} nameA={nameA} nameB={nameB} t={t} />
                 <DiffPanel
@@ -391,6 +442,135 @@ function Verdict({
         )}
       </ul>
     </Section>
+  );
+}
+
+// Direktes Duell: Anteil der Vergleiche (beide Comps in derselben Lobby), in
+// denen A vor B landet. Unter MATCHUP_MIN_N Vergleichen ausgeblendet; der Satz
+// nennt einen Sieger nur bei klarem Abstand (Urteil kommt von der Route).
+function DuelCompare({
+  data, nameA, nameB, bucketLabel, lang, t,
+}: {
+  data: DuelData; nameA: string; nameB: string; bucketLabel: string; lang: string; t: TFn;
+}) {
+  const d = data.duel;
+  if (!d || d.games < MATCHUP_MIN_N) return null;
+  const pA = Math.round(d.rate * 100);
+  const pB = 100 - pA;
+  const line = d.verdict === 'ahead' ? fill(t('tft.compVs.duelWins'), { name: nameA })
+    : d.verdict === 'behind' ? fill(t('tft.compVs.duelWins'), { name: nameB })
+      : d.verdict === 'even' ? t('tft.compVs.duelEven')
+        : t('tft.compVs.duelUnclear');
+  return (
+    <Section title={`${t('tft.compVs.duel')} · ${bucketLabel}`}>
+      <div className="flex items-baseline justify-between gap-3 text-[11px] font-semibold mb-1.5">
+        <span className="truncate" style={{ color: COLOR_A }}>{nameA} {fill(t('tft.compVs.ahead'), { p: String(pA) })}</span>
+        <span className="truncate text-right" style={{ color: COLOR_B }}>{nameB} {fill(t('tft.compVs.ahead'), { p: String(pB) })}</span>
+      </div>
+      <div className="flex h-3 rounded overflow-hidden bg-surface-raised" aria-hidden="true">
+        <div style={{ width: `${pA}%`, backgroundColor: COLOR_A }} />
+        <div style={{ width: `${pB}%`, backgroundColor: COLOR_B }} />
+      </div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 mt-2">
+        <span className="text-sm text-fg-bright leading-snug">{line}</span>
+        <span className="text-fg-faint text-[10px] tabular-nums">
+          {fill(t('tft.compVs.comparisons'), { n: d.games.toLocaleString(lang) })}
+        </span>
+      </div>
+    </Section>
+  );
+}
+
+// Klarste Gegner je Seite (je 3, ohne die andere Seite — die steht im Duell).
+// Ein Gegner, gegen den beide schwach sind, traegt „auch <Name>".
+function OpponentsCompare({
+  data, nameA, nameB, assets, bucket, t,
+}: {
+  data: DuelData; nameA: string; nameB: string; assets: TftAssetsBundle | null; bucket: string; t: TFn;
+}) {
+  const a = data.a;
+  const b = data.b;
+  if (!a || !b) return null;
+  if ([a, b].every(s => s.strong.length + s.weak.length === 0)) return null;
+  const weakA = new Set(a.weak.map(e => e.fam));
+  const weakB = new Set(b.weak.map(e => e.fam));
+  return (
+    <Section title={t('tft.compVs.opponents')}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
+        {([[a, nameA, COLOR_A, weakB, nameB], [b, nameB, COLOR_B, weakA, nameA]] as const).map(([side, name, color, alsoWeak, other]) => (
+          <div key={name + color} className="min-w-0">
+            <div className="text-[11px] font-semibold truncate mb-2" style={{ color }}>{name}</div>
+            <OpponentList title={t('tft.comp.beats')} tone="#3ecf8e" edges={side.strong} assets={assets} bucket={bucket} />
+            <OpponentList
+              title={t('tft.comp.losesTo')} tone="#e44040" edges={side.weak} assets={assets} bucket={bucket}
+              also={alsoWeak} alsoLabel={fill(t('tft.compVs.alsoName'), { name: other })}
+            />
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+function OpponentList({
+  title, tone, edges, assets, bucket, also, alsoLabel,
+}: {
+  title: string; tone: string; edges: DuelEdge[]; assets: TftAssetsBundle | null; bucket: string;
+  also?: Set<string>; alsoLabel?: string;
+}) {
+  return (
+    <div className="mb-3 last:mb-0">
+      <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: tone }}>{title}</div>
+      {edges.length === 0 ? (
+        <div className="text-fg-faint text-xs">{'—'}</div>
+      ) : (
+        <div className="space-y-1.5">
+          {edges.map(e => {
+            const parts = familyParts(e.fam);
+            const strip = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+            const champ = parts && assets ? assets.champions[parts.carry] : null;
+            const carryName = champ?.name || (parts ? strip(parts.carry) : e.fam);
+            const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || strip(parts.trait)) : '';
+            const tile = tftChampionTileUrl(assets, champ);
+            const body = (
+              <>
+                {tile ? (
+                  <img src={tile} alt="" className="w-7 h-7 rounded border border-[#c39bff]/50 flex-shrink-0" />
+                ) : (
+                  <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="text-fg-secondary text-[9px] truncate">{traitName}</div>
+                  <div className="text-white text-[11px] flex items-center gap-1 min-w-0">
+                    <span className="truncate">{carryName}</span>
+                    {also?.has(e.fam) && alsoLabel && (
+                      <span
+                        className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-medium flex-shrink-0 whitespace-nowrap"
+                        style={{ color: '#e44040', backgroundColor: 'rgba(228,64,64,0.12)', border: '1px solid rgba(228,64,64,0.4)' }}
+                      >{alsoLabel}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-[11px] tabular-nums font-medium" style={{ color: tone }}>{(e.rate * 100).toFixed(0)}%</span>
+                  <span className="text-fg-faint text-[9px] tabular-nums">{e.games}</span>
+                </div>
+              </>
+            );
+            return e.slug ? (
+              <a
+                key={e.fam}
+                href={`/tft/comps/${encodeURIComponent(e.slug)}?bucket=${bucket}`}
+                title={`${traitName} · ${carryName}`}
+                className="flex items-center gap-2 hover:opacity-80 transition"
+              >{body}</a>
+            ) : (
+              <div key={e.fam} title={`${traitName} · ${carryName}`} className="flex items-center gap-2">{body}</div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

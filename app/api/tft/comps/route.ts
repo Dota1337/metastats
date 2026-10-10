@@ -26,6 +26,8 @@ import {
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
 import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
+import { opponentsOf, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
+import { compRepresentatives, fetchCompMatchups } from '../../../lib/tft-comp-matchups-server';
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
@@ -359,12 +361,10 @@ export async function GET(request: NextRequest) {
       // 20 s (code-analyzer-Verdict 2026-06-21) — Default-8 s killt sonst
       // Detail-Pages mit AbortError → hasData:false.
       //
-      // Pairs-RPC laeuft PARALLEL zu comp_stats (perf-critic-Verdict
-      // 2026-06-21): pairs braucht keinen slug + keine comp_stats-Result-
-      // Abhaengigkeit. Sequenz ergab in cold-path 8-20s, parallel spart
-      // ~2-5s indem die langsamere der beiden RPCs den Wallclock dominiert
-      // statt der Summe. JS-Filter nach Family-Members laeuft wie bisher
-      // post-await.
+      // Gegner (counters) kommen seit 0092 aus get_tft_comp_matchups und
+      // brauchen die Familien der Comp — die Abfrage laeuft deshalb nach
+      // dieser hier, parallel zu outcome/emblems. Die alte Paar-Abfrage nur
+      // noch als Rueckfall, solange das Fenster keine neuen Tage hat.
       // Trait-Prefix (Migration 0060): die RPC lieferte bis 2026-08-18 fuer
       // EINEN Slug alle Cluster mit allen sieben jsonb-Spalten — gemessen
       // 100,70 MB / 11,9 s fuer all/7d, live 16,7 s gegen einen 20-s-DB-Deckel,
@@ -374,24 +374,15 @@ export async function GET(request: NextRequest) {
       // Carry-genau ginge nicht als Prefix, weil das Level im Key davor steht.
       // Die exakte Family-Auswahl bleibt unten in JS; SQL filtert nur grob vor.
       const detailTrait = parseClusterKey(slug)?.trait ?? null;
-      const [rows, pairs] = await Promise.all([
-        callRpc<CompRow[]>('get_tft_comp_stats', {
-          p_regions: filters.regions,
-          p_buckets: filters.buckets,
-          p_days: filters.days,
-          p_patch: filters.patchFilter,
-          p_set: filters.setNumber,
-          p_min_games: minGames,
-          p_cluster_prefix: detailTrait ? `${detailTrait}@` : null,
-        }, 20000),
-        compPairsMemo({
-          p_regions: filters.regions,
-          p_days: filters.days,
-          p_patch: filters.patchFilter,
-          p_set: filters.setNumber,
-          p_min_games: 10,
-        }),
-      ]);
+      const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        p_days: filters.days,
+        p_patch: filters.patchFilter,
+        p_set: filters.setNumber,
+        p_min_games: minGames,
+        p_cluster_prefix: detailTrait ? `${detailTrait}@` : null,
+      }, 20000);
       const participants = rows[0]?.participants || 0;
       let row = rows.find(r => r.cluster_key === slug);
       let aliasedFrom: string | null = null;
@@ -485,13 +476,16 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       };
-      const [oc, em] = await Promise.allSettled([
+      const [oc, em, mu, rp] = await Promise.allSettled([
         callRpc<CompOutcomeRaw>('get_tft_comp_outcome', outcomeArgs, 8000),
         searchParams.get('emblems') === '0'
           ? Promise.resolve(null)
           : callRpc<CompEmblemsRaw>('get_tft_comp_emblems', outcomeArgs, 8000),
+        fetchCompMatchups(filters, mergedFamilyKeys),
+        compRepresentatives(filters, rows.map(r => ({ clusterKey: r.cluster_key, games: Number(r.games) }))),
       ]);
       if (em.status === 'rejected') console.warn('[tft/comps] comp_emblems skipped:', (em.reason as Error)?.message);
+      if (mu.status === 'rejected') console.warn('[tft/comps] comp_matchups skipped, old pairs:', (mu.reason as Error)?.message);
       if (oc.status === 'fulfilled') {
         const emblems = em.status === 'fulfilled' && em.value ? em.value : {};
         if (outcomeHasData(oc.value)) outcome = buildCompOutcome({ ...oc.value, ...emblems });
@@ -527,77 +521,94 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Counter edges — pairs wurde bereits in der parallelen Promise.all
-      // oben await't. Hier nur noch JS-Filter auf den Family-Members.
-      // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
-      // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
-      const familySet = new Set(familySlugs);
-      const beats: CounterEdge[] = [];
-      const losesTo: CounterEdge[] = [];
-      const even: CounterEdge[] = [];
-      for (const p of pairs) {
-        const aInFamily = familySet.has(p.a_key);
-        const bInFamily = familySet.has(p.b_key);
-        if (!aInFamily && !bInFamily) continue;
-        // Intra-Family-Pairs ausschließen — Meeple-Gnar @3*2 vs @3*3 ist kein
-        // sinnvolles Matchup (gleiche Comp, andere Variante).
-        if (aInFamily && bInFamily) continue;
-        const opponent = aInFamily ? p.b_key : p.a_key;
-        if (isFragmentTraitClusterKey(opponent)) continue;
-        const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
-        const edge: CounterEdge = {
-          opponent,
-          games: Number(p.games),
-          winRate: aInFamily ? aWinRate : 1 - aWinRate,
-        };
-        if (edge.winRate >= 0.55) beats.push(edge);
-        else if (edge.winRate <= 0.45) losesTo.push(edge);
-        else even.push(edge);   // 45–55% band — the near-even matchups
-      }
-      // Im Family-Mode: Opponent-Edges nach Opponent-Family-Key konsolidieren —
-      // sonst sieht User dreimal "Mecha Fiora" mit unterschiedlichen Sub-
-      // Cluster-Suffixen. Gewichteter Win-Rate (games-weighted) + Sum-Games.
-      const consolidateByOpponentFamily = (edges: CounterEdge[]): CounterEdge[] => {
-        if (variantMode !== 'family') return edges;
-        const map = new Map<string, { games: number; weightedWin: number; sampleKey: string }>();
-        for (const e of edges) {
-          const k = familyKeyForMerge(e.opponent);
-          const cur = map.get(k);
-          if (!cur) {
-            map.set(k, { games: e.games, weightedWin: e.games * e.winRate, sampleKey: e.opponent });
-          } else {
-            // Anker bleibt der games-stärkste Sub-Cluster für UI-Label-Wahl.
-            if (e.games > cur.games) cur.sampleKey = e.opponent;
-            cur.games += e.games;
-            cur.weightedWin += e.games * e.winRate;
-          }
+      // Gegner. Neuer Weg (0092): Familien-Duelle je Rang, Schwellen und
+      // Reihenfolge aus tft-comp-matchups.ts (ab 100 Vergleichen, Abstand
+      // ueber der Unsicherheit). Link-Ziel je Gegner-Familie ist ihr
+      // meistgespielter cluster_key; Familien ohne Link-Ziel fallen weg.
+      const matchups = mu.status === 'fulfilled' && mu.value.days > 0 ? mu.value : null;
+      let counters: { beats: CounterEdge[]; losesTo: CounterEdge[]; even: CounterEdge[]; source: 'matchups' | 'pairs' };
+      if (matchups) {
+        const reps = rp.status === 'fulfilled' ? rp.value : new Map<string, { key: string; games: number }>();
+        const toCounters = (list: MatchupEdge[]): CounterEdge[] => list.flatMap(e => {
+          const rep = reps.get(e.fam);
+          return rep && !isFragmentTraitClusterKey(rep.key) ? [{ opponent: rep.key, games: e.games, winRate: e.rate }] : [];
+        }).slice(0, 5);
+        const split = splitOpponents(opponentsOf(matchups.rows, mergedFamilyKeys));
+        counters = { beats: toCounters(split.strong), losesTo: toCounters(split.weak), even: toCounters(split.even), source: 'matchups' };
+      } else {
+        // Alter Weg, solange das Fenster keine neuen Tage hat (oder die neue
+        // Abfrage scheitert): Paare ab 55/45 je Sub-Cluster.
+        const pairs = await compPairsMemo({
+          p_regions: filters.regions,
+          p_days: filters.days,
+          p_patch: filters.patchFilter,
+          p_set: filters.setNumber,
+          p_min_games: 10,
+        });
+        // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
+        // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
+        const familySet = new Set(familySlugs);
+        const beats: CounterEdge[] = [];
+        const losesTo: CounterEdge[] = [];
+        const even: CounterEdge[] = [];
+        for (const p of pairs) {
+          const aInFamily = familySet.has(p.a_key);
+          const bInFamily = familySet.has(p.b_key);
+          if (!aInFamily && !bInFamily) continue;
+          // Intra-Family-Pairs ausschließen — Meeple-Gnar @3*2 vs @3*3 ist kein
+          // sinnvolles Matchup (gleiche Comp, andere Variante).
+          if (aInFamily && bInFamily) continue;
+          const opponent = aInFamily ? p.b_key : p.a_key;
+          if (isFragmentTraitClusterKey(opponent)) continue;
+          const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
+          const edge: CounterEdge = {
+            opponent,
+            games: Number(p.games),
+            winRate: aInFamily ? aWinRate : 1 - aWinRate,
+          };
+          if (edge.winRate >= 0.55) beats.push(edge);
+          else if (edge.winRate <= 0.45) losesTo.push(edge);
+          else even.push(edge);   // 45–55% band — the near-even matchups
         }
-        return [...map.entries()].map(([_k, v]) => ({
-          opponent: v.sampleKey,
-          games: v.games,
-          winRate: v.games > 0 ? v.weightedWin / v.games : 0.5,
-        }));
-      };
-      const beatsOut = consolidateByOpponentFamily(beats);
-      const losesToOut = consolidateByOpponentFamily(losesTo);
-      const evenOut = consolidateByOpponentFamily(even);
-      beatsOut.sort((a, b) => b.winRate - a.winRate);
-      losesToOut.sort((a, b) => a.winRate - b.winRate);
-      // Even matchups ranked by sample size — the most-played coin-flips are
-      // the most decision-relevant.
-      evenOut.sort((a, b) => b.games - a.games);
+        // Im Family-Mode: Opponent-Edges nach Opponent-Family-Key konsolidieren —
+        // sonst sieht User dreimal "Mecha Fiora" mit unterschiedlichen Sub-
+        // Cluster-Suffixen. Gewichteter Win-Rate (games-weighted) + Sum-Games.
+        const consolidateByOpponentFamily = (edges: CounterEdge[]): CounterEdge[] => {
+          if (variantMode !== 'family') return edges;
+          const map = new Map<string, { games: number; weightedWin: number; sampleKey: string }>();
+          for (const e of edges) {
+            const k = familyKeyForMerge(e.opponent);
+            const cur = map.get(k);
+            if (!cur) {
+              map.set(k, { games: e.games, weightedWin: e.games * e.winRate, sampleKey: e.opponent });
+            } else {
+              // Anker bleibt der games-stärkste Sub-Cluster für UI-Label-Wahl.
+              if (e.games > cur.games) cur.sampleKey = e.opponent;
+              cur.games += e.games;
+              cur.weightedWin += e.games * e.winRate;
+            }
+          }
+          return [...map.entries()].map(([_k, v]) => ({
+            opponent: v.sampleKey,
+            games: v.games,
+            winRate: v.games > 0 ? v.weightedWin / v.games : 0.5,
+          }));
+        };
+        const beatsOut = consolidateByOpponentFamily(beats);
+        const losesToOut = consolidateByOpponentFamily(losesTo);
+        const evenOut = consolidateByOpponentFamily(even);
+        beatsOut.sort((a, b) => b.winRate - a.winRate);
+        losesToOut.sort((a, b) => a.winRate - b.winRate);
+        // Even matchups ranked by sample size — the most-played coin-flips are
+        // the most decision-relevant.
+        evenOut.sort((a, b) => b.games - a.games);
+        counters = { beats: beatsOut.slice(0, 5), losesTo: losesToOut.slice(0, 5), even: evenOut.slice(0, 5), source: 'pairs' };
+      }
 
       return cachedJson({
         filters,
         hasData: true,
-        comp: {
-          ...comp,
-          counters: {
-            beats: beatsOut.slice(0, 5),
-            losesTo: losesToOut.slice(0, 5),
-            even: evenOut.slice(0, 5),
-          },
-        },
+        comp: { ...comp, counters },
       }, { cache: cacheControl });
     }
 

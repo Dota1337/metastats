@@ -12,7 +12,7 @@ import BookmarkButton from '../BookmarkButton';
 import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
-import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, type CompRoles } from '../../lib/tft-comp-roles';
@@ -189,7 +189,8 @@ export default function CompRow({
   const named = namedCarries(roles, parts?.carry);
   // Guide nur bei passendem Brett (resolveGuideId), Carries wie im Namen.
   const guideMatch = parts
-    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, (comp.typicalUnits || []).map(u => u.characterId), named)
+    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, (comp.typicalUnits || []).map(u => u.characterId), named,
+        guideStyleFromUnits(parts.carry, comp.typicalUnits))
     : null;
   const guideSlug = guideBundle?.bundle ? guideMatch?.slug ?? null : undefined;
   useEffect(() => {

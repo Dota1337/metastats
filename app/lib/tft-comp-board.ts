@@ -6,7 +6,7 @@
 // Reine Funktionen ohne Netz und ohne next/server: die Routen reichen den
 // Abruf der Feld-Anteile als Funktion herein (tft-comp-board.test.mjs). Darf
 // deshalb auch im Browser landen.
-import { parseLevelling, resolveGuideId, significantLevelSteps, type CompGuidesBundle } from './tft-comp-guides';
+import { parseLevelling, resolveGuideId, significantLevelSteps, type CompGuidesBundle, type GuideStyle } from './tft-comp-guides';
 import type {
   CompanionBoardCell, CompanionCompDetail, CompanionEarlyBoard, CompanionPositioning,
 } from './companion-types';
@@ -175,6 +175,13 @@ export interface CompBoardsOptions {
    * = selbst zuordnen.
    */
   guideId?: string | null;
+  /** Spielweise unserer Comp fuer die Zuordnung, wenn nicht festgenagelt (resolveGuideId). */
+  guideStyle?: GuideStyle | null;
+  /**
+   * Auch die fruehen Boards als Brett mit Feldern (meistgespieltes je Stufe
+   * 4-7). Nur die Detailseite fragt danach; Liste und App bleiben unveraendert.
+   */
+  withEarlyBoards?: boolean;
 }
 
 export interface CompBoards {
@@ -185,6 +192,8 @@ export interface CompBoards {
   boardsByPlayerLevel?: Record<string, CompanionBoardCell[]>;
   levelTiming: Array<{ level: number; stage: string }>;
   early: Record<string, CompanionEarlyBoard[]>;
+  /** Stufe "4".."7" -> Brett des meistgespielten fruehen Boards (nur mit withEarlyBoards). */
+  earlyBoardsByLevel?: Record<string, CompanionBoardCell[]>;
 }
 
 /**
@@ -206,8 +215,10 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
   const pinned = opts.guideId === null ? null
     : opts.guideId && guides?.comps.some(c => c.id === opts.guideId) ? opts.guideId : undefined;
   const guideId = pinned !== undefined ? pinned : guides
-    ? resolveGuideId(guides, families, typical, [...new Set([...(opts.extraCarries || []), ...familyCarries])])
+    ? resolveGuideId(guides, families, typical, [...new Set([...(opts.extraCarries || []), ...familyCarries])], opts.guideStyle)
     : null;
+  const details = guideId ? guides?.details[guideId] : undefined;
+  const early = earlyBoards(details, opts.earlyMinGames);
 
   // Endbrett je Spielerstufe: Stufen im Bereich mit genug Spielen, Units = die
   // haeufigsten auf der Stufe.
@@ -219,7 +230,16 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
     const ids = unitsAtPlayerLevel(outcome?.units || [], l.level).filter(u => BOARD_UNIT_RE.test(u));
     if (ids.length > 0) levelUnits.set(l.level, ids);
   }
-  const levelIds = [...new Set([...levelUnits.values()].flat())];
+  // Fruehe Boards: das meistgespielte je Stufe, Felder aus derselben Abfrage.
+  const earlyUnits = new Map<string, string[]>();
+  if (opts.withEarlyBoards) {
+    for (const [lvl, list] of Object.entries(early)) {
+      const top = list.reduce((a, b) => (b.games > a.games ? b : a));
+      const ids = top.units.filter(u => BOARD_UNIT_RE.test(u));
+      if (ids.length > 0) earlyUnits.set(lvl, ids);
+    }
+  }
+  const levelIds = [...new Set([...levelUnits.values(), ...earlyUnits.values()].flat())];
   const chunks: string[][] = [];
   for (let i = 0; i < levelIds.length; i += SHARES_CHUNK) chunks.push(levelIds.slice(i, i + SHARES_CHUNK));
 
@@ -239,21 +259,30 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
   }
 
   let boardsByPlayerLevel: Record<string, CompanionBoardCell[]> | undefined;
-  if (levelUnits.size > 0) {
-    const shares: CellShares = Object.assign({}, ...parts.map(p => p?.units ?? {}));
-    for (const [lvl, ids] of levelUnits) {
+  let earlyBoardsByLevel: Record<string, CompanionBoardCell[]> | undefined;
+  const shares: CellShares = Object.assign({}, ...parts.map(p => p?.units ?? {}));
+  for (const [lvl, ids] of levelUnits) {
+    const b = resolveBoard(ids, shares);
+    if (b.length > 0) (boardsByPlayerLevel ??= {})[String(lvl)] = b;
+  }
+  if (opts.withEarlyBoards) {
+    earlyBoardsByLevel = {};
+    for (const [lvl, ids] of earlyUnits) {
       const b = resolveBoard(ids, shares);
-      if (b.length > 0) (boardsByPlayerLevel ??= {})[String(lvl)] = b;
+      if (b.length > 0) earlyBoardsByLevel[lvl] = b;
     }
   }
 
-  const details = guideId ? guides?.details[guideId] : undefined;
   const levelTiming = (details?.levels || [])
     .filter(l => Number.isFinite(l.level) && l.stage && l.round)
     .map(l => ({ level: l.level, stage: `${l.stage}-${l.round}` }));
-  const early = earlyBoards(details, opts.earlyMinGames);
 
-  return { families, guideId, board, boardSource, ...(boardsByPlayerLevel ? { boardsByPlayerLevel } : {}), levelTiming, early };
+  return {
+    families, guideId, board, boardSource,
+    ...(boardsByPlayerLevel ? { boardsByPlayerLevel } : {}),
+    levelTiming, early,
+    ...(earlyBoardsByLevel ? { earlyBoardsByLevel } : {}),
+  };
 }
 
 /** Endbretter der Stufen in [lo, hi] mit mindestens `minGames` Spielen der Comp. */

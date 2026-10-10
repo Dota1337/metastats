@@ -8,7 +8,8 @@ import { buildCompFamilies, currentSetFamilies, topFamilyKeys } from '../../../.
 import { resolveCutoffs } from '../../../../lib/tft-tier-letter';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
 import { callRpc, resolveFilters } from '../../../../lib/tft-supabase-reader';
-import { resolveGuideId } from '../../../../lib/tft-comp-guides';
+import { resolveGuideId, guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
+import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import {
   COMPANION_API_VERSION, EARLY_MIN_GAMES, buildCompanionVs, companionJson, companionPreflight, earlyBoards,
@@ -85,8 +86,11 @@ export async function GET(request: NextRequest) {
   const guides = loadGuidesFromDisk();
   out.guides = guides ? { set: guides.set, clusterId: guides.clusterId ?? null, fetchedAt: guides.fetchedAt } : null;
   if (guides) {
-    for (const c of out.comps) {
-      const id = resolveGuideId(guides, c.members ?? [c.key], c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])]);
+    for (const [i, c] of out.comps.entries()) {
+      // Spielweise (Reroll / Fast 8) am Key-Carry wie die Comp-Zeile der Seite.
+      const main = shown[i].mainComp;
+      const style = guideStyleFromUnits(parseClusterKey(main.clusterKey || main.slug)?.carry, main.typicalUnits);
+      const id = resolveGuideId(guides, c.members ?? [c.key], c.units.map(u => u.id), [...new Set([...c.carries, ...c.itemCarriers])], style);
       if (id) c.guideId = id;
       if (id && Object.keys(earlyBoards(guides.details[id], EARLY_MIN_GAMES)).length > 0) c.hasEarly = true;
     }

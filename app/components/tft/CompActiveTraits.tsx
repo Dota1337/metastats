@@ -28,11 +28,14 @@ export default function CompActiveTraits({
   clusterKey,
   assets,
   bucket,
+  variant = 'pills',
 }: {
   typicalUnits: TypicalUnit[] | undefined | null;
   clusterKey: string;
   assets: TftAssetsBundle | null;
   bucket?: string;
+  /** 'list' = eine Zeile je Synergie, fuer die schmale rechte Spalte der Detailseite. */
+  variant?: 'pills' | 'list';
 }) {
   const { t } = useI18n();
   const traits = useMemo(
@@ -48,13 +51,14 @@ export default function CompActiveTraits({
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">
         {t('tft.comp.activeTraits')}
       </h2>
-      <div className="flex flex-wrap gap-2">
+      <div className={variant === 'list' ? 'flex flex-col gap-1' : 'flex flex-wrap gap-2'}>
         {traits.map(tr => (
           <TraitPill
             key={tr.apiName}
             trait={tr}
             assets={assets}
             t={t}
+            row={variant === 'list'}
             isExpanded={expanded === tr.apiName}
             onToggle={() => setExpanded(expanded === tr.apiName ? null : tr.apiName)}
           />
@@ -77,11 +81,13 @@ export default function CompActiveTraits({
 }
 
 function TraitPill({
-  trait, assets, t, isExpanded, onToggle,
+  trait, assets, t, row = false, isExpanded, onToggle,
 }: {
   trait: ActiveTrait;
   assets: TftAssetsBundle | null;
   t: (k: any) => string;
+  /** Als volle Zeile statt Pill (Liste); der Hinweis steht dann rechts. */
+  row?: boolean;
   isExpanded: boolean;
   onToggle: () => void;
 }) {
@@ -96,7 +102,7 @@ function TraitPill({
     <button
       type="button"
       onClick={onToggle}
-      className="flex items-center gap-2 px-2.5 py-1.5 rounded-md border bg-surface-raised hover:bg-[#1a2238] transition-colors cursor-pointer"
+      className={`flex items-center gap-2 rounded-md border bg-surface-raised hover:bg-[#1a2238] transition-colors cursor-pointer ${row ? 'w-full px-2 py-1 text-left' : 'px-2.5 py-1.5'}`}
       style={{
         borderColor: isExpanded ? color : `${withAlpha(color, 0x66)}`,
         borderWidth: isExpanded ? 2 : 1,
@@ -120,9 +126,9 @@ function TraitPill({
       >
         {trait.count}
       </span>
-      <span className="text-white text-xs font-medium">{trait.displayName}</span>
+      <span className={`text-white text-xs font-medium${row ? ' truncate min-w-0' : ''}`}>{trait.displayName}</span>
       {nextHint && (
-        <span className="text-fg-muted text-[10px] tabular-nums">{nextHint}</span>
+        <span className={`text-fg-muted text-[10px] tabular-nums${row ? ' ml-auto shrink-0 whitespace-nowrap' : ''}`}>{nextHint}</span>
       )}
     </button>
   );

@@ -11,6 +11,8 @@ import { NextRequest } from 'next/server';
 import { GET as compsGET } from '../../../tft/comps/route';
 import { GET as byUnitsGET } from '../../../tft/positions/by-units/route';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
+import { guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
+import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { LOW_DATA_GAMES } from '../../../../lib/tft-comp-outcome';
 import {
   BOARD_UNIT_RE, COMPANION_API_VERSION, EARLY_MIN_GAMES, POSITIONING_MIN_GAMES,
@@ -52,7 +54,8 @@ export async function GET(request: NextRequest) {
   }
   const body = await res.json().catch(() => null) as {
     comp?: {
-      typicalUnits?: Array<{ characterId: string }>;
+      clusterKey?: string;
+      typicalUnits?: Array<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }>;
       mergedFamilies?: string[];
       outcome?: {
         levels?: Array<{ level: number; games: number; share: number; avgPlacement: number; top4Rate: number; top1Rate: number }>;
@@ -96,6 +99,7 @@ export async function GET(request: NextRequest) {
     boardUnits: askedUnits,
     extraCarries: askedCarries,
     guideId: parseGuideParam(sp.get('guide')),
+    guideStyle: guideStyleFromUnits(parseClusterKey(comp.clusterKey || slug)?.carry, comp.typicalUnits),
   });
   const legacyBoards = pickLevelBoards(boards.boardsByPlayerLevel, comp.outcome?.levels, [5, 9], LOW_DATA_GAMES);
 

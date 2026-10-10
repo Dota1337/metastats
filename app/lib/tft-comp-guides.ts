@@ -101,7 +101,8 @@ export interface CompDetails {
   // `carryStarOutcome` aus unseren eigenen Match-Daten, und zwar reicher
   // (games, avgPlacement, top4Rate, top1Rate statt nur pcnt/avg) und für alle
   // Comps statt nur 59 von 69. Zwei Quellen für eine Zahl auf einer Seite wäre
-  // genau der Widerspruch, den ein Nutzer als Fehler liest.
+  // genau der Widerspruch, den ein Nutzer als Fehler liest. Gelesen wird es
+  // seit 2026-10-10 nur für die Zuordnung (guideStar3Share), nie angezeigt.
 }
 
 export interface MetaTftComp {
@@ -230,6 +231,51 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
   };
 }
 
+/** Spielweise unserer Comp fuer die Zuordnung: Anteil der Spiele mit dem Key-Carry auf 3★. */
+export interface GuideStyle { carry: string; star3Share: number }
+
+// Ab 40 % 3★ ist eine Comp Reroll (dieselbe Grenze wie tempoMeta in
+// api/tft/comps/route.ts), bis 15 % klar nicht. Bewusst unter
+// STAR3_SHARE_THRESHOLD (0,55, ab dem das Brett ein 3★-Abzeichen zeigt): unter
+// „alle Regionen" mischen sich Spielweisen (Azir gemessen 0,51, weil VN eine
+// andere Variante spielt). Fuer die Wahl der Anleitung reicht, dass die Comp
+// ueberwiegend rerollt; fuer ein Abzeichen auf einer Unit nicht.
+export const STYLE_REROLL_MIN = 0.4;
+export const STYLE_PUSH_MAX = 0.15;
+// Ueberlappung, die reicht, wenn beide Seiten denselben Carry rerollen.
+export const STYLE_MATCH_MIN_JACCARD = 0.5;
+// Darunter ist unser 3★-Anteil zu unsicher fuer eine Entscheidung.
+export const STYLE_MIN_GAMES = 30;
+
+/**
+ * GuideStyle aus den typischen Units (star3Games / gamesWithUnit des
+ * Key-Carrys). Dieselben Felder liefern Liste, Detail und App, deshalb
+ * ordnen alle drei gleich zu; gemessen deckungsgleich mit carryStarOutcome
+ * (Azir 2862/5628 bzw. 262/425). null ohne Felder oder unter STYLE_MIN_GAMES.
+ * Der Key-Carry kommt an allen Stellen aus dem cluster_key der gezeigten Comp
+ * (parseClusterKey), nicht aus dem Familien-Schluessel.
+ */
+export function guideStyleFromUnits(
+  carry: string | null | undefined,
+  units: ReadonlyArray<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }> | null | undefined,
+): GuideStyle | null {
+  if (!carry || !units) return null;
+  const u = units.find(x => x.characterId === carry);
+  const games = Number(u?.gamesWithUnit);
+  const three = Number(u?.star3Games);
+  if (!Number.isFinite(games) || !Number.isFinite(three) || games < STYLE_MIN_GAMES) return null;
+  return { carry, star3Share: Math.min(1, Math.max(0, three / games)) };
+}
+
+// MetaTFTs 3★-Anteil eines Carrys in einer ihrer Comps (details.carryStars,
+// bewusst nicht in CompDetails getippt, s. dort). null = keine Angabe.
+function guideStar3Share(details: CompGuidesBundle['details'] | undefined, id: string, carry: string): number | null {
+  const rows = (details?.[id] as { carryStars?: Record<string, Array<{ star: number; pcnt: number }>> } | undefined)
+    ?.carryStars?.[carry];
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return rows.filter(r => Number(r.star) >= 3).reduce((s, r) => s + (Number(r.pcnt) || 0), 0);
+}
+
 /**
  * Unsere Comp → MetaTFT-Comp (Guide, Early Game, Stufen-Zeitpunkte).
  *
@@ -246,12 +292,23 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
  * 0,70-0,89 Ueberlappung — fuer alle gilt dasselbe Early Game.
  *
  * Ohne Units (alte Aufrufer) bleibt es beim exakten Familien-Treffer.
+ *
+ * Mit `style` (wie oft unser Key-Carry 3★ ist) zaehlt zusaetzlich die
+ * Spielweise: gemessen 2026-10-10 landete die Azir-Reroll-Comp unter „alle
+ * Regionen" bei einer Fast-8-Comp (Jaccard 0,70 gegen 0,60), weil VN mit 32 %
+ * der Spiele eine andere Tank-Variante spielt. Widersprechen sich unser und
+ * MetaTFTs 3★-Anteil desselben Carrys (Reroll gegen Push), faellt der
+ * Kandidat raus; sind beide Reroll, reicht eine Ueberlappung ab
+ * STYLE_MATCH_MIN_JACCARD. Ohne Sterndaten bleibt es bei der alten Regel.
+ * Die Familien-Map wird weiter zuerst geprueft und gilt dann ebenfalls schon
+ * ab 0,5 — sie schlaegt so einen anderen Treffer mit hoeherer Ueberlappung.
  */
 export function resolveGuideId(
-  bundle: Pick<CompGuidesBundle, 'familyMap' | 'comps'>,
+  bundle: Pick<CompGuidesBundle, 'familyMap' | 'comps'> & { details?: CompGuidesBundle['details'] },
   familyKeys: string[],
   units: string[],
   carries: string[],
+  style?: GuideStyle | null,
 ): string | null {
   if (units.length === 0) {
     for (const k of familyKeys) if (bundle.familyMap[k]) return bundle.familyMap[k];
@@ -260,8 +317,16 @@ export function resolveGuideId(
   const own = new Set(units);
   const fits = (c: MetaTftComp | undefined): number => {
     if (!c || !carries.some(x => c.units.includes(x))) return -1;
+    let min = MERGE_MIN_JACCARD;
+    const theirs = style ? guideStar3Share(bundle.details, c.id, style.carry) : null;
+    if (style && theirs != null) {
+      const oursReroll = style.star3Share >= STYLE_REROLL_MIN;
+      const oursPush = style.star3Share <= STYLE_PUSH_MAX;
+      if ((oursReroll && theirs <= STYLE_PUSH_MAX) || (oursPush && theirs >= STYLE_REROLL_MIN)) return -1;
+      if (oursReroll && theirs >= STYLE_REROLL_MIN) min = STYLE_MATCH_MIN_JACCARD;
+    }
     const j = jaccard(own, new Set(c.units));
-    return j >= MERGE_MIN_JACCARD ? j : -1;
+    return j >= min ? j : -1;
   };
   for (const k of familyKeys) {
     const id = bundle.familyMap[k];
@@ -286,11 +351,12 @@ export function findCompGuide(
   parts: { trait: string; carry: string } | null,
   units: string[] = [],
   carries: string[] = [],
+  style: GuideStyle | null = null,
 ): { slug: string; guide: CompGuide } | null {
   if (!loaded?.bundle || !parts) return null;
   // Erkannte Carries zuerst, dann der Key-Carry (wie die Seite sie benennt).
   const all = [...new Set([...carries, parts.carry])];
-  const clusterId = resolveGuideId(loaded.bundle, all.map(c => `${parts.trait}__${c}`), units, all);
+  const clusterId = resolveGuideId(loaded.bundle, all.map(c => `${parts.trait}__${c}`), units, all, style);
   if (!clusterId) return null;
   const comp = loaded.bundle.comps.find(c => c.id === clusterId);
   if (!comp) return null;

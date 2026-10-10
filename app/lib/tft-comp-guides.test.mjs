@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import {
   parseLevelling, significantLevelSteps, augmentRowsByRarity, AUGMENTS_PER_RARITY,
+  resolveGuideId, guideStyleFromUnits,
 } from './tft-comp-guides.ts';
 
 const step = (level, count) => ({ level, stage: '3', round: '2', count });
@@ -150,4 +151,58 @@ test('unbekannte Rarity fällt weg, leere Reihen erscheinen nicht', () => {
 test('ohne Asset-Bundle keine Reihen statt geratener Rarity', () => {
   assert.deepEqual(augmentRowsByRarity(guideOf(['a']), null), []);
   assert.deepEqual(augmentRowsByRarity(guideOf([]), bundle([['a', 1]])), []);
+});
+
+// ── Zuordnung zur MetaTFT-Comp nach Spielweise ──────────────────────────────
+// Nachgestellt ist der Azir-Fall vom 2026-10-10: unsere Reroll-Comp
+// ueberlappt mit einer Fast-8-Comp zu 0,7 und mit der Reroll-Comp nur zu 0,6.
+const own = ['Azir', 'U1', 'U2', 'U3', 'U4', 'U5', 'U6'];
+const fastUnits = [...own, 'X1', 'X2', 'X3'];                          // Jaccard 7/10 = 0,7
+const rerollUnits = ['Azir', 'U1', 'U2', 'U3', 'U4', 'U5', 'Y1', 'Y2', 'Y3']; // Jaccard 6/10 = 0,6
+const stars = share3 => ({ carryStars: { Azir: [{ star: 2, pcnt: 1 - share3 }, { star: 3, pcnt: share3 }] } });
+const guides = (familyMap = {}, details = { fast: stars(0.04), reroll: stars(0.68) }) => ({
+  familyMap,
+  comps: [{ id: 'fast', units: fastUnits, games: 900 }, { id: 'reroll', units: rerollUnits, games: 500 }],
+  details,
+});
+const style = share => ({ carry: 'Azir', star3Share: share });
+
+test('ohne Spielweise gilt die alte Regel: beste Ueberlappung ab 0,7', () => {
+  assert.equal(resolveGuideId(guides(), [], own, ['Azir']), 'fast');
+});
+
+test('Reroll gegen Push schliesst aus, beide Reroll reicht ab 0,5', () => {
+  assert.equal(resolveGuideId(guides(), [], own, ['Azir'], style(0.51)), 'reroll');
+});
+
+test('unsere Push-Comp bekommt keine Reroll-Anleitung', () => {
+  assert.equal(resolveGuideId(guides(), [], own, ['Azir'], style(0.05)), 'fast');
+});
+
+test('zwischen den Grenzen bleibt es bei der alten Regel', () => {
+  assert.equal(resolveGuideId(guides(), [], own, ['Azir'], style(0.3)), 'fast');
+});
+
+test('beide Push (4/5-Kosten-Carry): keine gelockerte Schwelle', () => {
+  const g = guides({}, { fast: stars(0.02), reroll: stars(0.03) });
+  assert.equal(resolveGuideId(g, [], own, ['Azir'], style(0.02)), 'fast');
+});
+
+test('ohne Sterndaten der Anleitung bleibt die Spielweise neutral', () => {
+  assert.equal(resolveGuideId(guides({}, {}), [], own, ['Azir'], style(0.51)), 'fast');
+});
+
+test('Familien-Map gewinnt bei Einigkeit schon ab 0,5 vor besserer Ueberlappung', () => {
+  const g = guides({ 'T__Azir': 'reroll' }, { fast: stars(0.6), reroll: stars(0.68) });
+  assert.equal(resolveGuideId(g, ['T__Azir'], own, ['Azir'], style(0.51)), 'reroll');
+  assert.equal(resolveGuideId(g, ['T__Azir'], own, ['Azir']), 'fast');
+});
+
+test('guideStyleFromUnits: Anteil des Key-Carrys, null bei zu wenig Spielen oder fehlenden Feldern', () => {
+  const units = [{ characterId: 'Azir', gamesWithUnit: 5628, star3Games: 2862 }, { characterId: 'Few', gamesWithUnit: 29, star3Games: 20 }];
+  assert.deepEqual(guideStyleFromUnits('Azir', units), { carry: 'Azir', star3Share: 2862 / 5628 });
+  assert.equal(guideStyleFromUnits('Few', units), null);
+  assert.equal(guideStyleFromUnits('Missing', units), null);
+  assert.equal(guideStyleFromUnits('Azir', [{ characterId: 'Azir' }]), null);
+  assert.equal(guideStyleFromUnits(null, units), null);
 });

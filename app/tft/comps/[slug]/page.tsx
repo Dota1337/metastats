@@ -16,7 +16,7 @@ import CompBoardPanel, { type CompBoardParams } from '../../../components/tft/Co
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
 import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
-import { GuideAugments, GuideEarlyGame, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
+import { GuideAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel } from '../../../components/tft/CompOutcome';
@@ -51,7 +51,7 @@ import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
-import { loadCompGuidesBundle, findCompGuide } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 
@@ -194,7 +194,8 @@ export default function TftCompDetailPage() {
   const guideParts = comp ? parseClusterKey(comp.clusterKey) : null;
   const guideMatch = comp && guideParts
     ? findCompGuide(compGuidesBundle, { trait: guideParts.trait, carry: guideParts.carry },
-        (comp.typicalUnits || []).map((u: { characterId: string }) => u.characterId), namedCompCarries)
+        (comp.typicalUnits || []).map((u: { characterId: string }) => u.characterId), namedCompCarries,
+        guideStyleFromUnits(guideParts.carry, comp.typicalUnits))
     : null;
   const guide = guideMatch?.guide ?? null;
 
@@ -209,6 +210,8 @@ export default function TftCompDetailPage() {
         carries: [...new Set([...compRoles.carries, ...(compRoles.itemCarriers || [])])].filter(Boolean).slice(0, 6),
         // Wie CompRow: ohne Anleitungs-Datei ordnet die Route selbst zu.
         guide: compGuidesBundle.bundle ? guideMatch?.slug ?? null : undefined,
+        // Fruehe Boards der Anleitung als Reiter „Aufbau“ (frueher eigene Box).
+        early: true,
       }
     : null;
   const hasOutcomeItems: boolean = !!comp?.outcome
@@ -306,13 +309,13 @@ export default function TftCompDetailPage() {
                   key={c.component}
                   href={`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`}
                   title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
-                  className="flex flex-col items-center w-16 hover:scale-105 transition-transform"
+                  className="flex flex-col items-center w-12 hover:scale-105 transition-transform"
                 >
                   <div className="relative">
                     {url ? (
-                      <img src={url} alt={meta?.name || ''} className="w-12 h-12 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
+                      <img src={url} alt={meta?.name || ''} className="w-8 h-8 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
                     ) : (
-                      <div className="w-12 h-12 rounded bg-surface-overlay" />
+                      <div className="w-8 h-8 rounded bg-surface-overlay" />
                     )}
                     {i === 0 && (
                       <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-surface-base px-1 rounded font-bold">1</span>
@@ -399,7 +402,7 @@ export default function TftCompDetailPage() {
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
@@ -449,10 +452,11 @@ export default function TftCompDetailPage() {
                 Direkt darunter das Wichtigste wie in der App (User
                 2026-10-10, „Positionen, Itemization etc. weiter nach oben"):
                 links Aufstellung + Leveln, rechts Items; am Handy Aufstellung,
-                Items, Leveln. Dann Varianten, Synergien und zwei Spalten
-                (Variante D): links „In der Runde", rechts „Strategie", danach
-                die Analyse. Am Handy erst links, dann rechts — das
-                3★-Ergebnis steht dort deshalb zusaetzlich nach dem Raster.
+                Items, Leveln. Dann Varianten und zwei Spalten (Variante D):
+                links „In der Runde", rechts „Strategie" mit Synergien und
+                3★-Ergebnis oben, danach die Analyse. Am Handy erst links,
+                dann rechts — Synergien und 3★-Ergebnis stehen dort deshalb
+                zusaetzlich vor dem Raster.
                 ═══════════════════════════════════════════════════════════ */}
             <CompCard comp={comp} assets={assets} />
 
@@ -470,7 +474,13 @@ export default function TftCompDetailPage() {
                 {/* Items je Unit — der erste Reiter ist der Carry, seine 3er-Kombis
                     ersetzen die fruehere Box „Item-Sets am Carry". Die steht nur
                     noch da, wenn es keine Items je Unit gibt. */}
-                {hasOutcomeItems && <OutcomeItems outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />}
+                {hasOutcomeItems && (
+                  <OutcomeItems
+                    outcome={comp.outcome} assets={assets} bucket={bucket} t={t}
+                    leadUnits={leadCarry ? [leadCarry] : []}
+                    itemCarriers={[...namedCompCarries, ...(compRoles?.carries || []), ...(compRoles?.itemCarriers || [])]}
+                  />
+                )}
                 {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
                 {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
                   <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
@@ -536,26 +546,26 @@ export default function TftCompDetailPage() {
               families={variantMode === 'family' ? comp?.mergedFamilies ?? null : null}
             />
 
-            <CompActiveTraits
-              typicalUnits={comp.typicalUnits}
-              clusterKey={comp.clusterKey}
-              assets={assets}
-              bucket={bucket}
-            />
+            {/* Synergien: am Handy hier als Pills, am PC als Liste rechts ueber
+                dem 3★-Ergebnis (User 2026-10-10). */}
+            <div className="lg:hidden">
+              <CompActiveTraits
+                typicalUnits={comp.typicalUnits}
+                clusterKey={comp.clusterKey}
+                assets={assets}
+                bucket={bucket}
+              />
+            </div>
 
             <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-6 lg:items-start">
               <div className="min-w-0">
                 <BlockHeadline label={t('tft.comp.block.live')} />
 
-                {/* Guide aus MetaTFT: Augments + Early Game (Stage 2-1 / 3-2 / 4-2). */}
+                {/* Guide aus MetaTFT: Augments. Das Early Game steht seit
+                    2026-10-10 als Reiter „Aufbau“ in der Positionierungs-Box. */}
                 {guide && (
                   <div id="cj-augments" data-jump="augments" className="scroll-mt-16">
                     <GuideAugments guide={guide} assets={assets} />
-                  </div>
-                )}
-                {guide && (
-                  <div id="cj-early" data-jump="early" className="scroll-mt-16">
-                    <GuideEarlyGame guide={guide} assets={assets} />
                   </div>
                 )}
 
@@ -685,6 +695,15 @@ export default function TftCompDetailPage() {
 
               <div className="min-w-0">
                 <BlockHeadline label={t('tft.comp.block.strategy')} />
+                <div className="hidden lg:block">
+                  <CompActiveTraits
+                    typicalUnits={comp.typicalUnits}
+                    clusterKey={comp.clusterKey}
+                    assets={assets}
+                    bucket={bucket}
+                    variant="list"
+                  />
+                </div>
                 {carryStarBox && <div className="hidden lg:block">{carryStarBox}</div>}
                 {comp.outcome && <OutcomePlacement outcome={comp.outcome} t={t} />}
 

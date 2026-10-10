@@ -3,10 +3,11 @@ import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { costColor, HEX_CLIP } from '../../lib/tft-ui';
-import { boardLayout } from '../../lib/tft-comp-board';
+import { boardLayout, defaultLevel } from '../../lib/tft-comp-board';
 import { parseLevelling } from '../../lib/tft-comp-guides';
 import { useI18n } from '../../lib/i18n';
 import type { CompBoardResponse } from '../../api/tft/comps/board/route';
+import type { CompanionEarlyBoard } from '../../lib/companion-types';
 
 // Aufstellungsbrett unter einer Zeile der Comp-Liste und oben auf der
 // Comp-Detailseite, aufgebaut wie die Positions-Box bei MetaTFT: Reiter je
@@ -18,7 +19,8 @@ import type { CompBoardResponse } from '../../api/tft/comps/board/route';
 // Daten: /api/tft/comps/board (ein Abruf, ~3 KB). Zwischenspeicher je Comp und
 // Filter fuer die ganze Seite; der Knopf laedt beim Zeigen/Fokussieren vor.
 // Die Detailseite setzt `framed` (Rahmen wie ihre anderen Boxen), blendet den
-// Levelplan aus (ihre Leveln-Box zeigt ihn) und zeigt ohne Brett gar nichts.
+// Levelplan aus (ihre Leveln-Box zeigt ihn), zeigt ohne Brett gar nichts und
+// fragt mit `early` auch die fruehen Boards der Anleitung ab (Reiter „Aufbau“).
 
 export interface CompBoardParams {
   slug: string;
@@ -29,6 +31,8 @@ export interface CompBoardParams {
   carries: string[];
   /** MetaTFT-Comp der Comp-Zeile, null = keine; undefined = noch unbekannt (Route ordnet selbst zu). */
   guide?: string | null;
+  /** Auch die fruehen Boards der Anleitung (Stufe 4-7) als Reiter — nur die Detailseite. */
+  early?: boolean;
 }
 
 type BoardData = CompBoardResponse | null;
@@ -45,6 +49,7 @@ function boardUrl(p: CompBoardParams): string {
   });
   if (p.carries.length > 0) qs.set('carries', p.carries.join(','));
   if (p.guide !== undefined) qs.set('guide', p.guide ?? 'none');
+  if (p.early) qs.set('early', '1');
   return `/api/tft/comps/board?${qs.toString()}`;
 }
 
@@ -192,6 +197,40 @@ function HexBoard({
   );
 }
 
+// Aufbau-Reiter: Stufen mit fruehem Board der Anleitung; darunter die
+// meistgespielten Opener der Stufe (das erste steht auf dem Brett).
+const EARLY_TAB_LEVELS = ['4', '5', '6', '7'];
+const EARLY_ROWS = 3;
+
+interface BoardTab {
+  /** "e4".."e7" = Aufbau, "7".."9" = Endbrett, "all" = Gesamtbrett. */
+  key: string;
+  level: number | null;
+  sub: string | null;
+}
+
+function byGames(list: CompanionEarlyBoard[] | undefined): CompanionEarlyBoard[] {
+  return [...(list ?? [])].sort((a, b) => b.games - a.games);
+}
+
+function EarlyUnitTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
+  const champ = findChampion(assets, apiName);
+  const url = tftChampionTileUrl(assets, champ);
+  const name = champ?.name || prettyChar(apiName);
+  const cost = champ?.cost ?? 1;
+  // Kosten 0 = keine Shop-Einheit (z. B. Pflanzen) → kein Kostenrahmen.
+  return (
+    <a
+      href={`/tft/units/${encodeURIComponent(apiName)}`}
+      className={`block w-8 h-8 rounded border-2 overflow-hidden bg-surface-overlay hover:scale-105 transition${cost === 0 ? ' border-border-subtle' : ''}`}
+      style={cost === 0 ? undefined : { borderColor: costColor(cost) }}
+      title={name}
+    >
+      {url && <img src={url} alt={name} className="w-full h-full object-cover" loading="lazy" />}
+    </a>
+  );
+}
+
 export default function CompBoardPanel({
   id, params, assets, framed = false, showPlan = true, hideWhenEmpty = false,
 }: {
@@ -207,16 +246,42 @@ export default function CompBoardPanel({
   const { t } = useI18n();
   const [attempt, setAttempt] = useState(0);
   const state = useBoard(params, attempt);
-  const [picked, setPicked] = useState<number | null>(null);
-  const tabRefs = useRef(new Map<number, HTMLButtonElement>());
+  const [picked, setPicked] = useState<string | null>(null);
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const data = state.status === 'ready' ? state.data : null;
-  const levels = data?.levels ?? [];
-  const level = picked != null && levels.some(l => l.level === picked) ? picked : data?.defaultLevel ?? null;
+  // Aufbau (nur Detailseite): das meistgespielte fruehe Board der Anleitung je
+  // Stufe 4-7. Hat eine Stufe eins, ersetzt es das Endbrett derselben Stufe —
+  // bei Reroll-Comps ist Stufe 7 Aufbau, nicht Ende (User 2026-10-10).
+  const earlyCells = data?.earlyBoardsByLevel ?? {};
+  const earlyTabs: BoardTab[] = EARLY_TAB_LEVELS
+    .filter(l => (earlyCells[l]?.length ?? 0) > 0)
+    .map(l => {
+      const top = byGames(data?.early?.[l])[0];
+      return { key: `e${l}`, level: Number(l), sub: top?.avg != null ? `Ø ${top.avg.toFixed(2)}` : null };
+    });
+  const endLevels = (data?.levels ?? []).filter(l => !earlyTabs.some(e => e.level === l.level));
+  const endTabs: BoardTab[] = endLevels.map(l => ({ key: String(l.level), level: l.level, sub: `${(l.share * 100).toFixed(1)}%` }));
+  // Ohne Endstufe mit eigenem Brett bleibt das Gesamtbrett ueber einen eigenen Reiter erreichbar.
+  if (earlyTabs.length > 0 && endTabs.length === 0 && (data?.board.length ?? 0) > 0) {
+    endTabs.push({ key: 'all', level: null, sub: null });
+  }
+  const tabs = [...earlyTabs, ...endTabs];
+  const endDefault = earlyTabs.length > 0 ? defaultLevel(endLevels) : data?.defaultLevel ?? null;
+  const defaultKey = endDefault != null ? String(endDefault)
+    : earlyTabs.length > 0 ? (endTabs[0] ?? earlyTabs[earlyTabs.length - 1]).key
+    : null;
+  const tab = tabs.find(x => x.key === picked) ?? tabs.find(x => x.key === defaultKey) ?? null;
+  const isEarly = tab != null && tab.key.startsWith('e');
   const cellsList = data
-    ? (level != null ? data.boardsByPlayerLevel[String(level)] : null) ?? data.board
+    ? (tab == null ? null
+      : isEarly ? earlyCells[String(tab.level)]
+      : tab.key === 'all' ? data.board
+      : data.boardsByPlayerLevel[tab.key]) ?? data.board
     : [];
   const cells = new Map(cellsList.map(c => [c.cell, c.unit]));
+  const earlyOptions = isEarly ? byGames(data?.early?.[String(tab.level)]).slice(0, EARLY_ROWS) : [];
+  const compactTabs = tabs.length > 4;
 
   const plan = parseLevelling(data?.levelling);
   const planLabel = plan
@@ -226,18 +291,47 @@ export default function CompBoardPanel({
     : null;
   const stepLabel = (n: number) => (t('tft.comp.levelling.step') as string).replace('{level}', String(n));
 
+  // Pfeiltasten laufen ueber alle Reiter, auch ueber die Gruppengrenze.
   const onTabKey = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
     let next = -1;
-    if (e.key === 'ArrowRight') next = (idx + 1) % levels.length;
-    else if (e.key === 'ArrowLeft') next = (idx - 1 + levels.length) % levels.length;
+    if (e.key === 'ArrowRight') next = (idx + 1) % tabs.length;
+    else if (e.key === 'ArrowLeft') next = (idx - 1 + tabs.length) % tabs.length;
     else if (e.key === 'Home') next = 0;
-    else if (e.key === 'End') next = levels.length - 1;
+    else if (e.key === 'End') next = tabs.length - 1;
     if (next < 0) return;
     e.preventDefault();
-    const lv = levels[next].level;
-    setPicked(lv);
-    tabRefs.current.get(lv)?.focus();
+    const key = tabs[next].key;
+    setPicked(key);
+    tabRefs.current.get(key)?.focus();
   };
+
+  const tabButton = (x: BoardTab, idx: number) => {
+    const active = x.key === tab?.key;
+    return (
+      <button
+        key={x.key}
+        ref={el => { if (el) tabRefs.current.set(x.key, el); else tabRefs.current.delete(x.key); }}
+        id={`${id}-tab-${x.key}`}
+        type="button"
+        role="tab"
+        aria-selected={active}
+        aria-controls={`${id}-board`}
+        tabIndex={active ? 0 : -1}
+        onClick={() => setPicked(x.key)}
+        onKeyDown={e => onTabKey(e, idx)}
+        className={`flex flex-col items-center ${compactTabs ? 'min-w-[3.25rem] px-1.5' : 'min-w-[4.25rem] px-2.5'} pt-1 pb-1.5 border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60 rounded-t`}
+        style={{ borderColor: active ? '#e0c75a' : 'transparent' }}
+      >
+        <span className={`text-sm font-semibold whitespace-nowrap ${active ? '' : 'text-fg-primary'}`} style={active ? { color: '#e0c75a' } : undefined}>
+          {x.level != null ? stepLabel(x.level) : t('tft.comp.positioning.finalBoard')}
+        </span>
+        <span className="text-[11px] text-fg-muted tabular-nums whitespace-nowrap">{x.sub ?? ' '}</span>
+      </button>
+    );
+  };
+  const groupLabel = (text: string) => (
+    <div className="text-fg-muted text-[10px] uppercase tracking-widest leading-none mb-1" aria-hidden="true">{text}</div>
+  );
 
   const empty = state.status === 'ready' && cells.size === 0;
   if (empty && hideWhenEmpty) return null;
@@ -267,41 +361,59 @@ export default function CompBoardPanel({
         <div className="text-center text-fg-muted py-6">—</div>
       ) : (
         <>
-          {levels.length > 0 && (
-            <div role="tablist" aria-label={t('tft.comp.positioning')} className="flex justify-center gap-1 mb-3">
-              {levels.map((l, idx) => {
-                const active = l.level === level;
-                return (
-                  <button
-                    key={l.level}
-                    ref={el => { if (el) tabRefs.current.set(l.level, el); else tabRefs.current.delete(l.level); }}
-                    id={`${id}-tab-${l.level}`}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    aria-controls={`${id}-board`}
-                    tabIndex={active ? 0 : -1}
-                    onClick={() => setPicked(l.level)}
-                    onKeyDown={e => onTabKey(e, idx)}
-                    className="flex flex-col items-center min-w-[4.25rem] px-2.5 pt-1 pb-1.5 border-b-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60 rounded-t"
-                    style={{ borderColor: active ? '#e0c75a' : 'transparent' }}
-                  >
-                    <span className={`text-sm font-semibold ${active ? '' : 'text-fg-primary'}`} style={active ? { color: '#e0c75a' } : undefined}>
-                      {stepLabel(l.level)}
-                    </span>
-                    <span className="text-[11px] text-fg-muted tabular-nums">{(l.share * 100).toFixed(1)}%</span>
-                  </button>
-                );
-              })}
+          {earlyTabs.length > 0 ? (
+            // Zwei Gruppen: Aufbau (Anleitung, Stufe 4-7) und Endbrett (unsere
+            // Spiele). Passt die Reihe nicht, rutscht die zweite Gruppe als
+            // Ganzes in die naechste Zeile.
+            <div className="flex flex-wrap justify-center items-end gap-x-5 gap-y-2 mb-3">
+              <div id="cj-early" className="scroll-mt-16 flex flex-col items-center">
+                {groupLabel(t('tft.comp.positioning.buildUp'))}
+                <div role="tablist" aria-label={t('tft.comp.positioning.buildUp')} className="flex gap-1">
+                  {earlyTabs.map((x, i) => tabButton(x, i))}
+                </div>
+              </div>
+              {endTabs.length > 0 && (
+                <div className="flex flex-col items-center">
+                  {endTabs[0].key !== 'all' && groupLabel(t('tft.comp.positioning.finalBoard'))}
+                  <div role="tablist" aria-label={t('tft.comp.positioning.finalBoard')} className="flex gap-1">
+                    {endTabs.map((x, i) => tabButton(x, earlyTabs.length + i))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          ) : tabs.length > 0 ? (
+            <div role="tablist" aria-label={t('tft.comp.positioning')} className="flex justify-center gap-1 mb-3">
+              {tabs.map((x, i) => tabButton(x, i))}
+            </div>
+          ) : params.early && state.status === 'loading' ? (
+            // Platzhalter in Hoehe der Reiter, damit das Brett beim Laden nicht springt.
+            <div className="h-[3.75rem] mb-3" aria-hidden="true" />
+          ) : null}
 
           <div
             id={`${id}-board`}
-            {...(levels.length > 0 ? { role: 'tabpanel', 'aria-labelledby': `${id}-tab-${level}` } : {})}
+            {...(tab ? { role: 'tabpanel', 'aria-labelledby': `${id}-tab-${tab.key}` } : {})}
           >
             <HexBoard cells={cells} assets={assets} pulse={state.status === 'loading'} />
           </div>
+
+          {earlyOptions.length > 0 && (
+            <div className="mt-3 flex flex-col items-center gap-2">
+              {earlyOptions.map((o, i) => (
+                <div key={i} className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                  <div className="flex gap-1">
+                    {o.units.map((u, j) => <EarlyUnitTile key={`${u}-${j}`} apiName={u} assets={assets} />)}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-fg-muted tabular-nums whitespace-nowrap">
+                    {o.avg != null && (
+                      <span>{t('tft.comp.avgPlacement')} <span className="text-white font-semibold">{o.avg.toFixed(2)}</span></span>
+                    )}
+                    <span>{o.games.toLocaleString()} {t('tft.comp.games')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {showPlan && data && (planLabel || data.levelTiming.length > 0) && (
             <div className="mt-3 flex flex-col items-center gap-2">

@@ -137,6 +137,28 @@ test('buildCompBoards (Seite): nur Stufen 7-9 ab 50 Spielen, Brett je Stufe mit 
   assert.deepEqual(out.early, { 4: [{ units: ['TFT17_B'], games: 50, avg: 4.12 }] });
 });
 
+test('buildCompBoards (Detailseite): fruehe Boards als Brett, nur mit withEarlyBoards, ohne Extra-Abfrage', async () => {
+  const guides = structuredClone(GUIDES);
+  guides.details.g1.earlyByLevel = {
+    5: [{ units: ['TFT17_A'], count: 60, avg: 4.4 }, { units: ['TFT17_K', 'TFT17_J'], count: 200, avg: 3.9 }],
+    6: [{ units: ['TFT17_B'], count: 49, avg: 4 }],
+  };
+  const opts = { comp: fixtureComp(), guides, levelRange: [7, 9], minLevelGames: 50, earlyMinGames: 50 };
+  const off = fakeShares();
+  const without = await buildCompBoards({ ...opts, fetchShares: off.fn });
+  assert.equal(without.earlyBoardsByLevel, undefined);
+  const on = fakeShares();
+  const withEarly = await buildCompBoards({ ...opts, fetchShares: on.fn, withEarlyBoards: true });
+  // Das meistgespielte Board je Stufe; Stufe 6 hat keins ab 50 Spielen.
+  assert.deepEqual(Object.keys(withEarly.earlyBoardsByLevel), ['5']);
+  assert.deepEqual(withEarly.earlyBoardsByLevel['5'].map(c => c.cell).sort((a, b) => a - b), [9, 10]);
+  // Die fruehen Units laufen in derselben Abfrage wie die Stufenbretter mit.
+  assert.equal(on.calls.length, off.calls.length);
+  assert.ok(on.calls.some(c => c.ids.includes('TFT17_K')));
+  // Endbretter bleiben unberuehrt.
+  assert.deepEqual(withEarly.boardsByPlayerLevel, without.boardsByPlayerLevel);
+});
+
 test('buildCompBoards: Seite und App zeigen auf derselben Stufe dasselbe Brett', async () => {
   const page = await buildCompBoards({
     comp: fixtureComp(), fetchShares: fakeShares().fn, guides: GUIDES,

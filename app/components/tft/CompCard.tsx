@@ -10,7 +10,7 @@ import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
-import { loadCompGuidesBundle, findCompGuide, difficultyColor } from '../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, splitCoreFlex } from '../../lib/tft-comp-roles';
 import CoreFlexGroups from './CoreFlexGroups';
 
@@ -85,7 +85,8 @@ export default function CompCard({
   // Guide: zuerst ueber die erkannten Carries, dann ueber den Key-Carry;
   // gilt nur bei passendem Brett (resolveGuideId).
   const guideMatch = parts
-    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, comp.typicalUnits.map(u => u.characterId), named)
+    ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, comp.typicalUnits.map(u => u.characterId), named,
+        guideStyleFromUnits(parts.carry, comp.typicalUnits))
     : null;
   // Stargazer (and similar themed traits) ships seven constellation variants
   // — Mountain, Serpent, Huntress, Medallion, Fountain, Wolf, Shield — all of

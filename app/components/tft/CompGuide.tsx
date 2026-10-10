@@ -1,12 +1,9 @@
 'use client';
-import { useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, formatTftDesc } from '../../lib/tft-cdragon';
-import { costColor as costColorOf } from '../../lib/tft-ui';
+import { tftIconUrl, findItem, formatTftDesc } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
-  type EarlyOption,
   augmentTierBorderColor,
   augmentGradeColor,
   augmentRowsByRarity,
@@ -16,8 +13,9 @@ import {
 } from '../../lib/tft-comp-guides';
 
 // CompGuide — rendert die aus MetaTFT-Clustern abgeleiteten Build-Daten:
-// Levelplan, Augments nach Tier, die meistgespielten Early-Game-Boards mit
-// Placement, und die Round-1-Carousel-Picks (je ein eigener Teil, s. unten).
+// Levelplan, Augments nach Tier und die Round-1-Carousel-Picks (je ein
+// eigener Teil, s. unten). Die Early-Game-Boards stehen seit 2026-10-10 als
+// Reiter „Aufbau“ in der Positionierungs-Box (CompBoardPanel).
 // Difficulty-Badge sitzt im Header der Elternseite.
 //
 // Die Stage-Tipps der tftacademy-Fassung sind ersatzlos entfallen — MetaTFT
@@ -46,12 +44,12 @@ function AugmentTile({
   return (
     <a
       href={`/tft/augments/${encodeURIComponent(apiName)}`}
-      className="flex flex-col items-center w-16 hover:scale-105 transition"
+      className="flex flex-col items-center w-14 hover:scale-105 transition"
       title={formatTftDesc(meta?.desc) || meta?.name || apiName}
     >
       <div className="relative">
         <div
-          className="w-14 h-14 rounded overflow-hidden border-2"
+          className="w-10 h-10 rounded overflow-hidden border-2"
           style={{ borderColor: augmentTierBorderColor(tier) }}
         >
           {iconUrl ? (
@@ -76,108 +74,9 @@ function AugmentTile({
   );
 }
 
-function EarlyChampionTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
-  const ch = findChampion(assets, apiName);
-  const url = tftChampionTileUrl(assets, ch);
-  const cost = ch?.cost ?? 1;
-  // Kosten 0 = keine Shop-Einheit (z. B. Elderwood-Pflanzen) → kein Kostenrahmen.
-  const neutral = cost === 0;
-  return (
-    <a
-      href={`/tft/units/${encodeURIComponent(apiName)}`}
-      className={`relative block w-10 h-10 rounded border-2 overflow-hidden hover:scale-105 transition${neutral ? ' border-border-subtle' : ''}`}
-      style={neutral ? undefined : { borderColor: costColorOf(cost) }}
-      title={ch?.name || apiName}
-    >
-      {url && <img src={url} alt={ch?.name || apiName} className="w-full h-full object-cover" />}
-    </a>
-  );
-}
-
-// Eine Early-Game-Variante: Board links, Kennzahlen rechts. Mehrere Varianten
-// untereinander statt einer „richtigen" — MetaTFT liefert die tatsächlich
-// gespielten Opener, und die unterscheiden sich real.
-// Early Game als Reiter je Spielerstufe, Stufe 4 offen. Stufen ohne Boards
-// bekommen keinen Reiter.
-const EARLY_LEVELS = ['4', '5', '6', '7'];
-
-function EarlyGameSection({
-  earlyByLevel, assets, t,
-}: {
-  earlyByLevel: Record<string, EarlyOption[]>;
-  assets: TftAssetsBundle | null;
-  t: (k: any) => string;
-}) {
-  const levels = EARLY_LEVELS.filter(l => (earlyByLevel[l]?.length ?? 0) > 0);
-  const [selected, setSelected] = useState<string | null>(null);
-  if (levels.length === 0) return null;
-  const level = selected && levels.includes(selected) ? selected : levels[0];
-
-  return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.earlyGame')}</h2>
-      {levels.length > 1 && (
-        <div className="flex flex-wrap gap-1.5 mb-3" role="tablist">
-          {levels.map(l => {
-            const active = l === level;
-            return (
-              <button
-                key={l}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setSelected(l)}
-                className={`px-2.5 py-1 rounded border text-xs transition-colors ${active ? 'border-accent bg-surface-raised text-white' : 'border-border-subtle text-fg-secondary hover:text-white'}`}
-              >
-                {t('tft.match.lvl')} {l}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <div className="flex flex-col gap-3">
-        {earlyByLevel[level].map((opt, i) => (
-          <EarlyOptionRow key={`early-${level}-${i}`} option={opt} assets={assets} t={t} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function EarlyOptionRow({
-  option, assets, t,
-}: {
-  option: EarlyOption;
-  assets: TftAssetsBundle | null;
-  t: (k: any) => string;
-}) {
-  return (
-    <div className="flex items-center gap-3 flex-wrap">
-      <div className="flex flex-wrap gap-1">
-        {option.units.map((u, i) => (
-          <EarlyChampionTile key={`${u}-${i}`} apiName={u} assets={assets} />
-        ))}
-      </div>
-      <div className="flex items-center gap-3 text-[10px] text-fg-muted">
-        {typeof option.avg === 'number' && (
-          <span>
-            {t('tft.comp.avgPlacement')}{' '}
-            <span className="text-white font-semibold">{option.avg.toFixed(2)}</span>
-          </span>
-        )}
-        {typeof option.count === 'number' && (
-          <span>
-            {option.count.toLocaleString()} {t('tft.comp.games')}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // Die Guide-Teile stehen seit dem Umbau der Detailseite (User 2026-10-10,
-// Variante D) an verschiedenen Orten: Augments und Early Game links „In der
-// Runde", der Levelplan in der Leveln-Box rechts, die Carousel-Picks in der
+// Variante D) an verschiedenen Orten: Augments links „In der Runde", der
+// Levelplan in der Leveln-Box rechts, die Carousel-Picks in der
 // Bauteil-Box. Deshalb einzelne Teile statt eines Stapels.
 
 /** Levelplan ohne eigene Box — Strategie-Zeile plus Level-Schritte. Beide
@@ -254,14 +153,6 @@ export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets:
   );
 }
 
-/** Early Game — die meistgespielten Opener-Boards dieser Comp mit ihrem
-    Durchschnittsplatz, damit der Spieler zwischen ihnen waehlen kann statt
-    einen vorgesetzt zu bekommen. */
-export function GuideEarlyGame({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
-  const { t } = useI18n();
-  return <EarlyGameSection earlyByLevel={guide.earlyByLevel} assets={assets} t={t} />;
-}
-
 /** Carousel-Picks der ersten Runde ohne eigene Box — welche Komponenten zu
     dieser Comp fuehren. Steht in der Bauteil-Box der Detailseite. */
 export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
@@ -275,10 +166,10 @@ export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; as
           <a
             key={`${pick.item}-${i}`}
             href={`/tft/items/${encodeURIComponent(pick.item)}`}
-            className="flex flex-col items-center w-12 hover:scale-105 transition"
+            className="flex flex-col items-center w-10 hover:scale-105 transition"
             title={meta?.name || pick.item}
           >
-            <div className="w-10 h-10 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
+            <div className="w-8 h-8 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
               {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
             </div>
             {typeof pick.avg === 'number' && (

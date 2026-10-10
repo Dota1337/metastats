@@ -156,12 +156,22 @@ function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssets
 }
 
 /** Items je Unit: Unit waehlen, darunter Items nach Gruppe und die haeufigsten 3er-Kombis. */
-export function OutcomeItems({ outcome, assets, bucket, t }: {
+export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemCarriers = [] }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
+  /** Fest vorn in dieser Reihenfolge (Detailseite: der Haupt-Carry). */
+  leadUnits?: readonly string[];
+  /** Weitere Item-Traeger der Comp — danach, nach Item-Kopien; dann der Rest. */
+  itemCarriers?: readonly string[];
 }) {
+  // Reihenfolge nach Wichtigkeit in der Comp (User 2026-10-10), innerhalb
+  // einer Stufe nach Item-Kopien.
+  const rank = (cid: string) => {
+    const i = leadUnits.indexOf(cid);
+    return i >= 0 ? i : itemCarriers.includes(cid) ? leadUnits.length : leadUnits.length + 1;
+  };
   const units = outcome.units
     .filter(u => u.itemCopies > 0 && u.items.length > 0)
-    .sort((a, b) => b.itemCopies - a.itemCopies)
+    .sort((a, b) => rank(a.characterId) - rank(b.characterId) || b.itemCopies - a.itemCopies)
     .slice(0, MAX_UNIT_TABS);
   const [selected, setSelected] = useState<string | null>(null);
   const [allItems, setAllItems] = useState(false);
@@ -237,17 +247,19 @@ export function OutcomeItems({ outcome, assets, bucket, t }: {
       {unit.sets.length > 0 && (
         <div className="mt-4">
           <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.outcome.combos')}</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {/* Eine Zeile je Kombi — im Raster ueberlappten Zahlen und Hinweis. */}
+          <div className="flex flex-col gap-1.5">
             {unit.sets.slice(0, MAX_COMBOS).map(s => (
-              <div key={s.items.join('|')} className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2">
-                <div className="flex gap-1">
+              <div key={s.items.join('|')} className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded px-2 py-1.5">
+                <div className="flex gap-1 shrink-0">
                   {s.items.map((it, j) => <TftItemIcon key={j} apiName={it} assets={assets} className="w-7 h-7" />)}
                 </div>
-                <div className="ml-auto text-right text-[11px] tabular-nums leading-tight">
-                  <div className="text-white">{s.avgPlacement.toFixed(2)}</div>
-                  <div className="text-fg-muted">{pct(s.share)} · {s.copies}</div>
-                </div>
                 {s.copies < 200 && <LowData t={t} />}
+                {/* Feste Breiten, damit Ø und Anteil ueber alle Zeilen buendig stehen. */}
+                <div className="ml-auto flex items-center gap-3 text-[11px] tabular-nums whitespace-nowrap">
+                  <span className="min-w-[3rem] text-right"><span className="text-fg-muted">{t('tft.comp.outcome.avgShort')} </span><span className="text-white">{s.avgPlacement.toFixed(2)}</span></span>
+                  <span className="min-w-[4.5rem] text-right text-fg-muted">{pct(s.share)} · {s.copies}</span>
+                </div>
               </div>
             ))}
           </div>

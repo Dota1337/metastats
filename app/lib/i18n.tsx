@@ -2999,6 +2999,16 @@ const translations = {
     '배치', '站位',
     'Posicionamiento', 'Placement'
   ),
+  'tft.comp.positioning.buildUp': t6(
+    'Aufbau', 'Build-up',
+    '빌드업', '前中期',
+    'Desarrollo', 'Progression'
+  ),
+  'tft.comp.positioning.finalBoard': t6(
+    'Endbrett', 'Final board',
+    '최종 배치', '最终阵容',
+    'Tablero final', 'Plateau final'
+  ),
   'tft.comps.positioning.show': t6(
     'Positionierung anzeigen', 'Show positioning',
     '배치 보기', '显示站位',

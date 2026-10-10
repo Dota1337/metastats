@@ -15,12 +15,14 @@ import {
   cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL,
 } from '../../../../lib/api-cache';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
+import { guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
+import { parseClusterKey } from '../../../../lib/tft-cluster';
 import type { LevelRow } from '../../../../lib/tft-comp-outcome';
 import {
   BOARD_UNIT_RE, EARLY_MIN_GAMES, POSITIONING_LEVELS, POSITIONING_MIN_GAMES,
   buildCompBoards, compPositioning, parseGuideParam, type BoardSource, type CellShares,
 } from '../../../../lib/tft-comp-board';
-import type { CompanionBoardCell, CompanionPositioning } from '../../../../lib/companion-types';
+import type { CompanionBoardCell, CompanionEarlyBoard, CompanionPositioning } from '../../../../lib/companion-types';
 
 export const maxDuration = 60;
 
@@ -31,6 +33,10 @@ export interface CompBoardResponse extends CompanionPositioning {
   boardSource: BoardSource;
   /** Gesamtbrett aus den typischen Units — nur genutzt, wenn keine Stufe ein eigenes Brett hat. */
   board: CompanionBoardCell[];
+  /** Nur mit ?early=1 (Detailseite): fruehe Boards der Anleitung je Stufe 4-7 ab 50 Spielen … */
+  early?: Record<string, CompanionEarlyBoard[]>;
+  /** … und je Stufe das meistgespielte davon als Brett mit Feldern. */
+  earlyBoardsByLevel?: Record<string, CompanionBoardCell[]>;
 }
 
 // Fehlerantwort: die Edge haelt sie 10 s (schuetzt vor Wiederholungs-Stuermen),
@@ -52,6 +58,7 @@ export async function GET(request: NextRequest) {
   const region = /^[a-z0-9_]{2,20}$/.test(sp.get('region') || '') ? sp.get('region')! : 'all';
   // Carries + Item-Traeger der Familie fuer die MetaTFT-Zuordnung (wie die App).
   const carries = (sp.get('carries') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 6);
+  const withEarly = sp.get('early') === '1';
 
   try {
     // ?patch=previous auf den konkreten Patch umleiten (wie jede Stats-Route),
@@ -67,7 +74,8 @@ export async function GET(request: NextRequest) {
     if (!res.ok) return degraded('comp_unavailable', 503);
     const body = await res.json().catch(() => null) as {
       comp?: {
-        typicalUnits?: Array<{ characterId: string }>;
+        clusterKey?: string;
+        typicalUnits?: Array<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }>;
         mergedFamilies?: string[];
         outcome?: {
           levels?: LevelRow[];
@@ -105,6 +113,8 @@ export async function GET(request: NextRequest) {
       // Anleitung der Comp-Zeile (CompRow), damit Brett und Levelplan zur
       // Zeile passen.
       guideId: parseGuideParam(sp.get('guide')),
+      guideStyle: guideStyleFromUnits(parseClusterKey(comp.clusterKey || slug)?.carry, comp.typicalUnits),
+      withEarlyBoards: withEarly,
     });
 
     const out: CompBoardResponse = {
@@ -112,6 +122,7 @@ export async function GET(request: NextRequest) {
       boardSource: boards.boardSource,
       board: boards.board,
       ...compPositioning(boards, comp.outcome?.levels, guides),
+      ...(withEarly ? { early: boards.early, earlyBoardsByLevel: boards.earlyBoardsByLevel ?? {} } : {}),
     };
     // Ohne Ergebnis-Block (Zeitlimit der Abfrage) fehlen die Stufen-Reiter —
     // dann nicht stundenlang zwischenspeichern.

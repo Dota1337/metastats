@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-10-03T06:22:39.671Z",
+  "fetchedAt": "2026-10-10T06:19:56.594Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-10-03T06:22:39.960Z",
+      "scrapedAt": "2026-10-10T06:19:56.732Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -403,7 +403,7 @@
       }
     },
     "18.2": {
-      "scrapedAt": "2026-10-03T06:22:42.213Z",
+      "scrapedAt": "2026-10-10T06:19:58.800Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -897,8 +897,73 @@
       }
     },
     "18.3": {
-      "scrapedAt": "2026-10-03T06:22:44.229Z",
+      "scrapedAt": "2026-10-10T06:20:00.860Z",
       "sections": [
+        {
+          "category": "MID-PATCH UPDATE",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blackthorn 0",
+              "change": "Blackthorn AP Sacrifice Base Damage Amp: 14% ⇒ 12%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’Zix Ability Base Damage: 285/400/580 AP ⇒ 265/370/535 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "Brambleback cast time is now slightly faster."
+            },
+            {
+              "apiName": null,
+              "displayName": "Camille",
+              "change": "Camille Ability Damage: 160/240/410/700 AD ⇒ 150/225/375/640 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "LeBlanc",
+              "change": "Leblanc Clone Chance: 10/15/40% ⇒ 10/15/30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Teemo",
+              "change": "Teemo Small Shroom Damage: 60/90/135 AP ⇒ 55/82/130 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ashe",
+              "change": "Ashe Trail Duration: 4s ⇒ 3s"
+            },
+            {
+              "apiName": null,
+              "displayName": "Draven",
+              "change": "Draven Bounty Hunter:Casts for 4-costs: 5 ⇒ 6Reward for 8 Casts: 10 Rerolls ⇒ 6 RerollsAttack for 5-cost: 50 ⇒ 60Damage for 7 Gold: 8,000 ⇒ 10,000Kills for 12 Gold: 6 ⇒ 8"
+            },
+            {
+              "apiName": null,
+              "displayName": "Challenger's Grace",
+              "change": "Challenger’s Grace has been temporarily disabled due to a bug."
+            },
+            {
+              "apiName": null,
+              "displayName": "Dark Ritual",
+              "change": "Dark Ritual has been temporarily disabled."
+            },
+            {
+              "apiName": null,
+              "displayName": "Infinity Protection",
+              "change": "Infinity Protection has been temporarily disabled due to a bug."
+            },
+            {
+              "apiName": null,
+              "displayName": "Nesting Dolls",
+              "change": "Nesting Dolls has been temporarily disabled due to a bug."
+            }
+          ]
+        },
         {
           "category": "LARGE CHANGES",
           "entries": [
@@ -1206,7 +1271,376 @@
         }
       ],
       "counts": {
-        "totalEntries": 58,
+        "totalEntries": 70,
+        "withApiName": 0
+      }
+    },
+    "18.4": {
+      "scrapedAt": "2026-10-10T06:20:03.056Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "BlossomAD/AP: 12/30/45/50% ⇒ 12/30/50/55%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coven 0",
+              "change": "Coven130 Cashout2x Components ⇒ 1x Component + 6 gold1x Component + 2* Elise + 1* Cassio ⇒ 1x Component + 2* Elise1x Random Item ⇒ 1x Component + 2* Camille + 3g2* Caitlyn + 1x Component + 3g ⇒ 2* Caitlyn + 1x Component"
+            },
+            {
+              "apiName": null,
+              "displayName": "Eclipse 0",
+              "change": "EclipseInitial Delay before execution: 10s ⇒ 8s"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood(7) Deepwood Protector Mana: 20/70 ⇒ 20/60(7) Deepwood Protector Resists: 65 ⇒ 70(9) Health Multiplier for Elderwood Plants satrring up: 155% ⇒ 140%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Executioner 0",
+              "change": "Executioner (3/4)Bleed Damage: 30/40% ⇒ 25/35%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fae 0",
+              "change": "FaeAD/AP Per Pixie: 5/8% ⇒ 4.5/7%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Juggernaut 0",
+              "change": "JuggernautJuggernaut Durability: 20/33/45% ⇒ 20/30/42%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lunar 0",
+              "change": "LunarAbility Power: 7/10/14/18% ⇒ 7/12/16/20%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Riftbeast 0",
+              "change": "Riftbeast(7) AD/AP/AS every 5 seconds: 5% ⇒ 6%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sprykin 0",
+              "change": "Sprykin(7) Stats: 45% HP + 45% AS ⇒ 55% HP + 55% AS"
+            },
+            {
+              "apiName": null,
+              "displayName": "Camille",
+              "change": "CamilleDamage AD: 150/225/375/640 ⇒ 150/225/400/665"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kobuko",
+              "change": "KobukoHeal AP: 265/315/460/575 ⇒ 285/335/480/595"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rakan",
+              "change": "RakanShield: 270/320/415/490 ⇒ 290/340/435/510"
+            },
+            {
+              "apiName": null,
+              "displayName": "Xayah",
+              "change": "XayahAbility Damage: 68/102/155/165 ⇒ 73/108/165/175"
+            },
+            {
+              "apiName": null,
+              "displayName": "Varus",
+              "change": "VarusAttack Speed: .7% ⇒ .75%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Veigar",
+              "change": "VeigarAbility Damage: 200/300/450/765 ⇒190/285/430/725Low HP Ability Damage: 300/450/675/1015 ⇒285/430/640/1000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gromp",
+              "change": "GrompMana AD Form: 20/80 ⇒ 0/70Splash damage AP Form: 160/240/360/610 ⇒ 160/240/375/625"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kayle",
+              "change": "KayleAbility Damage: 62/92/105/115 ⇒ 65/97/110/115"
+            },
+            {
+              "apiName": null,
+              "displayName": "Shen",
+              "change": "ShenShield: 350/430/550/700 ⇒ 375/450/575/725Ally Shield: 200/275/375/475 ⇒ 225/300/400/500"
+            },
+            {
+              "apiName": null,
+              "displayName": "Teemo",
+              "change": "TeemoAOE Damage: 55/82/130/215 ⇒ 55/82/155/240"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hecarim",
+              "change": "HecarimMana: 30/110 ⇒ 50/110"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mama Beak",
+              "change": "Mama BeakAbility Damage: 22/30/48 AD ⇒ 22/30/52 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rammus",
+              "change": "RammusShield: 400/550/725 AP ⇒ 400/550/700 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rengar",
+              "change": "RengarAbility Damage: 255/385/615 AD ⇒ 255/385/650 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tristana",
+              "change": "TristanaAbility Damage: 160/240/385 AD ⇒ 175/265/420 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "BramblebackAbility Bonus AD: 80% AD ⇒ 100% ADLeap Damage: 155/235 AD ⇒ 135/205 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ezreal",
+              "change": "EzrealSmall Cast Damage: 250/375 AD ⇒ 270/405 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nidalee",
+              "change": "NidaleeAP FormSmall Spear Ability Damage: 170/255 AP ⇒ 185/275 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sivir",
+              "change": "SivirAbility Damage: 190/285 AD ⇒ 200/300 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ashe",
+              "change": "AsheNEW: Now refunds 70% Mana if the arrow hits 0 enemiesMana: 20/80 ⇒ 0/80Percent Health Damage: 2/3% ⇒ 1.5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Draven",
+              "change": "DravenNEW: Now refunds 50% Mana if the axes hit 0 enemiesBleed Damage: 140/210 AD ⇒ 150/225 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ivern",
+              "change": "IvernGreenfather HexesDamage Amp: 8/12% ⇒ 6/10%Bonus % HP: 8/12% ⇒ 6/10%Resists: 8/12 ⇒ 10/14"
+            },
+            {
+              "apiName": null,
+              "displayName": "Greenfather 0",
+              "change": "Greenfather HexesDamage Amp: 8/12% ⇒ 6/10%Bonus % HP: 8/12% ⇒ 6/10%Resists: 8/12 ⇒ 10/14"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kennen",
+              "change": "KennenShield: 250/350 AP ⇒ 230/300 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux",
+              "change": "LuxSolar bonusNEW: Deal 15% bonus damage. For each unique 3-star champion fielded, deal an additional 12% damage."
+            },
+            {
+              "apiName": null,
+              "displayName": "Solar 0",
+              "change": "Solar bonusNEW: Deal 15% bonus damage. For each unique 3-star champion fielded, deal an additional 12% damage."
+            },
+            {
+              "apiName": null,
+              "displayName": "Crownguard",
+              "change": "CrownguardBonus Ability Power On Shield Expire: 25 ⇒ 20"
+            },
+            {
+              "apiName": null,
+              "displayName": "Spirit Visage",
+              "change": "Spirit VisageDurability: 8% ⇒ 10%Radiant Item Durability: 15% ⇒ 18%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood EmblemResists: 35 ⇒ 25"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dark Ritual",
+              "change": "Dark RitualAP Per CashoutCashout 2: 15 ⇒ 12Cashout 3: 50 ⇒ 33Cashout 4: 75 ⇒ 50Cashout 5: 125 ⇒ 100Cashout 6: 200 ⇒ 175"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bronze For Life I",
+              "change": "Bronze for Life IIArmor and Magic Resist: 4 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Chosen of the Sun",
+              "change": "Chosen of the SunTier: Gold ⇒ Silver"
+            },
+            {
+              "apiName": null,
+              "displayName": "Component Quest",
+              "change": "Component QuestFinal Gold Gain: 5 ⇒ 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dummify",
+              "change": "DummifyStarting Health: 1000 ⇒ 1500"
+            },
+            {
+              "apiName": null,
+              "displayName": "Explosive Growth",
+              "change": "Explosive Growth+XP Gained per Round: 10 ⇒ 9"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heart of Steel",
+              "change": "Heart of SteelMax Health Gain: 16 ⇒ 18"
+            },
+            {
+              "apiName": null,
+              "displayName": "Investment Strategy I",
+              "change": "Investment Strategy IMax Health per Interest: 8 ⇒ 9Initial Gold: 4 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Level Up!",
+              "change": "Level Up!Instant XP: 6 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Lux",
+              "change": "Luxury SubGold Granted: 3 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Makeshift Armor I",
+              "change": "Makeshift Armor IDisabled on 2-1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Min-Max",
+              "change": "Min-MaxNow grants 4 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Omega Riftbeast",
+              "change": "Omega RiftbeastNow grants Alpha Riftbeasts 15% bonus HP and 12% bonus Attack Speed"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pandora's Items I",
+              "change": "Pandora’s Items IINow grants 4 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Small Furry Friend",
+              "change": "Small Furry FriendEffectiveness: 35% ⇒ 45%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Trait Ladder",
+              "change": "Trait Ladder4 Trait CashoutGold Granted: 6 ⇒ 56 Trait CashoutGold Granted: 10 gold ⇒ 7 gold3x3 costs ⇒ 2x3 costs7 Trait CashoutComponent Anvil + 8 gold ⇒ Component Anvil + 2 gold8 Trait Cashout2 Different Components + Reforger ⇒ 2 Different Components9 Trait Cashout3x5 costs + 2 gold ⇒ 2x5 costs + 2 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Verticality I",
+              "change": "Verticality IIAD/AP per Ally: 2% ⇒ 2.5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "Blossom Upgrade: After 8 seconds of combat, your team gains 15 mana."
+            },
+            {
+              "apiName": null,
+              "displayName": "Mana Potion",
+              "change": "Mana PotionMana Restored: 80 ⇒ 70Starting Mana: 20 ⇒ 10Radiant Mana Restored: 90 ⇒ 80Radiant Starting Mana: 20 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "Blossom Upgrade Duration: 10 seconds ⇒ 12 seconds"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Weight The Worth",
+              "change": "Weight The Worth can no longer grant bugged copies of Adaptors"
+            },
+            {
+              "apiName": null,
+              "displayName": "Bramble Vest",
+              "change": "Bramble Vest’s max health increase is now properly additive with other max health increases rather than multiplicative"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ezreal",
+              "change": "Ezreal’s tooltip now properly refers to the ability as “Forest’s Flurry”"
+            },
+            {
+              "apiName": null,
+              "displayName": "The Indomitable",
+              "change": "The Indomitable no longer fails to trigger for the rest of combat if the target dies while the hook is in flight"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’Zix will no longer target an enemy that has no open adjacent hexes for him to jump to"
+            },
+            {
+              "apiName": null,
+              "displayName": "Legion Of Threes",
+              "change": "Legion of Threes will no longer appear in Emblem Ensemble"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "Blossom Polymorph Wisps no longer prioritized fielded champions over benched champions"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heart of Steel",
+              "change": "Heart of Steel can now stack even if the item is equipped mid combat"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ashe",
+              "change": "Ashe’s Ability trail VFX no longer goes missing on occasion"
+            },
+            {
+              "apiName": null,
+              "displayName": "Eclipse 0",
+              "change": "Eclipse trait no longer becomes a white box on the end of game trait tracker"
+            },
+            {
+              "apiName": null,
+              "displayName": "Karma",
+              "change": "Karma no longer fails to be highlighted when hovered by the mouse pointer during planning phase"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 70,
         "withApiName": 0
       }
     }

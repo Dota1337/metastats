@@ -905,7 +905,8 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/comps/[slug]/page.tsx"
+        "app/tft/comps/[slug]/page.tsx",
+        "app/tft/comps/compare/page.tsx"
       ]
     },
     {

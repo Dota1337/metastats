@@ -76,12 +76,14 @@ export function maskPlan(mask, q, compHash) {
 // Frist der Live-Spur ab Eingang (Paket 6, Option 2). „Alle Patches + Filter"
 // auf dem Masken-Weg braucht mit einer beliebten Unit auch nach dem Umbau um
 // 15 s (Amumu, 10.10.: g 1,2 s + Zeilen 13,8 s, ohne CPU-Grenze) und bekommt
-// deshalb LONG_QUERY_TIMEOUT_MS (EXPLORER_LONG_TIMEOUT_MS, aus bei 0 oder <= 15 s);
+// deshalb LONG_QUERY_TIMEOUT_MS (Standard 30 s; EXPLORER_LONG_TIMEOUT_MS=0
+// oder <= 15 s schaltet ab — im Dienst gemessen 10.10. mit 15 s: 5 von 7
+// solcher Ansichten 504);
 // alles andere QUERY_TIMEOUT_MS. minLeftMs: so viel Restzeit muss beim Platz
 // noch uebrig sein, sonst 504 ohne Rechnung — eine lange Anfrage, die erst nach
 // 15 s Warten drankaeme, haette kaum noch Zeit fuer ihre Rechnung.
 // Die Kette dahinter muss laenger warten: refresh-api 35 s, Vercel-Route 40 s.
-export const LONG_QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_LONG_TIMEOUT_MS || 0);
+export const LONG_QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_LONG_TIMEOUT_MS || 30_000);
 export const LIVE_MIN_LEFT_MS = 2000;
 export const LONG_MIN_LEFT_MS = 15_000;
 export function liveBudget(holder, q, longMs = LONG_QUERY_TIMEOUT_MS) {

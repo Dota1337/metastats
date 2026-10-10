@@ -49,11 +49,14 @@ export default function PlanAheadButton({
   // 'lg' ist die Leisten-Groesse auf /tft/comps (32px, gleich hoch wie
   // Compare und Favorit). Nur dort traegt der Button im Ruhezustand die
   // Accent-Kontur — die Copy-Funktion ist dort die wichtigste Aktion der Zeile.
-  // 'md' (CompCard) und 'sm' bleiben unveraendert.
-  const dims = size === 'lg' ? 'w-8 h-8 text-sm' : size === 'md' ? 'w-7 h-7 text-xs' : 'w-6 h-6 text-[10px]';
-  const iconPx = size === 'lg' ? 15 : 12;
+  // 'md' (Kopf der Comp-Detailseite): 36 px, voll lila wie der aktive
+  // Rang-Filter, damit man ihn sofort sieht (User 2026-10-10).
+  const dims = size === 'lg' ? 'w-8 h-8 text-sm' : size === 'md' ? 'w-9 h-9 text-sm' : 'w-6 h-6 text-[10px]';
+  const iconPx = size === 'lg' ? 15 : size === 'md' ? 16 : 12;
   const idleClass = size === 'lg'
     ? 'bg-surface-overlay border-accent-a80 text-series-purple hover:border-accent hover:bg-accent-a15'
+    : size === 'md'
+    ? 'bg-accent border-accent text-white hover:brightness-110'
     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a60 hover:text-[#c39bff]';
   const tooltip = status === 'copied'
     ? t('tft.planAhead.copied')

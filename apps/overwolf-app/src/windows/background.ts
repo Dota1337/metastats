@@ -933,7 +933,11 @@ async function setOverlay(name: OverlayName, want: boolean): Promise<void> {
     if (PLACED.has(name) && !placed.has(name)) await place(name);
   } else {
     shown.delete(name);
-    if (name === 'matchup') stopMoving('hidden');
+    if (name === 'matchup') {
+      // Welche Bedingung aus wantedOverlays() das Overlay schliesst.
+      log('overlay hidden', { name, tft: !!activeGame && live.inTft, setting: read('ms.settings').opponent, dismissed: live.dismissed.includes(name) });
+      stopMoving('hidden');
+    }
     await close(name);
     placed.delete(name);
   }

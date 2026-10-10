@@ -98,17 +98,31 @@ export function makeDraggable(handle: HTMLElement): void {
 
 // Eigenes Fenster mit der Maus ziehen. Danach: Verschiebung laut Overwolf und
 // die neue Fensterlage (beides fuers Log, bis feststeht, welche Angabe stimmt).
+// Loslassen ohne Ziehen meldet Overwolf als Fehler („Left mouse released“):
+// dann null, sonst gaelte die gerundete Fensterlage als neue Lage.
 export interface DragDone { dx: number | null; dy: number | null; after: overwolf.windows.WindowInfo | null }
 
+// Eigene Fenster-ID, einmal geholt: dragMove muss starten, solange die Taste
+// noch gedrueckt ist — ohne Umweg ueber getCurrentWindow.
+let ownId: string | null = null;
+
+export function rememberSelf(): void {
+  overwolf.windows.getCurrentWindow(r => { if (r?.window) ownId = r.window.id; });
+}
+
 export function dragSelf(done: (d: DragDone | null) => void): void {
+  const drag = (id: string) => overwolf.windows.dragMove(id, m => {
+    if (m && m.success === false) { done(null); return; }
+    const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
+    overwolf.windows.getCurrentWindow(a => done({
+      dx: num(m?.HorizontalChange), dy: num(m?.VerticalChange), after: a?.window ?? null,
+    }));
+  });
+  if (ownId) { drag(ownId); return; }
   overwolf.windows.getCurrentWindow(r => {
     if (!r?.window) { done(null); return; }
-    overwolf.windows.dragMove(r.window.id, m => {
-      const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
-      overwolf.windows.getCurrentWindow(a => done({
-        dx: num(m?.HorizontalChange), dy: num(m?.VerticalChange), after: a?.window ?? null,
-      }));
-    });
+    ownId = r.window.id;
+    drag(r.window.id);
   });
 }
 

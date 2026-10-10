@@ -11,7 +11,7 @@
 import '../styles/app.css';
 import { read, subscribe, patchSettings } from '../lib/store.ts';
 import { boot } from '../lib/boot.ts';
-import { fitSelf, dragSelf } from '../lib/ow.ts';
+import { fitSelf, dragSelf, rememberSelf } from '../lib/ow.ts';
 import { opponentRows } from '../lib/opponents.ts';
 import { trackRows } from '../lib/tracker.ts';
 import { trackLabel, rankShort, placeChips } from '../lib/track-view.ts';
@@ -27,7 +27,22 @@ const log = (...a: unknown[]) => console.log('[metastats-companion]', ...a.map(x
 // Scout-Zeile bis einschliesslich Stufe 1-4 (vor dem ersten Spielerkampf).
 const SCOUT_UNTIL = 21;
 
+// Waehrend des Ziehens nicht neu zeichnen: fitSelf aendert sonst mitten im
+// dragMove die Fenstergroesse. Danach einmal nachzeichnen; die Sicherung
+// greift, falls Overwolf das Ende nie meldet.
+const DRAG_GUARD_MS = 30_000;
+let dragging = false;
+let dragGuard: ReturnType<typeof setTimeout> | null = null;
+
+function endDrag(): void {
+  if (dragGuard) { clearTimeout(dragGuard); dragGuard = null; }
+  if (!dragging) return;
+  dragging = false;
+  render();
+}
+
 function render(): void {
+  if (dragging) return;
   const live = read('ms.live');
   const settings = read('ms.settings');
   const comps = read('ms.comps')?.data.comps ?? [];
@@ -83,8 +98,11 @@ function render(): void {
 function startDrag(e: MouseEvent): void {
   if (e.button !== 0) return;
   const from = matchupFrac(read('ms.settings').matchupPos);
+  dragging = true;
+  dragGuard = setTimeout(endDrag, DRAG_GUARD_MS);
   dragSelf(d => {
-    if (!d) return;
+    endDrag();
+    if (!d) { log('overlay drag', { action: 'no move' }); return; }
     overwolf.games.getRunningGameInfo(g => {
       const r = rectFromGame(g?.logicalWidth || g?.width, g?.logicalHeight || g?.height);
       if (!r) { log('overlay drag', { action: 'no game' }); return; }
@@ -101,5 +119,6 @@ function startDrag(e: MouseEvent): void {
   });
 }
 
+rememberSelf();
 void boot(render);
 subscribe(['ms.live', 'ms.comps', 'ms.lookups', 'ms.lobby', 'ms.me', 'ms.settings'], render);

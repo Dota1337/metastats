@@ -3,7 +3,7 @@
   "type": "WebApp",
   "meta": {
     "name": "metastats.gg Companion",
-    "version": "0.8.1",
+    "version": "0.8.2",
     "minimum-overwolf-version": "0.275.0",
     "author": "metastats.gg",
     "icon": "images/IconMouseOver.png",
@@ -108,7 +108,7 @@
         "file": "windows/matchup.html",
         "in_game_only": true,
         "transparent": true,
-        "clickthrough": true,
+        "style": "inputPassThrough",
         "resizable": false,
         "show_in_taskbar": false,
         "grab_keyboard_focus": false,

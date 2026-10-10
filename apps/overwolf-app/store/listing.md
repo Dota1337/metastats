@@ -1,6 +1,6 @@
 # Overwolf-Store: Einreichung metastats.gg Companion
 
-Stand 0.8.1. Paket: `npm run build` → `dist/metastats-companion-0.8.1.opk`.
+Paket: `npm run build` → `dist/metastats-companion-<version>.opk` (Version aus `public/manifest.json`).
 
 ## Schritte (Konto des Users, console.overwolf.com)
 

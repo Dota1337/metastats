@@ -22,6 +22,19 @@ test('Startfenster ist das Hintergrundfenster', () => {
   assert.equal(manifest.data.windows.background.is_background_page, true);
 });
 
+// Das Gegner-Overlay holt sich zum Verschieben die Maus. Die feste Sperre
+// (clickthrough) laesst sich zur Laufzeit nicht abschalten, nur der Stil
+// inputPassThrough — bis 0.8.1 ging das Ziehen deshalb nie.
+test('Gegner-Overlay: abschaltbarer Durchklick-Stil statt fester Sperre', () => {
+  const w = manifest.data.windows.matchup;
+  assert.equal(w.style, 'inputPassThrough');
+  assert.equal(w.clickthrough, undefined);
+  for (const name of WINDOW_NAMES) {
+    const x = manifest.data.windows[name];
+    assert.ok(!(x.clickthrough && x.style), `${name}: clickthrough und style zugleich`);
+  }
+});
+
 // Die Verknuepfung auf dem Desktop haengt an der App-Kennung, und die haengt an
 // Name und Autor (tools/install-shortcuts.ps1). Aendern = neue Kennung.
 test('Name und Autor bleiben gleich (App-Kennung)', () => {

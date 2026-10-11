@@ -64,6 +64,20 @@ export function shouldPostCrawl({ done, relabelChanged }) {
   return done > 0 || relabelChanged > 0;
 }
 
+/**
+ * Tage, deren Comp-Duell-Tagessumme (0094) der Lauf prueft: alle Tage der
+ * Aufbewahrung, neuester zuerst. So holt jeder Lauf einen Tag nach, den ein
+ * frueherer verpasst hat. Tage im Format YYYY-MM-DD, keepFrom <= targetDay.
+ */
+export function rollupDays(targetDay, keepFrom) {
+  const end = Date.parse(`${targetDay}T00:00:00Z`);
+  const start = Date.parse(`${keepFrom}T00:00:00Z`);
+  if (!Number.isFinite(end) || !Number.isFinite(start)) throw new Error(`bad day ${targetDay} / ${keepFrom}`);
+  const days = [];
+  for (let t = end; t >= start; t -= 86_400_000) days.push(new Date(t).toISOString().slice(0, 10));
+  return days;
+}
+
 /** VACUUM-Ziele: alle Tagestabellen des Writers, danach Namen und (langsamste) Marktwerte. */
 export function maintenanceTables(dailyTables) {
   return [...dailyTables, 'tft_player_names', 'tft_player_marketvalue_snapshots'];

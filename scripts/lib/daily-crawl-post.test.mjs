@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   LOCK_OWNER_ENV, RELABEL_SCRIPT, dailyCrawlLockPath, maintenanceTables, readRelabelStatus,
-  relabelChildArgs, shouldPostCrawl, shouldRunRelabel, unitBusy, waitUntilIdle,
+  relabelChildArgs, rollupDays, shouldPostCrawl, shouldRunRelabel, unitBusy, waitUntilIdle,
 } from './daily-crawl-post.mjs';
 import { STATUS_SCHEMA, parseArgs } from './tft-patch-relabel.mjs';
 import { DAILY_TABLES } from './tft-supabase-writer.mjs';
@@ -80,6 +80,15 @@ test('Tabellenliste: passt genau zu den Schreibzielen des Writers', () => {
   assert.deepEqual(m.slice(0, DAILY_TABLES.length), DAILY_TABLES);
   assert.equal(m.at(-1), 'tft_player_marketvalue_snapshots', 'langsamste Tabelle zuletzt');
   assert.equal(new Set(m).size, m.length);
+});
+
+test('rollupDays: ganze Aufbewahrung, neuester Tag zuerst, ueber die Monatsgrenze', () => {
+  assert.deepEqual(rollupDays('2026-10-11', '2026-10-04'),
+    ['2026-10-11', '2026-10-10', '2026-10-09', '2026-10-08', '2026-10-07', '2026-10-06', '2026-10-05', '2026-10-04']);
+  assert.deepEqual(rollupDays('2026-10-02', '2026-09-30'), ['2026-10-02', '2026-10-01', '2026-09-30']);
+  assert.deepEqual(rollupDays('2026-10-02', '2026-10-02'), ['2026-10-02']);
+  assert.deepEqual(rollupDays('2026-10-01', '2026-10-02'), []);
+  assert.throws(() => rollupDays('kaputt', '2026-10-02'));
 });
 
 test('unitBusy: laufende Zustaende von systemd', () => {

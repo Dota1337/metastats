@@ -9,6 +9,12 @@ type MatchupFilters = Pick<ResolvedFilters, 'regions' | 'buckets' | 'days' | 'pa
  * Duell-Zeilen fuer `fams` (optional nur gegen `oppFams`), summiert ueber die
  * Raenge, Regionen und Tage des Filters. Eine jsonb-Antwort, daher keine
  * 1000-Zeilen-Kappung. Wirft bei Fehlern — der Aufrufer nimmt dann den alten Weg.
+ *
+ * Ohne Patch-Filter (jede Anfrage der App) liest die Tagessumme ueber alle
+ * Regionen (0094): gleiche Antwort, aber ein Bruchteil der Zeilen (gemessen
+ * 11.10.2026: Companion 51 x 51 7,8 s → 0,4 s). Fehlt die Funktion noch,
+ * nimmt sie die Regionen-Abfrage; jeden anderen Fehler wirft sie weiter —
+ * die Regionen-Abfrage waere nach einem Zeitlimit nur noch langsamer.
  */
 export async function fetchCompMatchups(
   filters: MatchupFilters,
@@ -17,16 +23,29 @@ export async function fetchCompMatchups(
   timeoutMs = 8000,
 ): Promise<MatchupResult> {
   if (fams.length === 0) return { days: 0, rows: [] };
-  const res = await callRpc<{ days?: number; rows?: MatchupRow[] } | null>('get_tft_comp_matchups', {
+  type Res = { days?: number; rows?: MatchupRow[] } | null;
+  const common = {
     p_fams: fams,
     p_opp_fams: oppFams,
     p_regions: filters.regions,
     p_buckets: filters.buckets,
     p_days: filters.days,
-    p_patch: filters.patchFilter,
     p_set: filters.setNumber,
     p_min_games: 1,
-  }, timeoutMs);
+  };
+  let res: Res | undefined;
+  if (filters.patchFilter == null) {
+    try {
+      res = await callRpc<Res>('get_tft_comp_matchups_all', common, timeoutMs);
+    } catch (e) {
+      if (!/HTTP 404|PGRST202/.test((e as Error).message)) throw e;
+      // Auch ein falscher Parametername meldet PGRST202 — sonst bliebe still der langsame Weg.
+      console.warn(`[comp-matchups] Tagessumme nicht erreichbar, Regionen-Abfrage: ${(e as Error).message.slice(0, 160)}`);
+    }
+  }
+  if (res === undefined) {
+    res = await callRpc<Res>('get_tft_comp_matchups', { ...common, p_patch: filters.patchFilter }, timeoutMs);
+  }
   return { days: Number(res?.days) || 0, rows: Array.isArray(res?.rows) ? res.rows : [] };
 }
 

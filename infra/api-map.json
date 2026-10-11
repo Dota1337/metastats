@@ -8,10 +8,10 @@
   "counts": {
     "routes": 88,
     "groups": 30,
-    "tables": 37,
-    "rpcs": 31,
+    "tables": 39,
+    "rpcs": 32,
     "files": 14,
-    "edges": 536,
+    "edges": 542,
     "unused": 7,
     "unresolved": 1
   },
@@ -1758,9 +1758,21 @@
       "declared": true
     },
     {
+      "id": "db:tft_comp_matchups_all_days",
+      "kind": "table",
+      "label": "tft_comp_matchups_all_days",
+      "declared": true
+    },
+    {
       "id": "db:tft_daily_comp_matchups",
       "kind": "table",
       "label": "tft_daily_comp_matchups",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_comp_matchups_all",
+      "kind": "table",
+      "label": "tft_daily_comp_matchups_all",
       "declared": true
     },
     {
@@ -2079,6 +2091,12 @@
       "id": "fn:get_tft_comp_matchups",
       "kind": "rpc",
       "label": "get_tft_comp_matchups",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_matchups_all",
+      "kind": "rpc",
+      "label": "get_tft_comp_matchups_all",
       "declared": true
     },
     {
@@ -2468,6 +2486,11 @@
     {
       "from": "api:/api/companion/v1/comps",
       "to": "fn:get_tft_comp_matchups",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/companion/v1/comps",
+      "to": "fn:get_tft_comp_matchups_all",
       "kind": "calls"
     },
     {
@@ -3262,6 +3285,11 @@
     },
     {
       "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_matchups_all",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_outcome",
       "kind": "calls"
     },
@@ -3383,6 +3411,11 @@
     {
       "from": "api:/api/tft/comps/duel",
       "to": "fn:get_tft_comp_matchups",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "fn:get_tft_comp_matchups_all",
       "kind": "calls"
     },
     {
@@ -4748,6 +4781,21 @@
     {
       "from": "fn:get_tft_comp_matchups",
       "to": "db:tft_daily_comp_matchups",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_matchups_all",
+      "to": "db:tft_comp_matchups_all_days",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_matchups_all",
+      "to": "db:tft_daily_comp_matchups",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_matchups_all",
+      "to": "db:tft_daily_comp_matchups_all",
       "kind": "reads"
     },
     {

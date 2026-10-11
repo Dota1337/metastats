@@ -44,11 +44,11 @@ import { assertContracts } from './lib/contracts.mjs';
 import { supabasePgUrl } from './lib/pg-url.mjs';
 import { crawlPatch } from './lib/tft-patch-day.mjs';
 import { STATUS_FILE, defaultStateDir } from './lib/tft-patch-relabel.mjs';
-import { DAILY_TABLES } from './lib/tft-supabase-writer.mjs';
+import { DAILY_TABLES, matchupKeepFrom } from './lib/tft-supabase-writer.mjs';
 import {
   EXPLORER_UNIT, LOCK_OWNER_ENV, PUBLISHER_UNIT, RELABEL_TIMEOUT_MS,
   dailyCrawlLockPath, maintenanceTables, readRelabelStatus, relabelChildArgs,
-  shouldPostCrawl, shouldRunRelabel, waitUntilIdle,
+  rollupDays, shouldPostCrawl, shouldRunRelabel, waitUntilIdle,
 } from './lib/daily-crawl-post.mjs';
 import {
   DEFAULT_K, DEFAULT_MAX_ATTEMPTS, cursorPath, startSeed, readCursor,
@@ -191,6 +191,68 @@ async function runMaintenanceVacuum() {
     }
   } catch (err) {
     console.log(`    [vacuum] skipped: ${err.code || ''} ${err.message}`);
+  } finally {
+    if (client) { try { await client.end(); } catch { /* ignore */ } }
+  }
+}
+
+// Comp-Duelle als Tagessumme ueber alle Regionen (Migration 0094). Laeuft nach
+// dem VACUUM, damit das Zaehlen der Regionen-Zeilen die warme
+// Sichtbarkeits-Karte nutzt, und vor dem Publisher, der die Detail-Snapshots
+// ueber dieselbe Abfrage baut. Geprueft werden alle Tage der Aufbewahrung: die
+// Funktion baut nur Tage neu, deren Zeilenzahl oder Regionen sich geaendert
+// haben — ein Tag, den ein frueherer Lauf verpasst hat (Abbruch, Zeitlimit,
+// Nachtrag einer Region, anderer Schreiber), heilt hier. Summiert werden nur
+// ACTIVE_REGIONS, nie Testregionen. Gemessen 11.10.2026: Bau eines Tages 8 s,
+// Pruefung eines unveraenderten Tages 0,2 s. Wirft nie.
+const ROLLUP_TABLES = ['tft_daily_comp_matchups_all', 'tft_comp_matchups_all_days'];
+
+async function runMatchupRollup(targetDay) {
+  let dbUrl;
+  try {
+    dbUrl = supabasePgUrl(process.env);
+  } catch (err) {
+    console.log(`    [rollup] skipped: ${err.message}`);
+    return;
+  }
+  let client;
+  try {
+    client = new pg.Client({
+      connectionString: dbUrl,
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 15_000,
+    });
+    await client.connect();
+    await client.query('SET statement_timeout = 240000');
+    await client.query('SET lock_timeout = 10000');
+    const keepFrom = matchupKeepFrom(targetDay);
+    let built = 0;
+    for (const day of rollupDays(targetDay, keepFrom)) {
+      const t0 = Date.now();
+      try {
+        const { rows } = await client.query(
+          'select refresh_tft_comp_matchups_all($1, $2, $3) as r', [day, ACTIVE_REGIONS, keepFrom]);
+        const r = rows[0]?.r ?? {};
+        if (r.action === 'built') built++;
+        console.log(`    [rollup] ${day} ${r.action ?? '?'}${r.rows != null ? ` ${r.rows} rows` : ''} (${Date.now() - t0}ms)`);
+      } catch (err) {
+        console.log(`    [rollup] ${day} ERR ${err.code || ''} ${err.message}`);
+      }
+    }
+    if (built > 0) {
+      for (const table of ROLLUP_TABLES) {
+        const t0 = Date.now();
+        try {
+          // table names come from the hardcoded constant above, not user input.
+          await client.query(`VACUUM (ANALYZE) ${table}`);
+          console.log(`    [rollup] vacuum ${table} OK (${Date.now() - t0}ms)`);
+        } catch (err) {
+          console.log(`    [rollup] vacuum ${table} ERR ${err.code || ''} ${err.message}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.log(`    [rollup] skipped: ${err.code || ''} ${err.message}`);
   } finally {
     if (client) { try { await client.end(); } catch { /* ignore */ } }
   }
@@ -409,6 +471,7 @@ async function main() {
   // instead of the cold-map heap-fetch degradation. Best-effort, never blocks.
   if (shouldPostCrawl({ done, relabelChanged })) {
     await runMaintenanceVacuum();
+    await runMatchupRollup(targetDay);
     // Ab hier wird nichts mehr bei Riot oder in die Tagestabellen geschrieben;
     // das Warten auf den Publisher soll den naechsten Lauf nicht aufhalten.
     releaseLock(LOCK_PATH);
@@ -429,6 +492,7 @@ async function main() {
       'daily-crawl/item-stats',
       'daily-crawl/trait-stats',
       'daily-crawl/comp-matchups',
+      'daily-crawl/comp-matchups-all',
       'daily-crawl/patch-axis',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }

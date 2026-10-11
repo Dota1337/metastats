@@ -1202,6 +1202,7 @@
       "daily-crawl/comp-stats",
       "daily-crawl/comp-outcome",
       "daily-crawl/comp-matchups",
+      "daily-crawl/comp-matchups-all",
       "daily-crawl/crawl-meta",
       "daily-crawl/unit-stats",
       "daily-crawl/unit-top-items",

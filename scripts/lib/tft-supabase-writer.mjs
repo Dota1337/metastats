@@ -42,12 +42,16 @@ export const DAILY_TABLES = [
   'tft_daily_comp_matchups',
 ];
 
-// tft_daily_comp_matchups (0092): ~50k schmale Zeilen je Region und Tag —
-// 200er-Pakete waeren 250 Anfragen. Aufbewahrung: die Leser fragen hoechstens
-// 7 Tage ab (resolveFilters); aeltere Fenster nehmen den alten Weg ueber
-// tft_daily_comp_pairs.
+// tft_daily_comp_matchups (0092): 17k (me1) bis 188k (kr) schmale Zeilen je
+// Region und Tag (gemessen am 10.10.2026) — 200er-Pakete waeren bis zu 940
+// Anfragen. Aufbewahrung 7 Tage vor dem geschriebenen Tag, also 8 Tage
+// gespeichert: die App sendet nie einen Patch, ihr Fenster (1-7 Tage) reicht
+// hoechstens bis neuester Tag - 6 (snapshot-matrix.ts listWindowDays); der
+// achte Tag ist Puffer fuer einen Patch-Cache, der einen Tag hinterherhaengt.
+// Nur direkte API-Aufrufe mit einem laengst abgelaufenen Patch reichen weiter
+// zurueck und sehen dann weniger Tage.
 const MATCHUP_BATCH = 1000;
-const MATCHUP_KEEP_DAYS = 10;
+const MATCHUP_KEEP_DAYS = 7;
 
 /** Erster Tag, der fuer `day` (YYYY-MM-DD) noch aufbewahrt wird. */
 export function matchupKeepFrom(day, keepDays = MATCHUP_KEEP_DAYS) {

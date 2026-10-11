@@ -51,6 +51,16 @@
       "note": "Seit Migration 0078 (2026-09-28), eine Zeile je Zeile in tft_daily_comp_stats. Speist Platzverteilung, Items je Unit, Unit-Wirkung und Endlevel auf /tft/comps/[slug]. Fehlt ein Tag, blendet die Route die Bloecke fuer jedes Fenster mit diesem Tag aus (rows_outcome < rows_stats)."
     },
     {
+      "id": "daily-crawl/comp-matchups",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_comp_matchups",
+      "dateColumn": "day",
+      "maxLagDays": 1,
+      "minRows": 500000,
+      "note": "Seit Migration 0092 (erster Tag 10.10.2026): Comp-Duelle je Familie, Rang und Region, beide Richtungen. 13 von 15 Regionen = 1.120.566 Zeilen; der schwaechste Tag der letzten 14 hatte 0,67x der Lobbys. maxLagDays 1, weil Block 10 im Writer seine Fehler schluckt: mit 2 bliebe ein ausgefallener Duell-Tag unsichtbar. Speist Gegner auf /tft/comps/[slug], Companion-Konter und /tft/comps/compare. Eine einzelne fehlende Region faellt in keiner Tagessumme auf. Kein noGapsInDays: supaDistinctDays bricht nach 200.000 Zeilen ab."
+    },
+    {
       "id": "snapshot-publisher/comp-list-precomputed",
       "owner": "metastats-snapshot-publisher.service",
       "backend": "supabase",

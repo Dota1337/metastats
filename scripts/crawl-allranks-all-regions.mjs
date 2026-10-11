@@ -428,6 +428,7 @@ async function main() {
       'daily-crawl/unit-top-items',
       'daily-crawl/item-stats',
       'daily-crawl/trait-stats',
+      'daily-crawl/comp-matchups',
       'daily-crawl/patch-axis',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }

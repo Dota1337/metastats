@@ -65,9 +65,9 @@ test('aggregateMatch/finalize: compMatchups nur im Rang des Matches, nie pro_poo
   ]);
 });
 
-test('matchupKeepFrom: 10 Tage vor dem geschriebenen Tag, Monatsgrenze, kaputter Tag wirft', () => {
-  assert.equal(matchupKeepFrom('2026-10-11'), '2026-10-01');
-  assert.equal(matchupKeepFrom('2026-10-05'), '2026-09-25');
+test('matchupKeepFrom: 7 Tage vor dem geschriebenen Tag, Monatsgrenze, kaputter Tag wirft', () => {
+  assert.equal(matchupKeepFrom('2026-10-11'), '2026-10-04');
+  assert.equal(matchupKeepFrom('2026-10-05'), '2026-09-28');
   assert.equal(matchupKeepFrom('2026-10-11', 3), '2026-10-08');
   assert.throws(() => matchupKeepFrom('kaputt'));
 });

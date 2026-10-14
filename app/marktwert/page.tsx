@@ -6,7 +6,6 @@ import PageHero from '../components/PageHero';
 import MarketInsights from '../components/MarketInsights';
 import ApiUnavailable from '../components/ApiUnavailable';
 import { useI18n } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 import { regionLabel } from '../lib/regions';
 import { formatTier } from '../lib/rank-format';
 import { isLolRankGroup, lolTiersTopDown } from '../lib/rank-groups';
@@ -34,7 +33,6 @@ interface Player {
 }
 
 export default function MarktwertPage() {
-  usePageTitle('pageTitle.marktwert');
   const { t } = useI18n();
 
   const REGIONS = [

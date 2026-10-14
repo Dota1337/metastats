@@ -3,7 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { I18nProvider } from "./lib/i18n";
 import { AuthProvider } from "./lib/auth-context";
-import { getServerLang, getSeoCopy } from "./lib/server-lang";
+import { getServerLang } from "./lib/server-lang";
+import { siteText } from "./lib/seo/copy";
 import { SITE_URL } from "./lib/site";
 import SideDrawer from "./components/SideDrawer";
 import PrototypeBanner from "./components/PrototypeBanner";
@@ -24,7 +25,7 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLang();
-  const { title, description } = getSeoCopy(lang);
+  const { title, description } = siteText(lang);
   return {
     metadataBase: new URL(SITE_URL),
     title,

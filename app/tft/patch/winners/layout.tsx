@@ -1,19 +1,12 @@
-import type { Metadata } from 'next';
-import { SITE_URL } from '../../../lib/site';
+import type { ReactNode } from 'react';
+import { pageMetadata } from '../../../lib/seo/metadata';
 
-export const metadata: Metadata = {
-  title: 'TFT Patch Winners & Losers — Meta Shift Tracker · metastats.gg',
-  description: 'Biggest avg-placement swings between TFT patches. See which units, items and traits gained or lost ground in the latest patch from Master+ ranked data.',
-  alternates: { canonical: `${SITE_URL}/tft/patch/winners` },
-  openGraph: {
-    title: 'TFT Patch Winners & Losers',
-    description: 'Track the biggest meta shifts between TFT patches.',
-    url: `${SITE_URL}/tft/patch/winners`,
-    siteName: 'metastats.gg',
-    type: 'website',
-  },
-};
+// Titel, Beschreibung und canonical: app/lib/seo/copy.ts (page.tsx ist eine
+// Client-Komponente und kann selbst keine Metadaten liefern).
+export function generateMetadata() {
+  return pageMetadata('tft.patchWinners', '/tft/patch/winners');
+}
 
-export default function PatchWinnersLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
   return children;
 }

@@ -7,12 +7,10 @@ import Footer from '../components/Footer';
 import ApiUnavailable from '../components/ApiUnavailable';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 import { regionLabel } from '../lib/regions';
 import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
 
 export default function Leaderboard() {
-  usePageTitle('pageTitle.leaderboard');
   const { t, lang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
 

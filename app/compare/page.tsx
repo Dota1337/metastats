@@ -8,7 +8,6 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import DdragonImg from '../components/DdragonImg';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
 import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../lib/cdragon-base';
 import { isRiftGame, MIN_RIFT_GAMES } from '../lib/lol-queue';
@@ -432,7 +431,6 @@ export default function AnalysePage() {
   // app/page.tsx gewandert ist. ReactDOM.preconnect ist idempotent und der
   // fuer Client Components dokumentierte Weg.
   ReactDOM.preconnect(CDRAGON_PLUGINS_BASE);
-  usePageTitle('pageTitle.compare');
   const { t } = useI18n();
   // Adresse einmal lesen (/multi-search leitet mit ?mode=multi&q= hierher).
   // Ohne useSearchParams, das hier einen Suspense-Rahmen braeuchte.

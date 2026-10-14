@@ -1,19 +1,12 @@
-import type { Metadata } from 'next';
-import { SITE_URL } from '../../lib/site';
+import type { ReactNode } from 'react';
+import { pageMetadata } from '../../lib/seo/metadata';
 
-export const metadata: Metadata = {
-  title: 'TFT Rising Players — Biggest LP Gains · metastats.gg',
-  description: 'The 20 Master+ TFT players with the biggest LP gains over the last 1, 3 or 5 days, with their most played comp, placements and playstyle.',
-  alternates: { canonical: `${SITE_URL}/tft/rising` },
-  openGraph: {
-    title: 'TFT Rising Players — Biggest LP Gains',
-    description: 'Master+ TFT players climbing fastest over the last 1, 3 or 5 days.',
-    url: `${SITE_URL}/tft/rising`,
-    siteName: 'metastats.gg',
-    type: 'website',
-  },
-};
+// Titel, Beschreibung und canonical: app/lib/seo/copy.ts (page.tsx ist eine
+// Client-Komponente und kann selbst keine Metadaten liefern).
+export function generateMetadata() {
+  return pageMetadata('tft.rising', '/tft/rising');
+}
 
-export default function RisingLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
   return children;
 }

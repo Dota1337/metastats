@@ -11,7 +11,6 @@ import LiveGameDetail from '../../components/LiveGameDetail';
 import ApiUnavailable from '../../components/ApiUnavailable';
 import { useI18n, LOCALE_MAP, type TranslationKey } from '../../lib/i18n';
 import { translateMvCategory, translateStatLabel, translateStatText } from '../../lib/lol-stat-labels';
-import { useCustomPageTitle } from '../../lib/use-page-title';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../lib/pro-players';
 import { formatTier } from '../../lib/rank-format';
 import { isNonStandardMode, isRiftGame, MIN_RIFT_GAMES } from '../../lib/lol-queue';
@@ -75,7 +74,6 @@ export default function PlayerPage() {
   const region = searchParams.get('region') || 'euw1';
   const { t, lang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
-  useCustomPageTitle(player?.summoner?.name || null);
 
   useEffect(() => {
     if (!slug) return;

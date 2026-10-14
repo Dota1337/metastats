@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import ApiUnavailable from '../components/ApiUnavailable';
 import PageHero from '../components/PageHero';
 import { useI18n } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 
 /**
  * Ein Eintrag aus public/pro-teams/listing.json — vorberechnet von
@@ -106,7 +105,6 @@ function projectFromSot(rawTeams: SotTeam[]): { teams: TeamSummary[]; seasons: s
 }
 
 export default function TeamsPage() {
-  usePageTitle('pageTitle.teams');
   const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [seasons, setSeasons] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);

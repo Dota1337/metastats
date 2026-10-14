@@ -4,7 +4,6 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 import ApiUnavailable from '../components/ApiUnavailable';
 
 // Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
@@ -28,7 +27,6 @@ interface Champion {
 }
 
 export default function ChampionsPage() {
-  usePageTitle('pageTitle.champions');
   const [champions, setChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);

@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
-import { usePageTitle } from '../lib/use-page-title';
 import { parseRegion } from '../lib/regions';
 
 // Kalender-Schluessel aus LOKALEN Datumsteilen. toISOString() rechnet in UTC
@@ -85,7 +84,6 @@ interface ProLink {
 type CalendarView = 'week' | 'month';
 
 export default function LigenPage() {
-  usePageTitle('pageTitle.ligen');
   const { t, lang } = useI18n();
   const locale = LOCALE_MAP[lang];
   const searchParams = useSearchParams();

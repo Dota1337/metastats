@@ -4,6 +4,7 @@ import { withAlpha } from '../../../lib/color';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { useParams, useSearchParams, usePathname } from 'next/navigation';
 import { compDetailKey, detailFiltersFrom } from '../../../lib/tft-detail-filters';
+import { DETAIL_MIN_GAMES } from '../../../lib/snapshot-matrix';
 import type { CompDetailInitial } from '../../../lib/seo/comp-detail-data';
 import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
@@ -196,7 +197,8 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
     // spaete Antwort des alten Buckets den bereits geladenen neuen.
     let cancelled = false;
     setDataState('loading');
-    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=${variantMode}`)
+    // Schwelle = DETAIL_MIN_GAMES, sonst greift kein vorgerechneter Stand.
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=${DETAIL_MIN_GAMES}&variant=${variantMode}`)
       .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); })
       .then(normal => {
         if (cancelled) return;

@@ -14,12 +14,15 @@ import { isSnapshotPublisher, lookupSnapshot } from '../../../../lib/snapshot-lo
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { tftAssets } from '../../../../lib/og/data';
+import { resolveDefaultBucket } from '../../../../lib/tft-supabase-reader';
 import { listFamilyTargets, type CompApiRow } from '../../../../lib/tft-comp-families';
 
 export const maxDuration = 60;
 
-// Standardansicht der Liste — wie die Seite ohne Filter und sitemap.ts.
-const LIST_QUERY = { patch: 'current', region: 'all', days: '3', bucket: 'diamond_plus', source: 'data' };
+// Standardansicht der Liste — wie die Seite ohne Filter und sitemap.ts. Ohne
+// `bucket`: den Rang waehlt der Server wie fuer die Liste (resolveDefaultBucket,
+// Diamond+ erst ab genug Spielen im Set, sonst alle Raenge).
+const LIST_QUERY = { patch: 'current', region: 'all', days: '3', source: 'data' };
 
 interface ListBody { comps?: unknown; filters?: { patch?: unknown } }
 
@@ -31,7 +34,7 @@ async function listBody(request: NextRequest, publisher: boolean): Promise<ListB
     return res.ok ? ((await res.json()) as ListBody) : null;
   }
   const hit = await lookupSnapshot('comps', {
-    patch: null, region: 'all', days: 3, bucket: 'diamond_plus', minGames: 0, setNumber: CURRENT_SET,
+    patch: null, region: 'all', days: 3, bucket: await resolveDefaultBucket(), minGames: 0, setNumber: CURRENT_SET,
   });
   return (hit?.payload as ListBody | undefined) ?? null;
 }

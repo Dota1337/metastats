@@ -129,6 +129,25 @@ test('Fehlschlag: Vorlauf des Ziels samt Eintraegen derselben URL, aber nur in l
   assert.equal(carried, 3);
 });
 
+test('heute als leer gemessene Schluessel kommen auch ueber gleiche URL nicht zurueck', () => {
+  // Gestern: Xayah und Kayle zusammengelegt (gleicher Blob). Heute: das
+  // Kayle-Ziel ist leer gemessen, das Xayah-Ziel schlaegt fehl.
+  const KAYLE = { ...PERM, slug: 'TFT18_Solar@5_TFT18_Kayle', family: 'TFT18_Solar__TFT18_Kayle' };
+  const KAYLE_SLUG = slugDetailKey(KAYLE, '18.3');
+  const base = {
+    [SLUG_KEY]: { url: 'u1', builtAt: hoursAgo(10), partial: false },
+    [FAM_KEY]: { url: 'u1', builtAt: hoursAgo(10), partial: false },
+    [KAYLE_KEY]: { url: 'u1', builtAt: hoursAgo(10), partial: false },
+    [KAYLE_SLUG]: { url: 'u1', builtAt: hoursAgo(10), partial: false },
+  };
+  const { entries, carried } = assembleDetailEntries([
+    { skipped: true, keys: carryKeysFor(KAYLE, '18.3') },
+    { error: true, carryKeys: carryKeysFor(PERM, '18.3') },
+  ], base, NOW);
+  assert.deepEqual(Object.keys(entries).sort(), [FAM_KEY, SLUG_KEY].sort());
+  assert.equal(carried, 2);
+});
+
 test('Fehlschlag ohne Vorlauf und uebersprungene Ergebnisse erzeugen nichts', () => {
   const { entries, carried } = assembleDetailEntries(
     [{ error: true, carryKeys: [SLUG_KEY] }, { skipped: true }, undefined], {}, NOW,

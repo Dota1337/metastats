@@ -5,6 +5,7 @@ import { lookupSnapshot } from './lib/snapshot-lookup';
 import { tftAssets } from './lib/og/data';
 import { withTimeout } from './lib/og/frame';
 import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
+import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
 
 // Die Route ist dynamisch (das Snapshot-Manifest wird mit cache: 'no-store'
@@ -51,17 +52,18 @@ const STATIC_ROUTES: Entry[] = [
 
 // Standardansicht der Listen (alle Regionen, 3 Tage, Diamond+, aktueller
 // Patch) — dieselben Snapshot-Schluessel, die ein Besucher ohne Filter trifft.
-function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits') {
+function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits', bucket = 'diamond_plus') {
   return withTimeout(lookupSnapshot(endpoint, {
-    patch: null, region: 'all', days: 3, bucket: 'diamond_plus', minGames: 0, setNumber: CURRENT_SET,
+    patch: null, region: 'all', days: 3, bucket, minGames: 0, setNumber: CURRENT_SET,
   }), SOURCE_TIMEOUT_MS);
 }
 
 // Die 40 Comp-Familien der Liste, verlinkt wie dort ueber den Slug der
-// Hauptvariante — dieselbe Regel, nach der der Publisher den Detail-Vorrat
-// anlegt (listFamilyTargets).
+// Hauptvariante — dieselbe Regel und derselbe Rang (resolveDefaultBucket), nach
+// denen der Publisher den Detail-Vorrat anlegt (/api/tft/comps/families).
 async function compEntries(): Promise<Entry[]> {
-  const hit = await listSnapshot('comps');
+  const bucket = (await withTimeout(resolveDefaultBucket(), SOURCE_TIMEOUT_MS)) ?? 'diamond_plus';
+  const hit = await listSnapshot('comps', bucket);
   const rows = (hit?.payload as { comps?: CompApiRow[] } | undefined)?.comps;
   if (!Array.isArray(rows) || rows.length === 0) return [];
   return listFamilyTargets(rows, tftAssets()).map(t => ({

@@ -14,6 +14,8 @@ export const DETAIL_PREFIX = 'comps-detail/';
 // Ein vollstaendiger Stand des Vorlaufs schlaegt einen frischen lueckenhaften
 // nur, solange er hoechstens so alt ist.
 export const COMPLETE_BASE_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+// Zeitbudget des zweiten Versuchs lueckenhafter Staende (Publisher).
+export const DETAIL_RETRY_BUDGET_MS = 15 * 60 * 1000;
 
 /**
  * Lueckenhaft: eine Teilabfrage der Detail-Route riss ihr Zeitlimit — der
@@ -73,17 +75,22 @@ function completeBase(entry, now) {
  * Manifest-Eintraege der Detail-Welle aus den Ergebnissen eines Laufs.
  *
  * results: je Permutation `{ uploaded: true, keys, entry: {url, bytes, builtAt, partial} }`
- *          oder `{ error: true, carryKeys }` oder etwas anderes (gemessen leer → nichts).
+ *          oder `{ error: true, carryKeys }` oder `{ skipped: true, keys }`
+ *          (gemessen leer: Slug- und Familien-Schluessel) oder etwas anderes.
  * Je Schluessel gilt: frisch vollstaendig > Vorlauf vollstaendig (≤ 48 h) >
  * frisch lueckenhaft > Vorlauf sonst. Bei gleichem Rang bleibt der erste.
  * Vorlauf-Eintraege eines fehlgeschlagenen Ziels (sein Slug- und Familien-
  * Schluessel plus alle Eintraege mit derselben URL, also seine Zusatz-
- * Eintraege) fuellen nur Schluessel, die der Lauf nicht selbst beschrieben hat.
+ * Eintraege) fuellen nur Schluessel, die der Lauf nicht selbst beschrieben
+ * und nicht als leer gemessen hat — sonst kaeme eine gestern zusammengelegte,
+ * heute verschwundene Familie mit alten Zahlen zurueck (Voll-Lauf-Regel).
  */
 export function assembleDetailEntries(results, baseEntries, now = Date.now()) {
   const entries = {};
   const rank = {};
   let carried = 0;
+  const measuredEmpty = new Set();
+  for (const res of results) if (res?.skipped) for (const k of res.keys || []) measuredEmpty.add(k);
   const offer = (key, entry, r) => {
     if (key in rank && rank[key] >= r) return false;
     entries[key] = { ...entry, key };
@@ -116,7 +123,7 @@ export function assembleDetailEntries(results, baseEntries, now = Date.now()) {
       for (const same of byUrl.get(e.url) || []) keys.add(same);
     }
     for (const k of keys) {
-      if (k in entries) continue;
+      if (k in entries || measuredEmpty.has(k)) continue;
       if (offer(k, baseEntries[k], completeBase(baseEntries[k], now) ? 2 : 0)) carried++;
     }
   }

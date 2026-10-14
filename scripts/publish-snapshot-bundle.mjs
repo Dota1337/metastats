@@ -49,6 +49,7 @@ import { encodePasswordInPgUrl } from './lib/pg-url.mjs';
 import { defaultStateDir, readChangedMarker } from './lib/tft-patch-relabel.mjs';
 import {
   assembleDetailEntries, carryAllDetailEntries, carryKeysFor, detailTargetKeys, isPartialDetail,
+  DETAIL_RETRY_BUDGET_MS,
 } from './lib/comps-detail-stock.mjs';
 import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -203,7 +204,9 @@ export function mergeBaseError({ mergeMode, manifestUrlSet, baseEntryCount, allo
 // Ohne einen Parameter, der in den Cache-Key eingeht, liest der Publisher also
 // die Edge-Kopie der letzten 6 h und der Route-seitige Publisher-Bypass
 // (isSnapshotPublisher) kaeme nie zum Zug. Ein Wert pro Lauf reicht: innerhalb
-// eines Laufs ist jede Permutation ohnehin nur einmal dran.
+// eines Laufs ist jede Permutation nur einmal dran — Ausnahme der zweite
+// Versuch lueckenhafter Detail-Staende, der deshalb `${RUN_ID}-r2` nimmt
+// (gemessen 15.10.2026: gleiche Adresse → MISS, dann HIT).
 const RUN_ID = `${Date.now().toString(36)}`;
 
 function buildUrl(apiPath, p) {
@@ -444,7 +447,10 @@ async function publishPermutation(endpoint, apiPath, perm, patches) {
   };
 }
 
-async function publishDetailPermutation(perm, patches) {
+// retry: zweiter Versuch eines lueckenhaften Stands — eigener Edge-Cache-
+// Buster und genau ein Abruf (kein 502-Backoff von 20/60 s; was dann noch
+// lueckenhaft ist, regelt die Rangfolge in assembleDetailEntries).
+async function publishDetailPermutation(perm, patches, { retry = false } = {}) {
   const resolvedPatch = perm.patch === 'current'
     ? patches.current
     : perm.patch === 'previous' ? patches.previous : perm.patch;
@@ -460,10 +466,11 @@ async function publishDetailPermutation(perm, patches) {
     source: 'data',
   });
   if (perm.minGames > 0) qs.set('minGames', String(perm.minGames));
-  qs.set('_pub', RUN_ID);
+  qs.set('_pub', retry ? `${RUN_ID}-r2` : RUN_ID);
   const url = `${BASE}/api/tft/comps?${qs.toString()}`;
   const t0 = Date.now();
-  const payload = await fetchPayload(url);
+  // fetchPayload wiederholt nur bei attempt < 3 (502/503/504) bzw. < 2 (Abbruch).
+  const payload = await fetchPayload(url, retry ? 3 : 1);
   const fetchMs = Date.now() - t0;
   if (!payload || payload.hasData === false || !payload.comp) {
     return { skipped: true, reason: 'empty payload', fetchMs };
@@ -786,21 +793,29 @@ async function main() {
       );
 
       // Zweiter Versuch fuer lueckenhafte Staende, wenn der Rest durch ist
-      // (die Datenbank ist dann weniger ausgelastet). Bleibt einer
-      // lueckenhaft, entscheidet die Rangfolge in assembleDetailEntries.
+      // (die Datenbank ist dann weniger ausgelastet). Hoechstens
+      // DETAIL_RETRY_BUDGET_MS lang, damit der Lauf nicht in den Abend
+      // waechst (perf-critic 15.10.2026: Detail-Welle heute 42–77 min).
+      // Bleibt einer lueckenhaft, entscheidet die Rangfolge in
+      // assembleDetailEntries.
       const retryIdx = results.map((r, i) => (r?.entry?.partial ? i : -1)).filter(i => i >= 0);
       if (retryIdx.length > 0) {
         console.log(`[${ts()}] comps-detail: ${retryIdx.length} lueckenhafte Staende — zweiter Versuch`);
+        const retryUntil = Date.now() + DETAIL_RETRY_BUDGET_MS;
         const again = await processWithConcurrency(
           retryIdx.map(i => detailPerms[i]),
-          (perm) => publishDetailPermutation(perm, patches),
+          (perm) => (Date.now() < retryUntil
+            ? publishDetailPermutation(perm, patches, { retry: true })
+            : { skipped: true, reason: 'retry budget' }),
           CONCURRENCY,
         );
         let fixed = 0;
+        let outOfBudget = 0;
         again.forEach((r, j) => {
+          if (r?.reason === 'retry budget') outOfBudget++;
           if ((r?.uploaded || r?.dryRun) && !r.entry.partial) { results[retryIdx[j]] = r; fixed++; }
         });
-        console.log(`[${ts()}] comps-detail: zweiter Versuch ${fixed}/${retryIdx.length} vollstaendig`);
+        console.log(`[${ts()}] comps-detail: zweiter Versuch ${fixed}/${retryIdx.length} vollstaendig${outOfBudget ? `, ${outOfBudget} ohne Versuch (Zeitbudget)` : ''}`);
       }
 
       let detailOk = 0;
@@ -818,7 +833,11 @@ async function main() {
         }
         if (r?.skipped) {
           totalSkipped++;
-          if (r.reason === 'empty payload') totalEmpty++;
+          if (r.reason === 'empty payload') {
+            totalEmpty++;
+            const emptyPatch = resolvePermPatch(p, patches);
+            if (emptyPatch) outcomes.push({ skipped: true, keys: carryKeysFor(p, emptyPatch) });
+          }
           continue;
         }
         if (r?.uploaded || r?.dryRun) {

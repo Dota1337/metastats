@@ -155,12 +155,12 @@ async function readPrecomputedList(
 const PAIRS_MEMO_TTL_MS = 10 * 60_000;
 const PAIRS_MEMO_MAX = 64;
 const pairsMemo = new Map<string, { at: number; rows: Promise<CompPairRow[]> }>();
-function compPairsMemo(args: Record<string, unknown>): Promise<CompPairRow[]> {
+function compPairsMemo(args: Record<string, unknown>, timeoutMs = 20000): Promise<CompPairRow[]> {
   const key = JSON.stringify(args);
   const now = Date.now();
   const cached = pairsMemo.get(key);
   if (cached && now - cached.at < PAIRS_MEMO_TTL_MS) return cached.rows;
-  const rows = callRpc<CompPairRow[]>('get_tft_comp_pairs', args, 20000);
+  const rows = callRpc<CompPairRow[]>('get_tft_comp_pairs', args, timeoutMs);
   rows.catch(() => { if (pairsMemo.get(key)?.rows === rows) pairsMemo.delete(key); });
   pairsMemo.set(key, { at: now, rows });
   if (pairsMemo.size > PAIRS_MEMO_MAX) {
@@ -277,6 +277,7 @@ interface CounterEdge {
 }
 
 export async function GET(request: NextRequest) {
+  const startedAt = Date.now();
   const { searchParams } = new URL(request.url);
   const sourceRaw = (searchParams.get('source') || 'data').toLowerCase();
   const source = VALID_SOURCES.has(sourceRaw) ? sourceRaw : 'data';
@@ -482,7 +483,7 @@ export async function GET(request: NextRequest) {
       // Der Publisher wartet laenger (15 s statt 8 s): sein Stand bedient einen
       // Tag lang jede Variante der Familie, ein gerissenes Zeitlimit hiesse
       // „ohne Ergebnis-Block" fuer alle (gemessen 15.10.: 27 von 120 Staenden
-      // all/3d). Detail 20 s + 15 s + Paar-Rueckfall 20 s < maxDuration 60.
+      // all/3d). Die Reserve bis maxDuration 60 haelt der Paar-Rueckfall unten.
       const partMs = publisher ? 15000 : 8000;
       const [oc, em, mu, rp] = await Promise.allSettled([
         callRpc<CompOutcomeRaw>('get_tft_comp_outcome', outcomeArgs, partMs),
@@ -546,13 +547,20 @@ export async function GET(request: NextRequest) {
       } else {
         // Alter Weg, solange das Fenster keine neuen Tage hat (oder die neue
         // Abfrage scheitert): Paare ab 55/45 je Sub-Cluster.
-        const pairs = await compPairsMemo({
+        // Publisher: Detail 20 s + Teile 15 s + Paare 20 s + kalte Patch-Liste
+        // laeg ueber maxDuration 60 (perf-critic 15.10.2026) — dann kaeme ein
+        // 504 und der Publisher rechnete alles neu. Paare bekommen deshalb nur
+        // die Restzeit bis 55 s; reicht sie nicht, gibt es keine. Der Stand
+        // gilt dann als lueckenhaft und bekommt den zweiten Versuch
+        // (scripts/lib/comps-detail-stock.mjs).
+        const pairsMs = publisher ? Math.min(20000, 55_000 - (Date.now() - startedAt)) : 20000;
+        const pairs = pairsMs < 3000 ? [] : await compPairsMemo({
           p_regions: filters.regions,
           p_days: filters.days,
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
           p_min_games: 10,
-        });
+        }, pairsMs);
         // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
         // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
         const familySet = new Set(familySlugs);

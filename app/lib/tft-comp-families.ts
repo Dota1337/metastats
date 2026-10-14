@@ -376,12 +376,19 @@ export function listFamilyTargets(
   rows: CompApiRow[],
   assets: TftAssetsBundle | null,
 ): { slug: string; familyKey: string }[] {
-  const families = currentSetFamilies(buildCompFamilies(rows, 'avg', assets), assets);
-  const shown = visibleFamilies(families, topFamilyKeys(families), '', assets);
-  return shown
+  return standardListFamilies(rows, assets)
     .map(f => f.mainComp.slug)
     .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
     .map(slug => ({ slug, familyKey: compTraitFamilyKey(slug) }));
+}
+
+// Die Standardansicht der Liste: laufendes Set, 40 meistgespielte Familien,
+// ohne Suche. EINE Stelle fuer Sitemap, Detail-Vorrat (listFamilyTargets) und
+// die Startdaten der Liste (shownFamilyRows) — liefen sie auseinander,
+// verlinkte die Sitemap andere Comps, als vorgerechnet sind.
+export function standardListFamilies(rows: CompApiRow[], assets: TftAssetsBundle | null): CompFamily[] {
+  const families = currentSetFamilies(buildCompFamilies(rows, 'avg', assets), assets);
+  return visibleFamilies(families, topFamilyKeys(families), '', assets);
 }
 
 // Suche matched gegen Trait-Display-Name + Carry-Display-Name + raw apiNames.
@@ -421,10 +428,7 @@ export function visibleFamilies(
 // null zurueck, wenn die Teildaten etwas anderes zeigen wuerden — dann gibt es
 // keine Startdaten und die Liste laedt wie frueher alles im Browser.
 export function shownFamilyRows<T extends CompApiRow>(rows: T[], assets: TftAssetsBundle | null): T[] | null {
-  const view = (list: T[]) => {
-    const families = currentSetFamilies(buildCompFamilies(list, 'avg', assets), assets);
-    return visibleFamilies(families, topFamilyKeys(families), '', assets);
-  };
+  const view = (list: T[]) => standardListFamilies(list, assets);
   const shown = view(rows);
   const keys = new Set<string>();
   for (const f of shown) {

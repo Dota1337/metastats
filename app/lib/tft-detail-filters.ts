@@ -32,6 +32,11 @@ export function detailKey(id: string, f: { region: string; bucket: string; days?
   return `${id}|${f.region}|${f.bucket}|${f.days ?? ''}`;
 }
 
+/** Comp-Detail: wie detailKey, dazu die Ansicht (Familie oder einzelne Variante). */
+export function compDetailKey(slug: string, f: DetailFilters, variant: 'family' | 'exact'): string {
+  return `${detailKey(slug, f)}|${variant}`;
+}
+
 export interface TraitIds {
   /** Anzeigename (Liste und Units verlinken ihn). */
   display: string;

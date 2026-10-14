@@ -1,12 +1,14 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { withAlpha } from '../../../lib/color';
 import { CURRENT_SET } from '../../../lib/current-set';
-import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useParams, useSearchParams, usePathname } from 'next/navigation';
+import { compDetailKey, detailFiltersFrom } from '../../../lib/tft-detail-filters';
+import type { CompDetailInitial } from '../../../lib/seo/comp-detail-data';
 import dynamic from 'next/dynamic';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
 import EmptyData from '../../../components/tft/EmptyData';
 import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
@@ -75,55 +77,101 @@ const REGIONS = [
   { value: 'jp1',  label: 'JP' },
 ] as const;
 
-export default function TftCompDetailPage() {
+// `initial`: Startdaten der Server-Huelle (page.tsx) — die Antwort, die
+// /api/tft/comps fuer die Filter der Adresse gaebe, oder null (dann fragt die
+// Seite wie bisher selbst).
+export default function TftCompDetailPage({ initial }: { initial: CompDetailInitial | null }) {
   const { t } = useI18n();
   const params = useParams();
   const search = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const slug = decodeURIComponent(String(params?.slug || ''));
-  const [region, setRegion] = useState<string>(search.get('region') || 'all');
-  const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
+  // Region, Rang und Zeitraum aus der Adresse — dieselbe Funktion wie die
+  // Startdaten (tft-detail-filters.ts), sonst passt deren Schluessel nie.
+  // Zeitraum wie in der Liste (1/3/7 Tage, Standard 3), damit Liste und Detail
+  // dieselben Zahlen zeigen.
+  const urlFilters = detailFiltersFrom(search);
+  const days = urlFilters.days;
+  const [region, setRegion] = useState<string>(urlFilters.region);
+  const [bucket, setBucket] = useState<TierBucket>(urlFilters.bucket);
   // Variant-Mode: family (default — alle Sub-Cluster der Family aggregiert) oder
   // exact (Single-Sub-Cluster). Wird live aus searchParams gelesen, damit der
   // Toggle im VariantsSwitcher ohne Page-Reload reagiert.
   const variantMode = search.get('variant') === 'exact' ? 'exact' : 'family';
-  // Zeitraum aus der Liste uebernehmen (1/3/7 Tage, Default 3 wie dort),
-  // damit Liste und Detail dieselben Zahlen zeigen.
-  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
+  const dataKey = compDetailKey(slug, { region, bucket, days }, variantMode);
 
+  // Adresse nachfuehren (teilbare Links). history.replaceState statt
+  // router.replace: Next haelt useSearchParams synchron, rechnet die
+  // Server-Seite (Startdaten) aber nicht bei jedem Rangwechsel neu. Nur bei
+  // geaenderter Adresse — beim Aufruf stimmt sie schon.
   useEffect(() => {
     if (!pathname) return;
     const next = new URLSearchParams(search.toString());
     if (region === 'all') next.delete('region'); else next.set('region', region);
     if (bucket === 'master_plus') next.delete('bucket'); else next.set('bucket', bucket);
     const q = next.toString();
+    const url = q ? `${pathname}?${q}` : pathname;
+    if (window.location.pathname + window.location.search === url) return;
     // Sprungmarke (#abschnitt) behalten — sonst verliert ein geteilter Link sie
     // beim ersten Abgleich der Filter mit der URL.
-    router.replace((q ? `${pathname}?${q}` : pathname) + window.location.hash, { scroll: false });
-  }, [region, bucket, pathname, router, search]);
+    window.history.replaceState(null, '', url + window.location.hash);
+  }, [region, bucket, pathname, search]);
 
-  const [comp, setComp] = useState<any | null | undefined>(undefined);
+  // Startdaten nur, wenn sie zu dieser Adresse gehoeren (Zurueck-Knopf nach
+  // einem Rangwechsel: die Huelle kann aeltere Startdaten mitbringen).
+  const [start] = useState(() => (initial && initial.key === dataKey ? initial : null));
+  const [comp, setComp] = useState<any | null | undefined>(() => (start ? start.detail.comp ?? null : undefined));
   // Filterstand, zu dem `comp` geladen wurde. Beim Filterwechsel bleibt die alte
   // Comp stehen, bis die neue da ist — das Aufstellungsbrett fragt mit diesem
   // Stand ab, nie mit neuen Filtern und alten Carries (perf-critic 2026-10-10),
   // und bleibt dabei stehen statt kurz zu verschwinden.
-  const [compFilters, setCompFilters] = useState<{ slug: string; region: string; bucket: string; days: number } | null>(null);
+  const [compFilters, setCompFilters] = useState<{ slug: string; region: string; bucket: string; days: number } | null>(
+    () => (start ? { slug, region, bucket, days } : null));
   const [proComp, setProComp] = useState<any | null>(null);
   // Drei Zustaende statt boolean: 'empty' heisst "es gibt wirklich keine Daten",
   // 'error' heisst "die Antwort ist ausgeblieben" (RPC-Timeout, 5xx). Vorher
   // wurde beides zu hasData:false und die Seite behauptete "Keine Daten",
   // obwohl der Datensatz existiert.
-  const [dataState, setDataState] = useState<'loading' | 'ok' | 'empty' | 'error'>('loading');
+  const [dataState, setDataState] = useState<'loading' | 'ok' | 'empty' | 'error'>(
+    () => (start ? (start.detail.hasData ? 'ok' : 'empty') : 'loading'));
   const [reloadKey, setReloadKey] = useState(0);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // Ausschnitt der Startdaten, bis das volle Bundle da ist.
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(() => start?.assets ?? null);
+  // Schluessel der gezeigten Comp: gleich → kein Abruf. Geladene Staende je
+  // Schluessel, Startdaten zaehlen mit: zurueck auf einen schon gezeigten Rang
+  // → keine neue Abfrage, und nicht die Kopie der API, die bis zu 6 h aelter
+  // sein kann als die Startdaten (Zahlen sprangen).
+  type Loaded = { hasData: boolean; comp: unknown; filters: { slug: string; region: string; bucket: string; days: number } };
+  const shownKey = useRef<string | null>(start ? start.key : null);
+  const loaded = useRef(new Map<string, Loaded>(
+    start ? [[start.key, { hasData: !!start.detail.hasData, comp: start.detail.comp ?? null, filters: { slug, region, bucket, days } }]] : []));
+  // Rang- und Regionswechsel: schon geladene Staende gleich beim Klick zeigen;
+  // fuer den Rest fragt der Effekt unten.
+  const showLoaded = (k: string) => {
+    const v = loaded.current.get(k);
+    if (!v || shownKey.current === k) return;
+    shownKey.current = k;
+    setDataState(v.hasData ? 'ok' : 'empty');
+    setComp(v.comp);
+    setCompFilters(v.filters);
+  };
+  const selectBucket = (next: TierBucket) => {
+    showLoaded(compDetailKey(slug, { region, bucket: next, days }, variantMode));
+    setBucket(next);
+  };
+  const selectRegion = (next: string) => {
+    showLoaded(compDetailKey(slug, { region: next, bucket, days }, variantMode));
+    setRegion(next);
+  };
   const [compGuidesBundle, setCompGuidesBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
   const [trendDays, setTrendDays] = useState<14 | 30>(14);
   const [trendPoints, setTrendPoints] = useState<Array<{
     day: string; games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null; patch?: string | null;
   }>>([]);
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
+  // Abruf, bleibt der Ausschnitt stehen.
+  useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
 
   useEffect(() => {
@@ -139,31 +187,45 @@ export default function TftCompDetailPage() {
   }, [slug, region, bucket, trendDays, variantMode, comp]);
 
   useEffect(() => {
+    // Schon geladene Staende zeigt showLoaded beim Klick. Ein Fehlschlag wird
+    // nicht gemerkt (Schluessel null): „Erneut versuchen" und der naechste
+    // Wechsel auf diesen Stand fragen neu.
+    if (shownKey.current === dataKey) return;
     // cancelled-Guard vor JEDEM Setter: der Detail-RPC laeuft je nach Bucket
     // zwischen 0,1 s (Snapshot) und ~19 s (live). Ohne Guard ueberschreibt die
     // spaete Antwort des alten Buckets den bereits geladenen neuen.
     let cancelled = false;
     setDataState('loading');
-    Promise.all([
-      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=${variantMode}`)
-        .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); }),
-      fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=${days}&minGames=5&variant=${variantMode}`)
-        .then(r => r.ok ? r.json() : { comp: null })
-        .catch(() => ({ comp: null })),
-    ]).then(([normal, pro]) => {
-      if (cancelled) return;
-      setDataState(normal.hasData ? 'ok' : 'empty');
-      setComp(normal.comp || null);
-      setCompFilters({ slug, region, bucket, days });
-      setProComp(pro.comp || null);
-    }).catch(() => {
-      if (cancelled) return;
-      setDataState('error');
-      setComp(null);
-      setProComp(null);
-    });
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=30&variant=${variantMode}`)
+      .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); })
+      .then(normal => {
+        if (cancelled) return;
+        const v: Loaded = { hasData: !!normal.hasData, comp: normal.comp || null, filters: { slug, region, bucket, days } };
+        loaded.current.set(dataKey, v);
+        shownKey.current = dataKey;
+        setDataState(v.hasData ? 'ok' : 'empty');
+        setComp(v.comp);
+        setCompFilters(v.filters);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        shownKey.current = null;
+        setDataState('error');
+        setComp(null);
+      });
     return () => { cancelled = true; };
-  }, [bucket, slug, region, days, variantMode, reloadKey]);
+  }, [dataKey, bucket, slug, region, days, variantMode, reloadKey]);
+
+  // Pro-Vergleich: nie vorgerechnet und unabhaengig von Rang und Region —
+  // eigener Abruf, damit ein Rangwechsel ihn nicht neu anstoesst.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=${days}&minGames=5&variant=${variantMode}`)
+      .then(r => r.ok ? r.json() : { comp: null })
+      .catch(() => ({ comp: null }))
+      .then(pro => { if (!cancelled) setProComp(pro.comp || null); });
+    return () => { cancelled = true; };
+  }, [slug, days, variantMode]);
 
   // Patch-Drop-Erkennung im Trend: wenn die Reihe einen Patch-Wechsel enthält,
   // setze eine ReferenceLine an dem Tag wo der Wechsel passiert. Visualisiert
@@ -479,10 +541,10 @@ export default function TftCompDetailPage() {
             </svg>
             <span className="hidden sm:inline">{t('tft.compare.fromDetail')}</span>
           </a>
-          <TierFilter value={bucket} onChange={setBucket} />
+          <TierFilter value={bucket} onChange={selectBucket} />
           <select
             value={region}
-            onChange={e => setRegion(e.target.value)}
+            onChange={e => selectRegion(e.target.value)}
             className="bg-surface-raised border border-border-subtle rounded text-white text-xs px-2 py-1.5"
             aria-label={t('tft.filter.region')}
           >

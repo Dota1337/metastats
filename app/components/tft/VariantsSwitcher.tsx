@@ -172,7 +172,10 @@ export default function VariantsSwitcher({
       next.delete('variant');
     }
     const q = next.toString();
-    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    // history.replaceState statt router.replace: Next haelt useSearchParams
+    // synchron, rechnet die Server-Huelle der Detailseite aber nicht neu (die
+    // genaue Ansicht hat ohnehin keine Startdaten).
+    window.history.replaceState(null, '', q ? `${pathname}?${q}` : pathname);
   };
   if (variants.length <= 1 && !showFamilyBanner) return null;
 

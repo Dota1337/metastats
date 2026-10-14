@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  traitIdsForParam, detailFiltersFrom, traitFiltersFrom, detailKey,
+  traitIdsForParam, detailFiltersFrom, traitFiltersFrom, detailKey, compDetailKey,
   compsWithUnit, compsWithItem, compsOfTrait, sharedComponentItems,
 } from './tft-detail-filters.ts';
 
@@ -71,6 +71,19 @@ test('Detail-Filter: Standardwerte wie die Liste, alte Raenge auf die Gruppe', (
   assert.equal(detailFiltersFrom(new URLSearchParams('bucket=quatsch')).bucket, 'master_plus');
   assert.deepEqual(traitFiltersFrom(new URLSearchParams('')), { region: 'all', bucket: 'master_plus' });
   assert.notEqual(detailKey('A', { region: 'all', bucket: 'master_plus', days: 3 }), detailKey('A', { region: 'all', bucket: 'master_plus', days: 7 }));
+});
+
+test('Comp-Detail-Schluessel: Adresse ohne Filter = Startdaten-Schluessel, Ansicht zaehlt mit', () => {
+  // Server (comp-detail-data.ts) und Browser (CompDetailClient.tsx) bilden ihn
+  // aus derselben Adresse; nur bei Gleichheit nimmt die Seite die Startdaten.
+  const f = detailFiltersFrom(new URLSearchParams(''));
+  const slug = 'DA_18_Executioner@3_DA_18_Azir';
+  assert.equal(compDetailKey(slug, f, 'family'), 'DA_18_Executioner@3_DA_18_Azir|all|master_plus|3|family');
+  assert.notEqual(compDetailKey(slug, f, 'family'), compDetailKey(slug, f, 'exact'));
+  assert.equal(
+    compDetailKey(slug, detailFiltersFrom(new URLSearchParams('bucket=diamond')), 'family'),
+    compDetailKey(slug, { region: 'all', bucket: 'diamond_plus', days: 3 }, 'family'),
+  );
 });
 
 // Auswahl aus den Listen-Zeilen: Server und Browser nutzen dieselben

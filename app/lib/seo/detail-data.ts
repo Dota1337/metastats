@@ -64,12 +64,13 @@ function listRows(payload: Payload | null, field: string): Record<string, any>[]
   return payload?.hasData && Array.isArray(rows) && rows.length > 0 ? rows as Record<string, any>[] : null;
 }
 
-function deadline() {
+/** Restzeit des 1,5-s-Budgets (auch fuer comp-detail-data.ts). */
+export function deadline() {
   const end = Date.now() + BUDGET_MS;
   return () => Math.max(0, end - Date.now());
 }
 
-async function resolveFor(params: Record<string, string>, left: () => number): Promise<Resolved | null> {
+export async function resolveFor(params: Record<string, string>, left: () => number): Promise<Resolved | null> {
   if (process.env.SEO_START_DATA === '0') return null;
   const r = await withTimeout(resolveFilters(new URLSearchParams(params)), left());
   // Ein ausdruecklich gewaehlter Patch rechnet live — kommt hier nicht vor

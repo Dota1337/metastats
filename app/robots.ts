@@ -6,7 +6,10 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        // /api/img/ ist der Bild-Proxy (Unit-, Item-, Trait-Bilder). Ohne die
+        // Ausnahme sperrt /api/ auch die Bilder, und Google sieht die Seiten
+        // ohne sie. Die laengere Regel gewinnt, der Rest von /api/ bleibt zu.
+        allow: ['/', '/api/img/'],
         disallow: ['/api/'],
       },
     ],

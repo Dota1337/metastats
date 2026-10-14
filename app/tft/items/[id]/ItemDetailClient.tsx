@@ -1,9 +1,11 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import { compsWithItem as selectCompsWithItem, detailFiltersFrom, detailKey, sharedComponentItems } from '../../../lib/tft-detail-filters';
+import type { ItemDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
@@ -25,41 +27,80 @@ interface ItemDetail {
   }[];
 }
 
-export default function TftItemDetailPage() {
+// `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
+// Unit-Detailseite (UnitDetailClient.tsx).
+export default function TftItemDetailPage({ initial }: { initial: ItemDetailInitial | null }) {
   const { t } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
-  const [bucket, setBucket] = useState<TierBucket>(tierBucketFromParam(search.get('bucket')));
   // Region + Zeitraum aus der Liste uebernehmen (Defaults wie dort).
-  const region = search.get('region') || 'all';
-  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
-  const [data, setData] = useState<ItemDetail | null | undefined>(undefined);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  const { region, days, bucket: initialBucket } = detailFiltersFrom(search);
+  const [bucket, setBucket] = useState<TierBucket>(initialBucket);
+  const [data, setData] = useState<ItemDetail | null | undefined>(
+    () => initial?.detail ? ((initial.detail.item as ItemDetail | undefined) || null) : undefined);
+  const [hasData, setHasData] = useState<boolean | null>(() => initial?.detail ? !!initial.detail.hasData : null);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
   // ALL comps that contain this item — we slice top-6 for the "comps with item"
   // display, but use the full list to aggregate item-combo stats below.
-  const [compsWithItem, setCompsWithItem] = useState<any[]>([]);
+  const [compsWithItem, setCompsWithItem] = useState<any[]>(() => initial?.comps ?? []);
+  // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
+  const shownDetail = useRef<string | null>(initial?.detail ? initial.key : null);
+  const shownComps = useRef<string | null>(initial?.comps ? initial.key : null);
+  // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
+  // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
+  // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
+  const loadedDetail = useRef(new Map<string, { hasData: boolean; item: ItemDetail | null }>(
+    initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
+  const loadedComps = useRef(new Map<string, any[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
+  // Abruf, bleibt der Ausschnitt stehen.
+  useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => {
-    fetch(`/api/tft/items?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
-      .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setData(d.item || null); })
-      .catch(() => { setHasData(false); setData(null); });
+    // Alte Antworten nach einem Rangwechsel verwerfen.
+    let cancelled = false;
+    const key = detailKey(id, { region, bucket, days });
+    // Ein Fehlschlag wird nicht gemerkt (Schluessel null): beim naechsten
+    // Wechsel auf diesen Rang fragt die Seite neu.
+    const knownDetail = shownDetail.current === key ? null : loadedDetail.current.get(key);
+    if (knownDetail) {
+      shownDetail.current = key;
+      setHasData(knownDetail.hasData);
+      setData(knownDetail.item);
+    } else if (shownDetail.current !== key) {
+      fetch(`/api/tft/items?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => {
+          if (cancelled) return;
+          const v = { hasData: !!d.hasData, item: (d.item as ItemDetail | undefined) || null };
+          loadedDetail.current.set(key, v);
+          shownDetail.current = key;
+          setHasData(v.hasData);
+          setData(v.item);
+        })
+        .catch(() => { if (cancelled) return; shownDetail.current = null; setHasData(false); setData(null); });
+    }
     // Cross-query: comps that frequently build this item on their lead carry.
     // Uses the existing carryItems jsonb (top-3-item triples per comp) so no
     // aggregator change is needed.
-    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
-      .then(r => r.json())
-      .then(d => {
-        const filtered = (d.comps || [])
-          .filter((c: any) =>
-            (c.carryItems || []).some((ci: any) => (ci.items || []).includes(id)),
-          );
-        setCompsWithItem(filtered);
-      })
-      .catch(() => setCompsWithItem([]));
+    const knownComps = shownComps.current === key ? null : loadedComps.current.get(key);
+    if (knownComps) {
+      shownComps.current = key;
+      setCompsWithItem(knownComps);
+    } else if (shownComps.current !== key) {
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => {
+          if (cancelled) return;
+          const filtered = selectCompsWithItem(d.comps || [], id);
+          loadedComps.current.set(key, filtered);
+          shownComps.current = key;
+          setCompsWithItem(filtered);
+        })
+        .catch(() => { if (cancelled) return; shownComps.current = null; setCompsWithItem([]); });
+    }
+    return () => { cancelled = true; };
   }, [bucket, id, region, days]);
 
   // Item-Combo-Aggregation: cross all comps that contain this item, sum the
@@ -114,19 +155,7 @@ export default function TftItemDetailPage() {
   // We also drop `_Corrupted` reskins (same item, different name → visually
   // duplicate entries) and any item whose display name still looks like an
   // unresolved CDragon i18n key.
-  const activeItems = new Set(assets?.active?.items ?? []);
-  const siblings = assets && composition.length > 0
-    ? Object.entries(assets.items)
-        .filter(([k, v]) =>
-          k !== id &&
-          activeItems.has(k) &&
-          !/Corrupted/i.test(k) &&
-          !/^tft_item_name_/i.test(v.name || '') &&
-          v.composition &&
-          v.composition.some(c => composition.includes(c)),
-        )
-        .slice(0, 12)
-    : [];
+  const siblings = assets ? sharedComponentItems(assets.items, assets.active?.items, id, composition) : [];
 
   return (
     <main className="min-h-screen bg-surface-page">

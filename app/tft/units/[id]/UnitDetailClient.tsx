@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useRef, useState, Fragment } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis,
@@ -7,7 +7,9 @@ import {
 } from 'recharts';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
+import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
+import { compsWithUnit, detailFiltersFrom, detailKey } from '../../../lib/tft-detail-filters';
+import type { UnitDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
@@ -49,25 +51,38 @@ interface CompWithUnit {
   top4Rate: number | null;
 }
 
-export default function TftUnitDetailPage() {
+// `initial`: Startdaten der Server-Huelle (page.tsx) fuer die Filter der
+// Adresse — Hauptdatensatz und Comp-Block jeweils mit der Antwort, die die API
+// gaebe, oder null (dann fragt die Seite wie bisher selbst).
+export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInitial | null }) {
   const { t } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
-  const initialBucket = tierBucketFromParam(search.get('bucket'));
-  const [bucket, setBucket] = useState<TierBucket>(initialBucket);
   // Region + Zeitraum aus der Liste uebernehmen (Defaults wie dort).
-  const region = search.get('region') || 'all';
-  const days = Math.max(1, Math.min(7, parseInt(search.get('days') || '3', 10) || 3));
+  const { region, days, bucket: initialBucket } = detailFiltersFrom(search);
+  const [bucket, setBucket] = useState<TierBucket>(initialBucket);
   const [star, setStar] = useState<StarTier>('all');
   const [itemCount, setItemCount] = useState<ItemCount>(null);
-  const [data, setData] = useState<UnitDetail | null | undefined>(undefined);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [comps, setComps] = useState<CompWithUnit[]>([]);
+  const [data, setData] = useState<UnitDetail | null | undefined>(
+    () => initial?.detail ? ((initial.detail.unit as UnitDetail | undefined) || null) : undefined);
+  const [hasData, setHasData] = useState<boolean | null>(() => initial?.detail ? !!initial.detail.hasData : null);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
+  const [comps, setComps] = useState<CompWithUnit[]>(() => initial?.comps ?? []);
   const [timeline, setTimeline] = useState<Array<{ patch: string; avgPlacement: number; top4Rate: number; pickRate: number | null; games: number }>>([]);
+  // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
+  const shownDetail = useRef<string | null>(initial?.detail ? initial.key : null);
+  const shownComps = useRef<string | null>(initial?.comps ? initial.key : null);
+  // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
+  // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
+  // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
+  const loadedDetail = useRef(new Map<string, { hasData: boolean; unit: UnitDetail | null }>(
+    initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, unit: (initial.detail.unit as UnitDetail | undefined) || null }]] : []));
+  const loadedComps = useRef(new Map<string, CompWithUnit[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
+  // Abruf, bleibt der Ausschnitt stehen.
+  useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   // Unit-Patch-Timeline (Sprint 5.2): avg_place across last 5 patches.
   useEffect(() => {
     fetch(`/api/tft/unit-history?characterId=${encodeURIComponent(id)}&bucket=${bucket}&patches=5`)
@@ -84,29 +99,56 @@ export default function TftUnitDetailPage() {
     else if (star !== 'all' && !data.topItemsByTier?.[star]?.length) setStar('all');
   }, [data, star]);
   useEffect(() => {
-    fetch(`/api/tft/units?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
-      .then(r => r.json())
-      .then(d => { setHasData(!!d.hasData); setData(d.unit || null); })
-      .catch(() => { setHasData(false); setData(null); });
+    // Alte Antworten nach einem Rangwechsel verwerfen, sonst ueberschreibt
+    // eine spaete Antwort den neuen Rang.
+    let cancelled = false;
+    const key = detailKey(id, { region, bucket, days });
+    // Ein Fehlschlag wird nicht gemerkt (Schluessel null): beim naechsten
+    // Wechsel auf diesen Rang fragt die Seite neu.
+    const knownDetail = shownDetail.current === key ? null : loadedDetail.current.get(key);
+    if (knownDetail) {
+      shownDetail.current = key;
+      setHasData(knownDetail.hasData);
+      setData(knownDetail.unit);
+    } else if (shownDetail.current !== key) {
+      fetch(`/api/tft/units?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => {
+          if (cancelled) return;
+          const v = { hasData: !!d.hasData, unit: (d.unit as UnitDetail | undefined) || null };
+          loadedDetail.current.set(key, v);
+          shownDetail.current = key;
+          setHasData(v.hasData);
+          setData(v.unit);
+        })
+        .catch(() => { if (cancelled) return; shownDetail.current = null; setHasData(false); setData(null); });
+    }
     // Pull comps and filter client-side for ones containing this champion as
     // a typical unit. Pro-Frage „in welchen Comps spielt der Champion?" auf
     // der Detail-Seite ohne extra API surface.
-    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
-      .then(r => r.json())
-      .then(d => {
-        const withUnit = (d.comps || [])
-          .filter((c: any) => (c.typicalUnits || []).some((u: any) => u.characterId === id))
-          .slice(0, 6)
-          .map((c: any) => ({
+    const knownComps = shownComps.current === key ? null : loadedComps.current.get(key);
+    if (knownComps) {
+      shownComps.current = key;
+      setComps(knownComps);
+    } else if (shownComps.current !== key) {
+      fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
+        .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+        .then(d => {
+          if (cancelled) return;
+          const withUnit: CompWithUnit[] = compsWithUnit(d.comps || [], id).map((c: any) => ({
             slug: c.slug,
             clusterKey: c.clusterKey,
             games: c.games,
             avgPlacement: c.avgPlacement,
             top4Rate: c.top4Rate,
           }));
-        setComps(withUnit);
-      })
-      .catch(() => setComps([]));
+          loadedComps.current.set(key, withUnit);
+          shownComps.current = key;
+          setComps(withUnit);
+        })
+        .catch(() => { if (cancelled) return; shownComps.current = null; setComps([]); });
+    }
+    return () => { cancelled = true; };
   }, [bucket, id, region, days]);
 
   const champ = assets?.champions[id];

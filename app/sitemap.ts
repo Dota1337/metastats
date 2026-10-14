@@ -51,7 +51,7 @@ const STATIC_ROUTES: Entry[] = [
 
 // Standardansicht der Listen (alle Regionen, 3 Tage, Diamond+, aktueller
 // Patch) — dieselben Snapshot-Schluessel, die ein Besucher ohne Filter trifft.
-function listSnapshot(endpoint: 'comps' | 'units' | 'items') {
+function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits') {
   return withTimeout(lookupSnapshot(endpoint, {
     patch: null, region: 'all', days: 3, bucket: 'diamond_plus', minGames: 0, setNumber: CURRENT_SET,
   }), SOURCE_TIMEOUT_MS);
@@ -97,6 +97,21 @@ async function itemEntries(): Promise<Entry[]> {
     .map(it => ({ path: `/tft/items/${encodeURIComponent(it.apiName!)}`, priority: 0.6, changeFrequency: 'daily' as const }));
 }
 
+// Gespielte Traits unter ihrem Anzeigenamen — so verlinken Trait-Liste und
+// Unit-Seiten, und so steht das canonical der Seite (traits/[name]/layout.tsx).
+async function traitEntries(): Promise<Entry[]> {
+  const hit = await listSnapshot('traits');
+  const rows = (hit?.payload as { traits?: Array<{ name?: string; games?: number }> } | undefined)?.traits;
+  const traits = tftAssets()?.traits;
+  if (!Array.isArray(rows) || !traits) return [];
+  const names = new Set<string>();
+  for (const r of rows) {
+    const display = typeof r.name === 'string' ? traits[r.name]?.name : undefined;
+    if (display && (r.games ?? 0) > 0) names.add(display);
+  }
+  return [...names].map(n => ({ path: `/tft/traits/${encodeURIComponent(n)}`, priority: 0.5, changeFrequency: 'daily' as const }));
+}
+
 async function lolChampionEntries(): Promise<Entry[]> {
   const version = await withTimeout(getLatestDdragonVersion(), SOURCE_TIMEOUT_MS);
   if (!version) return [];
@@ -126,10 +141,7 @@ async function remembered(name: string, load: () => Promise<Entry[]>): Promise<E
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  // Trait-Detailseiten fehlen bewusst: sie zeigen heute nichts an (Liste
-  // verlinkt den Anzeigenamen, die Seite sucht die Kennung). Kommen mit dem
-  // Fix in Schritt 5 des SEO-Plans dazu.
-  const sources = { comps: compEntries, units: unitEntries, items: itemEntries, champions: lolChampionEntries };
+  const sources = { comps: compEntries, units: unitEntries, items: itemEntries, traits: traitEntries, champions: lolChampionEntries };
   const dynamic = await Promise.all(Object.entries(sources).map(([name, load]) => remembered(name, load)));
   const seen = new Set<string>();
   return [...STATIC_ROUTES, ...dynamic.flat()]

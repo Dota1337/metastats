@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { loadTftStats, normalizeBucket, bucketParticipants, pickBucketEntry } from '../../../lib/tft-stats-loader';
+import { normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
-import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
+import { isExcludedUnit } from '../../../lib/tft-excluded';
+import { coreFromListRow, unitDetailBody, type DetailCore } from '../../../lib/tft-detail-payload';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     // sie aus der EUW-Wochendatei, und Liste und Detail zeigten andere Zahlen.
     // Die Item-Bloecke gibt es nur in den Wochendateien; die bleiben die Quelle
     // (bei „alle Regionen" EUW, die groesste Stichprobe).
-    let core: { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null } | null = null;
+    let core: DetailCore | null = null;
     let coreKnown = false;
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
@@ -101,10 +102,7 @@ export async function GET(request: NextRequest) {
       });
       const snapUnits = (hit?.payload as { units?: any[] } | undefined)?.units;
       if (Array.isArray(snapUnits) && snapUnits.length > 0) {
-        const u = snapUnits.find(x => x.characterId === id);
-        core = u && u.games > 0
-          ? { games: u.games, avgPlacement: u.avgPlacement ?? null, top4Rate: u.top4Rate ?? null, top1Rate: u.top1Rate ?? null }
-          : null;
+        core = coreFromListRow(snapUnits.find(x => x.characterId === id));
       } else {
         const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
           p_regions: filters.regions,
@@ -128,123 +126,8 @@ export async function GET(request: NextRequest) {
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    // Set-Rueckfall (2026-08-27): der Loader haelt JSONs aus einem alten Set
-    // zurueck (siehe app/lib/tft-stats-loader.ts) — dann bleiben die
-    // Item-Bloecke leer statt erfunden.
-    const stats = loadTftStats(region === 'all' ? 'euw1' : region);
-    const buckets = stats?.byUnit?.[id];
-    // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
-    const jsonEntry = buckets ? pickBucketEntry(buckets, bucket) : null;
-    if (!coreKnown && jsonEntry && jsonEntry.games > 0) {
-      core = {
-        games: jsonEntry.games,
-        avgPlacement: jsonEntry.sumPlacement / jsonEntry.games,
-        top4Rate: jsonEntry.top4 / jsonEntry.games,
-        top1Rate: jsonEntry.top1 / jsonEntry.games,
-      };
-    }
-    if (!core) return NextResponse.json({ region, bucket, hasData: coreKnown ? false : !!stats, unit: null });
-    const data: any = jsonEntry ?? {};
-    return cachedJson({
-      region, bucket,
-      set: filterSet ?? stats?.set ?? null, patch: filterPatch ?? stats?.patch ?? null,
-      hasData: true,
-      unit: {
-        characterId: id,
-        games: core.games,
-        avgPlacement: core.avgPlacement,
-        top4Rate: core.top4Rate,
-        top1Rate: core.top1Rate,
-        // Thief's Gloves & Co. raus — singulär aus den Item-Listen, als
-        // ganzes Set aus den Item-Set-Listen. "Top Item-Builds" sollen die
-        // bewussten Carry-Builds zeigen, nicht Random-Pulls.
-        topItems: (data.topItems || [])
-          .filter((it: any) => !isExcludedItem(it.item))
-          .map((it: any) => ({
-            item: it.item,
-            games: it.games,
-            avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-            top4Rate: it.games > 0 ? it.top4 / it.games : null,
-          })),
-        topItemSets: (data.topItemSets || [])
-          .filter((s: any) => !setContainsExcludedItem(s.items))
-          .map((s: any) => ({
-            items: s.items,
-            games: s.games,
-            avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-            top4Rate: s.games > 0 ? s.top4 / s.games : null,
-          })),
-        topItemsByTier: data.topItemsByTier
-          ? Object.fromEntries(
-              Object.entries(data.topItemsByTier).map(([tier, arr]: [string, any]) => [
-                tier,
-                (arr || [])
-                  .filter((it: any) => !isExcludedItem(it.item))
-                  .map((it: any) => ({
-                    item: it.item,
-                    games: it.games,
-                    avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-                    top4Rate: it.games > 0 ? it.top4 / it.games : null,
-                  })),
-              ])
-            )
-          : null,
-        topItemSetsByTier: data.topItemSetsByTier
-          ? Object.fromEntries(
-              Object.entries(data.topItemSetsByTier).map(([tier, arr]: [string, any]) => [
-                tier,
-                (arr || [])
-                  .filter((s: any) => !setContainsExcludedItem(s.items))
-                  .map((s: any) => ({
-                    items: s.items,
-                    games: s.games,
-                    avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-                    top4Rate: s.games > 0 ? s.top4 / s.games : null,
-                  })),
-              ])
-            )
-          : null,
-        // Damage-Atlas: { tier: { itemCount: { games, p50, p75, p95, p99, max } } }
-        damageByTier: data.damageByTier || null,
-        // Carry-Performance: { tier: { itemCount: { games, avgPlacement, top4Rate, top1Rate } } }
-        // — avg placement + top4 when THIS unit was the carry (replaces the
-        // player-HP damage atlas with a real carry-strength signal).
-        carryPlacementByTier: data.carryPlacementByTier
-          ? Object.fromEntries(
-              Object.entries(data.carryPlacementByTier).map(([tier, m]: [string, any]) => [
-                tier,
-                Object.fromEntries(
-                  Object.entries(m || {}).map(([ic, e]: [string, any]) => [
-                    ic,
-                    {
-                      games: e.games,
-                      avgPlacement: e.games > 0 ? e.sumPlacement / e.games : null,
-                      top4Rate: e.games > 0 ? e.top4 / e.games : null,
-                      top1Rate: e.games > 0 ? e.top1 / e.games : null,
-                    },
-                  ])
-                ),
-              ])
-            )
-          : null,
-        // Item-Slot-Build-Order: { tier: { slotIdx: [{item, count}, ...] } }
-        // Auch hier ThG raus — wenn ein Slot häufig Thief's Gloves zeigt, ist
-        // das eine Augment-Wahl, kein Build-Pfad.
-        itemSlotOrderByTier: data.itemSlotOrderByTier
-          ? Object.fromEntries(
-              Object.entries(data.itemSlotOrderByTier).map(([tier, slots]: [string, any]) => [
-                tier,
-                Object.fromEntries(
-                  Object.entries(slots || {}).map(([slotIdx, entries]: [string, any]) => [
-                    slotIdx,
-                    (entries || []).filter((e: any) => !isExcludedItem(e.item)),
-                  ])
-                ),
-              ])
-            )
-          : null,
-      },
-    });
+    const { body, cacheable } = unitDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch });
+    return cacheable ? cachedJson(body) : NextResponse.json(body);
   }
 
   // Stats list — Supabase RPC with filter expansion.

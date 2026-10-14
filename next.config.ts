@@ -1,7 +1,30 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { closeSync, openSync, readdirSync, readFileSync, readSync } from "fs";
 import { withSentryConfig } from "@sentry/nextjs";
 import { SECURITY_HEADERS } from "./app/lib/security-headers";
+
+// Wochendateien, deren Kopf ein anderes Set als public/tft-set.json nennt
+// (die Dateien beginnen mit {"set":N, collect-tft-allranks.mjs). Kann der Kopf
+// nicht gelesen werden, bleibt die Datei drin — groesser, aber nie falsch.
+function staleTftStatsFiles(): string[] {
+  try {
+    const dir = path.resolve(__dirname, "public");
+    const current = JSON.parse(readFileSync(path.join(dir, "tft-set.json"), "utf8")).setNumber;
+    return readdirSync(dir)
+      .filter(f => /^tft-stats-[a-z0-9]+\.json$/.test(f))
+      .filter(f => {
+        const fd = openSync(path.join(dir, f), "r");
+        const head = Buffer.alloc(32);
+        try { readSync(fd, head, 0, head.length, 0); } finally { closeSync(fd); }
+        const m = /^\{"set":(\d+)[,}]/.exec(head.toString("utf8"));
+        return !!m && Number(m[1]) !== current;
+      })
+      .map(f => `./public/${f}`);
+  } catch {
+    return [];
+  }
+}
 
 const nextConfig: NextConfig = {
   devIndicators: false,
@@ -14,6 +37,17 @@ const nextConfig: NextConfig = {
     '/teams/[id]': ['./public/pro-teams/index.json'],
     // Aufstellungs-Karte aus dem MetaTFT-Import, Dateiname haengt am Set.
     '/api/tft/positions/by-units': ['./public/tft-metatft-boards-*.json'],
+  },
+  // Wochendateien (public/tft-stats-<region>.json) kommen in jede Funktion,
+  // die loadTftStats erreicht — der Dateiname steht erst zur Laufzeit fest.
+  // Die Detailseiten (Startdaten, SEO-Plan Schritt 5) brauchen davon nur die
+  // des laufenden Sets: eine Datei eines anderen Sets lehnt loadTftStats ab
+  // (tft-stats-loader.ts). Am 15.10.2026 waren das 14 von 15 Dateien, 93 MB —
+  // der Wochenlauf erneuert nur euw1. Die Trait-Seite liest gar keine.
+  outputFileTracingExcludes: {
+    '/tft/units/\\[id\\]': staleTftStatsFiles(),
+    '/tft/items/\\[id\\]': staleTftStatsFiles(),
+    '/tft/traits/\\[name\\]': ['./public/tft-stats-*.json'],
   },
   // Security-Header fuer alles. Bewusst KEIN Cache-Control hier: der Matcher
   // trifft auch /_next/static/*, und dort steht bereits das richtige

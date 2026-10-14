@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
@@ -7,7 +7,8 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
-import { tftStatsBucket } from '../../../lib/rank-groups';
+import { compsOfTrait, detailKey, traitFiltersFrom, traitIdsForParam } from '../../../lib/tft-detail-filters';
+import type { TraitDetailInitial } from '../../../lib/seo/detail-data';
 import {
   renderTraitDesc,
   findTraitItemPool,
@@ -54,74 +55,92 @@ const STYLE_COLORS: Record<number, { label: string; hex: string }> = {
   5: { label: 'Prismatic', hex: '#c39bff' },
 };
 
-export default function TftTraitDetailPage() {
+// `initial`: Startdaten der Server-Huelle (page.tsx) — die Zeilen der drei
+// Listen-Abrufe, schon auf diesen Trait gekuerzt, oder null je Block.
+export default function TftTraitDetailPage({ initial }: { initial: TraitDetailInitial | null }) {
   const { t } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const apiName = decodeURIComponent(String(params?.name || ''));
-  const bucket = tftStatsBucket(search.get('bucket') || 'master_plus');
-  const region = search.get('region') || 'all';
+  const { bucket, region } = traitFiltersFrom(search);
 
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [traitStats, setTraitStats] = useState<TraitStat[]>([]);
-  const [units, setUnits] = useState<UnitStat[]>([]);
-  const [comps, setComps] = useState<any[]>([]);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
+  // Zeilen wie von der API (oder der Ausschnitt der Startdaten) — auf diesen
+  // Trait gefiltert wird beim Zeichnen, weil die Kennungen erst mit dem
+  // Bundle feststehen (E4).
+  const [traitRows, setTraitRows] = useState<TraitStat[]>(() => (initial?.traits ?? []) as unknown as TraitStat[]);
+  const [units, setUnits] = useState<UnitStat[]>(() => (initial?.units ?? []) as unknown as UnitStat[]);
+  const [compRows, setCompRows] = useState<any[]>(() => initial?.comps ?? []);
   const [unitCount, setUnitCount] = useState<{ numUnits: number; games: number; avgPlacement: number | null; top4Rate: number | null }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !(initial?.traits && initial.units && initial.comps));
+  // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
+  const shown = useRef({
+    traits: initial?.traits ? initial.key : null as string | null,
+    units: initial?.units ? initial.key : null as string | null,
+    comps: initial?.comps ? initial.key : null as string | null,
+  });
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // Bundle da (Ausschnitt der Startdaten oder volles) oder sein Abruf
+  // gescheitert: erst dann steht fest, welche Kennungen der Pfad meint.
+  const [bundleSettled, setBundleSettled] = useState(() => !!initial?.assets);
+
+  // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
+  // Abruf, bleibt der Ausschnitt stehen.
+  useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); setBundleSettled(true); }); }, []);
+
+  // Der Pfad ist die Kennung (Comp-Seiten) oder der Anzeigename (Trait-Liste,
+  // Unit-Seiten) — beides fuehrt auf dieselben Kennungen.
+  const { ids, display, unitCountName } = useMemo(() => traitIdsForParam(assets?.traits, apiName), [assets, apiName]);
 
   useEffect(() => {
     let cancelled = false;
+    const key = detailKey(apiName, { region, bucket });
+    const need = {
+      traits: shown.current.traits !== key,
+      units: shown.current.units !== key,
+      comps: shown.current.comps !== key,
+    };
+    // Alles bekannt (auch nach Hin- und Rueckwechsel, waehrend der Abruf fuer
+    // den anderen Filter noch lief): Ladeanzeige weg, sonst bliebe sie stehen.
+    if (!need.traits && !need.units && !need.comps) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
-      fetch(`/api/tft/traits?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ traits: [] })),
-      fetch(`/api/tft/units?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ units: [] })),
-      fetch(`/api/tft/comps?region=${region === 'all' ? 'euw1' : region}&bucket=${bucket}&days=3&patch=current&source=data`).then(r => r.json()).catch(() => ({ comps: [] })),
-      fetch(`/api/tft/trait-unitcount?name=${encodeURIComponent(apiName)}&region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ points: [] })),
-    ]).then(([traitData, unitData, compData, ucData]) => {
+      need.traits ? fetch(`/api/tft/traits?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ traits: [] })) : null,
+      need.units ? fetch(`/api/tft/units?region=${region}&bucket=${bucket}`).then(r => r.json()).catch(() => ({ units: [] })) : null,
+      // Comps derselben Region (vorher still EUW bei „alle Regionen").
+      need.comps ? fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=3&patch=current&source=data`).then(r => r.json()).catch(() => ({ comps: [] })) : null,
+    ]).then(([traitData, unitData, compData]) => {
       if (cancelled) return;
-      const allTraits = (traitData.traits || []) as TraitStat[];
-      // When the route param is a display name (e.g. "Stargazer"), the API
-      // rows are keyed by per-variant apiName — so we match against any
-      // variant in the family, not just an exact key.
-      const variantApiNames = new Set<string>();
-      variantApiNames.add(apiName);
-      if (typeof window !== 'undefined') {
-        // No assets dependency here yet (we're inside the fetch); resolve
-        // variants by scanning the API response, which always carries the
-        // raw apiName. Final variant resolution happens in the render path
-        // via assets, but for now we leave per-variant rows visible.
-      }
-      setTraitStats(allTraits.filter(t => t.name === apiName).sort((a, b) => a.activation - b.activation));
+      if (traitData) { setTraitRows((traitData.traits || []) as TraitStat[]); shown.current.traits = key; }
       // Filter to units that mention this trait in their CD bundle entry.
       // The asset bundle is needed for the join — without assets, no filter.
-      setUnits(unitData.units || []);
-      // Top comps anchored on this trait family. cluster_key starts with the
-      // trait apiName (e.g. „TFT17_Stargazer_Mountain@6_TFT17_Maokai"), so a
-      // simple prefix match across all variants finds the comps.
-      const compsList = (compData.comps || [])
-        .filter((c: any) => {
-          const key = c.clusterKey || '';
-          // Match against the route apiName plus any sibling variant if the
-          // family name is shared (handled via prefix-then-suffix split).
-          if (key.startsWith(`${apiName}@`)) return true;
-          const traitPart = key.split('@')[0];
-          if (!traitPart) return false;
-          // Sibling variants share the same family prefix (everything before
-          // the last underscore-suffix). E.g. TFT17_Stargazer_Mountain and
-          // TFT17_Stargazer_Wolf share TFT17_Stargazer.
-          const reqFamily = apiName.replace(/_[^_]+$/, '');
-          const rowFamily = traitPart.replace(/_[^_]+$/, '');
-          return reqFamily === rowFamily;
-        })
-        .slice(0, 6);
-      setComps(compsList);
-      setUnitCount(ucData?.points || []);
+      if (unitData) { setUnits(unitData.units || []); shown.current.units = key; }
+      if (compData) { setCompRows(compData.comps || []); shown.current.comps = key; }
       setLoading(false);
     });
     return () => { cancelled = true; };
   }, [apiName, region, bucket]);
+
+  // num_units-Kurve: die Route nimmt genau eine Kennung, die steht erst mit
+  // dem Bundle fest (ohne Bundle: der Pfad, wie vorher).
+  useEffect(() => {
+    if (!bundleSettled) return;
+    let cancelled = false;
+    fetch(`/api/tft/trait-unitcount?name=${encodeURIComponent(unitCountName)}&region=${region}&bucket=${bucket}`)
+      .then(r => r.json())
+      .then(d => { if (!cancelled) setUnitCount(d?.points || []); })
+      .catch(() => { if (!cancelled) setUnitCount([]); });
+    return () => { cancelled = true; };
+  }, [bundleSettled, unitCountName, region, bucket]);
+
+  // Stufen-Zeilen und Comps genau dieses Traits (alle Kennungen des
+  // Anzeigenamens) — vorher traf der Comp-Block per Praefix alle Traits des
+  // Sets und die Stufen blieben bei einem Anzeigenamen im Pfad leer.
+  const traitStats = useMemo(() => {
+    const idSet = new Set(ids);
+    return traitRows.filter(r => idSet.has(r.name)).sort((a, b) => a.activation - b.activation);
+  }, [traitRows, ids]);
+  const comps = useMemo(() => compsOfTrait(compRows, ids), [compRows, ids]);
 
   // URL param can be either a raw apiName ("TFT17_Stargazer_Wolf") or a
   // display name ("Stargazer", "Arbiter"). When it's a display name we
@@ -150,7 +169,7 @@ export default function TftTraitDetailPage() {
   // array of display names (not apiNames) — but our traits dict is keyed by
   // apiName. So we join through the asset bundle: champion.traits includes
   // either the apiName or the human name depending on CD set conventions.
-  const traitNamesToMatch = new Set<string>([apiName, traitMeta?.name || ''].filter(Boolean));
+  const traitNamesToMatch = new Set<string>([...ids, display]);
   const matchingUnits = assets
     ? units
         .filter(u => {
@@ -190,7 +209,7 @@ export default function TftTraitDetailPage() {
               )}
             </div>
             <a
-              href={buildExplorerUrl({ traits: [apiName] })}
+              href={buildExplorerUrl({ traits: [unitCountName] })}
               className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5 self-start"
               title={t('tft.drill.openInExplorer')}
             >
@@ -421,7 +440,7 @@ export default function TftTraitDetailPage() {
               );
               const styleColor = tier ? STYLE_COLORS[tier.style] : null;
               return (
-                <div key={s.activation} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
+                <div key={`${s.name}-${s.activation}`} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
                   <div className="text-right text-accent font-medium">{s.activation}</div>
                   <div>
                     {styleColor && (
@@ -524,7 +543,7 @@ export default function TftTraitDetailPage() {
           </div>
         )}
 
-        {!loading && traitStats.length === 0 && matchingUnits.length === 0 && comps.length === 0 && (
+        {!loading && bundleSettled && traitStats.length === 0 && matchingUnits.length === 0 && comps.length === 0 && (
           <div className="bg-surface-base border border-border-subtle rounded p-6 text-center text-fg-secondary text-sm">
             {t('tft.trait.noData')}
           </div>

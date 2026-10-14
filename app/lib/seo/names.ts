@@ -26,7 +26,7 @@ export function tftItemName(id: string): string {
   return tftAssets()?.items?.[id]?.name || prettyId(id);
 }
 
-/** Die Trait-Liste verlinkt heute den Anzeigenamen, andere Seiten die Kennung. */
+/** Trait-Liste und Unit-Seiten verlinken den Anzeigenamen, Comp-Seiten die Kennung. */
 export function tftTraitName(param: string): string {
   const bundle = tftAssets();
   if (bundle?.traits?.[param]) return tftTraitDisplayName(bundle, param);
@@ -42,7 +42,7 @@ export function tftTraitName(param: string): string {
  * Detailseiten alter Sets (TFT17_…) antworten 200, zeigen aber keine Daten
  * mehr (die Seiten fragen das laufende Set ab) — sie gehoeren nicht in den
  * Index. Trait-Anzeigenamen werden wie in build-known-ids.mjs ueber das
- * name-Feld erkannt (bis E4).
+ * name-Feld erkannt (Pfad = Kennung oder Anzeigename, E4).
  */
 export function tftKnownInBundle(kind: 'unit' | 'item' | 'trait' | 'comp', id: string): boolean | null {
   const bundle = tftAssets();

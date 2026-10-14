@@ -81,7 +81,8 @@ export function buildKnownIds() {
       for (const id of Object.keys(bundle.items || {})) items.add(id);
       for (const [id, trait] of Object.entries(bundle.traits || {})) {
         traits.add(id);
-        // Die Trait-Liste verlinkt heute den Anzeigenamen (bis E4 im SEO-Plan).
+        // Trait-Liste und Unit-Seiten verlinken den Anzeigenamen; die Seite
+        // zeigt unter beiden Adressen dasselbe (E4 im SEO-Plan).
         if (typeof trait?.name === 'string' && trait.name) traits.add(trait.name);
       }
     } catch (e) {

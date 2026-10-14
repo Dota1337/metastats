@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { loadTftStats, normalizeBucket, pickBucketEntry } from '../../../lib/tft-stats-loader';
+import { normalizeBucket } from '../../../lib/tft-stats-loader';
+import { coreFromListRow, itemDetailBody, type DetailCore } from '../../../lib/tft-detail-payload';
 import {
   resolveFilters,
   callRpc,
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
     // Kernwerte aus derselben Quelle wie die Liste (Region, Zeitraum, Rang) —
     // Begruendung in /api/tft/units. Die Traeger-Liste (topUsers) steckt nur
     // in den Wochendateien und kommt weiter von dort.
-    let core: { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null } | null = null;
+    let core: DetailCore | null = null;
     let coreKnown = false;
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
@@ -59,10 +60,7 @@ export async function GET(request: NextRequest) {
       });
       const snapItems = (hit?.payload as { items?: any[] } | undefined)?.items;
       if (Array.isArray(snapItems) && snapItems.length > 0) {
-        const it = snapItems.find(x => x.apiName === id);
-        core = it && it.games > 0
-          ? { games: it.games, avgPlacement: it.avgPlacement ?? null, top4Rate: it.top4Rate ?? null, top1Rate: it.top1Rate ?? null }
-          : null;
+        core = coreFromListRow(snapItems.find(x => x.apiName === id));
       } else {
         const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
           p_regions: filters.regions,
@@ -88,43 +86,8 @@ export async function GET(request: NextRequest) {
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const stats = loadTftStats(region === 'all' ? 'euw1' : region);
-    const buckets = stats?.byItem?.[id];
-    // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
-    const jsonEntry = buckets ? pickBucketEntry(buckets, bucket) : null;
-    if (!coreKnown && jsonEntry && jsonEntry.games > 0) {
-      core = {
-        games: jsonEntry.games,
-        avgPlacement: jsonEntry.sumPlacement / jsonEntry.games,
-        top4Rate: jsonEntry.top4 / jsonEntry.games,
-        top1Rate: null,
-      };
-    }
-    if (!core) return NextResponse.json({ region, bucket, hasData: coreKnown ? false : !!stats, item: null });
-    const data: any = jsonEntry ?? {};
-    return cachedJson({
-      region, bucket,
-      set: filterSet ?? stats?.set ?? null, patch: filterPatch ?? stats?.patch ?? null,
-      hasData: true,
-      item: {
-        apiName: id,
-        games: core.games,
-        avgPlacement: core.avgPlacement,
-        top4Rate: core.top4Rate,
-        top1Rate: core.top1Rate,
-        // Per-carrier top4Rate + top1Rate land in the snapshot from the
-        // aggregator-patch (2026-06-19). Older JSON snapshots without
-        // u.top4 / u.top1 surface as null so the UI shows "—" instead of
-        // a fake zero — gets filled in on the next daily-crawl cycle.
-        topUsers: (data.topUsers || []).map((u: any) => ({
-          characterId: u.characterId,
-          games: u.games,
-          avgPlacement: u.games > 0 ? u.sumPlacement / u.games : null,
-          top4Rate: u.games > 0 && u.top4 != null ? u.top4 / u.games : null,
-          top1Rate: u.games > 0 && u.top1 != null ? u.top1 / u.games : null,
-        })),
-      },
-    });
+    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch });
+    return cacheable ? cachedJson(body) : NextResponse.json(body);
   }
 
   // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.

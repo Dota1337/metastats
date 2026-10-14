@@ -369,7 +369,7 @@
       "type": "http-status",
       "baseUrlEnv": "SITE_STATUS_BASE_URL",
       "baseUrl": "https://www.metastats.gg",
-      "sitemapPrefixes": ["/tft/comps/", "/tft/units/", "/tft/items/", "/champions/"],
+      "sitemapPrefixes": ["/tft/comps/", "/tft/units/", "/tft/items/", "/tft/traits/", "/champions/"],
       "perPrefix": 3,
       "expect404": [
         "/tft/units/NoSuchUnit123",

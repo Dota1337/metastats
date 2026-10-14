@@ -92,8 +92,10 @@ function cacheSet(key: string, value: StatsInitial<unknown>): void {
 }
 
 // `withAbility: false` laesst den Faehigkeitstext weg (~330 B je Champion), wenn
-// die Seite keine Champion-Tooltips zeigt (tftChampionTooltip).
-function subsetBundle(
+// die Seite keine Champion-Tooltips zeigt (tftChampionTooltip). Items stehen in
+// der Reihenfolge des Bundles: die Item-Detailseite nimmt die ersten 12 Treffer
+// einer Suche ueber alle Items („gleiche Bauteile“).
+export function subsetBundle(
   bundle: TftAssetsBundle,
   pick: {
     champions?: Iterable<string>;
@@ -104,6 +106,8 @@ function subsetBundle(
     // Traits nach Kennung (Comps: Familien-Trait aus dem Cluster-Schluessel).
     traitIds?: Iterable<string>;
     withAbility?: boolean;
+    /** active.items mitgeben (auf die enthaltenen Items gekuerzt). */
+    activeItems?: boolean;
   },
 ): TftAssetsBundle {
   const champions: TftAssetsBundle['champions'] = {};
@@ -121,7 +125,10 @@ function subsetBundle(
     }
     for (const t of c.traits || []) if (bundle.traits?.[t]) traits[t] = bundle.traits[t];
   }
-  for (const id of pick.items ?? []) if (bundle.items?.[id]) items[id] = bundle.items[id];
+  const itemIds = new Set(pick.items ?? []);
+  if (itemIds.size) {
+    for (const [id, it] of Object.entries(bundle.items || {})) if (itemIds.has(id)) items[id] = it;
+  }
   for (const id of pick.traitIds ?? []) if (bundle.traits?.[id]) traits[id] = bundle.traits[id];
   const names = new Set(pick.traitNames ?? []);
   if (names.size) {
@@ -131,6 +138,7 @@ function subsetBundle(
     set: bundle.set, setName: bundle.setName, mutator: bundle.mutator, fetchedAt: bundle.fetchedAt,
     iconBase: bundle.iconBase, companionsIconBase: bundle.companionsIconBase,
     champions, traits, items, augments: {},
+    ...(pick.activeItems && bundle.active ? { active: { items: (bundle.active.items || []).filter(id => !!items[id]) } } : {}),
   };
 }
 

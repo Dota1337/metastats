@@ -1001,8 +1001,8 @@
         "app/api/companion/v1/items/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
+        "app/tft/items/ItemsClient.tsx",
         "app/tft/items/[id]/page.tsx",
-        "app/tft/items/page.tsx",
         "scripts/lib/revalidate-edge.mjs",
         "scripts/probe-aggregator-readiness.mjs"
       ]
@@ -1567,8 +1567,8 @@
       "usedBy": [
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
+        "app/tft/traits/TraitsClient.tsx",
         "app/tft/traits/[name]/page.tsx",
-        "app/tft/traits/page.tsx",
         "scripts/lib/revalidate-edge.mjs",
         "scripts/probe-aggregator-readiness.mjs"
       ]
@@ -1613,8 +1613,8 @@
         "app/lib/snapshot-matrix.ts",
         "app/tft/player/[slug]/page.tsx",
         "app/tft/traits/[name]/page.tsx",
+        "app/tft/units/UnitsClient.tsx",
         "app/tft/units/[id]/page.tsx",
-        "app/tft/units/page.tsx",
         "scripts/lib/revalidate-edge.mjs",
         "scripts/probe-aggregator-readiness.mjs"
       ]

@@ -1,20 +1,15 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { withAlpha } from '../../lib/color';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
-import StatsFilterBar, {
-  loadInitialFilters,
-  adoptServerBucket,
-  persistFilters,
-  filtersToQueryString,
-  type Filters,
-  type PatchInfo,
-} from '../../components/tft/StatsFilterBar';
+import StatsFilterBar from '../../components/tft/StatsFilterBar';
+import type { Filters } from '../../lib/tft-filters';
+import type { StatsInitial } from '../../lib/seo/initial-data';
+import { useTftStatsList } from '../../lib/useTftStatsList';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, type TftAssetsBundle, type TftTraitTier } from '../../lib/tft-cdragon';
+import { tftIconUrl, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 interface TraitVelocity {
@@ -26,7 +21,7 @@ interface TraitVelocity {
   isNew: boolean;
 }
 
-interface TraitRow {
+export interface TraitRow {
   name: string;
   activation: number;
   games: number;
@@ -59,57 +54,17 @@ const STYLE_COLORS: Record<number, string> = {
   5: '#c39bff',   // prismatic
 };
 
-export default function TftTraitsPage() {
+export default function TraitsClient({ initialFilters, initial }: {
+  // Vom Server (page.tsx), siehe UnitsClient.tsx.
+  initialFilters: Filters;
+  initial: StatsInitial<TraitRow> | null;
+}) {
   const { t } = useI18n();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
-  const [hydrated, setHydrated] = useState(false);
-  const [rows, setRows] = useState<TraitRow[]>([]);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patches, setPatches] = useState<PatchInfo[]>([]);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Items. Die
+  // Liste zeigt keine Tier-Buchstaben → keine Grenzen laden.
+  const { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets } =
+    useTftStatsList<TraitRow>({ endpoint: '/api/tft/traits', field: 'traits', initialFilters, initial, withTierCutoffs: false });
   const [search, setSearch] = useState('');
-
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') { setHydrated(true); return; }
-    const params = new URLSearchParams(window.location.search);
-    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
-      .some(k => params.has(k));
-    if (!hasUrlFilters) {
-      const stored = loadInitialFilters(params);
-      setFilters(stored);
-    }
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setLoading(true);
-    const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/traits?${qs}`)
-      .then(r => r.json())
-      .then(d => {
-        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
-        // (nur solange der User keinen eigenen gewaehlt hat).
-        adoptServerBucket(d.filters?.bucket, filters, setFilters);
-        setHasData(!!d.hasData);
-        setRows(d.traits || []);
-        setPatches(d.patches || []);
-        setLoading(false);
-      })
-      .catch(() => { setHasData(false); setRows([]); setLoading(false); });
-    const url = `${pathname}?${qs}`;
-    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
-      router.replace(url, { scroll: false });
-    }
-    if (hydrated) persistFilters(filters);
-  }, [filters, hydrated, pathname, router]);
 
   // Collapse per-activation rows into one entry per *display name* (not
   // per apiName) so multi-variant families like Stargazer's 7
@@ -185,13 +140,13 @@ export default function TftTraitsPage() {
           />
         </div>
 
-        {loading && hasData === null && (
-          <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>
-        )}
-        {hasData === false && <EmptyData />}
+        {/* Steht immer im HTML: das Vorab-Skript blendet es ueber das <style>
+            der Seite ein, solange gespeicherte Filter geladen werden. */}
+        <div data-e3-wait className={`${(loading && hasData === null) || awaitingStored ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.loading')}</div>
+        {hasData === false && !awaitingStored && <EmptyData />}
 
-        {hasData && visibleGrouped.length > 0 && (
-          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+        {hasData && visibleGrouped.length > 0 && !awaitingStored && (
+          <div data-e3-rows className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div>{t('nav.traits')}</div>

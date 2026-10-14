@@ -1,21 +1,16 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo, useSyncExternalStore } from 'react';
 import { withAlpha } from '../../lib/color';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
-import StatsFilterBar, {
-  loadInitialFilters,
-  adoptServerBucket,
-  persistFilters,
-  filtersToQueryString,
-  type Filters,
-  type PatchInfo,
-} from '../../components/tft/StatsFilterBar';
+import StatsFilterBar from '../../components/tft/StatsFilterBar';
+import type { Filters } from '../../lib/tft-filters';
+import type { StatsInitial } from '../../lib/seo/initial-data';
+import { useTftStatsList } from '../../lib/useTftStatsList';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
+import { tftChampionTileUrl, tftTraitDisplayName } from '../../lib/tft-cdragon';
+import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 import TftItemIcon from '../../components/tft/TftItemIcon';
 
@@ -28,7 +23,7 @@ interface UnitVelocity {
   isNew: boolean;
 }
 
-interface UnitRow {
+export interface UnitRow {
   characterId: string;
   games: number;
   avgPlacement: number | null;
@@ -41,72 +36,20 @@ interface UnitRow {
   topItems?: { item: string; games: number }[];
 }
 
-export default function TftUnitsPage() {
+export default function UnitsClient({ initialFilters, initial }: {
+  // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
+  // fertige Standardansicht, falls der Zwischenstand sie hatte. Server und
+  // erstes Client-Rendern nutzen dieselben Werte (sonst Hydration-Fehler).
+  initialFilters: Filters;
+  initial: StatsInitial<UnitRow> | null;
+}) {
   const { t } = useI18n();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  // useState-Init im SSR-Pass kennt kein window → loadInitialFilters fällt
-  // dort auf URL-only zurück. Separater Init-Effekt hydratisiert nach Mount
-  // aus localStorage; `hydrated`-Gate verhindert dass der erste persist-Tick
-  // localStorage mit Defaults überschreibt.
-  const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
-  const [hydrated, setHydrated] = useState(false);
-  const [units, setUnits] = useState<UnitRow[]>([]);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patches, setPatches] = useState<PatchInfo[]>([]);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
+  // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Items/Traits.
+  const { filters, setFilters, rows: units, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
+    useTftStatsList<UnitRow>({ endpoint: '/api/tft/units', field: 'units', initialFilters, initial });
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [traitFilter, setTraitFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
-  // Tier-letter cutoffs are loaded once and cached. tierLetterOfSync uses
-  // them on every row — async-per-row would blow up render. Falls back to
-  // null until the first load completes; UI renders "—" in that window.
-  const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
-
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
-  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') { setHydrated(true); return; }
-    const params = new URLSearchParams(window.location.search);
-    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
-      .some(k => params.has(k));
-    if (!hasUrlFilters) {
-      const stored = loadInitialFilters(params);
-      setFilters(stored);
-    }
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/units?${qs}`)
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled) return;
-        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
-        // (nur solange der User keinen eigenen gewaehlt hat).
-        adoptServerBucket(d.filters?.bucket, filters, setFilters);
-        setHasData(!!d.hasData);
-        setUnits(d.units || []);
-        setPatches(d.patches || []);
-        setLoading(false);
-      })
-      .catch(() => { if (!cancelled) { setHasData(false); setUnits([]); setLoading(false); } });
-    // Mirror filter state into the URL so links are shareable + Back/Fwd works.
-    const url = `${pathname}?${qs}`;
-    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
-      router.replace(url, { scroll: false });
-    }
-    if (hydrated) persistFilters(filters);
-    return () => { cancelled = true; };
-  }, [filters, hydrated, pathname, router]);
 
   // Trait options derive from the loaded units (architect: not from the full
   // assets.traits list — avoids stale/inactive traits surviving past set drops
@@ -180,16 +123,20 @@ export default function TftUnitsPage() {
   // predict rendered width ("Brambleback" renders wider than "Lux (Inferno)"),
   // so the widest name is picked by measuring with the page font; the
   // longest-by-characters stays in the stack as a fallback.
+  // Gemessen wird erst nach dem Mount: das Server-HTML kennt nur die
+  // Zeichen-Variante, das erste Client-Rendern muss dasselbe liefern.
+  // (useSyncExternalStore: false auf dem Server und beim Hydrieren, danach true.)
+  const measure = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const longestNames = useMemo(() => {
     const names = [...new Set(units.filter(u => shownIds.has(u.characterId)).map(u => assets?.champions[u.characterId]?.name || prettyCharId(u.characterId)))];
     if (names.length === 0) return [];
     const byChars = names.reduce((a, b) => (b.length > a.length ? b : a));
-    const ctx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+    const ctx = measure ? document.createElement('canvas').getContext('2d') : null;
     if (!ctx) return [byChars];
     ctx.font = `500 14px ${getComputedStyle(document.body).fontFamily}`;
     const byPixels = names.reduce((a, b) => (ctx.measureText(b).width > ctx.measureText(a).width ? b : a));
     return byPixels === byChars ? [byChars] : [byPixels, byChars];
-  }, [units, assets, shownIds]);
+  }, [units, assets, shownIds, measure]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -238,13 +185,13 @@ export default function TftUnitsPage() {
           </select>
         </div>
 
-        {loading && hasData === null && (
-          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
-        )}
-        {hasData === false && <EmptyData />}
+        {/* Steht immer im HTML: das Vorab-Skript blendet es ueber das <style>
+            der Seite ein, solange gespeicherte Filter geladen werden. */}
+        <div data-e3-wait className={`${(loading && hasData === null) || awaitingStored ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        {hasData === false && !awaitingStored && <EmptyData />}
 
-        {hasData && filtered.length > 0 && (
-          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+        {hasData && filtered.length > 0 && !awaitingStored && (
+          <div data-e3-rows className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div></div>
@@ -331,6 +278,8 @@ export default function TftUnitsPage() {
     </main>
   );
 }
+
+function noopSubscribe() { return () => {}; }
 
 function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';

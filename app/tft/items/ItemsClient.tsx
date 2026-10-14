@@ -1,25 +1,20 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { withAlpha } from '../../lib/color';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
-import StatsFilterBar, {
-  loadInitialFilters,
-  adoptServerBucket,
-  persistFilters,
-  filtersToQueryString,
-  type Filters,
-  type PatchInfo,
-} from '../../components/tft/StatsFilterBar';
+import StatsFilterBar from '../../components/tft/StatsFilterBar';
+import type { Filters } from '../../lib/tft-filters';
+import type { StatsInitial } from '../../lib/seo/initial-data';
+import { useTftStatsList } from '../../lib/useTftStatsList';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
-import { loadTierCutoffs, tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
+import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 
-interface ItemRow {
+export interface ItemRow {
   apiName: string;
   games: number;
   avgPlacement: number | null;
@@ -38,66 +33,20 @@ interface ItemRow {
   };
 }
 
-export default function TftItemsPage() {
+export default function ItemsClient({ initialFilters, initial }: {
+  // Vom Server (page.tsx), siehe UnitsClient.tsx.
+  initialFilters: Filters;
+  initial: StatsInitial<ItemRow> | null;
+}) {
   const { t } = useI18n();
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const [filters, setFilters] = useState<Filters>(() => loadInitialFilters(new URLSearchParams(searchParams.toString())));
-  const [hydrated, setHydrated] = useState(false);
-  const [items, setItems] = useState<ItemRow[]>([]);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patches, setPatches] = useState<PatchInfo[]>([]);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
+  const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
+    useTftStatsList<ItemRow>({ endpoint: '/api/tft/items', field: 'items', initialFilters, initial });
   // Client-side bucket filter analog to /tft/units cost-filter pattern.
   // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
   // into "other" and are only reachable via "Alle".
   const [bucket, setBucket] = useState<ItemBucket | null>(null);
   const [search, setSearch] = useState('');
-  const [tierCutoffs, setTierCutoffs] = useState<Awaited<ReturnType<typeof loadTierCutoffs>> | null>(null);
-
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
-  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') { setHydrated(true); return; }
-    const params = new URLSearchParams(window.location.search);
-    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
-      .some(k => params.has(k));
-    if (!hasUrlFilters) {
-      const stored = loadInitialFilters(params);
-      setFilters(stored);
-    }
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/items?${qs}`)
-      .then(r => r.json())
-      .then(d => {
-        if (cancelled) return;
-        // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
-        // (nur solange der User keinen eigenen gewaehlt hat).
-        adoptServerBucket(d.filters?.bucket, filters, setFilters);
-        setHasData(!!d.hasData);
-        setItems(d.items || []);
-        setPatches(d.patches || []);
-        setLoading(false);
-      })
-      .catch(() => { if (!cancelled) { setHasData(false); setItems([]); setLoading(false); } });
-    const url = `${pathname}?${qs}`;
-    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
-      router.replace(url, { scroll: false });
-    }
-    if (hydrated) persistFilters(filters);
-    return () => { cancelled = true; };
-  }, [filters, hydrated, pathname, router]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -163,13 +112,13 @@ export default function TftItemsPage() {
           ))}
         </div>
 
-        {loading && hasData === null && (
-          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
-        )}
-        {hasData === false && <EmptyData />}
+        {/* Steht immer im HTML: das Vorab-Skript blendet es ueber das <style>
+            der Seite ein, solange gespeicherte Filter geladen werden. */}
+        <div data-e3-wait className={`${(loading && hasData === null) || awaitingStored ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        {hasData === false && !awaitingStored && <EmptyData />}
 
-        {hasData && filtered.length > 0 && (
-          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+        {hasData && filtered.length > 0 && !awaitingStored && (
+          <div data-e3-rows className="bg-surface-base border border-border-subtle rounded overflow-hidden">
             {/* Grid: icon (3rem) → name (12rem) → TopUsers (1fr, grows to
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
@@ -197,11 +146,15 @@ export default function TftItemsPage() {
               const meta = assets?.items[it.apiName];
               const url = tftIconUrl(assets, meta?.icon);
               const letter = tierCutoffs ? tierLetterOfSync({ avgPlacement: it.avgPlacement, pickRate: it.pickRate, games: it.games }, 'items', tierCutoffs) : null;
+              // Zeile = div, nicht <a>: sie enthaelt die Champion-Links, und ein
+              // Link im Link wird im Server-HTML vom Parser zerlegt (zwei
+              // Item-Links je Zeile, React verwirft das HTML). Der Item-Name ist
+              // der Link und spannt seine Klickflaeche per ::after ueber die
+              // ganze Zeile; die Champion-Links liegen darueber (z-10).
               return (
-                <a
+                <div
                   key={it.apiName}
-                  href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
+                  className={`relative block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   <div className="hidden md:flex justify-center">
                     <TierBadge letter={letter} t={t} />
@@ -215,14 +168,21 @@ export default function TftItemsPage() {
                     ) : (
                       <div className="w-10 h-10 rounded-md bg-surface-overlay flex items-center justify-center text-[9px] text-fg-muted px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
-                    <div className="text-white font-medium truncate flex-1 md:flex-initial">{meta?.name || prettyApi(it.apiName)}</div>
+                    <a
+                      href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
+                      className="block text-white font-medium truncate flex-1 md:flex-initial after:absolute after:inset-0"
+                    >{meta?.name || prettyApi(it.apiName)}</a>
                   </div>
                   {/* Top users — 8 cost-bordered champion tiles. On mobile
                       the row still scrolls horizontally (overflow-x-auto)
                       because 8×32px doesn't fit on small screens; on
                       desktop the column is wide enough to render them all
                       inline without scrolling. */}
-                  <div className="flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-6 overflow-x-auto md:overflow-visible">
+                  {/* Handy: die Reihe liegt ueber der Zeilen-Klickflaeche, sonst
+                      faengt die das seitliche Wischen in Einrueckung und Luecken
+                      ab; w-fit, damit rechts daneben die Zeile klickbar bleibt.
+                      Desktop: nur die Kacheln liegen oben (z-10 am Link). */}
+                  <div className="relative z-10 w-fit max-w-full md:static md:z-auto md:w-auto md:max-w-none flex items-center gap-1.5 mt-2 md:mt-0 pl-12 md:pl-6 overflow-x-auto md:overflow-visible">
                     {(it.topUsers || []).slice(0, 8).map((cid, i) => {
                       const ch = assets?.champions[cid];
                       const tileUrl = tftChampionTileUrl(assets, ch);
@@ -232,8 +192,7 @@ export default function TftItemsPage() {
                         <a
                           key={i}
                           href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
-                          onClick={e => e.stopPropagation()}
-                          className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
+                          className="relative z-10 w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
                           style={{ borderColor }}
                           title={ch?.name}
                         >
@@ -266,7 +225,7 @@ export default function TftItemsPage() {
                       <DeltaCell velocity={it.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} />
                     )}
                   </div>
-                </a>
+                </div>
               );
             })}
           </div>

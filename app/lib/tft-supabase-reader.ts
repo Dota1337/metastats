@@ -146,6 +146,12 @@ const PATCH_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const PATCH_NEGATIVE_CACHE_TTL_MS = 60 * 1000;
 let _patchCacheNegativeTs = 0;
 
+// Laufende Abfrage je `days`: gleichzeitige Aufrufe (kalte Instanz, Ablauf der
+// 6 h, haengende DB) teilen sich eine, statt je eine eigene zu stellen. Seit die
+// Statistik-Listen Startdaten auf dem Server holen, steht kein Edge-Cache mehr
+// davor (SEO-Plan Schritt 3).
+const _patchInflight = new Map<number, Promise<PatchInfo[]>>();
+
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   if (_patchCache && Date.now() - _patchCache.ts < PATCH_CACHE_TTL_MS) {
     return _patchCache.rows;
@@ -157,6 +163,14 @@ export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   if (_patchCacheNegativeTs && Date.now() - _patchCacheNegativeTs < PATCH_NEGATIVE_CACHE_TTL_MS) {
     return [];
   }
+  const running = _patchInflight.get(days);
+  if (running) return running;
+  const p = fetchAvailablePatches(days).finally(() => _patchInflight.delete(days));
+  _patchInflight.set(days, p);
+  return p;
+}
+
+async function fetchAvailablePatches(days: number): Promise<PatchInfo[]> {
   try {
     const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
     // Never return empty: if every patch is below the floor (e.g. right after a
@@ -235,6 +249,8 @@ const BUCKET_COVERAGE_TTL_MS = 6 * 60 * 60 * 1000;
 const BUCKET_COVERAGE_NEGATIVE_TTL_MS = 60 * 1000;
 let _bucketCoverageCache: { ts: number; bucket: string } | null = null;
 let _bucketCoverageNegativeTs = 0;
+// Laufende Abfrage, geteilt wie bei getAvailablePatches.
+let _bucketCoverageInflight: Promise<string> | null = null;
 
 export async function resolveDefaultBucket(): Promise<string> {
   if (_bucketCoverageCache && Date.now() - _bucketCoverageCache.ts < BUCKET_COVERAGE_TTL_MS) {
@@ -244,6 +260,12 @@ export async function resolveDefaultBucket(): Promise<string> {
       && Date.now() - _bucketCoverageNegativeTs < BUCKET_COVERAGE_NEGATIVE_TTL_MS) {
     return _bucketCoverageCache?.bucket ?? DEFAULT_BUCKET;
   }
+  if (_bucketCoverageInflight) return _bucketCoverageInflight;
+  _bucketCoverageInflight = fetchDefaultBucket().finally(() => { _bucketCoverageInflight = null; });
+  return _bucketCoverageInflight;
+}
+
+async function fetchDefaultBucket(): Promise<string> {
   try {
     const rows = (await callRpc<Array<{ bucket: string; games: number | string }>>(
       'get_tft_set_bucket_coverage', { p_set: CURRENT_SET, p_days: 7 },

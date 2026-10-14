@@ -11,6 +11,7 @@ import PrototypeBanner from "./components/PrototypeBanner";
 import GameStrip from "./components/GameStrip";
 import CookieBanner from "./components/CookieBanner";
 import { Analytics } from "@vercel/analytics/next";
+import { STATS_PENDING_SCRIPT } from "./lib/seo/stats-pending";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,9 +62,13 @@ export default async function RootLayout({
 }>) {
   const initialLang = await getServerLang();
   return (
+    // suppressHydrationWarning: das Skript unten setzt vor der Hydration
+    // Merkmale an <html> (data-tft-pending / data-tft-ub), die React nicht
+    // kennt. Gilt nur fuer die Attribute dieses einen Elements.
     <html
       lang={initialLang}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <head>
         {/* Verbindung zu ddragon vorwaermen: Kopfzonen-Splashes stehen auf der
@@ -73,6 +78,11 @@ export default async function RootLayout({
             Route, obwohl nur die Startseite das Bild zeigt; er liegt jetzt in
             app/page.tsx. */}
         <link rel="preconnect" href="https://ddragon.leagueoflegends.com" />
+        {/* Gespeicherte Filter auf den TFT-Statistik-Listen: entscheidet vor dem
+            ersten Zeichnen, ob die Server-Zahlen (Standardansicht) ausgeblendet
+            werden muessen. Steht hier, weil es nur beim ersten Dokument laufen
+            soll — siehe app/lib/seo/stats-pending.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: STATS_PENDING_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col">
         {/* JSON-LD: WebSite + SearchAction for sitelinks-style results */}

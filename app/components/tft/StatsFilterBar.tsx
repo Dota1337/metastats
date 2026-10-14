@@ -2,8 +2,8 @@
 import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
-import { tftStatsBucket } from '../../lib/rank-groups';
 import { previousPatchOf } from '../../lib/snapshot-matrix';
+import type { Filters, PatchInfo } from '../../lib/tft-filters';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
 // If you add a region or bucket group there, mirror it here.
@@ -60,32 +60,6 @@ const BUCKET_OPTIONS: Option[] = [
 ];
 
 const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
-
-export interface Filters {
-  patch: string;   // 'current' | 'previous' | exact patch (e.g. '17.2b')
-  bucket: string;
-  // true = der Rang wurde NICHT vom User gewaehlt. Dann entscheidet der Server
-  // anhand der Datenlage des laufenden Sets (siehe resolveDefaultBucket in
-  // tft-supabase-reader.ts) und die UI spiegelt den gelieferten Wert zurueck.
-  // Hintergrund: zum Set-Start ist die Ladder zurueckgesetzt — Diamond+ hat
-  // dann tagelang keine Daten, und ein fest verdrahteter Diamond+-Default
-  // wuerde leere Seiten zeigen.
-  bucketAuto: boolean;
-  days: number;
-  region: string;
-  // W1-A: velocity comparison shift in days. 0 = disabled (no Δ column shown).
-  // 3 = compare current 3-day window vs the 3 days before that (48h-Verschiebung).
-  // 7 = compare current 3-day window vs the 3 days a week ago.
-  velocity: number;
-}
-
-export interface PatchInfo {
-  patch: string;
-  set_number: number;
-  first_day: string;
-  last_day: string;
-  total_matches: number;
-}
 
 interface Props {
   filters: Filters;
@@ -257,117 +231,20 @@ function FilterSelect({
   );
 }
 
-// URL-state helpers — share filters via shareable URLs.
-
-// Allowed velocity shifts (days). 0 = off; otherwise prev-window starts N days
-// before the now-window. Anything else collapses to 0 so a stale URL can't
-// surface a shape the UI doesn't render.
-const VELOCITY_SHIFTS = new Set([0, 1, 2, 3, 7, 14]);
-
-export function filtersFromSearchParams(searchParams: URLSearchParams): Filters {
-  const velocityRaw = parseInt(searchParams.get('velocity') || '0', 10);
-  const velocity = VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : 0;
-  return {
-    patch: searchParams.get('patch') || 'current',
-    bucket: tftStatsBucket(searchParams.get('bucket') || autoBucketDefault()),
-    bucketAuto: !searchParams.has('bucket'),
-    days: Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10))),
-    region: searchParams.get('region') || 'all',
-    velocity,
-  };
-}
-
-export function filtersToQueryString(f: Filters): string {
-  const sp = new URLSearchParams({
-    patch: f.patch,
-    bucket: f.bucket,
-    days: String(f.days),
-    region: f.region,
-  });
-  // Signalisiert dem Server: der Rang ist ein Default, kein User-Wunsch —
-  // er darf ihn anhand der Datenlage des laufenden Sets ersetzen.
-  if (f.bucketAuto) sp.set('bucketAuto', '1');
-  // Only emit velocity when non-zero to keep URLs clean for the default case.
-  if (f.velocity > 0) sp.set('velocity', String(f.velocity));
-  return sp.toString();
-}
-
-// localStorage-Schicht für Cross-Session-Persistenz. URL ist Single-Source-
-// of-Truth pro Tab (Sharing, Browser-History). localStorage liefert nur
-// den Default-Wert, wenn der User die Page OHNE Filter-Params besucht
-// (neuer Tab, Bookmark ohne Params). Filter werden global geteilt zwischen
-// allen Stats-Pages (Comps/Units/Items/Traits/Marktwert/Meta-Pulse) — die
-// Persona "Diamond+EUW+7d" gilt überall einheitlich.
-const STORAGE_KEY = 'metastats:tft-filters';
-
-// Der Server loest den Default-Bucket aus der Datenlage des laufenden Sets auf
-// (`bucketAuto=1` in der Query). Wir merken uns sein Ergebnis, damit der
-// naechste Seitenaufruf direkt mit dem richtigen Wert startet statt einmal auf
-// dem leeren Diamond+ zu landen und dann nachzuladen.
-const AUTO_BUCKET_KEY = 'metastats:tft-auto-bucket';
-
-export function autoBucketDefault(): string {
-  if (typeof window === 'undefined') return 'diamond_plus';
-  try {
-    return tftStatsBucket(window.localStorage.getItem(AUTO_BUCKET_KEY) || 'diamond_plus');
-  } catch {
-    return 'diamond_plus';
-  }
-}
-
-/** Uebernimmt den vom Server tatsaechlich benutzten Rang in den Filter-State,
- *  solange der User selbst keinen gewaehlt hat. Damit stimmt der angezeigte
- *  Rang immer mit den gezeigten Daten ueberein. Gibt true zurueck, wenn sich
- *  etwas geaendert hat. */
-export function adoptServerBucket(
-  served: string | undefined,
-  current: Filters,
-  apply: (next: Filters) => void,
-): boolean {
-  if (!current.bucketAuto || !served || served === current.bucket) return false;
-  if (typeof window !== 'undefined') {
-    try { window.localStorage.setItem(AUTO_BUCKET_KEY, served); } catch { /* Privacy-Mode */ }
-  }
-  apply({ ...current, bucket: served });
-  return true;
-}
-
-export function loadInitialFilters(searchParams: URLSearchParams): Filters {
-  const fromUrl = filtersFromSearchParams(searchParams);
-  // Wenn KEINER der 5 Filter-Werte in URL gesetzt ist, versuche localStorage.
-  const hasUrlValues = ['patch', 'bucket', 'days', 'region', 'velocity']
-    .some(k => searchParams.has(k));
-  if (hasUrlValues) return fromUrl;
-  if (typeof window === 'undefined') return fromUrl;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return fromUrl;
-    const stored = JSON.parse(raw) as Partial<Filters>;
-    const velocityRaw = Number(stored.velocity);
-    return {
-      patch: typeof stored.patch === 'string' ? stored.patch : fromUrl.patch,
-      // Gespeichertes master/grandmaster aus der Zeit vor 2026-09-13 → Gruppe.
-      bucket: typeof stored.bucket === 'string' ? tftStatsBucket(stored.bucket) : fromUrl.bucket,
-      // Nur ein ausdrueckliches false zaehlt als bewusste Wahl. Aeltere
-      // Storage-Eintraege kennen das Feld nicht — die duerfen nicht als
-      // "User hat Diamond+ gewaehlt" gelesen werden, sonst sieht ein
-      // wiederkehrender Besucher zum Set-Start eine leere Seite.
-      bucketAuto: stored.bucketAuto !== false,
-      days: Number.isFinite(Number(stored.days))
-        ? Math.max(1, Math.min(7, Number(stored.days))) : fromUrl.days,
-      region: typeof stored.region === 'string' ? stored.region : fromUrl.region,
-      velocity: VELOCITY_SHIFTS.has(velocityRaw) ? velocityRaw : fromUrl.velocity,
-    };
-  } catch {
-    return fromUrl;
-  }
-}
-
-export function persistFilters(f: Filters): void {
-  if (typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(f));
-  } catch {
-    // Storage voll oder Privacy-Mode — Filter bleiben URL-only.
-  }
-}
+// Filter-Typen und -Funktionen liegen in app/lib/tft-filters.ts (ohne
+// 'use client', die Server-Seiten brauchen sie auch). Weitergereicht, damit
+// die bestehenden Importe aus dieser Datei gueltig bleiben.
+export {
+  URL_FILTER_KEYS,
+  hasUrlFilters,
+  filtersFromSearchParams,
+  filtersToQueryString,
+  filtersDataKey,
+  FILTERS_STORAGE_KEY,
+  autoBucketDefault,
+  rememberAutoBucket,
+  adoptServerBucket,
+  loadInitialFilters,
+  persistFilters,
+} from '../../lib/tft-filters';
+export type { Filters, PatchInfo } from '../../lib/tft-filters';

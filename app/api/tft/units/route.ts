@@ -7,6 +7,8 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 import { computeShares } from '../../../lib/tft-shares';
+// Seltene Einheiten ans Ende — gleiche Reihenfolge wie die Startdaten der Seite.
+import { sortUnitsRareLast } from '../../../lib/tft-list-sort';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -62,15 +64,6 @@ interface UnitVelocityRow {
 // Same Δ-threshold used across comp/item velocity — below ~30 games per
 // window the Δs are too noisy to render with intent; the UI shows "—" instead.
 const VELOCITY_MIN_GAMES = 30;
-
-// Seltene Einheiten (in weniger als 0,5 % der Spielerpartien) ans Ende: ihr
-// Schnitt beruht auf wenigen Spielen und sagt wenig — sonst stehen Exoten
-// mit einer Handvoll Siegen ganz oben. Innerhalb beider Gruppen: Schnitt.
-const RARE_PICK_RATE = 0.005;
-function sortUnitsRareLast<T extends { avgPlacement?: number | null; pickRate?: number | null }>(units: T[]): void {
-  const rare = (u: T) => (u.pickRate != null && u.pickRate < RARE_PICK_RATE ? 1 : 0);
-  units.sort((a, b) => rare(a) - rare(b) || (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

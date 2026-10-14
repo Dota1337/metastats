@@ -14,13 +14,20 @@ import { buildMetadata, seoText, type PageKey } from './copy';
 //
 // `name` darf eine Funktion der Sprache sein (Champion-Namen gibt es je
 // Sprache); sie bekommt die Sprache, die auch der Titel nutzt.
+//
+// `noindex`: zweites Netz hinter der 404-Pruefung der Middleware
+// (not-found-gate.ts). Was sie durchlaesst, das Bundle des laufenden Sets aber
+// nicht kennt (moeglicherweise neue Kennung, oder ein altes Set), bekommt die
+// Seite wie heute, Google aber nicht in den Index.
 export async function pageMetadata(
   key: PageKey,
   path: string | null,
   name?: string | ((lang: Lang) => Promise<string> | string),
+  opts?: { noindex?: boolean },
 ): Promise<Metadata> {
   const lang = await getServerLang();
   const resolved = typeof name === 'function' ? await name(lang) : name;
   const vars = resolved != null ? { name: resolved } : undefined;
-  return buildMetadata(seoText(key, lang, vars), lang, path, key.startsWith('tft.') ? 'tft' : 'lol');
+  const meta = buildMetadata(seoText(key, lang, vars), lang, path, key.startsWith('tft.') ? 'tft' : 'lol');
+  return opts?.noindex ? { ...meta, robots: { index: false, follow: true } } : meta;
 }

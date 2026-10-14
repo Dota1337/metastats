@@ -1066,13 +1066,33 @@
     {
       "name": "dev",
       "scripts": [
+        "scripts/build-known-ids.mjs",
         "scripts/build-pro-teams-derivate.mjs"
+      ]
+    },
+    {
+      "name": "postinstall",
+      "scripts": [
+        "scripts/build-known-ids.mjs"
+      ]
+    },
+    {
+      "name": "pretest",
+      "scripts": [
+        "scripts/build-known-ids.mjs"
       ]
     },
     {
       "name": "build",
       "scripts": [
+        "scripts/build-known-ids.mjs",
         "scripts/build-pro-teams-derivate.mjs"
+      ]
+    },
+    {
+      "name": "build:known-ids",
+      "scripts": [
+        "scripts/build-known-ids.mjs"
       ]
     },
     {
@@ -1247,6 +1267,9 @@
     ],
     "scripts/build-pro-teams-derivate.mjs": [
       "pro-teams/derivat-frische"
+    ],
+    "middleware.ts": [
+      "seo/detail-404"
     ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history",

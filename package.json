@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/build-pro-teams-derivate.mjs && next dev",
-    "build": "node scripts/build-pro-teams-derivate.mjs && next build",
+    "dev": "node scripts/build-known-ids.mjs && node scripts/build-pro-teams-derivate.mjs && next dev",
+    "postinstall": "node scripts/build-known-ids.mjs",
+    "pretest": "node scripts/build-known-ids.mjs",
+    "build": "node scripts/build-known-ids.mjs && node scripts/build-pro-teams-derivate.mjs && next build",
+    "build:known-ids": "node scripts/build-known-ids.mjs",
     "build:pro-teams-derivate": "node scripts/build-pro-teams-derivate.mjs",
     "start": "next start",
     "lint": "eslint",

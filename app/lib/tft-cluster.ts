@@ -31,6 +31,15 @@ export function parseClusterKey(key: string): ClusterKeyParts | null {
   };
 }
 
+/** Die Kennungen in einem Comp-Slug: Trait, Carry, ggf. zweiter Carry. null =
+ *  keine Comp-Grammatik. Gemeinsame Regel fuer die 404-Pruefung der Middleware
+ *  (seo/not-found-gate.ts) und das noindex-Netz der Layouts (seo/names.ts). */
+export function compSlugIds(slug: string): { trait: string; units: string[] } | null {
+  const parts = parseClusterKey(slug);
+  if (!parts) return null;
+  return { trait: parts.trait, units: parts.secondary != null ? [parts.carry, parts.secondary] : [parts.carry] };
+}
+
 /** Reduziert den clusterKey auf die "Primary"-Identität: Trait + Carry +
  *  Carry-Star + Augment. Secondary-Carry-Suffix wird abgeknippt. Ergibt den
  *  Group-Key für Dedup in Aggregat-Sichten (Counters, Trending, Patch-Mover).

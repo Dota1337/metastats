@@ -6,6 +6,7 @@ import { tftAssets, DATA_TIMEOUT_MS } from '../og/data';
 import { withTimeout } from '../og/frame';
 import { getLatestDdragonVersion } from '../ddragon-version-server';
 import { tftTraitDisplayName } from '../tft-cdragon';
+import { compSlugIds } from '../tft-cluster';
 
 // Anzeigenamen fuer Seitentitel der Detailseiten. Nur lokale Daten (Asset-
 // Bundle, Team-Liste) oder ein zwischengespeicherter Data-Dragon-Abruf mit
@@ -30,6 +31,30 @@ export function tftTraitName(param: string): string {
   const bundle = tftAssets();
   if (bundle?.traits?.[param]) return tftTraitDisplayName(bundle, param);
   return param;
+}
+
+/**
+ * Kennt das Bundle des laufenden Sets diese Kennung? null = Bundle nicht
+ * lesbar (dann keine Aussage, kein noindex). Comps: Trait, Carry und ggf.
+ * zweiter Carry muessen bekannt sein.
+ *
+ * Bewusst nur das laufende Set, waehrend die Middleware alle Bundles kennt:
+ * Detailseiten alter Sets (TFT17_…) antworten 200, zeigen aber keine Daten
+ * mehr (die Seiten fragen das laufende Set ab) — sie gehoeren nicht in den
+ * Index. Trait-Anzeigenamen werden wie in build-known-ids.mjs ueber das
+ * name-Feld erkannt (bis E4).
+ */
+export function tftKnownInBundle(kind: 'unit' | 'item' | 'trait' | 'comp', id: string): boolean | null {
+  const bundle = tftAssets();
+  if (!bundle) return null;
+  const champions = bundle.champions || {};
+  const traits = bundle.traits || {};
+  const traitKnown = (t: string) => !!traits[t] || Object.values(traits).some(v => v?.name === t);
+  if (kind === 'unit') return !!champions[id];
+  if (kind === 'item') return !!bundle.items?.[id];
+  if (kind === 'trait') return traitKnown(id);
+  const comp = compSlugIds(id);
+  return !!comp && !!traits[comp.trait] && comp.units.every(u => !!champions[u]);
 }
 
 export function tftAugmentName(id: string, lang: Lang): string {

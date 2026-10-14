@@ -445,6 +445,7 @@ async function runCheck(c) {
     if (c.type === 'mirror') return await checkMirror(c, r);
     if (c.type === 'file') return checkFile(c, r);
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
+    if (c.type === 'http-status') return await checkHttpStatus(c, r);
     if (c.type === 'coverage') return await checkCoverage(c, r);
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
@@ -1193,6 +1194,50 @@ async function checkEndpoint(c, r) {
   return ageDays <= c.maxAgeDays
     ? r('ok', `${ageDays.toFixed(1)}d alt (max ${c.maxAgeDays}d)`)
     : r('broken', `${ageDays.toFixed(1)}d alt, erlaubt sind ${c.maxAgeDays}d — Veröffentlichung ausgefallen`);
+}
+
+/**
+ * Status-Vertrag: echte Seiten antworten 200, erfundene 404.
+ *
+ * Gebaut fuer die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts).
+ * Der teure Fehler dort ist nicht die durchgelassene Muell-Adresse, sondern
+ * die echte Seite, die ploetzlich 404 antwortet — Google wirft sie aus dem
+ * Index, und niemand sieht es, weil Besucher von der Liste aus klicken und
+ * die Liste weiter funktioniert. Die echten Adressen kommen deshalb aus der
+ * Live-Sitemap (je Praefix die ersten `perPrefix`), nicht aus festen
+ * Kennungen, die mit dem Set-Wechsel veralten.
+ */
+async function checkHttpStatus(c, r) {
+  const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
+  if (!base) return r('error', `keine Basis-URL (weder baseUrl noch ${c.baseUrlEnv})`);
+  const status = async path => {
+    const res = await fetch(base + path, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+    return res.status;
+  };
+
+  const probes = [...(c.expect404 || []).map(path => ({ path, want: 404 }))];
+  if (c.sitemapPrefixes?.length) {
+    const res = await fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return r('broken', `sitemap.xml antwortet HTTP ${res.status}`);
+    const paths = [...(await res.text()).matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => new URL(m[1]).pathname);
+    const empty = [];
+    for (const prefix of c.sitemapPrefixes) {
+      const hits = paths.filter(p => p.startsWith(prefix) && p.length > prefix.length).slice(0, c.perPrefix || 3);
+      if (hits.length === 0) empty.push(prefix);
+      for (const path of hits) probes.push({ path, want: 200 });
+    }
+    if (empty.length) return r('broken', `Sitemap ohne Eintraege fuer ${empty.join(', ')}`);
+  }
+  if (probes.length === 0) return r('error', 'keine Proben (expect404 und sitemapPrefixes leer)');
+
+  const wrong = [];
+  for (const p of probes) {
+    const got = await status(p.path);
+    if (got !== p.want) wrong.push(`${p.path} → ${got} (soll ${p.want})`);
+  }
+  return wrong.length
+    ? r('broken', `${wrong.length}/${probes.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
+    : r('ok', `${probes.length} Proben richtig (${probes.filter(p => p.want === 200).length}× 200, ${probes.filter(p => p.want === 404).length}× 404)`);
 }
 
 /**

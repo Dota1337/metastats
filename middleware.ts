@@ -2,13 +2,16 @@
 //   1. Early-Return-Branch für /internal/* + /api/internal/* — eigene Cookie-
 //      Auth, KEIN Supabase-SSR-Call. Wenn Feature-Flag aus, 404. Wenn nicht
 //      authentifiziert, 401 für /api/internal/*, 307→/internal/login für Pages.
-//   2. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
+//   2. Erfundene Detail-Adressen (Unit/Item/Trait/Comp/Team) → 404, siehe
+//      app/lib/seo/not-found-gate.ts.
+//   3. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
 //      Cookie nach ~1h ab obwohl der User aktiv ist.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './app/lib/internal-auth';
 import { securityHeaderRecord } from './app/lib/security-headers';
+import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
@@ -44,6 +47,14 @@ export async function middleware(req: NextRequest) {
     const loginUrl = new URL('/internal/login', req.url);
     loginUrl.searchParams.set('next', path);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // --- Erfundene Detail-Adressen → echte 404 ----------------------------
+  // Vor dem Supabase-Teil: kein getUser-Roundtrip fuer Muell-Adressen. Der
+  // Rewrite auf einen Pfad ohne Route laesst Next die not-found-Seite mit
+  // Status 404 rendern, auch fuer RSC und HEAD. Notschalter SEO_404_GATE=0.
+  if (process.env.SEO_404_GATE !== '0' && isUnknownDetailPath(path)) {
+    return NextResponse.rewrite(new URL('/__not-found', req.url));
   }
 
   // --- Default Supabase-SSR-Pfad ---------------------------------------

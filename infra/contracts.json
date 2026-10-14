@@ -364,6 +364,24 @@
     },
 
     {
+      "id": "seo/detail-404",
+      "owner": "middleware.ts",
+      "type": "http-status",
+      "baseUrlEnv": "SITE_STATUS_BASE_URL",
+      "baseUrl": "https://www.metastats.gg",
+      "sitemapPrefixes": ["/tft/comps/", "/tft/units/", "/tft/items/", "/champions/"],
+      "perPrefix": 3,
+      "expect404": [
+        "/tft/units/NoSuchUnit123",
+        "/tft/items/TFT17_Item_Fake",
+        "/tft/traits/NoSuchTrait",
+        "/tft/comps/Fake%409_NoSuchUnit",
+        "/teams/doesnotexist"
+      ],
+      "note": "Die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts) lebt von einer Liste, die scripts/build-known-ids.mjs bei jedem Build aus den Bundles erzeugt (nicht committet). Der teure Fehler ist eine ECHTE Seite, die ploetzlich 404 antwortet — Besucher merken es nicht (sie klicken aus der Liste, die Liste laeuft weiter), Google wirft sie aus dem Index. Deshalb kommen die 200er-Proben aus der Live-Sitemap statt aus festen Kennungen, die mit dem Set-Wechsel veralten. Die 404er-Proben fangen die Gegenrichtung: Liste leer oder Notschalter SEO_404_GATE=0 vergessen. /champions/ ist bis Schritt 6 nicht geprueft, steht hier, damit dessen 404 nicht echte Champions trifft."
+    },
+
+    {
       "id": "lol-marketvalue/history",
       "owner": "metastats-lol-marketvalue.service",
       "backend": "supabase",

@@ -71,3 +71,9 @@ next-env.d.ts
 # Exakter Pfad, KEIN public/pro-teams*-Glob: der wuerde die getrackte SoT
 # public/pro-teams.json mitfangen.
 /public/pro-teams/
+
+# 404-Liste der Middleware (scripts/build-known-ids.mjs, aus postinstall, build,
+# dev und pretest). Aus demselben Grund nicht committet: sie entsteht im selben
+# Lauf wie die Bundles und Teams, die sie liest — eine eingecheckte Kopie liefe
+# nach jedem Bot-Update hinterher.
+/app/lib/seo/known-ids.generated.json

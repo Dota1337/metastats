@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
@@ -336,16 +337,29 @@ export default function CompRow({
               Identität der Comp, das Trait der Kontext — deshalb Carry weiß +
               semibold, Trait eine Stufe leichter. Größen bleiben unverändert. */}
           <div className="text-fg-primary font-semibold text-sm sm:text-[15px] truncate">
-            <span title={traitTooltip || undefined} className="text-fg-bright font-medium">{traitDisplay}</span>
-            <span className="text-fg-faint mx-1">·</span>
-            {named.map((cid, i) => (
-              <span key={cid}>
-                {i > 0 && <span className="text-fg-faint mx-1">&amp;</span>}
-                <span title={tftChampionTooltip(assets, cid) || undefined} className="text-fg-primary">
-                  {carryNameOf(cid)}
+            {/* Echter Link fuer Suchmaschinen, die der Zeile (div role=link)
+                nicht folgen. Nur der Name, weil in den Unit-Kacheln schon
+                Links stecken. Nicht fokussierbar, die Tastatur bedient die
+                Zeile; stopPropagation, sonst oeffnet die Zeile das Ziel bei
+                Strg-/Mittelklick ein zweites Mal. */}
+            <Link
+              href={href}
+              prefetch={false}
+              tabIndex={-1}
+              onClick={e => e.stopPropagation()}
+              onAuxClick={e => e.stopPropagation()}
+            >
+              <span title={traitTooltip || undefined} className="text-fg-bright font-medium">{traitDisplay}</span>
+              <span className="text-fg-faint mx-1">·</span>
+              {named.map((cid, i) => (
+                <span key={cid}>
+                  {i > 0 && <span className="text-fg-faint mx-1">&amp;</span>}
+                  <span title={tftChampionTooltip(assets, cid) || undefined} className="text-fg-primary">
+                    {carryNameOf(cid)}
+                  </span>
                 </span>
-              </span>
-            ))}
+              ))}
+            </Link>
             {parts?.carryStar === 3 && (
               <span
                 className="ml-1 inline-flex items-center px-1 py-[1px] rounded text-[9px] font-semibold tabular-nums align-middle"

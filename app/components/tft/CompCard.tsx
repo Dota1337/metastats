@@ -202,7 +202,10 @@ export default function CompCard({
 
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-white text-sm font-medium truncate">
+            {/* Einzige Ueberschrift der Comp-Seite (CompCard steht nur dort).
+                h1 statt span fuer Suchmaschinen; Groesse und Gewicht kommen
+                weiter aus den Klassen, die Basis-Styles setzen h1 zurueck. */}
+            <h1 className="text-white text-sm font-medium truncate">
               {parts ? (
                 <a
                   href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
@@ -270,7 +273,7 @@ export default function CompCard({
                   {t(`tft.comp.difficulty.${guideMatch.guide.difficulty}` as any) || guideMatch.guide.difficulty}
                 </span>
               )}
-            </span>
+            </h1>
           </div>
 
           <CoreFlexGroups

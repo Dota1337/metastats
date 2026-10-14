@@ -2,38 +2,76 @@
 // Filter, Abruf und URL-Abgleich der Comp-Seiten. Liste (/tft/comps) und
 // Uebersicht (/tft/comps/atlas) teilen sich das, damit beide dieselben Comps
 // mit denselben Filtern zeigen — 1:1 aus app/tft/comps/page.tsx (2026-09-27).
-import { useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+//
+// Startdaten (SEO-Plan Schritt 4, nur die Liste): die Server-Seite schickt die
+// Zeilen der 40 gezeigten Familien mit (app/lib/seo/initial-data.ts,
+// compsStart) — Teildaten. Die volle Liste (bis 1,8 MB) laedt erst, wenn eine
+// Ansicht sie braucht: Suche, Erweitert, Trend-Sortierung (`wantFull` bzw.
+// `fullForView`). Sonst gelten die Regeln von useTftStatsList:
+//   - Erstes Rendern = Server-HTML (Filter, Zeilen, Assets, Tier-Grenzen als
+//     Props), gespeicherte Filter erst im useLayoutEffect; weichen sie ab:
+//     Ladeanzeige statt fremder Zahlen (E3).
+//   - Kein Abruf, wenn die gezeigten Daten passen — auch nicht nach dem
+//     Rang-Abgleich mit dem Server. Geladene Staende bleiben je
+//     Daten-Schluessel gemerkt (hoechstens LOADED_MAX).
+//   - Adresse per history.replaceState (kein Neurechnen der Server-Seite).
+//   - Jeder Versuch bricht nach FETCH_TIMEOUT_MS ab und zaehlt dann als
+//     wiederholbarer Fehler — sonst bliebe die Ladeanzeige ewig stehen.
+// Die Uebersicht laeuft ohne Startdaten: Filter wie bisher aus Adresse bzw.
+// Speicher, Abruf nach dem Mount.
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams, usePathname } from 'next/navigation';
 import {
   loadInitialFilters,
+  resolveMountFilters,
   adoptServerBucket,
+  rememberAutoBucket,
   persistFilters,
   filtersToQueryString,
+  filtersDataKey,
+  hasUrlFilters,
   type Filters,
   type PatchInfo,
-} from '../components/tft/StatsFilterBar';
+} from './tft-filters';
+import type { StatsInitial } from './seo/initial-data';
+import { releaseStatsPending } from './seo/stats-pending';
 import { loadTftAssets, type TftAssetsBundle } from './tft-cdragon';
 import { loadTierCutoffs, type TierCutoffs } from './tft-tier-letter';
 import {
   advFromUrlParam,
   advToUrlParam,
   applyAdvancedFilters,
+  isAdvActive,
   type AdvancedFilters,
 } from '../components/tft/AdvancedCompFilters';
 import { buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
 
-export function useTftCompsData() {
+// Volle Antwort bis 1,8 MB; ein Versuch darf auf langsamen Leitungen dauern.
+const FETCH_TIMEOUT_MS = 25_000;
+// Gemerkte Staende: eine volle Liste belegt ~2,5 MB Speicher.
+const LOADED_MAX = 4;
+
+interface Loaded {
+  comps: CompApiRow[];
+  patches: PatchInfo[];
+  minGames: number | null;
+  partial: boolean;
+}
+
+export function useTftCompsData({ initialFilters, initial = null, wantFull = false }: {
+  /** Liste: Filter der Server-Ansicht (Adresse + vom Server bestimmter Rang). */
+  initialFilters?: Filters;
+  initial?: StatsInitial<CompApiRow> | null;
+  /** Die Seite braucht die volle Liste (Suche, Vergleich aus der Adresse). */
+  wantFull?: boolean;
+} = {}) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
 
-  // useState-Init läuft im SSR-Pass ohne window → loadInitialFilters fällt dort
-  // auf URL-only zurück. Damit localStorage NICHT durch den ersten useEffect-
-  // Tick mit Defaults überschrieben wird, gibt es einen separaten Init-Effekt
-  // unten der nach Client-Mount setFilters() aus localStorage holt — UND ein
-  // `hydrated`-Gate, damit der persist-Pfad erst nach diesem Init feuert.
+  // Uebersicht ohne Server-Filter: wie bisher aus der Adresse; gespeicherte
+  // Filter holt der Init-Effekt unten.
   const [filters, setFilters] = useState<Filters>(() =>
-    loadInitialFilters(new URLSearchParams(searchParams.toString())),
+    initialFilters ?? loadInitialFilters(new URLSearchParams(searchParams.toString())),
   );
   const [hydrated, setHydrated] = useState(false);
   const [adv, setAdv] = useState<AdvancedFilters>(() =>
@@ -48,93 +86,227 @@ export function useTftCompsData() {
   // but the rows would stay sorted by avg-placement, which made the feature
   // look broken in earlier sessions.
   const [sortTouched, setSortTouched] = useState<boolean>(() => searchParams.has('sort'));
-  const [comps, setComps] = useState<CompApiRow[]>([]);
-  const [hasData, setHasData] = useState<boolean | null>(null);
-  const [patches, setPatches] = useState<PatchInfo[]>([]);
-  const [minGames, setMinGames] = useState<number | null>(null);
-  const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [comps, setComps] = useState<CompApiRow[]>(() => initial?.payload.rows ?? []);
+  // Gezeigt werden Teildaten (Startdaten der Liste).
+  const [partial, setPartial] = useState<boolean>(() => !!initial?.partial);
+  const [hasData, setHasData] = useState<boolean | null>(() => (initial ? true : null));
+  const [patches, setPatches] = useState<PatchInfo[]>(() => initial?.payload.patches ?? []);
+  const [minGames, setMinGames] = useState<number | null>(() => initial?.payload.minGames ?? null);
+  const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
+  // Ohne Startdaten startet der erste Abruf sofort nach dem Mount.
+  const [loading, setLoading] = useState(!initial);
+  // Gespeicherte Filter weichen von der Server-Ansicht ab (SEO-Plan E3).
+  const [awaitingStored, setAwaitingStored] = useState(false);
   // Abruf endgueltig gescheitert (nach den Wiederholungen). Bis 2026-10-02 sah
   // ein 502 hier aus wie „keine Comps" — r.ok wurde nie geprueft.
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
+  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(() => initial?.tierCutoffs ?? null);
+  // Daten-Schluessel und Teildaten-Merkmal der gezeigten Zeilen.
+  const shownKey = useRef<string | null>(initial && initialFilters ? filtersDataKey(initialFilters) : null);
+  const shownPartial = useRef<boolean>(!!initial?.partial);
+  const loaded = useRef(new Map<string, Loaded>());
+  // Laufender Abruf (Adresse + Abbruch). Bleibt stehen, wenn ein neuer
+  // Effekt-Lauf dieselbe Adresse wollte — die Antwort ist immer die volle Liste.
+  const inflight = useRef<{ qs: string; cancel: () => void } | null>(null);
+  // Daten-Schluessel und Stand der Startdaten: das Nachladen dazu nennt den
+  // Stand (?sv=), damit die volle Liste zum selben Zwischenstand gehoert.
+  const startData = useRef(initial && initialFilters
+    ? { key: filtersDataKey(initialFilters), version: initial.version ?? null }
+    : null);
+  // Set, fuer das die Tier-Grenzen schon da sind (vom Server mitgeliefert).
+  const cutoffSet = useRef<number | null | undefined>(initial ? initial.assets.set : undefined);
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
-  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
-
-  // Init-Effekt: läuft EINMAL nach Client-Mount. Wenn die URL keine Filter
-  // mitbringt, ziehe sie aus localStorage. Erst danach öffnen wir das
-  // hydrated-Gate, damit der Haupt-Effekt unten persistieren darf.
+  // Volles Bundle wie bisher; bis dahin reicht der Ausschnitt vom Server, ein
+  // Fehlschlag ersetzt ihn nicht.
+  useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => {
-    if (typeof window === 'undefined') { setHydrated(true); return; }
+    const set = assets?.set ?? null;
+    if (cutoffSet.current === set) return;
+    cutoffSet.current = set;
+    loadTierCutoffs(set).then(setTierCutoffs);
+  }, [assets?.set]);
+
+  const remember = (key: string, entry: Loaded) => {
+    loaded.current.delete(key);
+    loaded.current.set(key, entry);
+    while (loaded.current.size > LOADED_MAX) loaded.current.delete(loaded.current.keys().next().value as string);
+  };
+
+  // Init vor dem ersten Zeichnen, genau einmal. Liste: die Filter, die
+  // wirklich gelten (Adresse, sonst Speicher), gegen die der Server-Ansicht —
+  // wie useTftStatsList. Uebersicht: gespeicherte Filter, wenn die Adresse
+  // keine nennt. Erst danach darf der Haupt-Effekt laden und speichern.
+  useLayoutEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const hasUrlFilters = ['patch', 'bucket', 'days', 'region', 'velocity']
-      .some(k => params.has(k));
-    if (!hasUrlFilters) {
-      const stored = loadInitialFilters(params);
-      setFilters(stored);
+    if (initialFilters) {
+      if (initial) {
+        remember(filtersDataKey(initialFilters), {
+          comps: initial.payload.rows,
+          patches: initial.payload.patches,
+          minGames: initial.payload.minGames ?? null,
+          partial: !!initial.partial,
+        });
+      }
+      const mount = resolveMountFilters(initialFilters, params);
+      if (mount.change) setFilters(mount.filters);
+      if (mount.change === 'data' && initial) setAwaitingStored(true);
+      const served = initial?.payload.filters?.bucket;
+      if (initialFilters.bucketAuto && typeof served === 'string') rememberAutoBucket(served);
+    } else if (!hasUrlFilters(params)) {
+      setFilters(loadInitialFilters(params));
     }
+    releaseStatsPending();
     setHydrated(true);
+    // Nur beim Mount: spaetere Props (Navigation zurueck) aendern nichts.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Adresse nachfuehren (teilbare Links). history.replaceState statt
+  // router.replace: Next haelt useSearchParams synchron, rechnet die
+  // Server-Seite aber nicht neu.
   useEffect(() => {
-    // Abbruch im Cleanup: /api/tft/comps liefert bis zu 841 KB und geht bei
-    // einem Snapshot-Miss auf die RPC. Zwei schnelle Filter-Wechsel können
-    // deshalb out-of-order eintreffen — die alte Liste würde die neue
+    if (!hydrated) return;
+    const qs = filtersToQueryString(filters);
+    const advParam = advToUrlParam(adv);
+    const sortParam = sortTouched && sortBy !== 'avg' ? `&sort=${sortBy}` : '';
+    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}`;
+    if (window.location.pathname + window.location.search !== url) {
+      window.history.replaceState(null, '', url);
+    }
+    persistFilters(filters);
+  }, [filters, adv, sortBy, sortTouched, hydrated, pathname]);
+
+  // Erweitert und Trend-Sortierung rechnen auf der vollen Liste; auf
+  // Teildaten kaemen andere Comps heraus → Ladeanzeige bis sie da ist.
+  const fullForView = isAdvActive(adv) || sortBy === 'velocity';
+  const needFull = wantFull || fullForView;
+  const fullForViewRef = useRef(fullForView);
+  fullForViewRef.current = fullForView;
+
+  // Laufenden Abruf beim Verlassen der Seite abbrechen.
+  useEffect(() => () => { inflight.current?.cancel(); inflight.current = null; }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const key = filtersDataKey(filters);
+    const enough = (isPartial: boolean) => !(isPartial && needFull);
+    const stop = () => { inflight.current?.cancel(); inflight.current = null; };
+    if (key === shownKey.current && enough(shownPartial.current)) {
+      stop();
+      setLoading(false);
+      setAwaitingStored(false);
+      return;
+    }
+    const known = loaded.current.get(key);
+    if (known && enough(known.partial)) {
+      stop();
+      shownKey.current = key;
+      shownPartial.current = known.partial;
+      setError(false);
+      setHasData(true);
+      setComps(known.comps);
+      setPatches(known.patches);
+      setMinGames(known.minGames);
+      setPartial(known.partial);
+      setLoading(false);
+      setAwaitingStored(false);
+      return;
+    }
+    // Zur gezeigten Teilliste die volle nachladen — zum selben Zwischenstand.
+    const upgrading = key === shownKey.current;
+    const sv = startData.current?.key === key && startData.current.version
+      ? `&sv=${encodeURIComponent(startData.current.version)}` : '';
+    const qs = `${filtersToQueryString(filters)}&source=data${sv}`;
+    // Dieselbe Adresse laeuft schon (z. B. Suchfeld fokussiert, waehrend
+    // gespeicherte Filter laden): weiterlaufen lassen.
+    if (inflight.current?.qs === qs) return;
+    stop();
+
+    // Abbruch bei jedem neuen Abruf: /api/tft/comps liefert bis zu 1,8 MB und
+    // geht bei einem Snapshot-Miss auf die RPC. Zwei schnelle Filter-Wechsel
+    // können deshalb out-of-order eintreffen — die alte Liste würde die neue
     // überschreiben, während die Filter-Chips schon das neue Set zeigen.
     const ctl = new AbortController();
     const { signal } = ctl;
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const cancel = () => { ctl.abort(); if (retryTimer) clearTimeout(retryTimer); };
+    inflight.current = { qs, cancel };
     setLoading(true);
-    const qs = filtersToQueryString(filters);
     // Bis zu 3 Versuche, aber nur bei Server- oder Netzfehler (5xx, kein
-    // Netz) und nur im sichtbaren Tab; ein 4xx ist endgueltig. Die Streuung
-    // verhindert, dass viele Besucher nach einem Aussetzer gleichzeitig
-    // nachfragen.
+    // Netz, Zeitlimit) und nur im sichtbaren Tab; ein 4xx ist endgueltig. Die
+    // Streuung verhindert, dass viele Besucher nach einem Aussetzer
+    // gleichzeitig nachfragen.
     const attempt = (n: number) => {
-      fetch(`/api/tft/comps?${qs}&source=data`, { signal })
+      // Eigener Abbruch je Versuch fuers Zeitlimit; der Abbruch von aussen
+      // (neuer Abruf, Seite verlassen) reicht durch.
+      const tryCtl = new AbortController();
+      const passAbort = () => tryCtl.abort();
+      signal.addEventListener('abort', passAbort);
+      const timeout = setTimeout(() => tryCtl.abort(), FETCH_TIMEOUT_MS);
+      fetch(`/api/tft/comps?${qs}`, { signal: tryCtl.signal })
         .then(r => {
           if (!r.ok) throw Object.assign(new Error(`HTTP ${r.status}`), { retryable: r.status >= 500 });
           return r.json();
         })
         .then(d => {
           if (signal.aborted) return;
+          inflight.current = null;
+          // Gezeigt wird der Rang, den der Server benutzt hat — so loest der
+          // Abgleich darunter keinen zweiten Abruf aus.
+          const servedBucket = typeof d.filters?.bucket === 'string' ? d.filters.bucket : filters.bucket;
+          const servedKey = filtersDataKey({ ...filters, bucket: servedBucket });
+          const next: Loaded = {
+            comps: d.comps || [],
+            patches: d.patches || [],
+            minGames: typeof d.minGames === 'number' ? d.minGames : null,
+            partial: false,
+          };
+          if (d.hasData && next.comps.length) remember(servedKey, next);
+          shownKey.current = servedKey;
+          shownPartial.current = false;
           // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
           // (nur solange der User keinen eigenen gewaehlt hat).
           adoptServerBucket(d.filters?.bucket, filters, setFilters);
           setError(false);
           setHasData(!!d.hasData);
-          setComps(d.comps || []);
-          setPatches(d.patches || []);
-          setMinGames(typeof d.minGames === 'number' ? d.minGames : null);
+          setComps(next.comps);
+          setPatches(next.patches);
+          setMinGames(next.minGames);
+          setPartial(false);
           setLoading(false);
+          setAwaitingStored(false);
         })
         .catch((e: { retryable?: boolean }) => {
           if (signal.aborted) return;
           const visible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
           if (e?.retryable !== false && n < 3 && visible) {
-            timer = setTimeout(() => attempt(n + 1), 1000 * n + Math.random() * 1000);
+            retryTimer = setTimeout(() => attempt(n + 1), 1000 * n + Math.random() * 1000);
             return;
           }
+          inflight.current = null;
+          setLoading(false);
+          setAwaitingStored(false);
+          // Nachladen zur gezeigten Teilliste gescheitert: die gezeigten Zahlen
+          // stimmen weiter (Suche findet dann nur unter den 40). Nur wenn die
+          // Ansicht die volle Liste braucht (Erweitert, Trend), Fehlerkasten.
+          if (upgrading && !fullForViewRef.current) return;
           // Keine leere Liste vortaeuschen: die Seite zeigt den Fehlerkasten.
-          setError(true); setLoading(false);
+          shownKey.current = null;
+          setError(true);
+        })
+        .finally(() => {
+          clearTimeout(timeout);
+          signal.removeEventListener('abort', passAbort);
         });
     };
     attempt(1);
-    // Persist NUR nach Hydration — sonst überschreibt der erste Effekt-Tick
-    // mit den (URL-only) Defaults die in localStorage gespeicherte Persona,
-    // bevor der Init-Effekt sie laden konnte.
-    if (hydrated) persistFilters(filters);
-    const advParam = advToUrlParam(adv);
-    const sortParam = sortTouched && sortBy !== 'avg' ? `&sort=${sortBy}` : '';
-    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}`;
-    if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== url) {
-      router.replace(url, { scroll: false });
-    }
-    return () => { ctl.abort(); if (timer) clearTimeout(timer); };
-  }, [filters, adv, sortBy, sortTouched, hydrated, pathname, router, reloadKey]);
+    // Kein Abbruch im Cleanup: der naechste Lauf entscheidet (stop() oben),
+    // ob der laufende Abruf noch gebraucht wird.
+    // fullForView eigens: scheiterte das Nachladen fuer die Suche still, bleibt
+    // needFull beim Klick auf Erweitert/Trend gleich — ohne neuen Versuch
+    // stuende die Ladeanzeige dann fuer immer.
+  }, [filters, hydrated, needFull, fullForView, reloadKey]);
   const retry = () => setReloadKey(k => k + 1);
 
   // Filter-change handler that also auto-flips the sort to "Trending" the
@@ -142,32 +314,34 @@ export function useTftCompsData() {
   // Skips if they've explicitly chosen a sort already, so a manual decision
   // is never overridden. Done in the change handler instead of an effect to
   // avoid the setState-within-effect cascade lint flags warn about.
+  // Ausnahme: ohne Δ gibt es die Trend-Sortierung nicht (die Option fehlt im
+  // Auswahlfeld) — dann immer zurueck auf avg.
   const handleFiltersChange = (next: Filters) => {
-    if (!sortTouched) {
-      if (next.velocity > 0 && filters.velocity === 0) setSortBy('velocity');
-      else if (next.velocity === 0 && filters.velocity > 0) setSortBy('avg');
-    }
+    if (next.velocity > 0 && filters.velocity === 0 && !sortTouched) setSortBy('velocity');
+    else if (next.velocity === 0 && filters.velocity > 0 && (!sortTouched || sortBy === 'velocity')) setSortBy('avg');
     setFilters(next);
   };
   const chooseSort = (s: CompSortBy) => { setSortTouched(true); setSortBy(s); };
 
-  // Carry-Cost-Lookup: cluster_key = "<trait>@<level>_<carryCharacterId>".
-  // Bundle-Champions tragen den Cost direkt; null wenn der Carry-Asset fehlt
-  // (stale Carry-ID nach Set-Wechsel).
-  const carryCostLookup = (clusterKey: string): number | null => {
-    if (!assets) return null;
-    const m = /^(.+)@\d+_(.+)$/.exec(clusterKey);
-    if (!m) return null;
-    const ch = assets.champions[m[2]];
-    return typeof ch?.cost === 'number' ? ch.cost : null;
-  };
   // Apply advanced filters BEFORE sort so the result count + sort target match.
   // Client-side filter on the already-loaded comps — no extra API roundtrip.
-  const filteredComps = applyAdvancedFilters(comps, adv, { carryCostLookup });
+  // Memoisiert: sonst baut jedes Rendern die Familien neu (useMemo unten).
+  const filteredComps = useMemo(() => {
+    // Carry-Cost-Lookup: cluster_key = "<trait>@<level>_<carryCharacterId>".
+    // Bundle-Champions tragen den Cost direkt; null wenn der Carry-Asset fehlt
+    // (stale Carry-ID nach Set-Wechsel).
+    const carryCostLookup = (clusterKey: string): number | null => {
+      if (!assets) return null;
+      const m = /^(.+)@\d+_(.+)$/.exec(clusterKey);
+      if (!m) return null;
+      const ch = assets.champions[m[2]];
+      return typeof ch?.cost === 'number' ? ch.cost : null;
+    };
+    return applyAdvancedFilters(comps, adv, { carryCostLookup });
+  }, [comps, adv, assets]);
 
   const families = useMemo(
     () => buildCompFamilies(filteredComps, sortBy, assets),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [filteredComps, sortBy, assets],
   );
   const setFamilies = useMemo(() => currentSetFamilies(families, assets), [families, assets]);
@@ -179,6 +353,9 @@ export function useTftCompsData() {
     sortBy, chooseSort,
     comps, filteredComps, hasData, patches, minGames, assets, loading, tierCutoffs,
     error, retry,
+    // Teildaten: Zaehler ueber alle Comps waeren falsch. Auf Teildaten mit
+    // Erweitert/Trend-Sortierung zeigt die Seite die Ladeanzeige.
+    partial, awaitingStored, awaitingFull: partial && fullForView,
     currentPatchLabel: patches[0]?.patch,
     families, currentSetFamilies: setFamilies, topFamilyKeys: topKeys,
   };

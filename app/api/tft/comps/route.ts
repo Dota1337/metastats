@@ -660,6 +660,16 @@ export async function GET(request: NextRequest) {
       if (hit && snapshotComplete && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
         const resp = cachedJson(hit.payload, { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
+        // Die Comps-Liste laedt die volle Liste zu ihren Startdaten mit deren
+        // Stand nach (?sv=, useTftCompsData). Eigene Adresse je Stand, damit
+        // keine aeltere Edge-Kopie die Zahlen zurueckspringen laesst. Kennt
+        // diese Instanz einen anderen Stand (Manifest-Abgleich ≤ 5 min), die
+        // Antwort nicht unter der Stand-Adresse zwischenspeichern.
+        const sv = searchParams.get('sv');
+        if (sv && sv !== hit.builtAt) {
+          resp.headers.set('Cache-Control', 'no-store');
+          resp.headers.set('Vercel-CDN-Cache-Control', 'no-store');
+        }
         return resp;
       }
       // Gleicher Zeitraum, aber mit fester statt angepasster Schwelle: als

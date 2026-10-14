@@ -97,6 +97,7 @@ export interface LookupHit {
   tag: string;       // für x-snapshot Header
   blobUrl: string;
   blobBytes: number;
+  builtAt: string;   // Stand des Publishers (Manifest-Eintrag)
 }
 
 // Der Publisher fetcht die eigenen API-Routes, um die Snapshots zu bauen. Ohne
@@ -176,7 +177,7 @@ export async function lookupSnapshot(
       { filters?: { set?: number | null; setNumber?: number | null } } | null)?.filters;
     const payloadSet = payloadFilters?.set ?? payloadFilters?.setNumber ?? null;
     if (payloadSet !== (opts.setNumber ?? null)) return null;
-    return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes };
+    return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes, builtAt: entry.builtAt };
   } catch {
     return null;
   }

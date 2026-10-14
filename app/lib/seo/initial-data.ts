@@ -17,7 +17,8 @@ import 'server-only';
 //     Browser. Nie leere oder erfundene Zahlen.
 //   - Startdaten = genau die Antwort, die der Browser von der API bekaeme
 //     (gleiche Filter, gleiche Sortierung), sonst springt die Liste nach dem
-//     ersten Abruf.
+//     ersten Abruf. Ausnahme Comps: nur die Zeilen der gezeigten Familien und
+//     ohne Trend/Mitspiel-Anteil (`partial`, compsStart unten).
 import tierCutoffsFile from '../../../public/tft-tier-cutoffs.json' with { type: 'json' };
 import { lookupSnapshot } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
@@ -25,6 +26,8 @@ import { resolveFilters } from '../tft-supabase-reader';
 import { filtersFromSearchParams, filtersDataKey, type Filters, type PatchInfo } from '../tft-filters';
 import { resolveCutoffs, type TierCutoffs, type TierCutoffsBundle } from '../tft-tier-letter';
 import { sortUnitsRareLast } from '../tft-list-sort';
+import { parseClusterKey } from '../tft-cluster';
+import { shownFamilyRows, type CompApiRow } from '../tft-comp-families';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
@@ -37,6 +40,8 @@ export interface StatsPayload<Row> {
   hasData: boolean;
   filters?: Record<string, unknown>;
   patches: PatchInfo[];
+  /** Nur Comps: wirksame Mindestspiele der Antwort (Feld minGames der API). */
+  minGames?: number | null;
   rows: Row[];
 }
 
@@ -46,6 +51,14 @@ export interface StatsInitial<Row> {
   // das volle Bundle (2,1 MB) laedt der Browser danach wie bisher.
   assets: TftAssetsBundle;
   tierCutoffs: TierCutoffs;
+  /** Nur ein Teil der API-Zeilen (Comps: die der gezeigten Familien). Wer mehr
+   *  braucht (Suche, Erweitert), laedt die volle Liste nach — nur
+   *  useTftCompsData kennt das. */
+  partial?: boolean;
+  /** Stand des vorgerechneten Zwischenstands (Manifest builtAt). Die
+   *  Comps-Liste haengt ihn beim Nachladen an (?sv=), damit keine aeltere
+   *  Edge-Kopie der API die Zahlen zurueckspringen laesst. */
+  version?: string;
 }
 
 export interface StatsStart<Row> {
@@ -88,6 +101,8 @@ function subsetBundle(
     // Traits mit diesem Anzeigenamen, ALLE Varianten: die Traits-Liste fasst
     // nach Anzeigenamen zusammen und sucht ihr Symbol unter allen Varianten.
     traitNames?: Iterable<string>;
+    // Traits nach Kennung (Comps: Familien-Trait aus dem Cluster-Schluessel).
+    traitIds?: Iterable<string>;
     withAbility?: boolean;
   },
 ): TftAssetsBundle {
@@ -107,6 +122,7 @@ function subsetBundle(
     for (const t of c.traits || []) if (bundle.traits?.[t]) traits[t] = bundle.traits[t];
   }
   for (const id of pick.items ?? []) if (bundle.items?.[id]) items[id] = bundle.items[id];
+  for (const id of pick.traitIds ?? []) if (bundle.traits?.[id]) traits[id] = bundle.traits[id];
   const names = new Set(pick.traitNames ?? []);
   if (names.size) {
     for (const [id, tr] of Object.entries(bundle.traits || {})) if (names.has(tr.name)) traits[id] = tr;
@@ -122,9 +138,13 @@ interface EndpointSpec<Row> {
   endpoint: SnapshotEndpoint;
   /** Feld der API-Antwort mit den Zeilen (units / items / traits). */
   field: string;
-  /** Wie die API die Zeilen nach dem Snapshot-Treffer behandelt. */
-  prepare?: (rows: Row[]) => Row[];
+  /** Wie die API die Zeilen nach dem Snapshot-Treffer behandelt (Comps: nur
+   *  die Zeilen der gezeigten Familien). */
+  prepare?: (rows: Row[], bundle: TftAssetsBundle) => Row[] | null;
   assets: (bundle: TftAssetsBundle, rows: Row[]) => TftAssetsBundle;
+  /** Ansicht, die die Startdaten nicht abbilden — der Browser laedt wie bisher. */
+  skip?: boolean;
+  partial?: boolean;
 }
 
 async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Promise<StatsStart<Row>> {
@@ -140,7 +160,7 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
 
   // Trend-Vergleich und ein ausdruecklich gewaehlter Patch: keine Startdaten
   // (bei units laufen beide live, siehe units/route.ts).
-  if (resolved.patchFilter != null || filters.velocity > 0) return { filters, data: null };
+  if (resolved.patchFilter != null || filters.velocity > 0 || spec.skip) return { filters, data: null };
 
   // Mit aufgeloestem Patch und Set: nach einem Patchwechsel neuer Schluessel.
   const key = `${spec.endpoint}|${resolved.patch}|${resolved.setNumber}|${filtersDataKey(filters)}`;
@@ -155,21 +175,25 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
     patch: resolved.patch, region: resolved.regionLabel, days: resolved.requestedDays,
     bucket: resolved.bucketLabel, minGames: 0, setNumber: resolved.setNumber,
   }), left());
-  const payload = hit?.payload as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[] }) | undefined;
+  const payload = hit?.payload as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[]; minGames?: unknown }) | undefined;
   const raw = payload?.[spec.field];
   // Gleicher Schutz wie die Route: nie einen leeren Stand ausliefern.
   if (!payload?.hasData || !Array.isArray(raw) || raw.length === 0) return { filters, data: null };
 
-  const rows = spec.prepare ? spec.prepare([...raw] as Row[]) : ([...raw] as Row[]);
+  const rows = spec.prepare ? spec.prepare([...raw] as Row[], bundle) : ([...raw] as Row[]);
+  if (!rows || rows.length === 0) return { filters, data: null };
   const value: StatsInitial<Row> = {
     payload: {
       hasData: true,
       filters: payload.filters as Record<string, unknown> | undefined,
       patches: Array.isArray(payload.patches) ? payload.patches : [],
+      ...(typeof payload.minGames === 'number' ? { minGames: payload.minGames } : {}),
       rows,
     },
     assets: spec.assets(bundle, rows),
     tierCutoffs: resolveCutoffs(tierCutoffsFile as TierCutoffsBundle, bundle.set),
+    ...(spec.partial ? { partial: true } : {}),
+    ...(hit?.builtAt ? { version: hit.builtAt } : {}),
   };
   cacheSet(key, value as StatsInitial<unknown>);
   return { filters, data: value };
@@ -233,5 +257,67 @@ export function traitsStart<Row extends TraitListRow>(sp: URLSearchParams): Prom
     assets: (bundle, rows) => subsetBundle(bundle, {
       traitNames: rows.map(r => bundle.traits?.[r.name]?.name).filter((n): n is string => !!n),
     }),
+  }, sp);
+}
+
+// ---------- Comps ----------
+
+// Ohne Trendwerte (velocity) und Mitspiel-Anteil je Unit (cooccurrence): die
+// Liste zeigt beides in der Standardansicht nicht. Trend-Filter und
+// Trend-Sortierung laden die volle Liste (useTftCompsData).
+function leanCompRow<Row extends CompApiRow>(row: Row): Row {
+  const lean: CompApiRow = {
+    ...row,
+    typicalUnits: (row.typicalUnits || []).map(u => {
+      const unit: typeof u & { cooccurrence?: unknown } = { ...u };
+      delete unit.cooccurrence;
+      return unit;
+    }),
+  };
+  delete lean.velocity;
+  return lean as Row;
+}
+
+export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise<StatsStart<Row>> {
+  return loadStart<Row>({
+    endpoint: 'comps',
+    field: 'comps',
+    // Erweitert-Filter und Trend-Sortierung rechnen auf der VOLLEN Liste —
+    // aus den Zeilen der Standard-Familien kaeme ein anderes Ergebnis. Ein
+    // Vergleich aus der Adresse (compareA) laedt sie sofort: Startdaten waeren
+    // doppelt uebertragen.
+    skip: sp.has('adv') || sp.get('sort') === 'velocity' || sp.has('compareA'),
+    partial: true,
+    // /api/tft/comps liefert den Stand unveraendert; davon nur die Zeilen der
+    // 40 gezeigten Familien (gemessen 14.10.2026: 111 von 293, gleiche Anzeige
+    // in 48 Filter-Kombinationen x 5 Sortierungen). shownFamilyRows prueft das
+    // bei jedem Aufruf nach; weicht es ab, keine Startdaten.
+    prepare: (rows, bundle) => {
+      const shown = shownFamilyRows(rows, bundle);
+      if (!shown) {
+        console.warn('[seo] Comps-Startdaten: Teilmenge zeigt andere Familien als die volle Liste — ohne Startdaten');
+        return null;
+      }
+      return shown.map(leanCompRow);
+    },
+    assets: (bundle, rows) => {
+      const champions = new Set<string>();
+      const items = new Set<string>();
+      const traitIds = new Set<string>();
+      for (const r of rows) {
+        const p = parseClusterKey(r.slug || r.clusterKey);
+        if (p) {
+          traitIds.add(p.trait);
+          champions.add(p.carry);
+          if (p.secondary) champions.add(p.secondary);
+        }
+        for (const u of r.typicalUnits || []) {
+          champions.add(u.characterId);
+          for (const it of u.topItems || []) items.add(it.apiName);
+        }
+        for (const a of r.typicalAugments || []) items.add(a.apiName);
+      }
+      return subsetBundle(bundle, { champions, items, traitIds });
+    },
   }, sp);
 }

@@ -126,8 +126,10 @@ const PRESETS: { key: string; labelKey: string; filters: AdvancedFilters }[] = [
 interface Props {
   filters: AdvancedFilters;
   onChange: (next: AdvancedFilters) => void;
-  resultCount: number;
-  totalCount: number;
+  // Fehlen sie, zeigt der Knopf keine Zaehler (/tft/comps auf Teildaten:
+  // Zaehler ueber 111 statt aller Comps waeren falsch).
+  resultCount?: number;
+  totalCount?: number;
   // Rechts in der Zeile der Advanced-Knoepfe (auf /tft/comps: Sortierung).
   trailing?: ReactNode;
 }
@@ -181,7 +183,7 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           }`}
         >
           {expanded ? '−' : '+'} {t('tft.adv.title')}
-          {active && <span className="ml-1.5 text-[10px] tabular-nums">({resultCount}/{totalCount})</span>}
+          {active && resultCount != null && totalCount != null && <span className="ml-1.5 text-[10px] tabular-nums">({resultCount}/{totalCount})</span>}
         </button>
         {PRESETS.map(p => {
           const isOn = JSON.stringify(filters) === JSON.stringify(p.filters);

@@ -12,7 +12,9 @@ import { useI18n } from '../../lib/i18n';
 import { tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters from '../../components/tft/AdvancedCompFilters';
-import { visibleFamilies as pickVisibleFamilies, type CompSortBy } from '../../lib/tft-comp-families';
+import { visibleFamilies as pickVisibleFamilies, type CompApiRow, type CompSortBy } from '../../lib/tft-comp-families';
+import type { Filters } from '../../lib/tft-filters';
+import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftCompsData } from '../../lib/useTftCompsData';
 import { coreFlexFrame } from '../../lib/tft-ui';
 
@@ -20,19 +22,31 @@ import { coreFlexFrame } from '../../lib/tft-ui';
 // three stats pages behave identically (patch / bucket / days / region).
 // Filter, Abruf und Familienbildung teilt die Liste mit der Uebersicht
 // (/tft/comps/atlas): useTftCompsData + tft-comp-families.
-export default function TftCompsPage() {
+export default function CompsClient({ initialFilters, initial }: {
+  // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
+  // Zeilen der 40 gezeigten Familien, falls der Zwischenstand sie hatte.
+  // Server und erstes Client-Rendern nutzen dieselben Werte.
+  initialFilters: Filters;
+  initial: StatsInitial<CompApiRow> | null;
+}) {
   const { t } = useI18n();
   const searchParams = useSearchParams();
-  const {
-    filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
-    currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
-  } = useTftCompsData();
+  const initialCompareA = searchParams.get('compareA');
 
   // Search-Filter (client-side): trim+lowercase auf Trait-Display + Carry-Name
   // + raw apiNames. Bei leerer Query passiert nichts. Memo-Stage nach
   // families damit Sort + Family-Aggregation intakt bleiben.
   const [search, setSearch] = useState('');
+  // Suche und Vergleich brauchen alle Comps, die Startdaten tragen nur die 40
+  // gezeigten Familien: volle Liste ab dem ersten Fokus aufs Suchfeld bzw.
+  // sofort, wenn die Adresse eine Comp zum Vergleich mitbringt.
+  const [wantFull, setWantFull] = useState(() => !!initialCompareA);
+  const {
+    filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
+    comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
+    currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
+    partial, awaitingStored, awaitingFull,
+  } = useTftCompsData({ initialFilters, initial, wantFull });
 
   // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
   // gleichzeitig. Bei 3. Click rotiert die Liste (FIFO) — User kann ohne Reset
@@ -41,7 +55,6 @@ export default function TftCompsPage() {
   // Pre-Population aus URL-Param ?compareA=<slug>: wenn User vom Compare-
   // Button auf der Comp-Detail-Page hierher navigiert, ist die erste Comp
   // bereits vorbelegt — User wählt nur noch die zweite.
-  const initialCompareA = searchParams.get('compareA');
   const [compareSelection, setCompareSelection] = useState<string[]>(
     initialCompareA ? [decodeURIComponent(initialCompareA)] : [],
   );
@@ -74,7 +87,8 @@ export default function TftCompsPage() {
           <input
             type="text"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onFocus={() => setWantFull(true)}
+            onChange={e => { setWantFull(true); setSearch(e.target.value); }}
             placeholder={t('tft.search.comps')}
             className="w-full sm:w-96 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
@@ -83,8 +97,8 @@ export default function TftCompsPage() {
         <AdvancedCompFilters
           filters={adv}
           onChange={setAdv}
-          resultCount={filteredComps.length}
-          totalCount={comps.length}
+          resultCount={partial ? undefined : filteredComps.length}
+          totalCount={partial ? undefined : comps.length}
           trailing={
             <>
               <span className="text-fg-muted">{t('tft.sortBy')}:</span>
@@ -115,16 +129,16 @@ export default function TftCompsPage() {
           />
         )}
 
-        {loading && !error && hasData === null && (
-          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
-        )}
+        {/* Immer im HTML: das <style> der Server-Seite blendet die Ladeanzeige
+            ein, solange gespeicherte Filter noch laden (SEO-Plan E3). */}
+        <div data-e3-wait className={`${!error && ((loading && hasData === null) || awaitingStored || awaitingFull) ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
         {error && (
           <ApiUnavailable messageKey="error.temporarilyUnavailable" badge={false} onRetry={retry} />
         )}
-        {!error && hasData === false && <EmptyData />}
+        {!error && hasData === false && !awaitingStored && <EmptyData />}
 
-        {!error && hasData && visibleFamilies.length > 0 && (
-          <>
+        {!error && hasData && visibleFamilies.length > 0 && !awaitingStored && !awaitingFull && (
+          <div data-e3-rows>
             {/* Handy: der Tabellenkopf mit der Legende ist dort ausgeblendet —
                 Legende als eigene Zeile (User 2026-10-10). */}
             <div className="sm:hidden mb-2 px-1 text-[11px]">
@@ -171,7 +185,7 @@ export default function TftCompsPage() {
                 />
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
       <Footer />

@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { filtersFromSearchParams, filtersToQueryString, filtersDataKey } from './tft-filters.ts';
+import { filtersFromSearchParams, filtersToQueryString, filtersDataKey, resolveMountFilters, FILTERS_STORAGE_KEY } from './tft-filters.ts';
 
 const AUTO = { patch: 'current', bucket: 'diamond_plus', bucketAuto: true, days: 3, region: 'all', velocity: 0 };
 
@@ -42,4 +42,46 @@ test('ohne Rang in der Adresse: automatisch, Server-Rang', () => {
 test('Standardwerte ohne Adresse', () => {
   const f = filtersFromSearchParams(new URLSearchParams(''), 'diamond_plus');
   assert.deepEqual(f, AUTO);
+});
+
+// Mount einer Liste mit Startdaten (useTftStatsList, useTftCompsData): welche
+// Filter gelten wirklich, und muss neu geladen werden?
+function withStorage(stored, fn) {
+  const items = new Map(stored ? [[FILTERS_STORAGE_KEY, JSON.stringify(stored)]] : []);
+  globalThis.window = { localStorage: { getItem: k => items.get(k) ?? null, setItem: (k, v) => items.set(k, v) } };
+  try { return fn(); } finally { delete globalThis.window; }
+}
+
+test('Mount: Adresse = Server-Ansicht → nichts aendern, kein Abruf', () => {
+  const sp = new URLSearchParams(filtersToQueryString(AUTO));
+  assert.deepEqual(withStorage(null, () => resolveMountFilters(AUTO, sp)), { filters: AUTO, change: null });
+});
+
+test('Mount: gespeicherte Filter mit anderen Zahlen → laden', () => {
+  const stored = { ...AUTO, bucket: 'master_plus', bucketAuto: false, region: 'euw1' };
+  const r = withStorage(stored, () => resolveMountFilters(AUTO, new URLSearchParams('')));
+  assert.equal(r.change, 'data');
+  assert.equal(r.filters.region, 'euw1');
+  assert.equal(r.filters.bucket, 'master_plus');
+});
+
+test('Mount: Adresse geht vor Speicher (Zurueck-Knopf nach replaceState)', () => {
+  const stored = { ...AUTO, region: 'kr' };
+  const r = withStorage(stored, () => resolveMountFilters(AUTO, new URLSearchParams('region=euw1&days=3')));
+  assert.equal(r.change, 'data');
+  assert.equal(r.filters.region, 'euw1');
+});
+
+test('Mount: gleicher Rang, aber ausdruecklich gewaehlt → merken, nicht laden', () => {
+  const r = withStorage(null, () => resolveMountFilters(AUTO, new URLSearchParams('bucket=diamond_plus')));
+  assert.equal(r.change, 'auto');
+  assert.equal(r.filters.bucketAuto, false);
+  assert.equal(filtersDataKey(r.filters), filtersDataKey(AUTO));
+});
+
+test('Mount: gespeicherter Auto-Rang von gestern weicht dem frischen Server-Rang', () => {
+  const stored = { ...AUTO, bucket: 'emerald_plus', bucketAuto: true };
+  const r = withStorage(stored, () => resolveMountFilters(AUTO, new URLSearchParams('')));
+  assert.equal(r.change, null);
+  assert.equal(r.filters.bucket, 'diamond_plus');
 });

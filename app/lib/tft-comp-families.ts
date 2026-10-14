@@ -393,6 +393,42 @@ export function visibleFamilies(
   });
 }
 
+// Die API-Zeilen, aus denen die Standardansicht der Liste entsteht: alle Zeilen
+// der gezeigten Familien (laufendes Set, 40 meistgespielte, ohne Suche). Die
+// Server-Seite schickt nur diese als Startdaten (app/lib/seo/initial-data.ts).
+// Gemessen 2026-10-14: 111 von 293 Zeilen; buildCompFamilies darauf ergibt fuer
+// avg/top4/win/pick dieselben 40 Familien mit denselben Zahlen wie auf allen
+// Zeilen. Die Auswahl der 40 (nach Spielen) haengt nicht an der Sortierung.
+// Das gilt nur, solange die Familienregeln familien-lokal rechnen. Deshalb
+// prueft die Funktion es bei jedem Aufruf nach (Standard-Sortierung) und gibt
+// null zurueck, wenn die Teildaten etwas anderes zeigen wuerden — dann gibt es
+// keine Startdaten und die Liste laedt wie frueher alles im Browser.
+export function shownFamilyRows<T extends CompApiRow>(rows: T[], assets: TftAssetsBundle | null): T[] | null {
+  const view = (list: T[]) => {
+    const families = currentSetFamilies(buildCompFamilies(list, 'avg', assets), assets);
+    return visibleFamilies(families, topFamilyKeys(families), '', assets);
+  };
+  const shown = view(rows);
+  const keys = new Set<string>();
+  for (const f of shown) {
+    for (const v of f.variants as CompApiRow[]) {
+      for (const s of [v.slug, ...(v._mergedFrom ?? []), ...(v._mergedFromBuilds ?? [])]) keys.add(compTraitFamilyKey(s));
+    }
+  }
+  const subset = rows.filter(r => keys.has(compTraitFamilyKey(r.slug || r.clusterKey)));
+  return familiesSignature(view(subset)) === familiesSignature(shown) ? subset : null;
+}
+
+// Alles, was eine Zeile der Liste zeigt (Hauptzeile, Varianten, Rollen).
+function familiesSignature(families: CompFamily[]): string {
+  return JSON.stringify(families.map(f => [
+    f.familyKey, f.carries, f.tanks, f.itemCarriers, f.totalGames, f.familyPickRate,
+    f.weightedAvgPlacement, f.weightedTop4Rate, f.weightedTop1Rate, f.emblems,
+    f.mainComp.slug, f.mainComp.games, f.mainComp.avgPlacement, f.mainComp.coreFlex,
+    f.variants.map(v => [v.slug, v.games, v.avgPlacement, v.top4Rate, v.top1Rate, v.pickRate, (v as CompApiRow).coreFlex]),
+  ]));
+}
+
 // Uebersicht ohne Doppelungen (User 2026-09-28: „Nimm immer nur die Comp mit
 // dem höchsten AVP", Option C + Nachtrag in .claude/plan-current.md). Zwei
 // Familien gelten als dieselbe Comp, wenn

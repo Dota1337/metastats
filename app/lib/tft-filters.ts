@@ -182,6 +182,27 @@ export function loadInitialFilters(searchParams: URLSearchParams, defaultBucket?
   }
 }
 
+/** Listen mit Server-Startdaten, beim Mount (useTftStatsList, useTftCompsData):
+ *  die Filter, die wirklich gelten — aus der Adresse, sonst die gespeicherten —
+ *  gegen die der Server-Ansicht. Die Adresse zaehlt auch, weil Next beim
+ *  Zurueck-Knopf die Props des ERSTEN Aufrufs wiederherstellt, die Adresse
+ *  per replaceState aber andere Filter traegt.
+ *  change 'data': andere Zahlen (laden), 'auto': gleiche Zahlen, der Rang war
+ *  aber ausdruecklich gewaehlt (so merken), null: unveraendert. */
+export function resolveMountFilters(
+  initial: Filters,
+  params: URLSearchParams,
+): { filters: Filters; change: 'data' | 'auto' | null } {
+  // Bei automatischem Rang gilt der frisch vom Server bestimmte.
+  const defaultBucket = initial.bucketAuto ? initial.bucket : undefined;
+  const actual = hasUrlFilters(params)
+    ? filtersFromSearchParams(params, defaultBucket)
+    : loadInitialFilters(params, defaultBucket);
+  if (filtersDataKey(actual) !== filtersDataKey(initial)) return { filters: actual, change: 'data' };
+  if (actual.bucketAuto !== initial.bucketAuto) return { filters: actual, change: 'auto' };
+  return { filters: initial, change: null };
+}
+
 export function persistFilters(f: Filters): void {
   if (typeof window === 'undefined') return;
   try {

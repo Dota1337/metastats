@@ -29,8 +29,7 @@ export const USER_BUCKET_ATTR = 'data-tft-ub';
 // statt einer ewigen Ladeanzeige.
 const RELEASE_MS = 8000;
 
-// Seiten mit Server-Startdaten. Die Comp-Liste kommt mit Schritt 4 dazu; bis
-// dahin hat sie kein <style>, das Merkmal wirkt dort nicht.
+// Seiten mit Server-Startdaten (Comp-Liste seit Schritt 4).
 const PATHS = /^\/tft\/(units|items|traits|comps)\/?$/;
 
 export const STATS_PENDING_SCRIPT = `(function(){try{

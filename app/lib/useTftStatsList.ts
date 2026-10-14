@@ -23,14 +23,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import {
-  filtersFromSearchParams,
-  loadInitialFilters,
+  resolveMountFilters,
   adoptServerBucket,
   rememberAutoBucket,
   persistFilters,
   filtersToQueryString,
   filtersDataKey,
-  hasUrlFilters,
   type Filters,
   type PatchInfo,
 } from './tft-filters';
@@ -90,27 +88,14 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial,
     loadTierCutoffs(set).then(setTierCutoffs);
   }, [assets?.set, withTierCutoffs]);
 
-  // Vor dem ersten Zeichnen: die Filter, die wirklich gelten — aus der Adresse,
-  // sonst die gespeicherten (localStorage). Weichen sie von denen der
-  // Server-Ansicht ab, laden wir. Die Adresse zaehlt auch, weil Next beim
-  // Zurueck-Knopf die Seite mit den Props ihres ERSTEN Aufrufs wiederherstellt,
-  // die Adresse inzwischen aber per replaceState andere Filter traegt.
-  // Danach entscheidet React allein.
+  // Vor dem ersten Zeichnen: die Filter, die wirklich gelten (Adresse, sonst
+  // localStorage — resolveMountFilters). Weichen sie von denen der
+  // Server-Ansicht ab, laden wir. Danach entscheidet React allein.
   useLayoutEffect(() => {
     if (initial) loaded.current.set(filtersDataKey(initialFilters), { rows: initial.payload.rows, patches: initial.payload.patches });
-    const params = new URLSearchParams(window.location.search);
-    // Bei automatischem Rang gilt der frisch vom Server bestimmte.
-    const defaultBucket = initialFilters.bucketAuto ? initialFilters.bucket : undefined;
-    const actual = hasUrlFilters(params)
-      ? filtersFromSearchParams(params, defaultBucket)
-      : loadInitialFilters(params, defaultBucket);
-    if (filtersDataKey(actual) !== filtersDataKey(initialFilters)) {
-      setFilters(actual);
-      setAwaitingStored(true);
-    } else if (actual.bucketAuto !== initialFilters.bucketAuto) {
-      // Gleiche Zahlen, aber der Rang war ausdruecklich gewaehlt: so merken.
-      setFilters(actual);
-    }
+    const mount = resolveMountFilters(initialFilters, new URLSearchParams(window.location.search));
+    if (mount.change) setFilters(mount.filters);
+    if (mount.change === 'data') setAwaitingStored(true);
     const served = initial?.payload.filters?.bucket;
     if (initialFilters.bucketAuto && typeof served === 'string') rememberAutoBucket(served);
     releaseStatsPending();

@@ -53,6 +53,16 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
   const loadedDetail = useRef(new Map<string, { hasData: boolean; item: ItemDetail | null }>(
     initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
   const loadedComps = useRef(new Map<string, any[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
+  // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
+  // Rest fragt der Effekt unten.
+  const selectBucket = (next: TierBucket) => {
+    const k = detailKey(id, { region, bucket: next, days });
+    const d = loadedDetail.current.get(k);
+    if (d && shownDetail.current !== k) { shownDetail.current = k; setHasData(d.hasData); setData(d.item); }
+    const c = loadedComps.current.get(k);
+    if (c && shownComps.current !== k) { shownComps.current = k; setCompsWithItem(c); }
+    setBucket(next);
+  };
 
   // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
   // Abruf, bleibt der Ausschnitt stehen.
@@ -61,14 +71,10 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
     // Alte Antworten nach einem Rangwechsel verwerfen.
     let cancelled = false;
     const key = detailKey(id, { region, bucket, days });
-    // Ein Fehlschlag wird nicht gemerkt (Schluessel null): beim naechsten
-    // Wechsel auf diesen Rang fragt die Seite neu.
-    const knownDetail = shownDetail.current === key ? null : loadedDetail.current.get(key);
-    if (knownDetail) {
-      shownDetail.current = key;
-      setHasData(knownDetail.hasData);
-      setData(knownDetail.item);
-    } else if (shownDetail.current !== key) {
+    // Schon geladene Staende zeigt selectBucket beim Klick. Ein Fehlschlag
+    // wird nicht gemerkt (Schluessel null): beim naechsten Wechsel auf diesen
+    // Rang fragt die Seite neu.
+    if (shownDetail.current !== key) {
       fetch(`/api/tft/items?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
@@ -84,11 +90,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
     // Cross-query: comps that frequently build this item on their lead carry.
     // Uses the existing carryItems jsonb (top-3-item triples per comp) so no
     // aggregator change is needed.
-    const knownComps = shownComps.current === key ? null : loadedComps.current.get(key);
-    if (knownComps) {
-      shownComps.current = key;
-      setCompsWithItem(knownComps);
-    } else if (shownComps.current !== key) {
+    if (shownComps.current !== key) {
       fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
@@ -225,7 +227,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
             </svg>
             <span className="hidden sm:inline">{t('tft.drill.openInExplorer')}</span>
           </a>
-          <TierFilter value={bucket} onChange={setBucket} />
+          <TierFilter value={bucket} onChange={selectBucket} />
         </div>
 
         {hasData === false && <EmptyData />}

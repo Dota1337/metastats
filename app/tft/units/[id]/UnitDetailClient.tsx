@@ -79,6 +79,16 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
   const loadedDetail = useRef(new Map<string, { hasData: boolean; unit: UnitDetail | null }>(
     initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, unit: (initial.detail.unit as UnitDetail | undefined) || null }]] : []));
   const loadedComps = useRef(new Map<string, CompWithUnit[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
+  // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
+  // Rest fragt der Effekt unten.
+  const selectBucket = (next: TierBucket) => {
+    const k = detailKey(id, { region, bucket: next, days });
+    const d = loadedDetail.current.get(k);
+    if (d && shownDetail.current !== k) { shownDetail.current = k; setHasData(d.hasData); setData(d.unit); }
+    const c = loadedComps.current.get(k);
+    if (c && shownComps.current !== k) { shownComps.current = k; setComps(c); }
+    setBucket(next);
+  };
 
   // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
   // Abruf, bleibt der Ausschnitt stehen.
@@ -103,14 +113,10 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
     // eine spaete Antwort den neuen Rang.
     let cancelled = false;
     const key = detailKey(id, { region, bucket, days });
-    // Ein Fehlschlag wird nicht gemerkt (Schluessel null): beim naechsten
-    // Wechsel auf diesen Rang fragt die Seite neu.
-    const knownDetail = shownDetail.current === key ? null : loadedDetail.current.get(key);
-    if (knownDetail) {
-      shownDetail.current = key;
-      setHasData(knownDetail.hasData);
-      setData(knownDetail.unit);
-    } else if (shownDetail.current !== key) {
+    // Schon geladene Staende zeigt selectBucket beim Klick. Ein Fehlschlag
+    // wird nicht gemerkt (Schluessel null): beim naechsten Wechsel auf diesen
+    // Rang fragt die Seite neu.
+    if (shownDetail.current !== key) {
       fetch(`/api/tft/units?region=${region}&bucket=${bucket}&days=${days}&id=${encodeURIComponent(id)}`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
@@ -126,11 +132,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
     // Pull comps and filter client-side for ones containing this champion as
     // a typical unit. Pro-Frage „in welchen Comps spielt der Champion?" auf
     // der Detail-Seite ohne extra API surface.
-    const knownComps = shownComps.current === key ? null : loadedComps.current.get(key);
-    if (knownComps) {
-      shownComps.current = key;
-      setComps(knownComps);
-    } else if (shownComps.current !== key) {
+    if (shownComps.current !== key) {
       fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
@@ -202,7 +204,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
             </svg>
             <span className="hidden sm:inline">{t('tft.drill.openInExplorer')}</span>
           </a>
-          <TierFilter value={bucket} onChange={setBucket} />
+          <TierFilter value={bucket} onChange={selectBucket} />
         </div>
 
         {hasData === false && <EmptyData />}

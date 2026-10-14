@@ -4,7 +4,7 @@ import { CURRENT_SET } from './lib/current-set';
 import { lookupSnapshot } from './lib/snapshot-lookup';
 import { tftAssets } from './lib/og/data';
 import { withTimeout } from './lib/og/frame';
-import { buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow } from './lib/tft-comp-families';
+import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
 
 // Die Route ist dynamisch (das Snapshot-Manifest wird mit cache: 'no-store'
@@ -58,18 +58,14 @@ function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits') {
 }
 
 // Die 40 Comp-Familien der Liste, verlinkt wie dort ueber den Slug der
-// Hauptvariante (Familienbildung aus tft-comp-families, Sortierung wie die
-// Liste ohne Parameter).
+// Hauptvariante — dieselbe Regel, nach der der Publisher den Detail-Vorrat
+// anlegt (listFamilyTargets).
 async function compEntries(): Promise<Entry[]> {
   const hit = await listSnapshot('comps');
   const rows = (hit?.payload as { comps?: CompApiRow[] } | undefined)?.comps;
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  const assets = tftAssets();
-  const families = currentSetFamilies(buildCompFamilies(rows, 'avg', assets), assets);
-  const top = topFamilyKeys(families);
-  const shown = top ? families.filter(f => top.has(f.familyKey)) : families;
-  return shown.map(f => ({
-    path: `/tft/comps/${encodeURIComponent(f.mainComp.slug)}`,
+  return listFamilyTargets(rows, tftAssets()).map(t => ({
+    path: `/tft/comps/${encodeURIComponent(t.slug)}`,
     priority: 0.7,
     changeFrequency: 'daily' as const,
   }));

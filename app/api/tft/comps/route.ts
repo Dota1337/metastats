@@ -15,6 +15,7 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED
 import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
+import { lookupCompDetailSnapshot } from '../../../lib/comp-detail-snapshot';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
@@ -339,7 +340,9 @@ export async function GET(request: NextRequest) {
       // Verdict siehe reference_tft_comp_detail_snapshot.md.
       const detailVariantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
       const detailVelocity = parseVelocity(searchParams.get('velocity'));
-      const detailHit = await lookupSnapshot('comps-detail', {
+      // Vorrat je Familie (E2) mit Rueckfall auf den Slug-Schluessel, dieselbe
+      // Funktion wie OG-Bild und Startdaten der Seite (comp-detail-snapshot.ts).
+      const detailHit = await lookupCompDetailSnapshot({
         patch: filters.patch,
         region: filters.regionLabel,
         days: filters.requestedDays,
@@ -476,12 +479,17 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       };
+      // Der Publisher wartet laenger (15 s statt 8 s): sein Stand bedient einen
+      // Tag lang jede Variante der Familie, ein gerissenes Zeitlimit hiesse
+      // „ohne Ergebnis-Block" fuer alle (gemessen 15.10.: 27 von 120 Staenden
+      // all/3d). Detail 20 s + 15 s + Paar-Rueckfall 20 s < maxDuration 60.
+      const partMs = publisher ? 15000 : 8000;
       const [oc, em, mu, rp] = await Promise.allSettled([
-        callRpc<CompOutcomeRaw>('get_tft_comp_outcome', outcomeArgs, 8000),
+        callRpc<CompOutcomeRaw>('get_tft_comp_outcome', outcomeArgs, partMs),
         searchParams.get('emblems') === '0'
           ? Promise.resolve(null)
-          : callRpc<CompEmblemsRaw>('get_tft_comp_emblems', outcomeArgs, 8000),
-        fetchCompMatchups(filters, mergedFamilyKeys),
+          : callRpc<CompEmblemsRaw>('get_tft_comp_emblems', outcomeArgs, partMs),
+        fetchCompMatchups(filters, mergedFamilyKeys, null, partMs),
         compRepresentatives(filters, rows.map(r => ({ clusterKey: r.cluster_key, games: Number(r.games) }))),
       ]);
       if (em.status === 'rejected') console.warn('[tft/comps] comp_emblems skipped:', (em.reason as Error)?.message);

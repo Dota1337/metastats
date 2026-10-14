@@ -10,7 +10,7 @@ import 'server-only';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CURRENT_SET } from '../current-set';
-import { lookupSnapshot } from '../snapshot-lookup';
+import { lookupCompDetailSnapshot } from '../comp-detail-snapshot';
 import { parseClusterKey } from '../tft-cluster';
 import { computeRoles, componentCheckFromItems, namedCarries, type RoleUnit } from '../tft-comp-roles';
 import { tftTraitDisplayName, type TftAssetsBundle } from '../tft-cdragon';
@@ -81,7 +81,7 @@ export async function compOgData(slug: string): Promise<CompOg | null> {
   const bundle = tftAssets();
   // Dieselben Filter wie die Detailseite ohne Parameter
   // (app/tft/comps/[slug]/page.tsx: all / master_plus / 3 Tage / 30 Spiele).
-  const hit = await withTimeout(lookupSnapshot('comps-detail', {
+  const hit = await withTimeout(lookupCompDetailSnapshot({
     patch: null, region: 'all', days: 3, bucket: 'master_plus', minGames: 30,
     setNumber: CURRENT_SET, slug,
   }), DATA_TIMEOUT_MS);

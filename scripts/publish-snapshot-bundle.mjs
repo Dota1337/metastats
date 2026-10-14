@@ -47,6 +47,9 @@ import { put } from '@vercel/blob';
 import pg from 'pg';
 import { encodePasswordInPgUrl } from './lib/pg-url.mjs';
 import { defaultStateDir, readChangedMarker } from './lib/tft-patch-relabel.mjs';
+import {
+  assembleDetailEntries, carryAllDetailEntries, carryKeysFor, detailTargetKeys, isPartialDetail,
+} from './lib/comps-detail-stock.mjs';
 import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -467,14 +470,17 @@ async function publishDetailPermutation(perm, patches) {
   }
   const drift = patchDrift(payload, resolvedPatch);
   if (drift) return { skipped: true, reason: drift, fetchMs };
-  const key = snapshotKey('comps-detail', { ...perm, patch: resolvedPatch });
+  // Ein Stand je Familie (E2): Blob unter der Anker-Familie, Manifest-
+  // Schluessel fuer alle zusammengelegten Familien + den abgefragten Slug.
+  const { blobKey, keys } = detailTargetKeys(perm, resolvedPatch, payload);
+  const partial = isPartialDetail(payload);
   const body = JSON.stringify(payload);
   const bytes = Buffer.byteLength(body, 'utf8');
   if (DRY_RUN) {
-    return { uploaded: false, key, bytes, fetchMs, builtAt: ts(), url: '(dry-run)' };
+    return { uploaded: false, dryRun: true, keys, entry: { url: '(dry-run)', bytes, builtAt: ts(), partial }, bytes, fetchMs };
   }
   const t1 = Date.now();
-  const blob = await put(key, body, {
+  const blob = await put(blobKey, body, {
     access: 'public',
     contentType: 'application/json',
     token: TOKEN,
@@ -488,13 +494,51 @@ async function publishDetailPermutation(perm, patches) {
   const uploadMs = Date.now() - t1;
   return {
     uploaded: true,
-    key,
+    keys,
+    entry: { url: blob.url, bytes, builtAt: ts(), partial },
     bytes,
     fetchMs,
     uploadMs,
-    url: blob.url,
-    builtAt: ts(),
   };
+}
+
+// Ziele der Detail-Welle: die Familien der Standardliste mit ihrem Link-Slug
+// (/api/tft/comps/families — dieselbe Regel wie Liste und Sitemap). Rueckfall:
+// die alte Auswahl (meistgespielte Zeilen der Liste), dann ohne Familien-
+// Schluessel. Leer → der Aufrufer traegt den Vorlauf weiter.
+async function detailTargets() {
+  try {
+    const body = await fetchPayload(`${BASE}/api/tft/comps/families?_pub=${RUN_ID}`);
+    const targets = (Array.isArray(body?.targets) ? body.targets : [])
+      .filter(t => typeof t?.slug === 'string' && t.slug.length > 0 && typeof t.familyKey === 'string')
+      .map(t => ({ slug: t.slug, family: t.familyKey }));
+    if (targets.length > 0) return { targets, source: 'families' };
+    console.log(`  ✗ comps-detail: /api/tft/comps/families ohne Ziele — alte Auswahl`);
+  } catch (err) {
+    console.log(`  ✗ comps-detail: /api/tft/comps/families: ${err?.message || err} — alte Auswahl`);
+  }
+  try {
+    // Slug-Quelle: Default-Bucket der UI (diamond_plus), 3d — das 7d-Listing
+    // ist ohne Snapshot nicht abrufbar (3× 502 gemessen, 8-s-RPC-Deckel).
+    const listingUrl = buildUrl('/api/tft/comps', {
+      // Ohne minGames = dieselbe Anfrage wie die Seite, trifft den mg0-Snapshot.
+      patch: 'current', region: 'all', days: 3, bucket: 'diamond_plus',
+    });
+    const listing = await fetchPayload(listingUrl);
+    const comps = Array.isArray(listing?.comps) ? listing.comps : [];
+    // Nach SPIELEN, nicht nach der Listen-Reihenfolge (die sortiert nach
+    // avgPlacement): der Vorrat soll die haeufigsten Aufrufe decken.
+    const targets = comps
+      .filter(c => c.clusterKey)
+      .slice()
+      .sort((a, b) => (Number(b.games) || 0) - (Number(a.games) || 0))
+      .slice(0, DETAIL_TOP_N)
+      .map(c => ({ slug: c.clusterKey, family: null }));
+    if (targets.length > 0) return { targets, source: 'fallback' };
+  } catch (err) {
+    console.log(`  ✗ comps-detail: failed to extract top slugs: ${err?.message || err}`);
+  }
+  return { targets: [], source: 'carried' };
 }
 
 async function processWithConcurrency(items, fn, concurrency) {
@@ -614,6 +658,8 @@ async function main() {
   const endpointStats = {};
   let totalUploaded = 0;
   let totalCarried = 0;
+  // Quelle der Detail-Ziele (families/fallback/carried); null = Welle lief nicht.
+  let compsDetailSource = null;
   // Wiederverwendete Eintraege beendeter Patches: weder Versuch noch Fehler,
   // zaehlen deshalb nicht in den Nenner der Abbruch- und Fehlerquoten.
   let totalReused = 0;
@@ -690,42 +736,28 @@ async function main() {
     console.log(`[${ts()}] ${endpoint}: ${endpointOk}/${spec.permutations.length} ok in ${dt}s`);
   }
 
-  // Phase 2: Comp-Detail-Snapshots fuer Top-N Family-Anchors.
-  // Slugs werden aus dem Default-Listing-Result extrahiert (patch=current,
-  // region=all, days=3, bucket=master_plus) - das ist die UI-Default-Sicht.
+  // Phase 2: Comp-Detail-Vorrat je Familie der Standardliste (SEO-Plan
+  // Schritt 5b, E2; Regeln in scripts/lib/comps-detail-stock.mjs). Vorher die
+  // 30 meistgespielten Zeilen: gemessen 15.10.2026 nur 24 Familien und 14 der
+  // 40 Listen-Links mit Stand. DETAIL_PATCHES kennt nur 'current', deshalb
+  // keine Wiederverwendung (tryReuse gilt nur 'previous').
   if (!LISTING_ONLY && (!ENDPOINT_FILTER || ENDPOINT_FILTER === 'comps-detail')) {
     const dT0 = Date.now();
-    console.log(`[${ts()}] === comps-detail: extracting top-${DETAIL_TOP_N} slugs from listing ===`);
-    let topSlugs = [];
-    try {
-      // Slug-Quelle: Default-Bucket der UI (diamond_plus), 3d — das 7d-Listing
-      // ist ohne Snapshot nicht abrufbar (3× 502 gemessen, 8-s-RPC-Deckel).
-      const listingUrl = buildUrl('/api/tft/comps', {
-        // Ohne minGames = dieselbe Anfrage wie die Seite, trifft den mg0-Snapshot.
-        patch: 'current', region: 'all', days: 3, bucket: 'diamond_plus',
-      });
-      const listing = await fetchPayload(listingUrl);
-      const comps = Array.isArray(listing?.comps) ? listing.comps : [];
-      // Sortierung nach SPIELEN, nicht nach der Listing-Reihenfolge: das
-      // Listing sortiert nach avgPlacement, die "Top-30" waren damit die 30
-      // besten Platzierungen knapp ueber der minGames-Schwelle (gemessen 1d:
-      // ab 85 Spielen), waehrend die meistgespielten Comps (34.886 / 31.805 /
-      // 23.437 Spiele) gar keinen Detail-Snapshot bekamen. Der Cushion soll
-      // die haeufigsten Detail-Aufrufe decken, nicht die besten Winrates.
-      topSlugs = comps
-        .filter(c => c.clusterKey)
-        .slice()
-        .sort((a, b) => (Number(b.games) || 0) - (Number(a.games) || 0))
-        .slice(0, DETAIL_TOP_N)
-        .map(c => c.clusterKey);
-    } catch (err) {
-      console.log(`  ✗ comps-detail: failed to extract top slugs: ${err?.message || err}`);
-    }
-    if (topSlugs.length === 0) {
-      console.log(`[${ts()}] comps-detail: no slugs to publish, skipping`);
+    console.log(`[${ts()}] === comps-detail: Familien der Standardliste ===`);
+    const { targets, source } = await detailTargets();
+    compsDetailSource = source;
+    if (targets.length === 0) {
+      // Publisher-Falle: ein Voll-Lauf ohne Ziele haette alle Detail-Staende
+      // verworfen. Der Vorlauf bleibt stehen; compsDetailSource='carried'
+      // macht das im Vertrag (infra/contracts.json) sichtbar.
+      const carriedAll = carryAllDetailEntries(baseEntries);
+      for (const [k, e] of Object.entries(carriedAll)) {
+        if (!manifestEntries[k]) { manifestEntries[k] = e; totalCarried++; }
+      }
+      console.log(`[${ts()}] ✗ comps-detail: keine Ziele — ${Object.keys(carriedAll).length} Eintraege des Vorlaufs weitergetragen`);
     } else {
       const detailPerms = [];
-      for (const slug of topSlugs) {
+      for (const t of targets) {
         for (const patch of DETAIL_PATCHES) {
           for (const region of DETAIL_REGIONS) {
             for (const days of DETAIL_DAYS) {
@@ -737,40 +769,51 @@ async function main() {
                   // publiziert lieferte der Snapshot eine andere
                   // Family-Aggregation als der Live-Pfad.
                   minGames: DETAIL_MIN_GAMES,
-                  slug,
+                  slug: t.slug,
+                  family: t.family,
                 });
               }
             }
           }
         }
       }
-      console.log(`[${ts()}] comps-detail: ${topSlugs.length} slugs × ${detailPerms.length / topSlugs.length} axes = ${detailPerms.length} permutations`);
+      console.log(`[${ts()}] comps-detail: ${targets.length} Ziele (${source}) × ${detailPerms.length / targets.length} Achsen = ${detailPerms.length} Permutationen`);
 
       const results = await processWithConcurrency(
         detailPerms,
-        async (perm) => tryReuse('comps-detail', perm) ?? publishDetailPermutation(perm, patches),
+        (perm) => publishDetailPermutation(perm, patches),
         CONCURRENCY,
       );
 
+      // Zweiter Versuch fuer lueckenhafte Staende, wenn der Rest durch ist
+      // (die Datenbank ist dann weniger ausgelastet). Bleibt einer
+      // lueckenhaft, entscheidet die Rangfolge in assembleDetailEntries.
+      const retryIdx = results.map((r, i) => (r?.entry?.partial ? i : -1)).filter(i => i >= 0);
+      if (retryIdx.length > 0) {
+        console.log(`[${ts()}] comps-detail: ${retryIdx.length} lueckenhafte Staende — zweiter Versuch`);
+        const again = await processWithConcurrency(
+          retryIdx.map(i => detailPerms[i]),
+          (perm) => publishDetailPermutation(perm, patches),
+          CONCURRENCY,
+        );
+        let fixed = 0;
+        again.forEach((r, j) => {
+          if ((r?.uploaded || r?.dryRun) && !r.entry.partial) { results[retryIdx[j]] = r; fixed++; }
+        });
+        console.log(`[${ts()}] comps-detail: zweiter Versuch ${fixed}/${retryIdx.length} vollstaendig`);
+      }
+
       let detailOk = 0;
+      let detailPartial = 0;
+      const outcomes = [];
       for (let i = 0; i < results.length; i++) {
         const r = results[i];
         const p = detailPerms[i];
-        if (r?.reused) {
-          manifestEntries[r.key] = r.entry;
-          totalReused++;
-          detailOk++;
-          continue;
-        }
         if (r?.error) {
           totalErrors++;
-          console.log(`  ✗ comps-detail ${p.slug}/${p.patch}/${p.region}/${p.days}d: ${r.error}`);
+          console.log(`  ✗ comps-detail ${p.slug}/${p.patch}/${p.region}/${p.days}d/${p.bucket}: ${r.error}`);
           const carryPatch = resolvePermPatch(p, patches);
-          const carryKey = carryPatch ? snapshotKey('comps-detail', { ...p, patch: carryPatch }) : null;
-          if (carryKey && baseEntries[carryKey] && !manifestEntries[carryKey]) {
-            manifestEntries[carryKey] = baseEntries[carryKey];
-            totalCarried++;
-          }
+          if (carryPatch) outcomes.push({ error: true, carryKeys: carryKeysFor(p, carryPatch) });
           continue;
         }
         if (r?.skipped) {
@@ -778,21 +821,20 @@ async function main() {
           if (r.reason === 'empty payload') totalEmpty++;
           continue;
         }
-        if (r?.uploaded || DRY_RUN) {
+        if (r?.uploaded || r?.dryRun) {
           totalUploaded += r.uploaded ? 1 : 0;
           detailOk++;
+          if (r.entry.partial) detailPartial++;
           totalBytes += r.bytes;
-          manifestEntries[r.key] = {
-            key: r.key,
-            url: r.url,
-            bytes: r.bytes,
-            builtAt: r.builtAt,
-          };
+          outcomes.push({ uploaded: true, keys: r.keys, entry: r.entry });
         }
       }
+      const { entries, carried } = assembleDetailEntries(outcomes, baseEntries);
+      for (const [k, e] of Object.entries(entries)) manifestEntries[k] = e;
+      totalCarried += carried;
       const dDt = ((Date.now() - dT0) / 1000).toFixed(1);
       endpointStats['comps-detail'] = { ok: detailOk, total: detailPerms.length };
-      console.log(`[${ts()}] comps-detail: ${detailOk}/${detailPerms.length} ok in ${dDt}s`);
+      console.log(`[${ts()}] comps-detail: ${detailOk}/${detailPerms.length} ok (${detailPartial} lueckenhaft), ${Object.keys(entries).length} Manifest-Eintraege, ${carried} weitergetragen, in ${dDt}s`);
     }
   }
 
@@ -837,6 +879,12 @@ async function main() {
     // Teil-Lauf hat die Patches auf die Basis gepinnt und uebernimmt deren
     // Abdruecke, damit sie zu den uebernommenen Eintraegen passen.
     fingerprints: MERGE_MODE ? ((await loadOldManifest())?.fingerprints ?? {}) : _patchFingerprints,
+    // Woher die Detail-Ziele kamen: families (Regel der Liste), fallback (alte
+    // Auswahl, Familien-Route ausgefallen), carried (keine Ziele, Vorlauf
+    // weitergetragen). Der Vertrag erwartet families. Lief die Welle nicht,
+    // gilt im Teil-Lauf der Wert der Basis (deren Eintraege bleiben stehen).
+    compsDetailSource: compsDetailSource
+      ?? (MERGE_MODE ? ((await loadOldManifest())?.compsDetailSource ?? null) : null),
     entries: finalEntries,
   };
   const manifestBody = JSON.stringify(manifest);

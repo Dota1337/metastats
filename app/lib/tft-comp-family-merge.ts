@@ -23,7 +23,7 @@
 //   Outcome-Block in enrichComp zeigt nach dem Merge weiter sauber die *2/*3-
 //   Splits, weil das die Sub-Cluster jeweils selbst trugen.
 
-import { parseClusterKey } from './tft-cluster';
+import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
 import { resolveFamilies, sumUnits, type RoleOptions, type RoleUnit } from './tft-comp-roles';
 
 export interface CompRowLike {
@@ -56,12 +56,12 @@ export interface CompRowLike {
  *  und via `levelOutcome`-Block in Detail-Page (rekonstruiert aus
  *  level_dist_merged). Vorher (bis 2026-06-20): `<trait>@<level>_<carry>~aug`.
  *  Anker-Slug bestimmt die Familie — alle Rows die diesen Key matchen sind
- *  Geschwister.
+ *  Geschwister. Dieselbe Formel wie die Liste (compTraitFamilyKey) — der
+ *  Detail-Vorrat liegt unter diesem Schluessel, ein Auseinanderlaufen liesse
+ *  jede Familien-Suche still ins Leere gehen.
  */
 export function familyKeyForMerge(clusterKey: string): string {
-  const parts = parseClusterKey(clusterKey);
-  if (!parts) return clusterKey;
-  return `${parts.trait}__${parts.carry}`;
+  return compTraitFamilyKey(clusterKey);
 }
 
 /** Filtert aus dem RPC-Result alle Family-Members für den Anker-Slug.

@@ -367,6 +367,23 @@ export function topFamilyKeys(families: CompFamily[]): Set<string> | null {
   );
 }
 
+// Die Familien der Standardliste (laufendes Set, 40 meistgespielte, ohne Suche)
+// mit dem Slug, auf den die Liste verlinkt (Hauptvariante). Sitemap und der
+// Detail-Vorrat des Publishers (/api/tft/comps/families) nutzen dieselbe Regel —
+// sonst verlinkt die Sitemap Seiten, fuer die nichts vorgerechnet ist.
+// `familyKey` ist der Schluessel des Detail-Vorrats (familyKeyForMerge).
+export function listFamilyTargets(
+  rows: CompApiRow[],
+  assets: TftAssetsBundle | null,
+): { slug: string; familyKey: string }[] {
+  const families = currentSetFamilies(buildCompFamilies(rows, 'avg', assets), assets);
+  const shown = visibleFamilies(families, topFamilyKeys(families), '', assets);
+  return shown
+    .map(f => f.mainComp.slug)
+    .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
+    .map(slug => ({ slug, familyKey: compTraitFamilyKey(slug) }));
+}
+
 // Suche matched gegen Trait-Display-Name + Carry-Display-Name + raw apiNames.
 export function visibleFamilies(
   families: CompFamily[],

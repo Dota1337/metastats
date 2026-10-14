@@ -1191,6 +1191,15 @@ async function checkEndpoint(c, r) {
     }
   }
 
+  // Feste Werte einzelner Felder. Fehlt das Feld, ist das ok — so laufen
+  // Staende durch, die vor dem Feld gebaut wurden. Ein anderer Wert heisst: der
+  // Publisher ist auf einen Rueckfall ausgewichen (z.B. compsDetailSource
+  // 'fallback' = Detail-Vorrat nach alter Auswahl statt je Listen-Familie).
+  for (const [field, want] of Object.entries(c.expectFields || {})) {
+    if (body[field] == null) continue;
+    if (body[field] !== want) return r('broken', `${field}=${JSON.stringify(body[field])}, erwartet ${JSON.stringify(want)}`);
+  }
+
   return ageDays <= c.maxAgeDays
     ? r('ok', `${ageDays.toFixed(1)}d alt (max ${c.maxAgeDays}d)`)
     : r('broken', `${ageDays.toFixed(1)}d alt, erlaubt sind ${c.maxAgeDays}d — Veröffentlichung ausgefallen`);

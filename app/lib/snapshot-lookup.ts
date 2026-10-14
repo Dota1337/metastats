@@ -11,7 +11,7 @@
 // jedes Mal eine schwere Supabase-RPC. Bei 6h Edge-TTL trifft das nur den
 // ersten User pro Cache-Cycle.
 
-import { snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
+import { compFamilySnapshotKey, snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
 
 const MANIFEST_URL_BASE = process.env.SNAPSHOT_MANIFEST_URL || '';
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
@@ -22,6 +22,10 @@ interface ManifestEntry {
   url: string;       // public URL auf Vercel-Blob
   bytes: number;     // size, zur Diagnose
   builtAt: string;   // ISO timestamp des Publishers
+  // Nur comps-detail: der Stand hat Luecken (Ergebnis-Block oder Gegner fehlen,
+  // weil eine Teilabfrage ihr Zeitlimit riss). Der Publisher entscheidet damit,
+  // welcher Stand einen Schluessel bekommt; der Lesepfad ignoriert es.
+  partial?: boolean;
 }
 
 interface SnapshotManifest {
@@ -86,6 +90,10 @@ export interface LookupOptions {
   setNumber: number | null;
   // Nur fuer endpoint='comps-detail': cluster_key der angefragten Comp.
   slug?: string;
+  // Nur fuer endpoint='comps-detail': statt des Slug-Schluessels den Vorrat
+  // dieser Familie lesen (compFamilySnapshotKey). Die Mitgliedschaft prueft
+  // app/lib/comp-detail-snapshot.ts — direkt hier nie benutzen.
+  family?: string;
   // Erweiterte Felder, die das Snapshot NICHT bedient — Velocity,
   // Source=editorial. Caller setzt sie auf true wenn das Snapshot übersprungen
   // werden soll.
@@ -137,7 +145,9 @@ export async function lookupSnapshot(
     : req.patch === manifest.patches.previous
       ? req.patch
       : req.patch;
-  const key = snapshotKey(endpoint, { ...req, patch: resolvedPatch });
+  const key = endpoint === 'comps-detail' && opts.family
+    ? compFamilySnapshotKey({ ...req, patch: resolvedPatch, family: opts.family })
+    : snapshotKey(endpoint, { ...req, patch: resolvedPatch });
   const entry = manifest.entries[key];
   if (!entry) return null;
   try {

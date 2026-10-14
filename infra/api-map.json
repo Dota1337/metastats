@@ -6,12 +6,12 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 88,
+    "routes": 89,
     "groups": 30,
     "tables": 39,
     "rpcs": 32,
     "files": 14,
-    "edges": 542,
+    "edges": 556,
     "unused": 7,
     "unresolved": 1
   },
@@ -21,15 +21,15 @@
       "count": 25
     },
     {
+      "name": "tft/comps",
+      "count": 9
+    },
+    {
       "name": "tft/marktwert",
       "count": 9
     },
     {
       "name": "companion/v1",
-      "count": 8
-    },
-    {
-      "name": "tft/comps",
       "count": 8
     },
     {
@@ -804,6 +804,7 @@
       "file": "app/api/tft/comps/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/comp-detail-snapshot.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
@@ -817,10 +818,11 @@
         "app/api/companion/v1/comp/route.ts",
         "app/api/companion/v1/comps/route.ts",
         "app/api/tft/comps/board/route.ts",
+        "app/api/tft/comps/families/route.ts",
         "app/components/internal/OpsGraph.tsx",
         "app/lib/snapshot-matrix.ts",
         "app/lib/useTftCompsData.ts",
-        "app/tft/comps/[slug]/page.tsx",
+        "app/tft/comps/[slug]/CompDetailClient.tsx",
         "app/tft/comps/compare/page.tsx",
         "app/tft/items/[id]/ItemDetailClient.tsx",
         "app/tft/player/[slug]/page.tsx",
@@ -900,6 +902,33 @@
       ]
     },
     {
+      "id": "api:/api/tft/comps/families",
+      "kind": "route",
+      "label": "/api/tft/comps/families",
+      "group": "tft/comps",
+      "file": "app/api/tft/comps/families/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/cdragon-base.ts",
+        "app/lib/comp-detail-snapshot.ts",
+        "app/lib/current-set.ts",
+        "app/lib/i18n.tsx",
+        "app/lib/og/data.ts",
+        "app/lib/regions.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-player-search-server.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "app/lib/tft-tier-letter.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "scripts/publish-snapshot-bundle.mjs"
+      ]
+    },
+    {
       "id": "api:/api/tft/comps/share",
       "kind": "route",
       "label": "/api/tft/comps/share",
@@ -928,7 +957,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/comps/[slug]/page.tsx",
+        "app/tft/comps/[slug]/CompDetailClient.tsx",
         "app/tft/comps/compare/page.tsx"
       ]
     },
@@ -3417,6 +3446,76 @@
     {
       "from": "api:/api/tft/comps/duel",
       "to": "fn:get_tft_comp_matchups_all",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "db:players",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "db:ranked_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "ext:cdragon",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "ext:riot-api",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "file:tft-metatft-comps-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "file:tft-tier-cutoffs.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:search_tft_player_names_exact",
       "kind": "calls"
     },
     {

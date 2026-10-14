@@ -14,6 +14,10 @@ on:
     branches: [main]
     paths:
       - 'scripts/**'
+      # Von Box-Skripten importiert (publish-snapshot-bundle.mjs,
+      # comps-detail-stock.mjs bzw. die LoL-Sammler).
+      - 'app/lib/snapshot-matrix.generated.mjs'
+      - 'app/lib/lol-counters.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

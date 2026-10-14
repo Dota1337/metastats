@@ -164,6 +164,22 @@ export function snapshotKey(endpoint, p) {
     }
     return `${endpoint}/${patch}/${region}__${p.days}d__${bucket}__mg${p.minGames}.json`;
 }
+// Detail-Vorrat je Comp-Familie (SEO-Plan Schritt 5b, E2): EIN Stand je
+// Familie (`<trait>__<carry>`, familyKeyForMerge) statt je Slug — die
+// Detail-Route antwortet fuer alle Mitglieds-Slugs gleich (bis auf
+// aliasedFromFamily.anchorSlug), die Lese-Funktion app/lib/comp-detail-snapshot.ts
+// prueft die Mitgliedschaft. Eigener Unterordner `family/`, damit Familien- und
+// Slug-Schluessel nie zusammenfallen; `__` der Familie wird zu `.`, damit
+// `__` weiter nur die Achsen trennt. Erstes Segment (Welle) bleibt
+// `comps-detail` (Vertrag minPerWave). Bleibt import-frei: der Erzeuger
+// uebersetzt nur diese Datei (build-snapshot-matrix.mjs).
+export function compFamilySnapshotKey(p) {
+    const patch = p.patch.replace(/[^A-Za-z0-9._-]/g, '_');
+    const region = p.region.replace(/[^a-z0-9]/gi, '_');
+    const bucket = p.bucket.replace(/[^a-z0-9_]/gi, '_');
+    const family = p.family.replace(/__/g, '.').replace(/[^A-Za-z0-9._-]/g, '_');
+    return `comps-detail/${patch}/family/${family}__${region}__${p.days}d__${bucket}.json`;
+}
 // Stable canonical form for matching incoming requests against the matrix.
 export function normalizeSnapshotRequest(p) {
     if (!p.patch)

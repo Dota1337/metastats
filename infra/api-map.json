@@ -177,12 +177,14 @@
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/ddragon-version-server.ts",
+        "app/lib/lol-champion-filters.ts",
+        "app/lib/lol-champion-list.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
       "used": true,
       "usedBy": [
-        "app/champions/page.tsx"
+        "app/champions/ChampionsClient.tsx"
       ]
     },
     {

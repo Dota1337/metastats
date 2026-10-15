@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import ApiUnavailable from '../components/ApiUnavailable';
+import { CHAMPION_LIST_DEFAULTS, championListKey, type ChampionListPayload } from '../lib/lol-champion-filters';
 
 // Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
 const MIN_WINRATE_GAMES = 30;
@@ -26,19 +27,26 @@ interface Champion {
   avgKDA: number | null;
 }
 
-export default function ChampionsPage() {
-  const [champions, setChampions] = useState<Champion[]>([]);
-  const [loading, setLoading] = useState(true);
+// `initial`: Standardansicht vom Server (page.tsx, SEO-Plan Schritt 6) — dann
+// entfaellt der erste Abruf. Fehlt sie, laedt die Liste wie bisher im Browser.
+export default function ChampionsPage({ initial = null }: { initial?: ChampionListPayload | null }) {
+  const [champions, setChampions] = useState<Champion[]>(initial?.champions ?? []);
+  const [loading, setLoading] = useState(!initial);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tier, setTier] = useState('all');
-  const [role, setRole] = useState('all');
+  const [tier, setTier] = useState(CHAMPION_LIST_DEFAULTS.tier);
+  const [role, setRole] = useState(CHAMPION_LIST_DEFAULTS.role);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [version, setVersion] = useState('');
-  const [hasStats, setHasStats] = useState(false);
+  const [version, setVersion] = useState(initial?.version ?? '');
+  const [hasStats, setHasStats] = useState(initial?.hasStats ?? false);
   const [search, setSearch] = useState('');
-  const [region, setRegion] = useState('euw1');
+  const [region, setRegion] = useState(CHAMPION_LIST_DEFAULTS.region);
+  // Zu welchen Filtern die gezeigte Liste gehoert. Gleich → kein Abruf (die
+  // Startdaten beim ersten Rendern, auch beim doppelten Effekt im StrictMode).
+  // Waehrend eines Abrufs leer: scheitert er, laedt die Rueckkehr zu den
+  // vorigen Filtern neu, statt die Fehlermeldung stehen zu lassen.
+  const shownKey = useRef<string | null>(initial ? `${championListKey(CHAMPION_LIST_DEFAULTS)}|0` : null);
   const { t, lang } = useI18n();
 
   const REGIONS = [
@@ -81,12 +89,15 @@ export default function ChampionsPage() {
   // ohne Guard gewinnt der zuletzt EINTREFFENDE statt des zuletzt angeforderten
   // — sichtbar als falsche Champion-Liste bei korrekt markiertem Filter.
   useEffect(() => {
+    const key = `${championListKey({ tier, role, region })}|${reloadKey}`;
+    if (shownKey.current === key) return;
+    shownKey.current = null;
     const ctl = new AbortController();
-    fetchChampions(ctl.signal);
+    fetchChampions(ctl.signal, key);
     return () => ctl.abort();
   }, [tier, role, region, reloadKey]);
 
-  const fetchChampions = async (signal: AbortSignal) => {
+  const fetchChampions = async (signal: AbortSignal, key: string) => {
     setLoading(true);
     setFailed(false);
     try {
@@ -98,6 +109,7 @@ export default function ChampionsPage() {
       setChampions(data.champions);
       setVersion(data.version);
       setHasStats(data.hasStats);
+      shownKey.current = key;
     } catch {
       if (signal.aborted) return;
       // Sonst bliebe die Liste des vorigen Filters unter dem neuen Filter stehen.
@@ -120,7 +132,9 @@ export default function ChampionsPage() {
     .filter((c) => !search || c.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
       const dir = sortDir === 'asc' ? 1 : -1;
-      if (sortKey === 'name') return a.name.localeCompare(b.name) * dir;
+      // Feste Sprache: ohne sie sortiert der Server (Node) nach seiner, der
+      // Browser nach der Systemsprache — die Startdaten passten dann nicht.
+      if (sortKey === 'name') return a.name.localeCompare(b.name, LOCALE_MAP[lang]) * dir;
       // Siegrate aus wenigen Spielen ist Zufall (5 Spiele, 100 %). Unter
       // MIN_WINRATE_GAMES stehen solche Champions beim Sortieren nach Siegrate hinten.
       if (sortKey === 'winRate') {

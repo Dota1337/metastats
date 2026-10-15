@@ -4,6 +4,7 @@ import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
+import StatsListPending from '../../components/tft/StatsListPending';
 import StatsFilterBar from '../../components/tft/StatsFilterBar';
 import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
@@ -188,7 +189,7 @@ export default function UnitsClient({ initialFilters, initial }: {
 
         {/* Steht immer im HTML: das Vorab-Skript blendet es ueber das <style>
             der Seite ein, solange gespeicherte Filter geladen werden. */}
-        <div data-e3-wait className={`${(loading && hasData === null) || awaitingStored ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        <StatsListPending show={(loading && hasData === null) || awaitingStored} />
         {hasData === false && !awaitingStored && <EmptyData />}
 
         {hasData && filtered.length > 0 && !awaitingStored && (

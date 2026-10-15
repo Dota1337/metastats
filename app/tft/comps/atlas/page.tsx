@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import EmptyData from '../../../components/tft/EmptyData';
+import StatsListPending from '../../../components/tft/StatsListPending';
 import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompsTabs from '../../../components/tft/CompsTabs';
 import StatsFilterBar from '../../../components/tft/StatsFilterBar';
@@ -96,9 +97,7 @@ export default function TftCompsAtlasPage() {
           </select>
         </div>
 
-        {loading && !error && hasData === null && (
-          <div className="text-fg-muted text-center py-8">{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
-        )}
+        <StatsListPending show={loading && !error && hasData === null} e3={false} />
         {error && (
           <ApiUnavailable messageKey="error.temporarilyUnavailable" badge={false} onRetry={retry} />
         )}

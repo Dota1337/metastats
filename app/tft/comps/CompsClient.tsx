@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import EmptyData from '../../components/tft/EmptyData';
+import StatsListPending from '../../components/tft/StatsListPending';
 import ApiUnavailable from '../../components/ApiUnavailable';
 import CompFamilyRow, { type CompFamily } from '../../components/tft/CompFamilyRow';
 import CompsTabs from '../../components/tft/CompsTabs';
@@ -131,7 +132,7 @@ export default function CompsClient({ initialFilters, initial }: {
 
         {/* Immer im HTML: das <style> der Server-Seite blendet die Ladeanzeige
             ein, solange gespeicherte Filter noch laden (SEO-Plan E3). */}
-        <div data-e3-wait className={`${!error && ((loading && hasData === null) || awaitingStored || awaitingFull) ? '' : 'hidden '}text-fg-muted text-center py-8`}>{t('tft.noDataYet').replace('Noch keine Daten', 'Lade')}</div>
+        <StatsListPending show={!error && ((loading && hasData === null) || awaitingStored || awaitingFull)} rowHeight="h-20" />
         {error && (
           <ApiUnavailable messageKey="error.temporarilyUnavailable" badge={false} onRetry={retry} />
         )}

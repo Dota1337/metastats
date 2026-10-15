@@ -6,7 +6,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, compsShowingAugment, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
   augmentStagesFor,
@@ -42,7 +42,8 @@ export default function TftAugmentReferenceDetailPage() {
   const apiName = decodeURIComponent(String(params?.name || ''));
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [compGuidesBundle, setCompGuidesBundle] = useState<Awaited<ReturnType<typeof loadCompGuidesBundle>> | null>(null);
-  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null>(null);
+  // undefined = laedt, null = fehlgeschlagen (compAugmentSections).
+  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null | undefined>(undefined);
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
@@ -52,16 +53,18 @@ export default function TftAugmentReferenceDetailPage() {
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
   const iconUrl = tftIconUrl(assets, meta?.icon);
-  const augStages = augmentStagesFor(stagesOverride, apiName);
+  const augStages = augmentStagesFor(stagesOverride ?? null, apiName);
 
-  // Reverse-Lookup: alle Comps, auf deren Seite dieses Augment steht (gleiche
-  // Reihen-Regel wie CompGuide, sonst nennt die Liste Comps ohne Kachel). allGuides liefert
-  // trait+carry aus der Familien-Map mit — ein Cluster kann dabei unter
+  // Reverse-Lookup: alle Comps, auf deren Seite dieses Augment steht —
+  // Trait-Zeile oder Reihen, dieselbe Regel wie die Comp-Seite
+  // (compAugmentSections), sonst nennt die Liste Comps ohne Kachel. allGuides
+  // liefert trait+carry aus der Familien-Map mit — ein Cluster kann dabei unter
   // mehreren Familien erscheinen, was gewollt ist (Dual-Carry-Comps).
   const matchingComps: CompMatch[] = useMemo(
-    () => allGuides(compGuidesBundle).filter(g =>
-      augmentRowsByRarity(g.guide, assets).some(r => r.augments.includes(apiName))),
-    [compGuidesBundle, apiName, assets],
+    () => stagesOverride === undefined
+      ? []
+      : compsShowingAugment(compGuidesBundle, assets, stagesOverride?.stages ?? null, apiName),
+    [compGuidesBundle, apiName, assets, stagesOverride],
   );
 
   return (

@@ -6,7 +6,8 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, compsShowingAugment, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
+import { loadAugmentStages, type AugmentStagesOverride } from '../../../lib/tft-augment-stages';
 import { compPath } from '../../../lib/tft-comp-path';
 
 // Augment-Compare-View — zwei Augments nebeneinander mit Tier-Badge,
@@ -34,6 +35,9 @@ export default function TftAugmentsComparePage() {
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
+  // undefined = laedt, null = fehlgeschlagen (compAugmentSections).
+  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null | undefined>(undefined);
+  useEffect(() => { loadAugmentStages().then(setStagesOverride); }, []);
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -64,6 +68,7 @@ export default function TftAugmentsComparePage() {
               apiName={apiNameA}
               assets={assets}
               compGuidesBundle={compGuidesBundle}
+              stagesOverride={stagesOverride}
               t={t}
               side="a"
             />
@@ -71,6 +76,7 @@ export default function TftAugmentsComparePage() {
               apiName={apiNameB}
               assets={assets}
               compGuidesBundle={compGuidesBundle}
+              stagesOverride={stagesOverride}
               t={t}
               side="b"
             />
@@ -83,11 +89,12 @@ export default function TftAugmentsComparePage() {
 }
 
 function AugmentPanel({
-  apiName, assets, compGuidesBundle, t, side,
+  apiName, assets, compGuidesBundle, stagesOverride, t, side,
 }: {
   apiName: string;
   assets: TftAssetsBundle | null;
   compGuidesBundle: Awaited<ReturnType<typeof loadCompGuidesBundle>> | null;
+  stagesOverride: AugmentStagesOverride | null | undefined;
   t: (k: any) => string;
   side: 'a' | 'b';
 }) {
@@ -98,10 +105,12 @@ function AugmentPanel({
   const iconUrl = tftIconUrl(assets, meta?.icon);
   const accentColor = side === 'a' ? '#7B61FF' : '#3ecf8e';
 
+  // Dieselbe Regel wie die Comp-Seite (Trait-Zeile oder Reihen).
   const matchingComps: CompMatch[] = useMemo(
-    () => allGuides(compGuidesBundle).filter(g =>
-      augmentRowsByRarity(g.guide, assets).some(r => r.augments.includes(apiName))),
-    [compGuidesBundle, apiName, assets],
+    () => stagesOverride === undefined
+      ? []
+      : compsShowingAugment(compGuidesBundle, assets, stagesOverride?.stages ?? null, apiName),
+    [compGuidesBundle, apiName, assets, stagesOverride],
   );
 
   if (assets && !meta) {

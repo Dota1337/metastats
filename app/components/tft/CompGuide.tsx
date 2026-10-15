@@ -1,12 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, findItem, formatTftDesc } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
+  type AugmentRarity,
   augmentTierBorderColor,
-  augmentRowsByRarity,
   parseLevelling,
   significantLevelSteps,
 } from '../../lib/tft-comp-guides';
@@ -14,7 +13,6 @@ import {
   type AugmentStage,
   type AugmentStagesOverride,
   augmentStagesFor,
-  loadAugmentStages,
   stageColor,
 } from '../../lib/tft-augment-stages';
 
@@ -151,16 +149,21 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
     in allen drei kommt. Ohne Asset-Bundle keine Sektion: die Rarity wird nicht
     geraten.
     Ohne eigene Box, die Rarity steht links vor der Reihe — Teil der Bauteil-
-    Box der Detailseite (User 2026-10-10, etwa 120 px kuerzer als vorher). */
-export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
+    Box der Detailseite (User 2026-10-10, etwa 120 px kuerzer als vorher).
+    Die Reihen kommen fertig aus compAugmentSections (Elternseite), damit
+    Trait-Zeile und Reihen dieselben Stage-Daten sehen. */
+export function GuideAugments({
+  rows, assets, stages,
+}: {
+  rows: Array<{ rarity: AugmentRarity; augments: string[] }>;
+  assets: TftAssetsBundle | null;
+  stages: AugmentStagesOverride | null;
+}) {
   const { t } = useI18n();
-  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null>(null);
-  useEffect(() => { loadAugmentStages().then(setStagesOverride); }, []);
-  const rarityRows = augmentRowsByRarity(guide, assets);
-  if (rarityRows.length === 0) return null;
+  if (rows.length === 0) return null;
   return (
     <div className="flex flex-col gap-2">
-      {rarityRows.map(row => (
+      {rows.map(row => (
         <div key={row.rarity} className="flex items-start gap-2">
           <div
             className="w-[5.5rem] shrink-0 pt-3 text-[10px] uppercase tracking-wide font-semibold truncate"
@@ -170,10 +173,30 @@ export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets:
           </div>
           <div className="flex flex-wrap gap-2 min-w-0">
             {row.augments.map(a => (
-              <AugmentTile key={a} apiName={a} assets={assets} stages={augmentStagesFor(stagesOverride, a)} />
+              <AugmentTile key={a} apiName={a} assets={assets} stages={augmentStagesFor(stages, a)} />
             ))}
           </div>
         </div>
+      ))}
+    </div>
+  );
+}
+
+/** Trait-Augments der Comp in einer Zeile (User 2026-10-15, F3b) — welche
+    Augments der aktiven Traits gerade angeboten werden, aus
+    compAugmentSections. Rand wie in den Reihen nach Rarity. */
+export function GuideTraitAugments({
+  augments, assets, stages,
+}: {
+  augments: string[];
+  assets: TftAssetsBundle | null;
+  stages: AugmentStagesOverride | null;
+}) {
+  if (augments.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {augments.map(a => (
+        <AugmentTile key={a} apiName={a} assets={assets} stages={augmentStagesFor(stages, a)} />
       ))}
     </div>
   );

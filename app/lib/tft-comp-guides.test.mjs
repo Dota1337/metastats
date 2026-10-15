@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 import fc from 'fast-check';
 import {
   parseLevelling, significantLevelSteps, augmentRowsByRarity, AUGMENTS_PER_RARITY,
-  resolveGuideId, guideStyleFromUnits,
+  resolveGuideId, guideStyleFromUnits, compTraitAugments, compAugmentSections, compsShowingAugment,
 } from './tft-comp-guides.ts';
 
 const step = (level, count) => ({ level, stage: '3', round: '2', count });
@@ -223,6 +223,83 @@ test('alte Guides ohne traits/units: Reihenfolge wie vorher', () => {
   const augments = { a: aug('A', 3), b: aug('B', 3, { traits: ['P'] }) };
   const rows = augmentRowsByRarity({ augments: ['a', 'b'] }, assetsOf(augments));
   assert.deepEqual(rows[0].augments, ['a', 'b']);
+});
+
+// ── Eigene Zeile fuer Trait-Augments (F3b) ──────────────────────────────────
+// Nachgestellt ist Lunar·Aphelios·Nidalee mit den echten Stages aus 18.4:
+// Sun and Moon 3-2, Sun and Moon+ 4-2, Beast Within 3-2, Beast Within+ 4-2.
+// Flame On (Inferno) hat keinen Stage-Eintrag — wird nicht angeboten.
+
+const traitAssets = () => assetsOf({
+  sunMoon: aug('Sun and Moon', 2, { traits: ['DA_18_Lunar'] }),
+  sunMoonPlus: aug('Sun and Moon+', 2, { traits: ['DA_18_Lunar'] }),
+  bwNid: aug('Beast Within', 2, { traits: ['DA_Primal18'], desc: 'Gain a Nidalee.' }),
+  bwSiv: aug('Beast Within', 2, { traits: ['DA_Primal18'], desc: 'Gain a Sivir.' }),
+  bwNidPlus: aug('Beast Within+', 2, { traits: ['DA_Primal18'], desc: 'Gain a Nidalee.' }),
+  bwSivPlus: aug('Beast Within+', 2, { traits: ['DA_Primal18'], desc: 'Gain a Sivir.' }),
+  flameOn: aug('Flame On', 1, { traits: ['DA_18_Inferno'] }),
+  thorn: aug('Item Extraction', 2, { traits: ['DA_18_Blackthorn'] }),
+  copy: aug('Sun and Moon', 2, { traits: ['DA_18_Lunar'], aliasOf: 'sunMoon' }),
+  plain: aug('Plain', 2),
+}, { U_Nid: { name: 'Nidalee' }, U_Siv: { name: 'Sivir' } });
+const traitStages = {
+  sunMoon: ['3-2'], sunMoonPlus: ['4-2'], bwNid: ['3-2'], bwSiv: ['3-2'], bwNidPlus: ['4-2'], bwSivPlus: ['4-2'],
+  flameOn: [], thorn: ['2-1', '3-2'], copy: ['3-2'], plain: ['2-1'],
+};
+const lunarGuide = (augments = []) => ({
+  title: 'DA_18_Lunar, DA_18_Aphelios, DA_Nidalee18_AP',
+  augments,
+  traits: ['DA_18_Inferno', 'DA_18_Lunar', 'DA_Primal18'],
+  units: ['U_Nid'],
+});
+
+test('Trait-Zeile: Haupt-Trait zuerst, dann Stage, Varianten passend zur Comp, nur angebotene', () => {
+  assert.deepEqual(
+    compTraitAugments(lunarGuide(), traitAssets(), traitStages),
+    ['sunMoon', 'sunMoonPlus', 'bwNid', 'bwNidPlus'],
+  );
+});
+
+test('Trait-Zeile ohne Stage-Daten oder ohne Bundle: leer statt geraten', () => {
+  assert.deepEqual(compTraitAugments(lunarGuide(), traitAssets(), null), []);
+  assert.deepEqual(compTraitAugments(lunarGuide(), null, traitStages), []);
+  assert.deepEqual(compTraitAugments({ ...lunarGuide(), traits: undefined }, traitAssets(), traitStages), []);
+});
+
+test('Reihen: Augments aktiver Traits fallen heraus, fremde Trait-Augments bleiben', () => {
+  const s = compAugmentSections(lunarGuide(['flameOn', 'bwSiv', 'thorn', 'plain']), traitAssets(), traitStages);
+  assert.deepEqual(s.traitAugments, ['sunMoon', 'sunMoonPlus', 'bwNid', 'bwNidPlus']);
+  assert.deepEqual(s.rarityRows, [{ rarity: 2, augments: ['thorn', 'plain'] }]);
+});
+
+test('Reihen ohne Stage-Daten: wie vorher, keine Trait-Zeile', () => {
+  const s = compAugmentSections(lunarGuide(['flameOn', 'plain']), traitAssets(), null);
+  assert.deepEqual(s.traitAugments, []);
+  assert.deepEqual(s.rarityRows, [{ rarity: 2, augments: ['plain'] }, { rarity: 1, augments: ['flameOn'] }]);
+});
+
+test('Comp ohne MetaTFT-Liste bekommt trotzdem ihre Trait-Zeile', () => {
+  const s = compAugmentSections(lunarGuide([]), traitAssets(), traitStages);
+  assert.equal(s.traitAugments.length, 4);
+  assert.deepEqual(s.rarityRows, []);
+});
+
+test('Augment-Seite findet Comps auch ueber die Trait-Zeile', () => {
+  const loaded = {
+    cuts: null,
+    bundle: {
+      comps: [
+        { id: 'c1', name: 'DA_18_Lunar, DA_18_Aphelios', augments: [], traits: ['DA_18_Lunar_2'], units: [] },
+        { id: 'c2', name: 'DA_18_Coven, DA_18_Elise', augments: [{ id: 'plain', tier: 'A' }], traits: ['DA_18_Coven_3'], units: [] },
+      ],
+      familyMap: { DA_18_Lunar__A: 'c1', DA_18_Coven__E: 'c2' },
+      details: {},
+    },
+  };
+  const slugs = (id, stages) => compsShowingAugment(loaded, traitAssets(), stages, id).map(g => g.slug);
+  assert.deepEqual(slugs('sunMoon', traitStages), ['c1']);
+  assert.deepEqual(slugs('plain', traitStages), ['c2']);
+  assert.deepEqual(slugs('sunMoon', null), []);
 });
 
 // ── Zuordnung zur MetaTFT-Comp nach Spielweise ──────────────────────────────

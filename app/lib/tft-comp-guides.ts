@@ -35,7 +35,7 @@ export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
  * Vorlage tragen Zeichen fuer Zeichen dieselbe Liste (gemessen 15.10.2026,
  * 38 Cluster, 18 Vorlagen). Deshalb seit 15.10.2026 nicht mehr angezeigt
  * (User F3) — er bestimmt nur noch die Reihenfolge hinter den Comp-eigenen
- * Augments (augmentRowsByRarity).
+ * Augments (orderedCompAugments).
  *
  * Nicht zu verwechseln mit der Rarity (Silver/Gold/Prismatic, 1-3) aus dem
  * Asset-Bundle.
@@ -145,7 +145,7 @@ export interface CompGuide {
   difficulty: Difficulty | null;
   levelling: string | null;
   games: number;
-  /** Augment-apiNames in der Reihenfolge der Profi-Vorlage, ungekappt (Anzeige: augmentRowsByRarity). */
+  /** Augment-apiNames in der Reihenfolge der Profi-Vorlage, ungekappt (Anzeige: compAugmentSections). */
   augments: string[];
   /** Aktive Traits der MetaTFT-Comp ohne Stufe (`DA_Primal18_1` -> `DA_Primal18`). */
   traits: string[];
@@ -462,6 +462,8 @@ export function augmentTierBorderColor(tier: number | null | undefined): string 
   }
 }
 
+type AugmentAssets = Pick<TftAssetsBundle, 'augments'> & Partial<Pick<TftAssetsBundle, 'champions'>>;
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -481,14 +483,14 @@ function escapeRegExp(s: string): string {
  * gleich guten; nennt keine eine Unit der Comp, die erste). Sie steht an der
  * Stelle der ersten Variante.
  */
-function orderedCompAugments(
-  guide: CompGuide,
-  assets: Pick<TftAssetsBundle, 'augments'> & Partial<Pick<TftAssetsBundle, 'champions'>>,
-): string[] {
+function orderedCompAugments(guide: CompGuide, assets: AugmentAssets): string[] {
   const compTraits = new Set(guide.traits ?? []);
   const isOwn = (id: string) => (assets.augments[id]?.traits ?? []).some(t => compTraits.has(t));
-  const ordered = [...guide.augments.filter(isOwn), ...guide.augments.filter(id => !isOwn(id))];
+  return dedupeVariants([...guide.augments.filter(isOwn), ...guide.augments.filter(id => !isOwn(id))], guide, assets);
+}
 
+/** Gleichnamige Varianten auf die passende(n) reduzieren, Reihenfolge bleibt (siehe orderedCompAugments). */
+function dedupeVariants(ordered: string[], guide: CompGuide, assets: AugmentAssets): string[] {
   const unitNames = (guide.units ?? [])
     .map(u => assets.champions?.[u]?.name)
     .filter((n): n is string => typeof n === 'string' && n.length > 0);
@@ -533,12 +535,12 @@ function orderedCompAugments(
  * (orderedCompAugments). Ohne Bundle gibt es keine Reihen — die Rarity wird
  * nicht geraten.
  *
- * Einzige Quelle für „welche Augments zeigt eine Comp": die Augment-Seiten
- * suchen ihre Comps hierüber, damit beide Seiten dasselbe sagen.
+ * Direkt nur für Tests und compAugmentSections — Seiten lesen über
+ * compAugmentSections, damit Comp- und Augment-Seiten dasselbe sagen.
  */
 export function augmentRowsByRarity(
   guide: CompGuide,
-  assets: (Pick<TftAssetsBundle, 'augments'> & Partial<Pick<TftAssetsBundle, 'champions'>>) | null,
+  assets: AugmentAssets | null,
 ): Array<{ rarity: AugmentRarity; augments: string[] }> {
   if (!assets?.augments || guide.augments.length === 0) return [];
   const byRarity = new Map<AugmentRarity, string[]>();
@@ -552,6 +554,92 @@ export function augmentRowsByRarity(
   return RARITY_ORDER
     .filter(r => (byRarity.get(r)?.length ?? 0) > 0)
     .map(r => ({ rarity: r, augments: byRarity.get(r)! }));
+}
+
+/** Stages je Augment aus tft-augment-stages-<set>.json (`stages`-Feld). */
+export type AugmentStageMap = Readonly<Record<string, readonly string[]>>;
+
+const STAGE_SEQUENCE = ['2-1', '3-2', '4-2'];
+
+/**
+ * Trait-Augments der Comp — eigene Zeile über den Empfehlungen (User
+ * 2026-10-15, F3b). Riot bindet 19 Augments fest an einen Trait
+ * (assets.augments[id].traits); gezeigt werden die der aktiven Traits der
+ * MetaTFT-Comp, auch wenn die Profi-Vorlage sie nicht nennt (sie nennt nur 6
+ * von 19). Bewusst eine eigene Zeile statt vorne in den Reihen: dort hätten
+ * sie 35 von 38 Comps umgeschrieben und Profi-Empfehlungen verdrängt
+ * (classification-reviewer 15.10.2026). Keine Statistik, nur Spielmechanik.
+ *
+ * Nur Augments, die gerade angeboten werden (Stage-Eintrag nicht leer —
+ * „Flame On" hat in 18.4 keinen). Ohne Stage-Daten (null) keine Zeile statt
+ * einer geratenen. Reihenfolge: Haupt-Trait der Comp (erster Teil des
+ * MetaTFT-Namens) zuerst, dann nach Trait, dann frühere Stage zuerst (Beast
+ * Within vor Beast Within+). Gleichnamige Varianten wie in den Reihen.
+ */
+export function compTraitAugments(
+  guide: CompGuide,
+  assets: AugmentAssets | null,
+  stages: AugmentStageMap | null,
+): string[] {
+  if (!assets?.augments || !stages) return [];
+  const compTraits = guide.traits ?? [];
+  if (compTraits.length === 0) return [];
+  const mainTrait = (guide.title || '').split(',')[0].trim();
+  const candidates = Object.keys(assets.augments).filter(id => {
+    const a = assets.augments[id];
+    if (!a || a.aliasOf || !(a.traits ?? []).some(t => compTraits.includes(t))) return false;
+    if (a.tier !== 1 && a.tier !== 2 && a.tier !== 3) return false;
+    const s = stages[id];
+    return Array.isArray(s) && s.length > 0;
+  });
+  const traitRank = (id: string) => {
+    const ts = assets.augments[id].traits ?? [];
+    if (ts.includes(mainTrait)) return -1;
+    return Math.min(...ts.map(t => compTraits.indexOf(t)).filter(i => i >= 0));
+  };
+  const stageRank = (id: string) => Math.min(...(stages[id] ?? []).map(s => {
+    const i = STAGE_SEQUENCE.indexOf(s);
+    return i < 0 ? STAGE_SEQUENCE.length : i;
+  }));
+  candidates.sort((a, b) => traitRank(a) - traitRank(b) || stageRank(a) - stageRank(b) || (a < b ? -1 : a > b ? 1 : 0));
+  return dedupeVariants(candidates, guide, assets).slice(0, AUGMENTS_PER_RARITY);
+}
+
+/**
+ * Was eine Comp an Augments zeigt: Trait-Zeile plus Rarity-Reihen. Sind die
+ * Stage-Daten da, fehlen in den Reihen alle Augments aktiver Traits — sie
+ * stehen in der Trait-Zeile oder werden gerade nicht angeboten; ohne
+ * Stage-Daten bleiben die Reihen wie vorher.
+ *
+ * Einzige Quelle für „welche Augments zeigt eine Comp" (Comp-Seite und
+ * Augment-Seiten, siehe compsShowingAugment).
+ */
+export function compAugmentSections(
+  guide: CompGuide,
+  assets: AugmentAssets | null,
+  stages: AugmentStageMap | null,
+): { traitAugments: string[]; rarityRows: Array<{ rarity: AugmentRarity; augments: string[] }> } {
+  const traitAugments = compTraitAugments(guide, assets, stages);
+  if (!stages || !assets?.augments) return { traitAugments, rarityRows: augmentRowsByRarity(guide, assets) };
+  const compTraits = new Set(guide.traits ?? []);
+  const activeTraitAug = (id: string) => (assets.augments[id]?.traits ?? []).some(t => compTraits.has(t));
+  return {
+    traitAugments,
+    rarityRows: augmentRowsByRarity({ ...guide, augments: guide.augments.filter(id => !activeTraitAug(id)) }, assets),
+  };
+}
+
+/** Alle Guides, deren Comp-Seite dieses Augment zeigt (Augment-Seiten). */
+export function compsShowingAugment(
+  loaded: LoadedGuides | null,
+  assets: AugmentAssets | null,
+  stages: AugmentStageMap | null,
+  apiName: string,
+): ReturnType<typeof allGuides> {
+  return allGuides(loaded).filter(g => {
+    const s = compAugmentSections(g.guide, assets, stages);
+    return s.traitAugments.includes(apiName) || s.rarityRows.some(r => r.augments.includes(apiName));
+  });
 }
 
 // Difficulty-Farbe für das Badge.

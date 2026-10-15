@@ -20,7 +20,7 @@ import CompBoardPanel, { type CompBoardParams } from '../../../components/tft/Co
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
 import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits';
-import { GuideAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
+import { GuideAugments, GuideTraitAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect } from '../../../components/tft/CompOutcome';
@@ -57,7 +57,8 @@ import { formatStage } from '../../../lib/tft-stage';
 import { aggregateComponents } from '../../../lib/tft-components';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
-import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, augmentRowsByRarity } from '../../../lib/tft-comp-guides';
+import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, compAugmentSections } from '../../../lib/tft-comp-guides';
+import { loadAugmentStages, type AugmentStagesOverride } from '../../../lib/tft-augment-stages';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 import { compPath } from '../../../lib/tft-comp-path';
@@ -190,6 +191,11 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // Abruf, bleibt der Ausschnitt stehen.
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
+  // Stages der Augments (undefined = laedt, null = fehlgeschlagen). Die
+  // Augments erscheinen erst danach: ohne sie stuenden Trait-Augments kurz in
+  // den Reihen und sprangen dann in die Trait-Zeile (compAugmentSections).
+  const [augStages, setAugStages] = useState<AugmentStagesOverride | null | undefined>(undefined);
+  useEffect(() => { loadAugmentStages().then(setAugStages); }, []);
 
   // Trend fragt mit einer echten Cluster-Kennung (Familien-Kennungen kennt die
   // Trend-RPC nicht) — der gezeigten Comp, also erst nach dem Laden.
@@ -421,11 +427,16 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
       ? aggregateComponents(comp.carryItems, assets, 6)
       : [];
     const picks = guide && guide.carousel.length > 0 ? guide : null;
-    const augGuide = guide && augmentRowsByRarity(guide, assets).length > 0 ? guide : null;
+    const augSections = guide && augStages !== undefined
+      ? compAugmentSections(guide, assets, augStages?.stages ?? null)
+      : null;
+    const augRows = augSections?.rarityRows ?? [];
+    const traitAugs = augSections?.traitAugments ?? [];
+    const hasAugs = augRows.length > 0 || traitAugs.length > 0;
     const hasTraits = computeActiveTraits(comp.typicalUnits, comp.clusterKey, assets).length > 0;
     const traitProps = { typicalUnits: comp.typicalUnits, clusterKey: comp.clusterKey, assets, bucket };
     const span = wide ? 'min-[100rem]:col-span-2 min-[100rem]:row-start-1' : '';
-    if (components.length === 0 && !picks && !augGuide) {
+    if (components.length === 0 && !picks && !hasAugs) {
       return hasTraits ? <div className={span}><CompActiveTraits {...traitProps} variant="list" /></div> : null;
     }
     return (
@@ -479,10 +490,20 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
               <GuideCarouselPicks guide={picks} assets={assets} />
             </div>
           )}
-          {augGuide && (
+          {hasAugs && (
             <div id="cj-augments" data-jump="augments" className={`scroll-mt-16 ${components.length > 0 || picks ? 'mt-4' : ''}`}>
-              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
-              <GuideAugments guide={augGuide} assets={assets} />
+              {traitAugs.length > 0 && (
+                <>
+                  <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments.trait')}</div>
+                  <GuideTraitAugments augments={traitAugs} assets={assets} stages={augStages ?? null} />
+                </>
+              )}
+              {augRows.length > 0 && (
+                <div className={traitAugs.length > 0 ? 'mt-4' : ''}>
+                  <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
+                  <GuideAugments rows={augRows} assets={assets} stages={augStages ?? null} />
+                </div>
+              )}
             </div>
           )}
           {hasTraits && (

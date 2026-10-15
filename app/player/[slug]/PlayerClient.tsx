@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { Suspense, use, useState, useEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
@@ -19,13 +19,36 @@ import { regionLabel } from '../../lib/regions';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 import { parseLolPlayerSlug } from '../../lib/og/slugs';
 import type { ExtendedMatchData } from '../../lib/match-processor';
+import type { PlayerHead } from '../../lib/player-lookup';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
 const RadarStats = dynamic(() => import('../../components/RadarStats'), { ssr: false });
 const MarketValueChart = dynamic(() => import('../../components/MarketValueChart'), { ssr: false });
 import AICoach from '../../components/AICoach';
 
-export default function PlayerPage() {
+// Kopf aus unseren Quellen, solange das Profil laedt (SEO-Plan Schritt 7): der
+// Name steht als h1 schon im ersten HTML. Markup wie die obere Zeile des fertigen
+// Kopfs unten (Kasten, Icon-Platz, Name#Tag) — bei Aenderungen beide anpassen.
+// Ohne Treffer nichts: dann bleibt es bei der Ladeanzeige wie bisher.
+function LoadingHead({ head }: { head: Promise<PlayerHead> }) {
+  const h = use(head);
+  if (!h?.known) return null;
+  return (
+    <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-surface-overlay animate-pulse" />
+        <div className="flex-1 min-w-0">
+          <h1 className="text-white text-xl sm:text-2xl font-medium flex flex-wrap items-center gap-2 sm:gap-3">
+            <span className="truncate">{h.gameName}#{h.tagLine}</span>
+          </h1>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// `head`: Abfrage der Server-Huelle (page.tsx), nicht abgewartet.
+export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead> | null }) {
   const { slug } = useParams();
   const router = useRouter();
   // Sprung auf den richtigen Server hoechstens einmal je Spieler — sonst
@@ -486,6 +509,9 @@ export default function PlayerPage() {
       <Nav />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        {loading && head && (
+          <Suspense fallback={null}><LoadingHead head={head} /></Suspense>
+        )}
         {loading && (
           <div className="text-center text-fg-secondary mt-20">{t('player.loading')}</div>
         )}

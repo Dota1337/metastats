@@ -1,5 +1,5 @@
 'use client';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, use, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar,
@@ -45,6 +45,7 @@ import { CURRENT_SET } from '../../../lib/current-set';
 import { decodeSlug, parseTftPlayerSlug } from '../../../lib/og/slugs';
 import { getDdragonVersion } from '../../../lib/ddragon-version';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
+import type { PlayerHead } from '../../../lib/player-lookup';
 
 interface SummonerData {
   summoner: { name: string; puuid: string; profileIconId: number | null; summonerLevel: number | null; tier: string | null; rank: string | null };
@@ -123,7 +124,30 @@ const TIER_COLORS: Record<string, string> = {
 
 const PAGE_SIZE = 30;
 
-export default function TftPlayerPage() {
+// Kopf aus dem Namensverzeichnis, solange das Profil laedt (SEO-Plan Schritt 7):
+// der Name steht als h1 schon im ersten HTML. Markup wie der fertige Kopf unten
+// (Kasten, Icon-Platz, Name, #Tag) — bei Aenderungen beide anpassen. Ohne
+// Treffer nichts: dann bleibt es bei der Ladeanzeige wie bisher.
+function LoadingHead({ head }: { head: Promise<PlayerHead> }) {
+  const h = use(head);
+  if (!h?.known) return null;
+  return (
+    <div className="bg-surface-base border border-border-subtle rounded-lg p-3 sm:p-5 mb-3 sm:mb-5">
+      <div className="flex items-center gap-3 sm:gap-4 flex-wrap">
+        <div className="w-16 h-16 rounded-lg bg-surface-overlay animate-pulse" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-white text-xl font-medium">{h.gameName}</h1>
+          </div>
+          <div className="text-fg-secondary text-sm">#{h.tagLine}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// `head`: Abfrage der Server-Huelle (page.tsx), nicht abgewartet.
+export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHead> | null }) {
   const { t, lang } = useI18n();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -321,6 +345,9 @@ export default function TftPlayerPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        {loading && !data && head && (
+          <Suspense fallback={null}><LoadingHead head={head} /></Suspense>
+        )}
         {loading && <div className="text-fg-secondary text-center py-12">{t('tft.player.loading')}</div>}
 
         {error && (
@@ -343,7 +370,7 @@ export default function TftPlayerPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white text-xl font-medium">{shownGameName}</span>
+                    <h1 className="text-white text-xl font-medium">{shownGameName}</h1>
                     {/* TFT-native pro record wins if both sources match —
                         it's puuid-verified, not just name-matched. */}
                     {tftProInfo ? <TftProBadge pro={tftProInfo} /> : proInfo && <ProBadge pro={proInfo} />}

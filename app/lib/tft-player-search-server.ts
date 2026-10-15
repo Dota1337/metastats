@@ -17,8 +17,8 @@ type Row = {
   tier: string | null; division: string | null; lp: number | null;
 };
 
-export async function searchExactNames(name: string): Promise<TftAccountHit[] | null> {
-  const { data, error } = await supabaseAdmin.rpc('search_tft_player_names_exact', { p_name: name, p_limit: 50 });
+export async function searchExactNames(name: string, limit = 50): Promise<TftAccountHit[] | null> {
+  const { data, error } = await supabaseAdmin.rpc('search_tft_player_names_exact', { p_name: name, p_limit: limit });
   if (error) {
     console.error('[tft-search] exact rpc failed:', error.message);
     return null;

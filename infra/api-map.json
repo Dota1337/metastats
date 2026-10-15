@@ -600,7 +600,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/player/[slug]/page.tsx"
+        "app/player/[slug]/PlayerClient.tsx"
       ]
     },
     {
@@ -676,7 +676,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/player/[slug]/page.tsx"
+        "app/player/[slug]/PlayerClient.tsx"
       ]
     },
     {
@@ -692,7 +692,7 @@
       "used": true,
       "usedBy": [
         "app/compare/page.tsx",
-        "app/player/[slug]/page.tsx"
+        "app/player/[slug]/PlayerClient.tsx"
       ]
     },
     {
@@ -729,7 +729,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/player/[slug]/page.tsx"
+        "app/player/[slug]/PlayerClient.tsx"
       ]
     },
     {
@@ -758,7 +758,7 @@
       "used": true,
       "usedBy": [
         "app/compare/page.tsx",
-        "app/player/[slug]/page.tsx",
+        "app/player/[slug]/PlayerClient.tsx",
         "scripts/check-write-routes.mjs",
         "scripts/refresh-highelo-marketvalues.mjs",
         "scripts/refresh-riot-key.mjs"
@@ -827,7 +827,7 @@
         "app/tft/comps/[slug]/CompDetailClient.tsx",
         "app/tft/comps/compare/page.tsx",
         "app/tft/items/[id]/ItemDetailClient.tsx",
-        "app/tft/player/[slug]/page.tsx",
+        "app/tft/player/[slug]/TftPlayerClient.tsx",
         "app/tft/traits/[name]/TraitDetailClient.tsx",
         "app/tft/units/[id]/UnitDetailClient.tsx",
         "scripts/lib/revalidate-edge.mjs",
@@ -916,6 +916,7 @@
         "app/lib/current-set.ts",
         "app/lib/i18n.tsx",
         "app/lib/og/data.ts",
+        "app/lib/player-lookup-server.ts",
         "app/lib/regions.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-cdragon.ts",
@@ -1222,7 +1223,7 @@
       "usedBy": [
         "app/api/companion/v1/player/route.ts",
         "app/tft/match/[id]/page.tsx",
-        "app/tft/player/[slug]/page.tsx"
+        "app/tft/player/[slug]/TftPlayerClient.tsx"
       ]
     },
     {
@@ -1319,7 +1320,7 @@
       "used": true,
       "usedBy": [
         "app/tft/compare/page.tsx",
-        "app/tft/player/[slug]/page.tsx"
+        "app/tft/player/[slug]/TftPlayerClient.tsx"
       ]
     },
     {
@@ -1382,7 +1383,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/player/[slug]/page.tsx",
+        "app/tft/player/[slug]/TftPlayerClient.tsx",
         "app/tft/pros/page.tsx",
         "app/tft/tournaments/[slug]/page.tsx"
       ]
@@ -1417,7 +1418,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/player/[slug]/page.tsx"
+        "app/tft/player/[slug]/TftPlayerClient.tsx"
       ]
     },
     {
@@ -1540,7 +1541,7 @@
       "used": true,
       "usedBy": [
         "app/api/companion/v1/player/route.ts",
-        "app/tft/player/[slug]/page.tsx"
+        "app/tft/player/[slug]/TftPlayerClient.tsx"
       ]
     },
     {
@@ -1642,7 +1643,7 @@
         "app/components/internal/OpsGraph.tsx",
         "app/components/tft/RegionCompare.tsx",
         "app/lib/snapshot-matrix.ts",
-        "app/tft/player/[slug]/page.tsx",
+        "app/tft/player/[slug]/TftPlayerClient.tsx",
         "app/tft/traits/[name]/TraitDetailClient.tsx",
         "app/tft/units/UnitsClient.tsx",
         "app/tft/units/[id]/UnitDetailClient.tsx",

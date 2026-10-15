@@ -15,7 +15,7 @@ import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
 import { parseClusterKey } from '../tft-cluster';
 import { computeRoles, componentCheckFromItems, namedCarries, type RoleUnit } from '../tft-comp-roles';
 import { tftTraitDisplayName, type TftAssetsBundle } from '../tft-cdragon';
-import { searchExactNames } from '../tft-player-search-server';
+import { lolPlayersLookup, tftDirectoryLookup } from '../player-lookup-server';
 import { supabaseAdmin as supabase } from '../supabase';
 import { withTimeout } from './frame';
 
@@ -127,14 +127,13 @@ export async function compOgData(slug: string): Promise<CompOg | null> {
 
 export interface TftPlayerOg { region: string | null; tier: string | null; division: string | null; lp: number | null }
 
+// Abfrage gemeinsam mit Seitentitel und Kopf (player-lookup-server.ts), sonst
+// zeigte das Bild einen Rang, wo die Seite „unbekannt“ sagt.
 export async function tftPlayerOgData(gameName: string, tagLine: string): Promise<TftPlayerOg | null> {
-  if (!gameName) return null;
-  const hits = await withTimeout(searchExactNames(gameName), DATA_TIMEOUT_MS);
-  if (!hits) return null;
-  const tag = tagLine.toLowerCase();
-  // Die Abfrage liefert hoechster Rang zuerst; ohne Tag kein Treffer raten.
-  const h = tag ? hits.find(x => x.tagLine.toLowerCase() === tag) : null;
-  return h ? { region: h.region, tier: h.tier, division: h.division, lp: h.lp } : null;
+  const r = await tftDirectoryLookup(gameName, tagLine);
+  if (!r?.known) return null;
+  const h = r.value;
+  return { region: h.region, tier: h.tier, division: h.division, lp: h.lp };
 }
 
 // ---------- LoL-Spieler ----------
@@ -144,32 +143,23 @@ export interface LolPlayerOg {
   marketValue: number | null; level: number | null; icon: string | null;
 }
 
-function escapeLike(v: string): string {
-  return v.replace(/[\\%_]/g, c => '\\' + c);
-}
-
-async function lolPlayerRow(fullName: string) {
-  const { data } = await supabase
-    .from('players')
-    .select('id, region, tier, rank, market_value, summoner_level, profile_icon_id')
-    .ilike('summoner_name', escapeLike(fullName))
-    .order('updated_at', { ascending: false })
-    .limit(1);
-  const p = data?.[0];
-  if (!p) return null;
+async function soloLp(playerId: string): Promise<number | null> {
   const { data: rs } = await supabase
     .from('ranked_stats')
     .select('league_points')
-    .eq('player_id', p.id)
+    .eq('player_id', playerId)
     .eq('queue_type', 'RANKED_SOLO_5x5')
     .limit(1);
-  return { ...p, lp: (rs?.[0]?.league_points as number | undefined) ?? null };
+  return (rs?.[0]?.league_points as number | undefined) ?? null;
 }
 
 export async function lolPlayerOgData(name: string, tag: string): Promise<LolPlayerOg | null> {
-  if (!name || !tag) return null;
-  const p = await withTimeout(lolPlayerRow(`${name}#${tag}`), DATA_TIMEOUT_MS);
-  if (!p) return null;
+  const started = Date.now();
+  const r = await lolPlayersLookup(name, tag);
+  if (!r?.known) return null;
+  // Beide Abfragen zusammen hoechstens DATA_TIMEOUT_MS, wie bisher.
+  const rest = DATA_TIMEOUT_MS - (Date.now() - started);
+  const p = { ...r.value, lp: rest > 0 ? await withTimeout(soloLp(r.value.id), rest) : null };
   const icon = typeof p.profile_icon_id === 'number'
     ? await imageDataUrl(`https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/profile-icons/${p.profile_icon_id}.jpg`, IMAGE_TIMEOUT_MS)
     : null;

@@ -3110,6 +3110,16 @@ const translations = {
     '\uBCC0\uD615', '\u53D8\u4F53',
     'Variantes', 'Variantes'
   ),
+  'tft.comp.variant.all': t6(
+    'Alle', 'All',
+    '전체', '全部',
+    'Todas', 'Toutes'
+  ),
+  'tft.comp.variant.allTitle': t6(
+    'Alle Varianten', 'All variants',
+    '모든 변형', '全部变体',
+    'Todas las variantes', 'Toutes les variantes'
+  ),
   'tft.comp.variant.base': t6(
     'Basis', 'Base',
     '\uAE30\uBCF8', '\u57FA\u7840',

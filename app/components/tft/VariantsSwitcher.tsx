@@ -15,7 +15,9 @@ import { compPath } from '../../lib/tft-comp-path';
 //   - threshold for visibility: games >= 50 AND >= 5% of family total
 //     (server-side enforced, see /api/tft/comps/variants)
 //   - active variant always included even when below threshold
-//   - hide component entirely when only the active variant exists
+//   - Knopf „Alle" vorne = Familien-Ansicht; immer genau ein Knopf markiert
+//   - Knopfreihe in der Familien-Ansicht erst ab 2 Varianten, in der genauen
+//     Ansicht immer („Alle" ist der Rueckweg)
 //   - max 4 variants visible (server-capped)
 
 interface Variant {
@@ -184,20 +186,30 @@ export default function VariantsSwitcher({
   // braucht der User den Hinweis + Toggle zur Sub-Cluster-Sicht. Wenn nur 1
   // Sub-Cluster in der Family ist, gibt es nichts zu aggregieren — Banner aus.
   const showFamilyBanner = familyMergeActive && familySize > 1;
+  // Familien-Ansicht = Adresse der Anker-Familie ohne ?variant („Alle" und
+  // „→ Familien-Ansicht"). Bei Zwei-Carry-Familien fuehrt das zurueck auf die
+  // Adresse, die auch die Liste verlinkt: die Adresse des anderen Carries
+  // zeigt dieselbe Familie, wird aber live gerechnet und kann eine andere
+  // Spielzahl zeigen (gemessen 15.10.2026: Soraka 9733, Zyra-Adresse 7996).
+  const openFamily = () => {
+    const next = new URLSearchParams(window.location.search);
+    next.delete('variant');
+    const target = withLang(compPath(familyList[0]));
+    const q = next.toString();
+    const url = q ? `${target}?${q}` : target;
+    if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
+    else router.push(url, { scroll: false });
+  };
   const toggleVariantMode = () => {
+    if (!familyMergeActive) { openFamily(); return; }
     if (!pathname) return;
     const next = new URLSearchParams(search?.toString() || '');
-    if (familyMergeActive) {
-      next.set('variant', 'exact');
-    } else {
-      next.delete('variant');
-    }
-    const q = next.toString();
+    next.set('variant', 'exact');
     // history.pushState statt router.push: Next haelt useSearchParams
     // synchron, rechnet die Server-Huelle der Detailseite aber nicht neu (die
     // genaue Ansicht hat ohnehin keine Startdaten). Eigener Verlaufseintrag
     // wie bei den Varianten-Knoepfen, sonst fuehrt Zurueck scheinbar nirgends hin.
-    window.history.pushState(null, '', q ? `${pathname}?${q}` : pathname);
+    window.history.pushState(null, '', `${pathname}?${next.toString()}`);
   };
   // Knopf → genaue Ansicht genau dieser Variante (?variant=<Kennung>, siehe
   // compDetailTarget). Varianten einer Familie teilen sich die lesbare Adresse:
@@ -212,7 +224,11 @@ export default function VariantsSwitcher({
     if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
     else router.push(url, { scroll: false });
   };
-  if (variants.length <= 1 && !showFamilyBanner) return null;
+  // Knopfreihe: in der Familien-Ansicht erst ab 2 Varianten (sonst stuende
+  // „Alle" neben seiner einzigen Variante), in der genauen Ansicht immer —
+  // „Alle" ist dort der Rueckweg zur Familie.
+  const showRow = !familyMergeActive || variants.length >= 2;
+  if (!showRow && !showFamilyBanner) return null;
 
   return (
     <section className="mt-3 bg-surface-base border border-border-subtle rounded p-3">
@@ -242,10 +258,25 @@ export default function VariantsSwitcher({
           </button>
         </div>
       )}
+      {showRow && (<>
       <div className="flex items-center gap-2 mb-2">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.variants')}</h2>
       </div>
       <div className="flex flex-wrap gap-2">
+        {/* „Alle" = Familien-Ansicht; markiert, solange keine einzelne
+            Variante offen ist — so ist immer genau ein Knopf hervorgehoben. */}
+        <button
+          onClick={() => { if (!familyMergeActive) openFamily(); }}
+          className={`px-3 py-1.5 rounded border text-xs transition-colors ${
+            familyMergeActive
+              ? 'bg-accent-a15 border-accent text-white cursor-default'
+              : 'bg-surface-sunken border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white cursor-pointer'
+          }`}
+          title={t('tft.comp.variant.allTitle')}
+          aria-label={t('tft.comp.variant.allTitle')}
+        >
+          <span className="font-medium">{t('tft.comp.variant.all')}</span>
+        </button>
         {variants.map(v => {
           const isActive = v.clusterKey === activeCluster;
           const label = variantLabel(v, t, assets, multiFamily);
@@ -279,6 +310,7 @@ export default function VariantsSwitcher({
           );
         })}
       </div>
+      </>)}
     </section>
   );
 }

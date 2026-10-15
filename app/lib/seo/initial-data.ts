@@ -17,8 +17,9 @@ import 'server-only';
 //     Browser. Nie leere oder erfundene Zahlen.
 //   - Startdaten = genau die Antwort, die der Browser von der API bekaeme
 //     (gleiche Filter, gleiche Sortierung), sonst springt die Liste nach dem
-//     ersten Abruf. Ausnahme Comps: nur die Zeilen der gezeigten Familien und
-//     ohne Trend/Mitspiel-Anteil (`partial`, compsStart unten).
+//     ersten Abruf. Ausnahme Comps (Liste und Uebersicht, gleicher Eintrag):
+//     nur die Zeilen der gezeigten Familien, ohne Mitspiel-Anteil und vom Trend
+//     nur der Pfeil-Wert (`partial`, compsStart unten).
 import tierCutoffsFile from '../../../public/tft-tier-cutoffs.json' with { type: 'json' };
 import { lookupSnapshot } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
@@ -27,7 +28,7 @@ import { filtersFromSearchParams, filtersDataKey, type Filters, type PatchInfo }
 import { resolveCutoffs, type TierCutoffs, type TierCutoffsBundle } from '../tft-tier-letter';
 import { sortUnitsRareLast } from '../tft-list-sort';
 import { parseClusterKey } from '../tft-cluster';
-import { shownFamilyRows, type CompApiRow } from '../tft-comp-families';
+import { leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
@@ -271,22 +272,6 @@ export function traitsStart<Row extends TraitListRow>(sp: URLSearchParams): Prom
 
 // ---------- Comps ----------
 
-// Ohne Trendwerte (velocity) und Mitspiel-Anteil je Unit (cooccurrence): die
-// Liste zeigt beides in der Standardansicht nicht. Trend-Filter und
-// Trend-Sortierung laden die volle Liste (useTftCompsData).
-function leanCompRow<Row extends CompApiRow>(row: Row): Row {
-  const lean: CompApiRow = {
-    ...row,
-    typicalUnits: (row.typicalUnits || []).map(u => {
-      const unit: typeof u & { cooccurrence?: unknown } = { ...u };
-      delete unit.cooccurrence;
-      return unit;
-    }),
-  };
-  delete lean.velocity;
-  return lean as Row;
-}
-
 export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise<StatsStart<Row>> {
   return loadStart<Row>({
     endpoint: 'comps',
@@ -301,13 +286,15 @@ export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise
     // 40 gezeigten Familien (gemessen 14.10.2026: 111 von 293, gleiche Anzeige
     // in 48 Filter-Kombinationen x 5 Sortierungen). shownFamilyRows prueft das
     // bei jedem Aufruf nach; weicht es ab, keine Startdaten.
+    // Geprueft wird auf den schlanken Zeilen — genau denen, die der Browser
+    // bekommt (auch der Trend-Pfeil der Uebersicht).
     prepare: (rows, bundle) => {
-      const shown = shownFamilyRows(rows, bundle);
+      const shown = shownFamilyRows(rows, bundle, leanCompRow);
       if (!shown) {
         console.warn('[seo] Comps-Startdaten: Teilmenge zeigt andere Familien als die volle Liste — ohne Startdaten');
         return null;
       }
-      return shown.map(leanCompRow);
+      return shown;
     },
     assets: (bundle, rows) => {
       const champions = new Set<string>();

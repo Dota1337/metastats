@@ -357,11 +357,14 @@ export function currentSetFamilies(families: CompFamily[], assets: TftAssetsBund
 // Sortier-Reihenfolge rendern; sonst waeren es „die 40 besten" statt „die 40
 // meistgespielten". Die Suche hebt den Schnitt auf, damit eine existierende
 // Comp jenseits von Rang 40 auffindbar bleibt.
+// Gleichstand nach familyKey: sonst entschiede bei gleichen Spielen auf Platz
+// 40/41 die Sortierung, wer drin ist — und Startdaten (gerechnet mit avg)
+// zeigten andere Familien als die Uebersicht in einer anderen Sortierung.
 export function topFamilyKeys(families: CompFamily[]): Set<string> | null {
   if (families.length <= TOP_FAMILY_LIMIT) return null;
   return new Set(
     [...families]
-      .sort((a, b) => (b.totalGames ?? 0) - (a.totalGames ?? 0))
+      .sort((a, b) => (b.totalGames ?? 0) - (a.totalGames ?? 0) || a.familyKey.localeCompare(b.familyKey))
       .slice(0, TOP_FAMILY_LIMIT)
       .map(f => f.familyKey),
   );
@@ -436,17 +439,23 @@ export function visibleFamilies(
   });
 }
 
-// Die API-Zeilen, aus denen die Standardansicht der Liste entsteht: alle Zeilen
-// der gezeigten Familien (laufendes Set, 40 meistgespielte, ohne Suche). Die
-// Server-Seite schickt nur diese als Startdaten (app/lib/seo/initial-data.ts).
+// Die API-Zeilen, aus denen die Standardansicht der Liste und der Uebersicht
+// entsteht: alle Zeilen der gezeigten Familien (laufendes Set, 40
+// meistgespielte, ohne Suche). Die Server-Seite schickt nur diese als
+// Startdaten (app/lib/seo/initial-data.ts), in der Form von `transform`.
 // Gemessen 2026-10-14: 111 von 293 Zeilen; buildCompFamilies darauf ergibt fuer
 // avg/top4/win/pick dieselben 40 Familien mit denselben Zahlen wie auf allen
 // Zeilen. Die Auswahl der 40 (nach Spielen) haengt nicht an der Sortierung.
 // Das gilt nur, solange die Familienregeln familien-lokal rechnen. Deshalb
-// prueft die Funktion es bei jedem Aufruf nach (Standard-Sortierung) und gibt
-// null zurueck, wenn die Teildaten etwas anderes zeigen wuerden — dann gibt es
-// keine Startdaten und die Liste laedt wie frueher alles im Browser.
-export function shownFamilyRows<T extends CompApiRow>(rows: T[], assets: TftAssetsBundle | null): T[] | null {
+// prueft die Funktion es bei jedem Aufruf nach (Standard-Sortierung, auf den
+// Zeilen, wie sie ausgeliefert werden) und gibt null zurueck, wenn die
+// Teildaten etwas anderes zeigen wuerden — dann gibt es keine Startdaten und
+// die Seite laedt wie frueher alles im Browser.
+export function shownFamilyRows<T extends CompApiRow>(
+  rows: T[],
+  assets: TftAssetsBundle | null,
+  transform: (row: T) => T = row => row,
+): T[] | null {
   const view = (list: T[]) => standardListFamilies(list, assets);
   const shown = view(rows);
   const keys = new Set<string>();
@@ -455,18 +464,47 @@ export function shownFamilyRows<T extends CompApiRow>(rows: T[], assets: TftAsse
       for (const s of [v.slug, ...(v._mergedFrom ?? []), ...(v._mergedFromBuilds ?? [])]) keys.add(compTraitFamilyKey(s));
     }
   }
-  const subset = rows.filter(r => keys.has(compTraitFamilyKey(r.slug || r.clusterKey)));
+  const subset = rows.filter(r => keys.has(compTraitFamilyKey(r.slug || r.clusterKey))).map(transform);
   return familiesSignature(view(subset)) === familiesSignature(shown) ? subset : null;
 }
 
-// Alles, was eine Zeile der Liste zeigt (Hauptzeile, Varianten, Rollen).
+// Alles, was eine Zeile der Liste oder eine Kachel der Uebersicht zeigt
+// (Hauptzeile, Varianten, Rollen, Trend-Pfeil, welche Familien die Uebersicht
+// nach dem Entdoppeln behaelt).
 function familiesSignature(families: CompFamily[]): string {
-  return JSON.stringify(families.map(f => [
-    f.familyKey, f.carries, f.tanks, f.itemCarriers, f.totalGames, f.familyPickRate,
-    f.weightedAvgPlacement, f.weightedTop4Rate, f.weightedTop1Rate, f.emblems,
-    f.mainComp.slug, f.mainComp.games, f.mainComp.avgPlacement, f.mainComp.coreFlex,
-    f.variants.map(v => [v.slug, v.games, v.avgPlacement, v.top4Rate, v.top1Rate, v.pickRate, (v as CompApiRow).coreFlex]),
-  ]));
+  return JSON.stringify([
+    families.map(f => [
+      f.familyKey, f.carries, f.tanks, f.itemCarriers, f.totalGames, f.familyPickRate,
+      f.weightedAvgPlacement, f.weightedTop4Rate, f.weightedTop1Rate, f.emblems,
+      f.mainComp.slug, f.mainComp.games, f.mainComp.avgPlacement, f.mainComp.coreFlex,
+      f.variants.map(v => [v.slug, v.games, v.avgPlacement, v.top4Rate, v.top1Rate, v.pickRate, (v as CompApiRow).coreFlex]),
+      familyTrend(f),
+    ]),
+    dedupeByCarry(families).map(f => f.familyKey),
+  ]);
+}
+
+// Startdaten-Zeile: ohne Mitspiel-Anteil je Unit (cooccurrence), vom Trend nur
+// die zwei Werte des Pfeils der Uebersicht (familyTrend: Δ Ø-Platz + Spiele).
+// Die Liste zeigt beides in der Standardansicht nicht; Trend-Filter (eigener
+// Daten-Schluessel) und Trend-Sortierung laden die volle Liste
+// (useTftCompsData).
+export function leanCompRow<Row extends CompApiRow>(row: Row): Row {
+  const lean: CompApiRow = {
+    ...row,
+    typicalUnits: (row.typicalUnits || []).map(u => {
+      const unit: typeof u & { cooccurrence?: unknown } = { ...u };
+      delete unit.cooccurrence;
+      return unit;
+    }),
+  };
+  const vel = row.velocity;
+  if (vel && typeof vel.deltaAvgPlace === 'number') {
+    lean.velocity = { deltaAvgPlace: vel.deltaAvgPlace, gamesNow: vel.gamesNow ?? null };
+  } else {
+    delete lean.velocity;
+  }
+  return lean as Row;
 }
 
 // Uebersicht ohne Doppelungen (User 2026-09-28: „Nimm immer nur die Comp mit

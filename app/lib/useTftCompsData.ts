@@ -3,9 +3,9 @@
 // Uebersicht (/tft/comps/atlas) teilen sich das, damit beide dieselben Comps
 // mit denselben Filtern zeigen — 1:1 aus app/tft/comps/page.tsx (2026-09-27).
 //
-// Startdaten (SEO-Plan Schritt 4, nur die Liste): die Server-Seite schickt die
-// Zeilen der 40 gezeigten Familien mit (app/lib/seo/initial-data.ts,
-// compsStart) — Teildaten. Die volle Liste (bis 1,8 MB) laedt erst, wenn eine
+// Startdaten (SEO-Plan Schritt 4, Liste und seit 16.10.2026 Uebersicht): die
+// Server-Seite schickt die Zeilen der 40 gezeigten Familien mit
+// (app/lib/seo/initial-data.ts, compsStart) — Teildaten. Die volle Liste (bis 1,8 MB) laedt erst, wenn eine
 // Ansicht sie braucht: Suche, Erweitert, Trend-Sortierung (`wantFull` bzw.
 // `fullForView`). Sonst gelten die Regeln von useTftStatsList:
 //   - Erstes Rendern = Server-HTML (Filter, Zeilen, Assets, Tier-Grenzen als
@@ -17,8 +17,8 @@
 //   - Adresse per history.replaceState (kein Neurechnen der Server-Seite).
 //   - Jeder Versuch bricht nach FETCH_TIMEOUT_MS ab und zaehlt dann als
 //     wiederholbarer Fehler — sonst bliebe die Ladeanzeige ewig stehen.
-// Die Uebersicht laeuft ohne Startdaten: Filter wie bisher aus Adresse bzw.
-// Speicher, Abruf nach dem Mount.
+// Ohne initialFilters (heute kein Aufrufer mehr): Filter wie frueher aus
+// Adresse bzw. Speicher, Abruf nach dem Mount.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, usePathname } from 'next/navigation';
 import {

@@ -1230,6 +1230,13 @@ async function checkEndpoint(c, r) {
  * 307/308 auf `<Vorsatz>/tft/comps/<lesbarer-name>` umleiten, und das Ziel muss
  * 200 antworten. Aus Live-Daten statt einer festen Kennung, die mit dem
  * Set-Wechsel veraltet.
+ *
+ * `expectStartLinks` (Pfad → Mindestzahl, Startdaten der Comp-Seiten): das
+ * erste HTML ohne Cookie enthaelt mindestens so viele verschiedene
+ * Comp-Detail-Links. Faellt der Lader still aus (Zwischenstand fehlt,
+ * Zeitlimit, Pruefung der Teilmenge schlaegt an), laedt die Seite im Browser
+ * weiter und sieht fuer Besucher normal aus — nur Google sieht eine leere
+ * Liste. Das hier ist das einzige Signal dafuer.
  */
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
@@ -1266,7 +1273,10 @@ async function checkHttpStatus(c, r) {
     if (empty.length) return r('broken', `Sitemap ohne Eintraege fuer ${empty.join(', ')}`);
   }
   const langLinks = Object.entries(c.expectLangLinks || {});
-  if (probes.length === 0 && langLinks.length === 0) return r('error', 'keine Proben (expect404, expectRedirect und sitemapPrefixes leer)');
+  const startLinks = Object.entries(c.expectStartLinks || {});
+  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0) {
+    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks und expectStartLinks leer)');
+  }
 
   const wrong = [];
   const roots = new Set(c.pageRoots || []);
@@ -1283,6 +1293,26 @@ async function checkHttpStatus(c, r) {
       return (first === '' || roots.has(first)) && !own(h);
     });
     if (bad.length) wrong.push(`${path}: ${bad.length} Links ohne /${lang} (z.B. ${bad.slice(0, 3).join(', ')})`);
+  }
+  // Startdaten: ohne Cookie und ohne Filter in der Adresse steht die Comp-Liste
+  // schon im ersten HTML. Gezaehlt werden verschiedene Comp-Detail-Links.
+  // Bis zu 3 Abrufe, der beste zaehlt: das Zeitlimit von 1,5 s
+  // (initial-data.ts) laesst einen kalten Abruf auch mal ohne Startdaten.
+  for (const [path, min] of startLinks) {
+    let best = 0;
+    let lastCode = 200;
+    for (let i = 0; i < 3 && best < min; i++) {
+      if (i > 0) await new Promise(res => setTimeout(res, 2000));
+      const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });
+      lastCode = res.status;
+      if (!res.ok) continue;
+      const html = await res.text();
+      const slugs = new Set([...html.matchAll(/\shref="(?:\/[a-z]{2})?\/tft\/comps\/([^/?#"]+)/g)]
+        .map(m => m[1])
+        .filter(s => !['atlas', 'community', 'compare'].includes(s)));
+      best = Math.max(best, slugs.size);
+    }
+    if (best < min) wrong.push(`${path}: ${best} Comp-Links im ersten HTML (soll ≥${min}${lastCode !== 200 ? `, zuletzt HTTP ${lastCode}` : ''})`);
   }
   for (const p of probes) {
     const got = await status(p.path);
@@ -1304,9 +1334,10 @@ async function checkHttpStatus(c, r) {
     }
   }
   const count = want => probes.filter(p => p.want === want).length;
+  const total = probes.length + langLinks.length + startLinks.length;
   return wrong.length
-    ? r('broken', `${wrong.length}/${probes.length + langLinks.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${probes.length + langLinks.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links)`);
+    ? r('broken', `${wrong.length}/${total} falsch: ${wrong.slice(0, 4).join('; ')}`)
+    : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length}× Startdaten)`);
 }
 
 /**

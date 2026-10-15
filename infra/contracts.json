@@ -424,6 +424,16 @@
     },
 
     {
+      "id": "seo/start-data",
+      "owner": "app/lib/seo/initial-data.ts",
+      "type": "http-status",
+      "baseUrlEnv": "SITE_STATUS_BASE_URL",
+      "baseUrl": "https://www.metastats.gg",
+      "expectStartLinks": { "/tft/comps/atlas": 15, "/tft/comps": 30 },
+      "note": "Startdaten der Comp-Seiten (Uebersicht = TFT-Startseite, Liste): ohne Cookie stehen Comp-Namen und Links im ersten HTML. Faellt der Lader still aus (kein vorgerechneter Stand, 1,5-s-Zeitlimit, Teilmengen-Pruefung in shownFamilyRows schlaegt an, weitergetragener Stand mit Endtag E-1 bei vollen Tagen), laedt die Seite im Browser nach und sieht fuer Besucher normal aus — nur Google sieht eine leere Seite. Schwellen: Uebersicht zeigt ~24 entdoppelte Familien, Liste 40 Familien (mehr Links durch Varianten); 15/30 lassen Platz fuer kleine Tage. Bis zu 3 Abrufe, der beste zaehlt."
+    },
+
+    {
       "id": "lol-marketvalue/history",
       "owner": "metastats-lol-marketvalue.service",
       "backend": "supabase",

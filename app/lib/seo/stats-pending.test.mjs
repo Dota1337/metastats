@@ -123,11 +123,14 @@ test('Filter in der Adresse oder fremde Seite → kein Merkmal', () => {
   assert.equal(runScript({ stored, search: '?days=3' }).attrs.size, 0);
   assert.equal(runScript({ stored, path: '/tft/units/TFT18_Lux' }).attrs.size, 0);
   assert.equal(runScript({ stored, path: '/tft' }).attrs.size, 0);
-  for (const path of ['/tft/units', '/tft/items/', '/tft/traits', '/tft/comps', '/en/tft/comps', '/ko/tft/units', '/zh/tft/items/']) {
+  for (const path of ['/tft/units', '/tft/items/', '/tft/traits', '/tft/comps', '/en/tft/comps', '/ko/tft/units', '/zh/tft/items/',
+    '/tft/comps/atlas', '/tft/comps/atlas/', '/en/tft/comps/atlas']) {
     assert.equal(runScript({ stored, path }).attrs.get(PENDING_ATTR), '1', path);
   }
-  // Kein Sprach-Vorsatz: /de gibt es nicht, /enx ist keine Sprache.
-  for (const path of ['/de/tft/comps', '/enx/tft/comps', '/en/tft/units/TFT18_Lux', '/en/tft']) {
+  // Kein Sprach-Vorsatz: /de gibt es nicht, /enx ist keine Sprache. Comp-
+  // Detailseiten und Geschwister der Uebersicht haben keine Startdaten.
+  for (const path of ['/de/tft/comps', '/enx/tft/comps', '/en/tft/units/TFT18_Lux', '/en/tft',
+    '/tft/comps/atlasx', '/tft/comps/community', '/tft/comps/lunar-aphelios', '/de/tft/comps/atlas']) {
     assert.equal(runScript({ stored, path }).attrs.size, 0, path);
   }
 });

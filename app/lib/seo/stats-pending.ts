@@ -30,9 +30,9 @@ export const USER_BUCKET_ATTR = 'data-tft-ub';
 // statt einer ewigen Ladeanzeige.
 const RELEASE_MS = 8000;
 
-// Seiten mit Server-Startdaten (Comp-Liste seit Schritt 4), auch unter den
-// Sprach-Adressen (/en/tft/units).
-const PATHS = new RegExp(`^(?:/(?:${PREFIX_LANGS.join('|')}))?/tft/(?:units|items|traits|comps)/?$`);
+// Seiten mit Server-Startdaten (Comp-Liste seit Schritt 4, Comp-Uebersicht
+// seit 16.10.2026), auch unter den Sprach-Adressen (/en/tft/units).
+const PATHS = new RegExp(`^(?:/(?:${PREFIX_LANGS.join('|')}))?/tft/(?:units|items|traits|comps(?:/atlas)?)/?$`);
 
 export const STATS_PENDING_SCRIPT = `(function(){try{
 var d=document.documentElement;

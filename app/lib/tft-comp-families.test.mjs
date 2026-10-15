@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  familyTrend, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies,
+  familyTrend, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
 } from './tft-comp-families.ts';
 
 const fam = (key, games, extra = {}) => ({
@@ -31,6 +31,37 @@ test('topFamilyKeys waehlt nach Spielen, nicht nach Reihenfolge', () => {
   assert.equal(keys.size, TOP_FAMILY_LIMIT);
   assert.ok(keys.has(`f${TOP_FAMILY_LIMIT + 4}`) && !keys.has('f0'));
   assert.equal(topFamilyKeys(fams.slice(0, TOP_FAMILY_LIMIT)), null);
+});
+
+test('topFamilyKeys: Gleichstand auf Platz 40/41 haengt nicht an der Eingangsreihenfolge', () => {
+  // 39 klar vorne, dann 3 Familien mit gleichen Spielen um 1 Platz.
+  const fams = [
+    ...Array.from({ length: TOP_FAMILY_LIMIT - 1 }, (_, i) => fam(`top${String(i).padStart(2, '0')}`, 1000 + i)),
+    fam('tie_c', 10), fam('tie_a', 10), fam('tie_b', 10),
+  ];
+  const a = [...topFamilyKeys(fams)].sort();
+  const b = [...topFamilyKeys([...fams].reverse())].sort();
+  assert.deepEqual(a, b);
+  assert.ok(a.includes('tie_a') && !a.includes('tie_b') && !a.includes('tie_c'));
+});
+
+test('leanCompRow: behaelt vom Trend nur Δ und Spiele, laesst Mitspiel-Anteil weg', () => {
+  const row = {
+    slug: 'DA_Trait@6_DA_Carry', clusterKey: 'DA_Trait@6_DA_Carry', games: 100,
+    typicalUnits: [{ characterId: 'DA_Carry', count: 90, cooccurrence: { DA_X: 0.5 } }],
+    velocity: { deltaAvgPlace: -0.12, gamesNow: 80, gamesPrev: 70, avgPlaceNow: 3.9, isNew: false },
+  };
+  const lean = leanCompRow(row);
+  assert.deepEqual(lean.velocity, { deltaAvgPlace: -0.12, gamesNow: 80 });
+  assert.equal('cooccurrence' in lean.typicalUnits[0], false);
+  assert.equal(row.typicalUnits[0].cooccurrence.DA_X, 0.5, 'Eingabe bleibt unveraendert');
+  assert.equal(row.velocity.gamesPrev, 70, 'Eingabe bleibt unveraendert');
+  // Ohne belastbares Δ: kein Trend-Feld — familyTrend zeigt dann keinen Pfeil.
+  assert.equal('velocity' in leanCompRow({ ...row, velocity: { deltaAvgPlace: null, gamesNow: 5 } }), false);
+  assert.equal('velocity' in leanCompRow({ ...row, velocity: null }), false);
+  // Gleicher Pfeil wie auf der vollen Zeile.
+  const f = (r) => familyTrend(fam('a', 0, { variants: [r] }));
+  assert.equal(f(lean), f(row));
 });
 
 test('visibleFamilies: ohne Suche Top-Schnitt in Eingangsreihenfolge, Suche hebt ihn auf', () => {

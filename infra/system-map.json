@@ -1287,6 +1287,9 @@
     "middleware.ts": [
       "seo/detail-404"
     ],
+    "app/lib/seo/initial-data.ts": [
+      "seo/start-data"
+    ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history",
       "lol-marketvalue/last-pass"

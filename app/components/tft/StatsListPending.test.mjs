@@ -14,7 +14,7 @@ const LISTS = [
   '../../tft/units/UnitsClient.tsx',
   '../../tft/items/ItemsClient.tsx',
   '../../tft/traits/TraitsClient.tsx',
-  '../../tft/comps/atlas/page.tsx',
+  '../../tft/comps/atlas/AtlasClient.tsx',
 ];
 
 test('alle fuenf Listen nutzen StatsListPending, keine Textersetzung mehr', () => {
@@ -25,11 +25,13 @@ test('alle fuenf Listen nutzen StatsListPending, keine Textersetzung mehr', () =
   }
 });
 
-test('Listen mit Server-Startdaten behalten das E3-Merkmal, Atlas nicht', () => {
+// Seit 16.10.2026 hat auch die Uebersicht Server-Startdaten: alle fuenf
+// behalten das Merkmal und markieren ihre Zeilen fuer das <style>.
+test('alle Listen mit Server-Startdaten behalten das E3-Merkmal und markieren ihre Zeilen', () => {
   for (const p of LISTS) {
     const src = read(p);
-    if (p.includes('atlas')) assert.match(src, /<StatsListPending[^>]*e3=\{false\}/, p);
-    else assert.doesNotMatch(src, /<StatsListPending[^>]*e3=\{false\}/, p);
+    assert.doesNotMatch(src, /<StatsListPending[^>]*e3=\{false\}/, p);
+    assert.match(src, /data-e3-rows/, p);
   }
 });
 

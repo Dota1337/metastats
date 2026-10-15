@@ -199,6 +199,16 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
     // nicht gemerkt (Schluessel null): „Erneut versuchen" und der naechste
     // Wechsel auf diesen Stand fragen neu.
     if (shownKey.current === dataKey) return;
+    // Wechsel ueber die Adresse (Varianten-Knopf, Zurueck/Vor): schon
+    // geladene Staende ohne neue Abfrage zeigen.
+    const known = loaded.current.get(dataKey);
+    if (known) {
+      shownKey.current = dataKey;
+      setDataState(known.hasData ? 'ok' : 'empty');
+      setComp(known.comp);
+      setCompFilters(known.filters);
+      return;
+    }
     // cancelled-Guard vor JEDEM Setter: der Detail-RPC laeuft je nach Bucket
     // zwischen 0,1 s (Snapshot) und ~19 s (live). Ohne Guard ueberschreibt die
     // spaete Antwort des alten Buckets den bereits geladenen neuen.
@@ -698,7 +708,11 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
               assets={assets}
               familyMergeActive={variantMode === 'family'}
               familySize={comp?.aliasedFromFamily?.mergedFrom?.length ?? 1}
-              families={variantMode === 'family' ? comp?.mergedFamilies ?? null : null}
+              // switchFamilies: auch die genaue Ansicht nennt alle
+              // zusammengelegten Familien, sonst schrumpft die Knopfreihe
+              // nach dem Klick (mergedFamilies ist dort nur die eigene).
+              families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
+              activeKey={variantMode === 'exact' ? slug : null}
             />
 
             {/* „In der Runde" (Level-Boards) steht ueber die volle Breite, nur

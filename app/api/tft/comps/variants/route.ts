@@ -3,6 +3,7 @@ import { resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias, cacheHeaders } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
+import { addUnitCounts, compBuildHash } from '../../../../lib/tft-comp-build-group';
 import { CURRENT_SET } from '../../../../lib/current-set';
 
 // Variants-Switcher API: returns all sub-cluster variants of a comp family.
@@ -14,9 +15,12 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 //   Bookmarks/Cached-URLs).
 //
 // PostgREST-Query-Strategie: `__` ist NICHT als Prefix in den DB-cluster_keys
-// vorhanden (DB-Format ist `<trait>@<level>_<carry>...`). Heißt: für das
-// `__`-Format machen wir broad `like.<trait>@*` und filtern carry-Match auf
-// JS-Seite. Etwas mehr Rows aus DB, aber Kardinalität pro trait ist niedrig.
+// vorhanden (DB-Format ist `<trait>@<level>_<carry>...`). Heißt: wir fragen
+// `like.<trait>@*_<carry>*` (kann zu viel liefern, z. B. Zweit-Carry-Suffix)
+// und filtern den Carry exakt auf JS-Seite. Gelesen wird seitenweise bis zum
+// Ende — ein fester Deckel (bis 15.10.2026: limit 500 ohne Sortierung) schnitt
+// grosse Traits willkuerlich ab (Inferno 606, Executioner 683 Tageszeilen in
+// Master+/3 Tage → 33 von 67 Knoepfen mit zu wenig Spielen).
 //
 // Threshold (data-skeptic 2026-06-21):
 //   - min 30g absolute pro Sub-Cluster (sonst Singleton-Noise)
@@ -25,6 +29,13 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 //   - active-variant always included even when below threshold
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+// Supabase liefert hoechstens 1000 Zeilen je Abruf (max_rows, gemessen
+// 15.10.2026: limit 5000 → 1000, Status 200 ohne Hinweis). Die Seitenschleife
+// liest deshalb bis zur gezaehlten Gesamtzahl, nicht bis zur ersten kurzen
+// Seite. 3 Seiten als Notbremse (~8 KB je Zeile wegen typical_units); die
+// groesste Familie lag am 15.10. bei 977 Zeilen (alle Raenge, 7 Tage).
+const VARIANT_PAGE = 1000;
+const VARIANT_MAX_PAGES = 3;
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 interface VariantRow {
@@ -86,12 +97,11 @@ export async function GET(request: NextRequest) {
     const filters = await resolveFilters(searchParams);
     const setNumber = filters.setNumber ?? CURRENT_SET;
 
-    // PostgREST broad prefix-match auf trait — Carry-Filter passiert JS-seitig
-    // weil `<trait>__<carry>`-Format kein DB-Prefix ist. Pro trait sind das
-    // typisch 10-50 cluster_keys, performant.
+    // Trait und Carry im Muster (gemessen 15.10.: 90-219 statt 583-683
+    // Zeilen); der exakte Carry-Abgleich passiert unten in JS.
     const params = new URLSearchParams();
     params.set('select', 'cluster_key,games,sum_placement,top4,top1,typical_units');
-    params.set('cluster_key', `like.${familyTrait}@*`);
+    params.set('cluster_key', `like.${familyTrait}@*_${familyCarry}*`);
     params.set('region', `in.(${filters.regions.join(',')})`);
     params.set('bucket', `in.(${filters.buckets.join(',')})`);
     params.set('set_number', `eq.${setNumber}`);
@@ -102,23 +112,45 @@ export async function GET(request: NextRequest) {
     const cutoff = new Date();
     cutoff.setUTCDate(cutoff.getUTCDate() - filters.days);
     params.set('day', `gte.${cutoff.toISOString().slice(0, 10)}`);
-    params.set('limit', '500'); // safety cap; per-family cluster count is small
+    // Eindeutige Reihenfolge (= Unique-Schluessel der Tabelle, 0001:104),
+    // sonst ueberlappen oder fehlen Zeilen an den Seitengrenzen.
+    params.set('order', 'cluster_key,day,region,bucket,patch');
 
-    const url = `${SUPA_URL}/rest/v1/tft_daily_comp_stats?${params.toString()}`;
-    const res = await fetch(url, {
-      headers: {
-        apikey: SUPA_KEY,
-        Authorization: `Bearer ${SUPA_KEY}`,
-        Accept: 'application/json',
-      },
-    });
+    const rows: VariantRow[] = [];
+    let total: number | null = null;
+    for (let page = 0; total === null || rows.length < total; page++) {
+      if (page >= VARIANT_MAX_PAGES) {
+        console.warn(`[tft/comps/variants] ${familyTrait}__${familyCarry}: ${total ?? '?'} Zeilen, nur ${rows.length} gelesen — Knopf-Zahlen zu niedrig`);
+        break;
+      }
+      params.set('limit', String(VARIANT_PAGE));
+      params.set('offset', String(rows.length));
+      const url = `${SUPA_URL}/rest/v1/tft_daily_comp_stats?${params.toString()}`;
+      const res = await fetch(url, {
+        headers: {
+          apikey: SUPA_KEY,
+          Authorization: `Bearer ${SUPA_KEY}`,
+          Accept: 'application/json',
+          // Gesamtzahl in Content-Range (`0-136/137`), gemessen ohne Mehrkosten.
+          ...(page === 0 ? { Prefer: 'count=exact' } : {}),
+        },
+      });
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Variants fetch failed: HTTP ${res.status} ${body.slice(0, 200)}`);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Variants fetch failed: HTTP ${res.status} ${body.slice(0, 200)}`);
+      }
+
+      const chunk = (await res.json()) as VariantRow[];
+      if (page === 0) {
+        const m = /\/(\d+)$/.exec(res.headers.get('content-range') || '');
+        total = m ? Number(m[1]) : null;
+      }
+      rows.push(...chunk);
+      if (chunk.length === 0) break;
+      // Ohne Gesamtzahl bleibt nur die kurze Seite als Ende.
+      if (total === null && chunk.length < VARIANT_PAGE) break;
     }
-
-    const rows = (await res.json()) as VariantRow[];
 
     // Per cluster_key: Top-Counts + Top-Character-IDs für Build-Hash.
     // Build-Identity-Konsolidierung (User-Klarstellung 2026-06-21): zwei
@@ -144,30 +176,14 @@ export async function GET(request: NextRequest) {
       prev.top1 += Number(r.top1 || 0);
       // typical_units ist pro Daily-Row ein FLACHES Array<{characterId,count,…}>.
       // Die Summierung ueber die Tage passiert durch die Schleife ueber `rows`.
-      const tu = r.typical_units;
-      if (Array.isArray(tu)) {
-        for (const u of tu) {
-          const cid = u?.characterId;
-          if (typeof cid !== 'string' || !cid) continue;
-          const c = Number(u?.count || 0);
-          prev.unitCounts.set(cid, (prev.unitCounts.get(cid) || 0) + c);
-        }
-      }
+      addUnitCounts(prev.unitCounts, r.typical_units);
       byKey.set(r.cluster_key, prev);
     }
 
-    // Build-Hash pro cluster_key = sortierte unique characterIds gegen einen
-    // 15%-Threshold (Cooccurrence-Filter analog Aggregator). Filter verhindert
-    // dass seltene Tech-Picks den Build-Hash verändern.
-    const buildHashOf = (agg: ClusterAgg): string => {
-      if (agg.games <= 0) return '~empty~';
-      const minCo = Math.max(3, Math.floor(agg.games * 0.15));
-      const ids = [...agg.unitCounts.entries()]
-        .filter(([_, c]) => c >= minCo)
-        .map(([cid]) => cid)
-        .sort();
-      return ids.length > 0 ? ids.join('|') : `~empty~`;
-    };
+    // Build-Hash pro cluster_key: dieselbe Regel wie die genaue Ansicht der
+    // Detail-API (app/lib/tft-comp-build-group.ts), sonst zeigt der Knopf
+    // andere Zahlen als die Seite nach dem Klick.
+    const buildHashOf = (agg: ClusterAgg): string => compBuildHash(agg.unitCounts, agg.games);
 
     // Build-Identity-Groups bilden: Sub-Cluster mit gleichem buildHash → eine
     // Variante, weighted Stats. Anker = games-stärkster Sub-Cluster (für slug

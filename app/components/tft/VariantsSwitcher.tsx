@@ -39,6 +39,15 @@ interface VariantsResponse {
 
 function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 
+// Pfadvergleich unabhaengig von der Kodierung (%40 gegen @).
+function samePath(a: string, b: string): boolean {
+  try {
+    return decodeURIComponent(a) === decodeURIComponent(b);
+  } catch {
+    return a === b;
+  }
+}
+
 function variantLabel(
   v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null },
   t: (key: any) => string,
@@ -75,6 +84,7 @@ export default function VariantsSwitcher({
   familyMergeActive = false,
   familySize = 1,
   families = null,
+  activeKey = null,
 }: {
   clusterKey: string;
   region: string;
@@ -90,6 +100,9 @@ export default function VariantsSwitcher({
   // Alle zusammengelegten Familien (<trait>__<carry>) aus der Detail-API,
   // Anker zuerst. Fehlt es (alter Snapshot), gilt nur die eigene Familie.
   families?: string[] | null;
+  // Kennung, die die genaue Ansicht gerade anfragt (?variant=<Kennung>). Sie
+  // ist sofort beim Klick markiert, nicht erst, wenn die Antwort da ist.
+  activeKey?: string | null;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -101,7 +114,9 @@ export default function VariantsSwitcher({
   // Identität (über Levels und Augments hinweg).
   const ownFamily = compTraitFamilyKey(clusterKey);
   const familyList = families && families.length > 0 ? families : [ownFamily];
-  const familiesKey = familyList.join(',');
+  // Sortiert: Familien- und genaue Ansicht nennen dieselben Familien evtl. in
+  // anderer Reihenfolge — das soll keinen neuen Abruf ausloesen.
+  const familiesKey = [...familyList].sort().join(',');
   const multiFamily = familyList.length > 1;
 
   useEffect(() => {
@@ -137,17 +152,22 @@ export default function VariantsSwitcher({
 
   if (!data) return null;
 
+  // Aktiv ist ein Knopf nur in der genauen Ansicht: die Familien-Ansicht zeigt
+  // alle Varianten zusammen, dort oeffnet jeder Knopf seine Variante.
+  const activeCluster = familyMergeActive
+    ? null
+    : activeKey && activeKey.includes('@') ? activeKey : clusterKey;
   // Ensure active variant is always in the list (data-skeptic requirement):
   // if the user navigated directly to a below-threshold variant, show it
   // alongside the threshold-passing ones with a sample-size flag.
-  const activeParts = parseClusterKey(clusterKey);
-  const hasActive = data.variants.some(v => v.clusterKey === clusterKey);
-  const variants: Variant[] = (!hasActive && activeParts)
+  const activeParts = activeCluster ? parseClusterKey(activeCluster) : null;
+  const hasActive = !activeCluster || data.variants.some(v => v.clusterKey === activeCluster);
+  const variants: Variant[] = (!hasActive && activeCluster && activeParts)
     ? [
         ...data.variants,
         {
-          clusterKey,
-          slug: clusterKey,
+          clusterKey: activeCluster,
+          slug: activeCluster,
           games: 0,
           avgPlacement: 0,
           top4Rate: 0,
@@ -173,10 +193,24 @@ export default function VariantsSwitcher({
       next.delete('variant');
     }
     const q = next.toString();
-    // history.replaceState statt router.replace: Next haelt useSearchParams
+    // history.pushState statt router.push: Next haelt useSearchParams
     // synchron, rechnet die Server-Huelle der Detailseite aber nicht neu (die
-    // genaue Ansicht hat ohnehin keine Startdaten).
-    window.history.replaceState(null, '', q ? `${pathname}?${q}` : pathname);
+    // genaue Ansicht hat ohnehin keine Startdaten). Eigener Verlaufseintrag
+    // wie bei den Varianten-Knoepfen, sonst fuehrt Zurueck scheinbar nirgends hin.
+    window.history.pushState(null, '', q ? `${pathname}?${q}` : pathname);
+  };
+  // Knopf → genaue Ansicht genau dieser Variante (?variant=<Kennung>, siehe
+  // compDetailTarget). Varianten einer Familie teilen sich die lesbare Adresse:
+  // dann nur die Abfrage tauschen (kein Server-Umweg, Position bleibt, Zurueck
+  // fuehrt zur vorigen Ansicht). Variante einer zusammengelegten Familie mit
+  // eigener Adresse → Seitenwechsel, ebenfalls ohne Sprung nach oben.
+  const openVariant = (v: Variant) => {
+    const next = new URLSearchParams(window.location.search);
+    next.set('variant', v.slug);
+    const target = withLang(compPath(v.slug));
+    const url = `${target}?${next.toString()}`;
+    if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
+    else router.push(url, { scroll: false });
   };
   if (variants.length <= 1 && !showFamilyBanner) return null;
 
@@ -213,13 +247,12 @@ export default function VariantsSwitcher({
       </div>
       <div className="flex flex-wrap gap-2">
         {variants.map(v => {
-          const isActive = v.clusterKey === clusterKey;
+          const isActive = v.clusterKey === activeCluster;
           const label = variantLabel(v, t, assets, multiFamily);
-          const url = withLang(`${compPath(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`);
           return (
             <button
               key={v.clusterKey}
-              onClick={() => { if (!isActive) router.push(url); }}
+              onClick={() => { if (!isActive) openVariant(v); }}
               className={`px-3 py-1.5 rounded border text-xs transition-colors ${
                 isActive
                   ? 'bg-accent-a15 border-accent text-white cursor-default'

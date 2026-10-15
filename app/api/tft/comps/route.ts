@@ -26,6 +26,7 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
+import { buildGroupMembers } from '../../../lib/tft-comp-build-group';
 import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
 import { opponentsOf, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
 import { compRepresentatives, fetchCompMatchups } from '../../../lib/tft-comp-matchups-server';
@@ -445,19 +446,24 @@ export async function GET(request: NextRequest) {
       // fuer die Unit-Multiplizitaet gebraucht, siehe applyAnchorMultiplicity.
       let familyAnchor: CompRow | null = null;
       let mergedFamilyKeys: string[] = [familyKeyForMerge(row.cluster_key)];
+      // Zwei-Carry-Familien wie in der Liste zusammenlegen; entschieden wird
+      // nur ueber Zeilen, die auch die Liste zeigt (Mindest-Spiele, keine
+      // Fragment-Traits).
+      const minForList = effectiveMinFor(Number(participants));
+      const roleSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
+      const selection = selectMergedFamilyMembers(
+        rows,
+        row.cluster_key,
+        listUnits,
+        r => Number(r.games) >= minForList && !isFragmentTraitClusterKey(r.cluster_key),
+        { set: roleSet, isComponent: loadComponentCheck(roleSet) },
+      );
+      // Familien fuer den Varianten-Umschalter — auch in der genauen Ansicht
+      // alle zusammengelegten, sonst schrumpft die Knopfreihe nach dem Klick.
+      // Konter und Seitentitel bleiben bei mergedFamilyKeys (genau: eigene).
+      const switchFamilies = selection.familyKeys;
       if (variantMode === 'family') {
-        // Zwei-Carry-Familien wie in der Liste zusammenlegen; entschieden wird
-        // nur ueber Zeilen, die auch die Liste zeigt (Mindest-Spiele, keine
-        // Fragment-Traits).
-        const minForList = effectiveMinFor(Number(participants));
-        const roleSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
-        const { members, familyKeys } = selectMergedFamilyMembers(
-          rows,
-          row.cluster_key,
-          listUnits,
-          r => Number(r.games) >= minForList && !isFragmentTraitClusterKey(r.cluster_key),
-          { set: roleSet, isComponent: loadComponentCheck(roleSet) },
-        );
+        const { members, familyKeys } = selection;
         mergedFamilyKeys = familyKeys;
         familySlugs = members.map(m => m.cluster_key);
         if (members.length > 1) {
@@ -471,6 +477,28 @@ export async function GET(request: NextRequest) {
           // rekonstruiert Aktivierungs-Level-Splits, die durch den C-Merge in
           // der Card-Aggregat-Avg verschwinden. data-skeptic F3 KRITISCH.
           levelOutcome = buildLevelOutcome(members);
+        }
+      } else {
+        // Genaue Ansicht = die Build-Gruppe der Kennung: Sub-Cluster derselben
+        // Familie mit denselben Units sind EINE Variante (User-Override C).
+        // Dieselbe Regel wie die Knopf-Zahlen (variants-Route), sonst springt
+        // die Spielzahl nach dem Klick. Zeilen unter minGames fehlen hier
+        // (RPC-Schwelle) — der Knopf zaehlt sie mit, Abstand klein.
+        const own = familyKeyForMerge(row.cluster_key);
+        const groupKeys = buildGroupMembers(
+          rows.filter(r => familyKeyForMerge(r.cluster_key) === own && !isFragmentTraitClusterKey(r.cluster_key)),
+          row.cluster_key,
+          r => r.cluster_key,
+          r => Number(r.games),
+          r => r.typical_units_merged || [],
+        );
+        if (groupKeys.length > 1) {
+          const members = rows
+            .filter(r => groupKeys.includes(r.cluster_key))
+            .sort((a, b) => Number(b.games) - Number(a.games));
+          familyAnchor = members[0];
+          mergedRow = mergeFamilyRows(members);
+          familySlugs = members.map(m => m.cluster_key);
         }
       }
       // Neue Bloecke (Migration 0078): Platzverteilung, Endlevel, Unit- und
@@ -526,8 +554,11 @@ export async function GET(request: NextRequest) {
         outcome,
         variantMode,
         // Alle Familien (<trait>__<carry>), die hier zusammengelegt sind —
-        // VariantsSwitcher und Seitentitel lesen daraus. Anker zuerst.
+        // Seitentitel und Konter lesen daraus. Anker zuerst.
         mergedFamilies: mergedFamilyKeys,
+        // Familien des Varianten-Umschalters, in beiden Ansichten alle
+        // zusammengelegten (genaue Ansicht: mergedFamilies = nur die eigene).
+        switchFamilies,
       };
 
       // `multiplicity` kommt vom Anker statt vom Family-Mittel — Begruendung in

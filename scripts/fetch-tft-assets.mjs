@@ -22,6 +22,7 @@ import { resolve } from 'node:path';
 import { lookup as dnsLookup } from 'node:dns';
 import { fileURLToPath } from 'node:url';
 import { loadCurrentSet } from './lib/current-set.mjs';
+import { applyAugmentIconOverrides, fetchMissingAugmentIcons } from './lib/tft-augment-icons.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
@@ -338,6 +339,10 @@ async function main() {
   // route returns a 200 placeholder PNG for everything. No public source
   // ships truly tier-specific artwork for every TFT augment — Riot itself
   // only renders one icon file per family. We use what Riot ships.
+  // Ausnahme seit 2026-10-15 (User, F3c): wo Riot nur den Platzhalter
+  // `missing-t<n>` liefert (Set 18: 45 Augments, alle Trait-Augments), kommt
+  // das Bild von tactics.tools — geprueft auf webp und ohne gleiche Bilder
+  // ueber Augment-Familien hinweg (applyAugmentIconOverrides weiter unten).
 
   const augments = {};
   const itemsByName = new Map(items ? [] : []); // built below from cd.items
@@ -488,6 +493,15 @@ async function main() {
   }
   const aliasCount = markAugmentAliases(augments, derivedSetPrefix(traits));
   console.log(`       augment-aliases: ${aliasCount} alte Kennungen als Kopie markiert (aliasOf)`);
+  // Eigene Bilder fuer Augments, die bei CDragon nur den Platzhalter haben
+  // (scripts/lib/tft-augment-icons.mjs). Geladen wird nur mit --augment-icons
+  // (Wochenlauf, der den Ordner mit eincheckt) und nur, was noch fehlt;
+  // uebernommen wird immer, was schon unter public/tft-extra/ liegt.
+  if (process.argv.includes('--augment-icons')) {
+    try { await fetchMissingAugmentIcons(augments, active.number); }
+    catch (e) { console.warn(`       WARN: augment-icons: ${e.message}`); }
+  }
+  console.log(`       augment-icons: ${applyAugmentIconOverrides(augments, active.number)} Platzhalter durch eigene Bilder ersetzt`);
   console.log(`       items: ${Object.keys(items).length}  active.items: ${activeItems.length}  champions: ${Object.keys(champions).length}  traits: ${Object.keys(traits).length}  augments: ${Object.keys(augments).length}  active.augments: ${activeAugments.length}  chibis: ${Object.keys(chibis).length}  tacticians: ${Object.keys(tacticians).length}`);
 
   const plannerCodes = buildPlannerCodes(teamplanner, active.number, champions);

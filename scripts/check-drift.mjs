@@ -232,10 +232,18 @@ function read(path) {
       }
     }
 
-    // c2) Jedes selbst ausgelieferte Bild (Wisps, eigene Icons der Loot-Tabellen)
-    //     muss unter public/ liegen — kein CDragon, also sonst still leer.
+    // c2) Jedes selbst ausgelieferte Bild (Wisps, eigene Icons der Loot-Tabellen,
+    //     `/`-Pfade im Asset-Bundle: Elderwood-Units, Augment-Bilder aus
+    //     scripts/lib/tft-augment-icons.mjs) muss unter public/ liegen — kein
+    //     CDragon, also sonst still leer.
     {
       const icons = new Set();
+      if (existsSync(`public/tft-assets-${currentSet}.json`)) {
+        JSON.stringify(JSON.parse(read(`public/tft-assets-${currentSet}.json`)), (k, v) => {
+          if ((k === 'icon' || k === 'tile') && typeof v === 'string' && v.startsWith('/')) icons.add(v);
+          return v;
+        });
+      }
       if (existsSync(`public/tft-wisps-${currentSet}.json`)) {
         for (const w of JSON.parse(read(`public/tft-wisps-${currentSet}.json`)).wisps) {
           for (const x of [w, ...w.variants]) if (x.icon) icons.add(x.icon);
@@ -250,7 +258,7 @@ function read(path) {
       const gone = [...icons].filter(p => !existsSync('public' + p));
       if (gone.length) {
         console.error(`✗ DRIFT: ${gone.length} eigene(s) Bild(er) fehlen unter public/: ${gone.join(', ')}`);
-        console.error('    → Wisps laedt node scripts/import-tft-tables.mjs nach; Icon-Overrides (ICON_OVERRIDES dort) von Hand ablegen.');
+        console.error('    → Wisps laedt node scripts/import-tft-tables.mjs nach; Augment-Bilder node scripts/fetch-tft-assets.mjs --augment-icons; Icon-Overrides (ICON_OVERRIDES dort) von Hand ablegen.');
         setDrift++;
       }
     }

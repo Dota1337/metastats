@@ -71,8 +71,12 @@ jobs:
       # Refresh CommunityDragon-sourced asset bundle (icons, names,
       # apiName→display mapping). Needed because Riot Data Dragon's TFT
       # data is set-13 frozen and uses item IDs that don't match Match-V1.
+      # --augment-icons: echte Bilder fuer Augments, die bei CDragon nur den
+      # Platzhalter haben, nach public/tft-extra/augments/<set>/ laden
+      # (scripts/lib/tft-augment-icons.mjs). Nur hier, weil nur dieser Lauf
+      # den Ordner mit eincheckt (Commit-Schritt unten).
       - name: Refresh TFT asset bundle
-        run: node scripts/fetch-tft-assets.mjs
+        run: node scripts/fetch-tft-assets.mjs --augment-icons
         continue-on-error: true
 
       # Neue Bilder des frischen Bundles sofort in die eigene Kopie legen
@@ -107,6 +111,9 @@ jobs:
           # yet) can never atomically abort the mandatory add above. Set-agnostic globs survive
           # set bumps. The mandatory add stays loud (no `|| true`) by design.
           git add public/tft-augment-tiers-*.json public/tft-augment-stages-*.json public/tft-patch-notes-*.json 2>/dev/null || true
+          # Eigene Augment-Bilder (--augment-icons oben). Eigener Aufruf: der
+          # Ordner eines frischen Sets fehlt, bis das erste Bild geladen ist.
+          git add public/tft-extra/augments 2>/dev/null || true
           if git diff --staged --quiet; then
             echo "No data changes to commit"
           else

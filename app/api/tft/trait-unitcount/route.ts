@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { resolveFilters, callRpc, getAvailablePatches } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 
 // /api/tft/trait-unitcount?name=TFT17_Stargazer&region=all&bucket=master_plus
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const rows = await callRpc<UcRow[]>('get_tft_trait_unitcount_stats', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
-      p_days: filters.days,
+      ...rpcWindowArgs(filters),
       // patchFilter zuerst: ohne Vorpatch steht dort der Platzhalter
       // (leere Antwort), filters.patch waere null = alle Patches.
       p_patch: filters.patchFilter ?? filters.patch,

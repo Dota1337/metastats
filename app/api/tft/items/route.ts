@@ -8,6 +8,7 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
   resolveTrendAnchorOffset,
+  rpcWindowArgs,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
     try {
-      const filters = await resolveFilters(searchParams);
+      const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
       filterPatch = filters.patch;
       const hit = await lookupSnapshot('items', {
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
       });
       const snapItems = (hit?.payload as { items?: any[] } | undefined)?.items;
       if (Array.isArray(snapItems) && snapItems.length > 0) {
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
         const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
           p_regions: filters.regions,
           p_buckets: filters.buckets,
-          p_days: filters.days,
+          ...rpcWindowArgs(filters),
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
         });
@@ -99,7 +101,7 @@ export async function GET(request: NextRequest) {
     if (redirect) return redirect;
     const cacheControl = cacheControlForPatches(patches);
 
-    const filters = await resolveFilters(searchParams);
+    const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
     fallbackFilters = filters;
     // Velocity-Layer (W1-A): ?velocity=N → dedizierte RPC mit FILTER-
     // Aggregation für now/prev in EINEM Scan (Migration 0036). p_days bleibt
@@ -120,6 +122,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
@@ -142,7 +145,7 @@ export async function GET(request: NextRequest) {
       callRpc<ItemListRow[]>('get_tft_item_stats_list', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       }),
@@ -252,6 +255,9 @@ export async function GET(request: NextRequest) {
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
+        startDay: filters.startDay,
+        endDay: filters.endDay,
+        dataEnd: filters.dataEnd,
       },
       patches,
       items,

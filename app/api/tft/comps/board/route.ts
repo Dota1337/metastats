@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
   // Carries + Item-Traeger der Familie fuer die MetaTFT-Zuordnung (wie die App).
   const carries = (sp.get('carries') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 6);
   const withEarly = sp.get('early') === '1';
+  // Endtag der gezeigten Seite (volle Tage) — prueft die Comps-Route.
+  const end = /^\d{4}-\d{2}-\d{2}$/.test(sp.get('end') || '') ? sp.get('end')! : null;
 
   try {
     // ?patch=previous auf den konkreten Patch umleiten (wie jede Stats-Route),
@@ -70,7 +72,9 @@ export async function GET(request: NextRequest) {
     const origin = request.nextUrl.origin;
     const inner = new URL('/api/tft/comps', origin);
     // emblems=0: die Emblem-Abfrage der Detailseite braucht das Brett nicht.
-    inner.search = new URLSearchParams({ slug, patch, bucket, days, region, minGames: '30', variant: 'family', emblems: '0' }).toString();
+    inner.search = new URLSearchParams({
+      slug, patch, bucket, days, region, minGames: '30', variant: 'family', emblems: '0', ...(end ? { end } : {}),
+    }).toString();
     const res = await compsGET(new NextRequest(inner));
     if (!res.ok) return degraded('comp_unavailable', 503);
     const body = await res.json().catch(() => null) as {

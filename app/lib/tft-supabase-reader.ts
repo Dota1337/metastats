@@ -11,7 +11,9 @@ import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
 import {
   PATCH_MIN_GAMES, establishedPatches, listWindowDays, metaPulseCompleteDay, trendAnchorOffsetDays,
   META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, previousPatchOf, type CrawlMetaDayRow,
+  fullDayComplete, dataWindow, addDays,
 } from './snapshot-matrix';
+import { loadManifestWindow } from './snapshot-lookup';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -82,6 +84,32 @@ export interface ResolvedFilters {
   // Δ-windows must anchor at (current_date - anchorOffsetDays), otherwise a
   // 1-day Δ-window over a 4-day-stale pipeline lands in an empty range.
   anchorOffsetDays: number;
+  // Volle Tage (User 15.10.2026, Migration 0095): erster und letzter Tag des
+  // Fensters, das am letzten vollstaendigen Tag endet (dataWindow). null =
+  // altes Fenster (Notschalter FULL_DAY_WINDOW=0 oder keine Aussage moeglich).
+  // RPC-Aufrufer nehmen das Fenster ueber rpcWindowArgs(). `days` und
+  // `anchorOffsetDays` behalten die alten Werte fuer alles, was bewusst noch
+  // ohne Endtag rechnet (Meta-Pulse).
+  startDay: string | null;
+  endDay: string | null;
+  // Globaler Endtag E. Der Client haengt ihn als &end= an Folgeabfragen
+  // derselben Seite (Varianten, genaue Ansicht, Brett, Tageskurve).
+  dataEnd: string | null;
+}
+
+/**
+ * p_days (+ p_end_day) fuer die Fenster-RPCs. Ohne Endtag fehlt der Schluessel
+ * ganz — so funktionieren der Notschalter und ein Datenbank-Stand ohne
+ * Migration 0095 unveraendert.
+ */
+export function rpcWindowArgs(
+  f: Pick<ResolvedFilters, 'days' | 'startDay' | 'endDay'>,
+): { p_days: number; p_end_day?: string } {
+  if (f.startDay && f.endDay) {
+    const span = Math.round((Date.parse(f.endDay + 'T00:00:00Z') - Date.parse(f.startDay + 'T00:00:00Z')) / 86_400_000) + 1;
+    if (Number.isFinite(span) && span >= 1) return { p_days: span, p_end_day: f.endDay };
+  }
+  return { p_days: f.days };
 }
 
 // Erlaubte Einzelwerte. Frueher reichten beide Expander unbekannte Strings
@@ -285,7 +313,14 @@ async function fetchDefaultBucket(): Promise<string> {
   }
 }
 
-export async function resolveFilters(searchParams: URLSearchParams): Promise<ResolvedFilters> {
+export async function resolveFilters(
+  searchParams: URLSearchParams,
+  // publisher: Anfrage des Snapshot-Publishers (isSnapshotPublisher) — darf den
+  // Endtag per &end= frei setzen (resolveDataEnd).
+  opts: { publisher?: boolean } = {},
+): Promise<ResolvedFilters> {
+  // Endtag parallel zu Rang-Default und Patch-Liste.
+  const dataEndP = resolveDataEnd(searchParams.get('end'), !!opts.publisher).catch(() => null);
   const regionLabel = searchParams.get('region') || 'all';
   // C3 (2026-07-04): single-tier `diamond` has no snapshot coverage and was the
   // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus is its
@@ -339,17 +374,93 @@ export async function resolveFilters(searchParams: URLSearchParams): Promise<Res
   // weiter die User-gewählte Granularität, aber mit verschobener Range.
   // Die Rechnung steht in snapshot-matrix.ts, weil das Box-Skript
   // precompute-comp-windows.mjs dasselbe Fenster rechnen muss.
+  const patchRow = patches.find(p => p.patch === patch) ?? null;
   const { days, anchorOffsetDays } = listWindowDays({
     requestedDays, patchFilter, patchStartDay,
-    patchEndDay: patches.find(p => p.patch === patch)?.last_day ?? null,
+    patchEndDay: patchRow?.last_day ?? null,
     latestDay: patches[0]?.last_day, today: new Date(),
   });
+  // Volle Tage: ohne Patch-Filter zaehlt fuer die Patch-Tag-Ausnahme der
+  // angezeigte aktuelle Patch (patchRow = patches[0]).
+  const dataEnd = await dataEndP;
+  const win = dataEnd ? dataWindow({ dataEnd, requestedDays, patchFilter, patch: patchRow }) : null;
 
   return {
     regions, buckets, days, requestedDays,
     patch, patchFilter, patchStartDay,
     setNumber, bucketAuto, regionLabel, bucketLabel, anchorOffsetDays,
+    startDay: win?.startDay ?? null,
+    endDay: win?.endDay ?? null,
+    dataEnd,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Volle Tage (User 15.10.2026, Weg A2) — Endtag E einer Anfrage
+//
+// Besucher: E = manifest.dataThrough (vom Publisher gepinnt; Manifest hoechstens
+// 50 h alt). Live-Abfragen und Vorrat springen so einmal abends gemeinsam, wenn
+// das neue Manifest erscheint. Fehlt das Feld (Manifest von vor der
+// Umstellung): min(Bautag - 1, vollstaendiger Tag) — genau das Fenster der
+// alten Vorrat-Eintraege. Sonst der vollstaendige Tag aus crawl_meta (10 min
+// Wartezeit). Alles weg → null = altes Fenster.
+//
+// &end=<Tag> (M2): der Client haengt den Endtag der gezeigten Seite an
+// Folgeabfragen, damit sie nicht gegen einen inzwischen weitergesprungenen
+// Endtag rechnen. Angenommen in [E-2, E+1]. Der Publisher pinnt E selbst und
+// darf jeden Tag der letzten 30 setzen; ohne &end= rechnet er den
+// vollstaendigen Tag ohne Wartezeit (er startet erst nach dem Crawl-Lauf).
+//
+// Notschalter: FULL_DAY_WINDOW=0 → altes Fenster ueberall.
+const MANIFEST_DATA_END_MAX_AGE_MS = 50 * 60 * 60 * 1000;
+const ISO_DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+function validDay(s: string | null | undefined): string | null {
+  if (!s || !ISO_DAY_RE.test(s)) return null;
+  const t = Date.parse(s + 'T00:00:00Z');
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === s ? s : null;
+}
+
+export function fullDayWindowEnabled(): boolean {
+  return process.env.FULL_DAY_WINDOW !== '0';
+}
+
+export async function resolveDataEnd(endParam: string | null, publisher = false): Promise<string | null> {
+  if (!fullDayWindowEnabled()) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  const param = validDay(endParam);
+  if (publisher) {
+    if (param && param <= today && param >= addDays(today, -30)) return param;
+    return completeDayFromCrawlMeta(true);
+  }
+  const base = await visitorDataEnd();
+  if (param) {
+    const ok = base
+      ? param >= addDays(base, -2) && param <= addDays(base, 1)
+      : param >= addDays(today, -4) && param <= addDays(today, -1);
+    if (ok) return param;
+  }
+  return base;
+}
+
+async function visitorDataEnd(): Promise<string | null> {
+  const m = await loadManifestWindow().catch(() => null);
+  const built = m?.builtAt ? Date.parse(m.builtAt) : NaN;
+  const fresh = Number.isFinite(built) && Date.now() - built <= MANIFEST_DATA_END_MAX_AGE_MS;
+  const pinned = fresh ? validDay(m?.dataThrough) : null;
+  if (pinned) return pinned;
+  const complete = await completeDayFromCrawlMeta(false);
+  if (fresh) {
+    const builtEve = addDays(new Date(built).toISOString().slice(0, 10), -1);
+    return complete && complete < builtEve ? complete : builtEve;
+  }
+  return complete;
+}
+
+async function completeDayFromCrawlMeta(publisher: boolean): Promise<string | null> {
+  const rows = await crawlMetaRows(publisher);
+  if (!rows) return null;
+  return fullDayComplete(rows, REGION_GROUPS.all, Date.now(), publisher ? 0 : META_PULSE_COMPLETE_SETTLE_MS);
 }
 
 // Variant of resolvePatch that takes the patch-list as input (avoids a second
@@ -437,14 +548,56 @@ export async function getCrawlMetaDays(
 // degraded = Lesefehler → alter Anker; die Route cached dann nur kurz.
 const CRAWL_META_TTL_MS = 5 * 60 * 1000;
 const CRAWL_META_NEGATIVE_TTL_MS = 60 * 1000;
-let _crawlMetaCache: { ts: number; from: string; rows: Array<CrawlMetaDayRow & { set_number: number }> } | null = null;
+type CrawlMetaRows = Array<CrawlMetaDayRow & { set_number: number }>;
+let _crawlMetaCache: { ts: number; from: string; rows: CrawlMetaRows } | null = null;
 let _crawlMetaNegativeTs = 0;
+// Laufende Abfrage, geteilt wie bei getAvailablePatches (Endtag + Trend-Anker
+// fragen bei kalter Instanz gleichzeitig).
+let _crawlMetaInflight: Promise<CrawlMetaRows | null> | null = null;
+
+// Zeilen ab heute - 4 Tage. Publisher: immer frisch, laengeres Zeitlimit, kein
+// Negativ-Cache. null = Lesefehler.
+async function crawlMetaRows(publisher: boolean): Promise<CrawlMetaRows | null> {
+  const now = Date.now();
+  const todayNum = Math.floor(now / 86_400_000);
+  const from = new Date((todayNum - (META_PULSE_COMPLETE_LOOKBACK_DAYS + 2)) * 86_400_000).toISOString().slice(0, 10);
+  if (!publisher) {
+    if (_crawlMetaCache && _crawlMetaCache.from === from && now - _crawlMetaCache.ts < CRAWL_META_TTL_MS) {
+      return _crawlMetaCache.rows;
+    }
+    if (_crawlMetaNegativeTs && now - _crawlMetaNegativeTs < CRAWL_META_NEGATIVE_TTL_MS) return null;
+    if (_crawlMetaInflight) return _crawlMetaInflight;
+  }
+  const p = (async () => {
+    try {
+      const rows = await getCrawlMetaDays(REGION_GROUPS.all, from, publisher ? 5000 : 2000);
+      _crawlMetaCache = { ts: Date.now(), from, rows };
+      _crawlMetaNegativeTs = 0;
+      return rows;
+    } catch (e) {
+      console.error('[tft] crawl_meta (Endtag/Trend-Anker) fehlgeschlagen:', (e as Error).message);
+      if (!publisher) _crawlMetaNegativeTs = Date.now();
+      return null;
+    }
+  })();
+  if (!publisher) {
+    _crawlMetaInflight = p;
+    void p.finally(() => { if (_crawlMetaInflight === p) _crawlMetaInflight = null; });
+  }
+  return p;
+}
 
 export async function resolveTrendAnchorOffset(
   filters: ResolvedFilters,
   patches: PatchInfo[],
   opts: { publisher?: boolean } = {},
 ): Promise<{ offset: number; degraded: boolean }> {
+  // Volle Tage: das Jetzt-Fenster der Trend-Pfeile endet am Endtag der Liste.
+  if (filters.endDay) {
+    const todayNum = Math.floor(Date.now() / 86_400_000);
+    const endNum = Math.floor(Date.parse(filters.endDay + 'T00:00:00Z') / 86_400_000);
+    return { offset: Math.max(0, todayNum - endNum), degraded: false };
+  }
   const base = filters.anchorOffsetDays;
   const newest = patches[0];
   if (!newest || (filters.patchFilter != null && filters.patchFilter !== newest.patch)) {
@@ -452,24 +605,8 @@ export async function resolveTrendAnchorOffset(
   }
   const now = Date.now();
   const todayNum = Math.floor(now / 86_400_000);
-  const from = new Date((todayNum - (META_PULSE_COMPLETE_LOOKBACK_DAYS + 2)) * 86_400_000).toISOString().slice(0, 10);
-  let rows: Array<CrawlMetaDayRow & { set_number: number }> | null = null;
-  const fresh = _crawlMetaCache && _crawlMetaCache.from === from && now - _crawlMetaCache.ts < CRAWL_META_TTL_MS;
-  if (!opts.publisher && fresh) {
-    rows = _crawlMetaCache!.rows;
-  } else if (!opts.publisher && _crawlMetaNegativeTs && now - _crawlMetaNegativeTs < CRAWL_META_NEGATIVE_TTL_MS) {
-    return { offset: base, degraded: true };
-  } else {
-    try {
-      rows = await getCrawlMetaDays(REGION_GROUPS.all, from, opts.publisher ? 5000 : 2000);
-      _crawlMetaCache = { ts: now, from, rows };
-      _crawlMetaNegativeTs = 0;
-    } catch (e) {
-      console.error('[tft] crawl_meta fuer Trend-Anker fehlgeschlagen:', (e as Error).message);
-      if (!opts.publisher) _crawlMetaNegativeTs = now;
-      return { offset: base, degraded: true };
-    }
-  }
+  const rows = await crawlMetaRows(!!opts.publisher);
+  if (!rows) return { offset: base, degraded: true };
   const setRows = filters.setNumber == null ? rows : rows.filter(r => Number(r.set_number) === Number(filters.setNumber));
   const completeDay = metaPulseCompleteDay(setRows, filters.regions, now, opts.publisher ? 0 : META_PULSE_COMPLETE_SETTLE_MS);
   return {

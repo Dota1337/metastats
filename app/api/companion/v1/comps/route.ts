@@ -7,7 +7,7 @@ import { GET as compsGET } from '../../../tft/comps/route';
 import { buildCompFamilies, currentSetFamilies, topFamilyKeys } from '../../../../lib/tft-comp-families';
 import { resolveCutoffs } from '../../../../lib/tft-tier-letter';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
-import { callRpc, resolveFilters } from '../../../../lib/tft-supabase-reader';
+import { callRpc, resolveFilters, rpcWindowArgs } from '../../../../lib/tft-supabase-reader';
 import { resolveGuideId, guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
@@ -49,7 +49,7 @@ async function companionVs(
   }
   try {
     const pairs = await callRpc<CompPairInput[]>('get_tft_comp_pairs', {
-      p_regions: f.regions, p_days: f.days, p_patch: f.patchFilter, p_set: f.setNumber, p_min_games: 10,
+      p_regions: f.regions, ...rpcWindowArgs(f), p_patch: f.patchFilter, p_set: f.setNumber, p_min_games: 10,
     }, 20000);
     return buildCompanionVs(comps, pairs);
   } catch (e) {

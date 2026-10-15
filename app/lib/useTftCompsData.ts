@@ -56,6 +56,14 @@ interface Loaded {
   patches: PatchInfo[];
   minGames: number | null;
   partial: boolean;
+  dataEnd: string | null;
+}
+
+// Endtag der Antwort (volle Tage, filters.dataEnd). Folgeabfragen der Liste
+// (Aufstellungsbrett) rechnen damit ueber dieselben Tage.
+function dataEndOf(filters: unknown): string | null {
+  const v = (filters as { dataEnd?: unknown } | null | undefined)?.dataEnd;
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
 export function useTftCompsData({ initialFilters, initial = null, wantFull = false }: {
@@ -92,6 +100,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   const [hasData, setHasData] = useState<boolean | null>(() => (initial ? true : null));
   const [patches, setPatches] = useState<PatchInfo[]>(() => initial?.payload.patches ?? []);
   const [minGames, setMinGames] = useState<number | null>(() => initial?.payload.minGames ?? null);
+  const [dataEnd, setDataEnd] = useState<string | null>(() => dataEndOf(initial?.payload.filters));
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
   // Ohne Startdaten startet der erste Abruf sofort nach dem Mount.
   const [loading, setLoading] = useState(!initial);
@@ -146,6 +155,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
           patches: initial.payload.patches,
           minGames: initial.payload.minGames ?? null,
           partial: !!initial.partial,
+          dataEnd: dataEndOf(initial.payload.filters),
         });
       }
       const mount = resolveMountFilters(initialFilters, params);
@@ -208,6 +218,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
       setComps(known.comps);
       setPatches(known.patches);
       setMinGames(known.minGames);
+      setDataEnd(known.dataEnd);
       setPartial(known.partial);
       setLoading(false);
       setAwaitingStored(false);
@@ -261,6 +272,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
             patches: d.patches || [],
             minGames: typeof d.minGames === 'number' ? d.minGames : null,
             partial: false,
+            dataEnd: dataEndOf(d.filters),
           };
           if (d.hasData && next.comps.length) remember(servedKey, next);
           shownKey.current = servedKey;
@@ -273,6 +285,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
           setComps(next.comps);
           setPatches(next.patches);
           setMinGames(next.minGames);
+          setDataEnd(next.dataEnd);
           setPartial(false);
           setLoading(false);
           setAwaitingStored(false);
@@ -352,7 +365,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     adv, setAdv,
     sortBy, chooseSort,
     comps, filteredComps, hasData, patches, minGames, assets, loading, tierCutoffs,
-    error, retry,
+    error, retry, dataEnd,
     // Teildaten: Zaehler ueber alle Comps waeren falsch. Auf Teildaten mit
     // Erweitert/Trend-Sortierung zeigt die Seite die Ladeanzeige.
     partial, awaitingStored, awaitingFull: partial && fullForView,

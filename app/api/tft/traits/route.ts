@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
-import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     if (redirect) return redirect;
     const cacheControl = cacheControlForPatches(patches);
 
-    const filters = await resolveFilters(searchParams);
+    const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
     fallbackFilters = filters;
 
     // Δ-velocity (W1-A pattern, anchor-aware via 0039). Trait velocity is rolled
@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       callRpc<TraitRow[]>('get_tft_trait_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       }),
@@ -156,6 +157,9 @@ export async function GET(request: NextRequest) {
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
+        startDay: filters.startDay,
+        endDay: filters.endDay,
+        dataEnd: filters.dataEnd,
       },
       patches,
       traits,

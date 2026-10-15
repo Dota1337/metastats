@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, expandRegions, expandBuckets } from '../../../../lib/tft-supabase-reader';
+import { callRpc, expandRegions, expandBuckets, resolveDataEnd } from '../../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { selectFamilyMembers, familyKeyForMerge } from '../../../../lib/tft-comp-family-merge';
@@ -55,16 +55,24 @@ export async function GET(request: NextRequest) {
     // Family wir wollen verrauschte Daily-Linien rauskippen (data-skeptic F4).
     const minGamesPerDay = useFamily ? 20 : 0;
 
+    // Volle Tage: die Kurve endet am Endtag der Seite (&end=) bzw. am letzten
+    // vollstaendigen Tag. Die Abfrage kennt keinen Endtag — sie holt um den
+    // Abstand zu heute mehr Tage, die Tage danach fallen hier weg.
+    const dataEnd = await resolveDataEnd(searchParams.get('end')).catch(() => null);
+    const today = new Date().toISOString().slice(0, 10);
+    const endOffset = dataEnd
+      ? Math.max(0, Math.round((Date.parse(today + 'T00:00:00Z') - Date.parse(dataEnd + 'T00:00:00Z')) / 86_400_000))
+      : 0;
     const rows = await callRpc<DailyTrendRow[]>('get_tft_comp_daily_trend', {
       p_cluster_key: slug,
       p_regions: regions,
       p_buckets: buckets,
-      p_days: days,
+      p_days: days + endOffset,
       p_cluster_keys: useFamily ? explicitFamilySlugs : null,
       p_min_games_per_day: minGamesPerDay,
     });
 
-    const points = (rows || []).map(r => {
+    const points = (rows || []).filter(r => !dataEnd || String(r.day).slice(0, 10) <= dataEnd).map(r => {
       const games = Number(r.games);
       const sumP = Number(r.sum_placement);
       const t4 = Number(r.top4);
@@ -84,6 +92,7 @@ export async function GET(request: NextRequest) {
       region: regionParam,
       bucket: bucketParam,
       days,
+      endDay: dataEnd,
       variantMode,
       familySize: useFamily ? explicitFamilySlugs!.length : 1,
       points,

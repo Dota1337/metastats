@@ -66,6 +66,7 @@ export default function CompFamilyRow({
   tierCutoffs,
   compareSelected = false,
   onCompareToggle = null,
+  end = null,
 }: {
   family: CompFamily;
   rank: number;
@@ -82,6 +83,8 @@ export default function CompFamilyRow({
   // Selection-State + reicht hier mit dem Family-Main-Slug durch.
   compareSelected?: boolean;
   onCompareToggle?: (() => void) | null;
+  // Endtag der Liste (volle Tage) fuer das Aufstellungsbrett.
+  end?: string | null;
 }) {
   const { withLang } = useI18n();
   const [expanded, setExpanded] = useState(false);
@@ -99,8 +102,8 @@ export default function CompFamilyRow({
   const boardParams = useMemo<CompBoardParams>(() => {
     const key = [...family.variants].sort((a, b) => (b.games || 0) - (a.games || 0))[0] ?? family.mainComp;
     const carries = [...new Set([...(family.carries || []), ...(family.itemCarriers || [])])].filter(Boolean).slice(0, 6);
-    return { slug: key.slug, patch, bucket, days: days ?? 3, region, carries, guide };
-  }, [family.variants, family.mainComp, family.carries, family.itemCarriers, patch, bucket, days, region, guide]);
+    return { slug: key.slug, patch, bucket, days: days ?? 3, region, carries, guide, end };
+  }, [family.variants, family.mainComp, family.carries, family.itemCarriers, patch, bucket, days, region, guide, end]);
   const boardToggle = {
     expanded: boardOpen,
     onToggle: () => setBoardOpen(o => !o),

@@ -237,6 +237,88 @@ export function listWindowDays(o) {
     }
     return { days, anchorOffsetDays };
 }
+// ---------------------------------------------------------------------------
+// Volle Tage (User 15.10.2026, Weg A2): „N Tage" heisst ueberall „die letzten
+// N vollstaendigen Tage". Bis dahin lief jede Abfrage `day >= current_date -
+// p_days` ohne Obergrenze und nahm ab dem Eingang der ersten Region (~08:14
+// CEST) den halb gefuellten neuen Tag mit, waehrend der Vorrat vom Vorabend
+// das alte Fenster zeigte (Azir Meister+/3 Tage: 6612 Vorrat vs 5439 live).
+//
+// Endtag E = letzter Tag, den alle lebenden Regionen geliefert haben
+// (fullDayComplete). Das Fenster einer Anfrage rechnet dataWindow; die RPCs
+// bekommen es als p_end_day + p_days (Migration 0095). Beides steht hier, weil
+// Route, Vorab-Rechnung und Publisher dasselbe Fenster rechnen muessen.
+const dayNum = (d) => Math.floor(Date.parse(String(d).slice(0, 10) + 'T00:00:00Z') / DAY_MS);
+const numDay = (n) => new Date(n * DAY_MS).toISOString().slice(0, 10);
+/** ISO-Tag + n Tage (n darf negativ sein). */
+export function addDays(day, n) {
+    return numDay(dayNum(day) + n);
+}
+/**
+ * Letzter vollstaendiger Tag: der neueste Tag D, fuer den JEDE lebende Region
+ * eine fertige Zeile genau fuer D hat. Anders als metaPulseCompleteDay (nimmt
+ * das Minimum der neuesten Tage) zaehlt eine Region mit Luecke am Tag D nicht
+ * als geliefert — am 24.09. haette der 22.09. ohne euw1 sonst als vollstaendig
+ * gegolten (data-skeptic F1). Lebend = neuester Tag >= Gesamtstand - 1;
+ * ausgefallene Regionen halten den Tag nicht fest. Eine Zeile zaehlt erst nach
+ * settleMs (finished_at wird vor den Comp-Zeilen geschrieben,
+ * tft-supabase-writer.mjs). null = keine Aussage → altes Fenster.
+ */
+export function fullDayComplete(rows, regions, nowMs, settleMs = META_PULSE_COMPLETE_SETTLE_MS) {
+    const wanted = new Set(regions);
+    const daysBy = new Map();
+    for (const r of rows) {
+        if (!wanted.has(r.region) || !r.finished_at)
+            continue;
+        const fin = Date.parse(r.finished_at);
+        if (!Number.isFinite(fin) || nowMs - fin < settleMs)
+            continue;
+        const n = dayNum(r.day);
+        if (!Number.isFinite(n))
+            continue;
+        let s = daysBy.get(r.region);
+        if (!s)
+            daysBy.set(r.region, (s = new Set()));
+        s.add(n);
+    }
+    if (daysBy.size === 0)
+        return null;
+    const newestBy = [...daysBy.values()].map(s => ({ s, newest: Math.max(...s) }));
+    const newest = Math.max(...newestBy.map(x => x.newest));
+    const alive = newestBy.filter(x => x.newest >= newest - 1);
+    const floor = Math.min(...alive.map(x => Math.min(...x.s)));
+    for (let d = Math.min(...alive.map(x => x.newest)); d >= floor; d--) {
+        if (alive.every(x => x.s.has(d)))
+            return numDay(d);
+    }
+    return null;
+}
+/**
+ * Fenster einer Anfrage, endet am globalen Endtag `dataEnd`:
+ *  - beendeter Patch (Filter, letzter Tag vor E) → endet an seinem letzten Tag;
+ *  - Patch-Tag-Ausnahme (User 15.10.): hat der angezeigte bzw. gefilterte Patch
+ *    noch keinen vollen Tag (erster Tag > E), zeigt die Seite seine Teildaten
+ *    wie bisher → Ende = sein letzter Tag;
+ *  - Start = Ende - N + 1, mit Patch-Filter nie vor dem Patch-Start.
+ * `patch` ist die Zeile des gefilterten Patches bzw. ohne Filter die des
+ * angezeigten aktuellen Patches (nur fuer die Ausnahme).
+ */
+export function dataWindow(o) {
+    const n = Math.max(1, Math.floor(o.requestedDays) || 1);
+    const e = dayNum(o.dataEnd);
+    const first = o.patch ? dayNum(o.patch.first_day) : NaN;
+    const last = o.patch ? dayNum(o.patch.last_day) : NaN;
+    const known = Number.isFinite(first) && Number.isFinite(last) && first <= last;
+    let end = e;
+    if (known && first > e)
+        end = last;
+    else if (known && o.patchFilter != null && last < e)
+        end = last;
+    let start = end - n + 1;
+    if (known && o.patchFilter != null && first > start)
+        start = first;
+    return { startDay: numDay(start), endDay: numDay(end), days: end - start + 1 };
+}
 // Ein frisch erschienener Patch taucht am ersten (Teil-)Tag mit wenigen tausend
 // Spielen auf — viel zu duenn fuer die Comp-Liste. Darunter zaehlt er nicht als
 // „current". Sind alle darunter (Set-Start), bleibt die rohe Liste.
@@ -351,13 +433,27 @@ export function compPrecomputeJobs(o) {
     for (const c of cases) {
         for (const [bucketLabel, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
             for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
-                const { days } = listWindowDays({
-                    requestedDays, patchFilter: c.patchFilter, patchStartDay: c.startDay, patchEndDay: c.endDay,
-                    latestDay, today,
-                });
-                const windowStart = isoDay(new Date(today.getTime() - days * DAY_MS));
-                const dataStart = c.patchFilter && c.startDay > windowStart ? c.startDay : windowStart;
-                const key = `${c.patchKey}|${bucketLabel}|${dataStart}`;
+                let days;
+                let dataStart;
+                let windowEnd;
+                if (o.dataEnd) {
+                    // Ohne Filter gilt fuer die Patch-Tag-Ausnahme der angezeigte Patch p[0].
+                    const row = c.patchFilter ? { first_day: c.startDay, last_day: c.endDay ?? latestDay } : p[0];
+                    const w = dataWindow({ dataEnd: o.dataEnd, requestedDays, patchFilter: c.patchFilter, patch: row });
+                    days = w.days;
+                    dataStart = w.startDay;
+                    windowEnd = w.endDay;
+                }
+                else {
+                    ({ days } = listWindowDays({
+                        requestedDays, patchFilter: c.patchFilter, patchStartDay: c.startDay, patchEndDay: c.endDay,
+                        latestDay, today,
+                    }));
+                    const windowStart = isoDay(new Date(today.getTime() - days * DAY_MS));
+                    dataStart = c.patchFilter && c.startDay > windowStart ? c.startDay : windowStart;
+                    windowEnd = c.endDay && c.endDay < latestDay ? c.endDay : latestDay;
+                }
+                const key = `${c.patchKey}|${bucketLabel}|${dataStart}|${windowEnd}`;
                 if (seen.has(key))
                     continue;
                 seen.add(key);
@@ -369,21 +465,32 @@ export function compPrecomputeJobs(o) {
                     tiers,
                     days,
                     dataStart,
+                    windowEnd,
+                    fullDay: !!o.dataEnd,
                 });
             }
         }
     }
     return out;
 }
-// Darf die Route einen gefundenen Eintrag benutzen? Nur wenn er denselben
-// letzten Datentag kennt wie die Route (sonst fehlt ein neuer Tag), nicht
-// verwaist ist und mit hoechstens der angefragten Mindestspiele-Zahl gerechnet
-// wurde (niedriger laesst sich nachfiltern, hoeher nicht).
+// Darf die Route einen gefundenen Eintrag benutzen? Nur wenn er dasselbe
+// Fenster-Ende hat wie die Route (mit endDay: window_end, Migration 0095;
+// ohne: denselben letzten Datentag, sonst fehlt ein neuer Tag), nicht verwaist
+// ist und mit hoechstens der angefragten Mindestspiele-Zahl gerechnet wurde
+// (niedriger laesst sich nachfiltern, hoeher nicht).
 export function precomputedEntryUsable(e, o) {
-    if (!e || !o.latestDay)
+    if (!e)
         return false;
-    if (String(e.last_day).slice(0, 10) !== o.latestDay.slice(0, 10))
-        return false;
+    if (o.endDay) {
+        if (String(e.window_end ?? '').slice(0, 10) !== o.endDay.slice(0, 10))
+            return false;
+    }
+    else {
+        if (!o.latestDay)
+            return false;
+        if (String(e.last_day).slice(0, 10) !== o.latestDay.slice(0, 10))
+            return false;
+    }
     const age = o.now - Date.parse(e.computed_at);
     if (!Number.isFinite(age) || age > COMP_PRECOMPUTE_MAX_AGE_MS)
         return false;

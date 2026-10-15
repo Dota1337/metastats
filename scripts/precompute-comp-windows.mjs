@@ -17,7 +17,14 @@
  * die Snapshots danach die frischen Listen sehen. Ein Fehler hier blockiert
  * den Publisher nicht; die Route rechnet dann live.
  *
- * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--dry-run] [--force]
+ * Volle Tage (Migration 0095): der Endtag E (letzter Tag, den alle lebenden
+ * Regionen geliefert haben) wird hier EINMAL gepinnt, jede Liste unter
+ * window_end abgelegt und E per data-end-handoff.mjs an den Publisher derselben
+ * Unit weitergereicht. Die Vortags-Generation bleibt beim Aufraeumen stehen:
+ * bis der Publisher sein neues Manifest schreibt (~1,5 h), lesen Besucher noch
+ * mit dem alten Endtag.
+ *
+ * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--end <YYYY-MM-DD>] [--dry-run] [--force]
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -28,16 +35,26 @@ import {
   establishedPatches,
   previousPatchOf,
   listKey,
+  fullDayComplete,
+  addDays,
   COMP_PRECOMPUTE_MIN_GAMES,
+  META_PULSE_COMPLETE_LOOKBACK_DAYS,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { CURRENT_SET } from './lib/current-set.mjs';
 import { supabasePgUrl } from './lib/pg-url.mjs';
+import { isIsoDay, writeDataEndHandoff } from './lib/data-end-handoff.mjs';
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
 const onlyIdx = args.indexOf('--only');
 const ONLY = onlyIdx >= 0 ? args[onlyIdx + 1] : null;
+const endIdx = args.indexOf('--end');
+const END_ARG = endIdx >= 0 ? args[endIdx + 1] : null;
+if (END_ARG != null && !isIsoDay(END_ARG)) {
+  console.error(`[precompute] --end erwartet YYYY-MM-DD, nicht ${END_ARG}`);
+  process.exit(2);
+}
 // --force: laufenden Patch immer neu rechnen, auch wenn er bestaetigt werden koennte
 // (z. B. nach einer Reklassifizierung, die keine Spielzahl aendert).
 const FORCE = args.includes('--force');
@@ -91,6 +108,33 @@ const client = new pg.Client({
   statement_timeout: 120_000,
 });
 
+// Endtag E wie die Seite (resolveDataEnd fuer den Publisher): letzter Tag,
+// den alle lebenden Regionen geliefert haben, ohne Wartezeit — der Lauf
+// startet erst nach dem Crawl. null = altes Fenster (Notschalter
+// FULL_DAY_WINDOW=0 oder crawl_meta nicht lesbar).
+async function pinDataEnd(runStart) {
+  if (process.env.FULL_DAY_WINDOW === '0') return null;
+  if (END_ARG) return END_ARG;
+  const today = runStart.toISOString().slice(0, 10);
+  try {
+    const { rows } = await client.query(
+      `select region, day::text as day, finished_at
+         from tft_daily_crawl_meta
+        where day >= $1::date and region = any($2::text[])`,
+      [addDays(today, -(META_PULSE_COMPLETE_LOOKBACK_DAYS + 2)), ACTIVE_REGIONS],
+    );
+    const meta = rows.map(r => ({
+      region: r.region,
+      day: r.day,
+      finished_at: r.finished_at ? new Date(r.finished_at).toISOString() : null,
+    }));
+    return fullDayComplete(meta, ACTIVE_REGIONS, runStart.getTime(), 0);
+  } catch (e) {
+    console.error(`[precompute] crawl_meta nicht lesbar, altes Fenster: ${e.message}`);
+    return null;
+  }
+}
+
 async function main() {
   const runStart = new Date();
   await client.connect();
@@ -104,18 +148,21 @@ async function main() {
   }
   const latestDay = patches[0].last_day;
   const regionsKey = listKey(ACTIVE_REGIONS);
-  let jobs = compPrecomputeJobs({ patches, setNumber: CURRENT_SET, today: runStart });
+  const dataEnd = await pinDataEnd(runStart);
+  // Auch bei Teil-Laeufen (nicht bei --dry-run): der Publisher nimmt denselben Tag.
+  if (!DRY) writeDataEndHandoff(dataEnd);
+  let jobs = compPrecomputeJobs({ patches, setNumber: CURRENT_SET, today: runStart, dataEnd });
   if (ONLY) jobs = jobs.filter(j => (ONLY === 'current' ? j.patchKey === '' : j.patchKey === ONLY));
   // Vorpatch nach derselben Regel wie die Seite (previousPatchOf); ein dabei
   // uebersprungener Kurz-Patch wird nicht vorgerechnet und hier genannt.
   const prevPatch = previousPatchOf(patches, patches[0].patch);
   const prevIdx = prevPatch ? patches.indexOf(prevPatch) : patches.length;
   const skippedPatches = patches.slice(1, prevIdx).map(p => p.patch);
-  console.log(`[precompute] set ${CURRENT_SET}, letzter Tag ${latestDay}, ${jobs.length} Abfragen`
+  console.log(`[precompute] set ${CURRENT_SET}, letzter Tag ${latestDay}, Endtag ${dataEnd ?? '— (altes Fenster)'}, ${jobs.length} Abfragen`
     + ` (Patches: ${[patches[0].patch, prevPatch?.patch].filter(Boolean).join(', ')}`
     + `${skippedPatches.length ? `; uebersprungen, zu kurz: ${skippedPatches.join(', ')}` : ''})`);
   if (DRY) {
-    for (const j of jobs) console.log(`  ${j.patchKey || 'aktuell'} ${j.bucketLabel} p_days=${j.days} ab ${j.dataStart}`);
+    for (const j of jobs) console.log(`  ${j.patchKey || 'aktuell'} ${j.bucketLabel} p_days=${j.days} ${j.dataStart}..${j.windowEnd}${j.fullDay ? '' : ' (altes Fenster)'}`);
     return 0;
   }
 
@@ -140,9 +187,10 @@ async function main() {
           `update tft_comp_list_precomputed
               set last_day = $6::date, computed_at = now()
             where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
+              and window_end = $10::date
               and patch_matches = $7 and min_games = $8 and built_at > now() - make_interval(secs => $9)`,
           [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, latestDay,
-            patchMatches, COMP_PRECOMPUTE_MIN_GAMES, REBUILD_AFTER_MS / 1000],
+            patchMatches, COMP_PRECOMPUTE_MIN_GAMES, REBUILD_AFTER_MS / 1000, j.windowEnd],
         );
         if (u.rowCount === 1) {
           confirmed++;
@@ -162,11 +210,12 @@ async function main() {
           `update tft_comp_list_precomputed
               set computed_at = now()
             where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
+              and window_end = $9::date
               and last_day = $6::date and patch_matches = $7 and min_games = $8
               and built_at > now() - interval '20 hours'
               and built_at > (select max(finished_at) from tft_daily_crawl_meta where set_number = $2) + interval '2 minutes'`,
           [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, latestDay,
-            fingerprint, COMP_PRECOMPUTE_MIN_GAMES],
+            fingerprint, COMP_PRECOMPUTE_MIN_GAMES, j.windowEnd],
         );
         if (u.rowCount === 1) {
           confirmed++;
@@ -177,24 +226,33 @@ async function main() {
       // Waehrend ein Writer laeuft, gerechnete Zeilen nie bestaetigbar machen.
       const storedMatches = ended ? patchMatches : (writerActive ? null : fingerprint);
       await client.query('begin');
+      // Nur genau dieses Fenster ersetzen: die Vortags-Generation (anderes
+      // window_end, bei Patch-Fenstern evtl. gleiches data_start) bleibt stehen.
       await client.query(
         `delete from tft_comp_list_precomputed
-          where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5`,
-        [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart],
+          where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
+            and window_end = $6::date`,
+        [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, j.windowEnd],
       );
+      // Benannte Argumente: v2 hat vor p_end_day noch p_min_share/p_min_cap.
+      // p_end_day null = altes Fenster (bis heute, ohne Obergrenze).
       const r = await client.query(
         `insert into tft_comp_list_precomputed
-           (patch_key, set_number, regions_key, buckets_key, data_start, patch_first_day, last_day, min_games, comp_rows, computed_at, patch_matches, built_at)
-         select $1, $2, $3, $4, $5::date, $6::date, $7::date, $8,
+           (patch_key, set_number, regions_key, buckets_key, data_start, window_end, patch_first_day, last_day, min_games, comp_rows, computed_at, patch_matches, built_at)
+         select $1, $2, $3, $4, $5::date, $14::date, $6::date, $7::date, $8,
                 coalesce((select jsonb_agg(to_jsonb(v))
-                            from get_tft_comp_stats_list_v2($9::text[], $10::text[], $11::int, $12::text, $2::int, $8::int) v), '[]'::jsonb),
+                            from get_tft_comp_stats_list_v2(
+                                   p_regions => $9::text[], p_buckets => $10::text[], p_days => $11::int,
+                                   p_patch => $12::text, p_set => $2::int, p_min_games => $8::int,
+                                   p_end_day => $15::date) v), '[]'::jsonb),
                 now(), $13::bigint, now()
          returning jsonb_array_length(comp_rows) as n, pg_column_size(comp_rows) as bytes`,
         [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, j.patchFirstDay, latestDay,
-          COMP_PRECOMPUTE_MIN_GAMES, ACTIVE_REGIONS, [...j.tiers], j.days, j.patchFilter, storedMatches],
+          COMP_PRECOMPUTE_MIN_GAMES, ACTIVE_REGIONS, [...j.tiers], j.days, j.patchFilter, storedMatches,
+          j.windowEnd, j.fullDay ? j.windowEnd : null],
       );
       await client.query('commit');
-      console.log(`  ✓ ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: `
+      console.log(`  ✓ ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ${j.dataStart}..${j.windowEnd}: `
         + `${r.rows[0].n} Comps, ${Math.round(r.rows[0].bytes / 1024)} KB, ${Date.now() - t0} ms`);
     } catch (e) {
       failed++;
@@ -205,9 +263,16 @@ async function main() {
 
   // Aufraeumen: Eintraege aus frueheren Laeufen, die heute nicht neu gerechnet
   // wurden (anderer Tag, alter Patch, altes Set). Bei Fehlern bleiben die alten
-  // stehen — die Route prueft ohnehin den letzten Datentag.
+  // stehen — die Route prueft ohnehin das Fenster-Ende. Mit Endtag bleibt die
+  // Generation E-1 stehen (window_end >= E-1): Besucher lesen bis zum neuen
+  // Manifest des Publishers noch mit dem alten Endtag.
   if (failed === 0 && !ONLY) {
-    const del = await client.query('delete from tft_comp_list_precomputed where computed_at < $1', [runStart]);
+    const del = dataEnd
+      ? await client.query(
+        'delete from tft_comp_list_precomputed where computed_at < $1 and window_end < $2::date',
+        [runStart, addDays(dataEnd, -1)],
+      )
+      : await client.query('delete from tft_comp_list_precomputed where computed_at < $1', [runStart]);
     console.log(`[precompute] ${del.rowCount} alte Eintraege entfernt`);
   }
   console.log(`[precompute] fertig: ${jobs.length - failed - confirmed} gerechnet, ${confirmed} unveraendert bestaetigt, ${failed} Fehler, ${Math.round((Date.now() - runStart) / 1000)} s`);

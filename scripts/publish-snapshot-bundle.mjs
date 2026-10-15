@@ -53,6 +53,7 @@ import {
 } from './lib/comps-detail-stock.mjs';
 import { openSync, closeSync, writeSync, readFileSync, existsSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { isIsoDay, readDataEndHandoff } from './lib/data-end-handoff.mjs';
 
 // Single-Source-of-Truth: TS-Datei app/lib/snapshot-matrix.ts wird via
 // `npm run build:snapshot-matrix` (Multi-Review 2026-06-25 Option C) zu
@@ -88,6 +89,17 @@ const ENDPOINT_FILTER = (() => {
 })();
 const LISTING_ONLY = args.includes('--listing-only');
 const ALLOW_EMPTY_BASE = args.includes('--allow-empty-base');
+// Volle Tage (Migration 0095): Endtag E von Hand setzen (sonst pinDataEnd).
+const END_ARG = (() => {
+  const i = args.indexOf('--end');
+  if (i < 0) return null;
+  const v = args[i + 1];
+  if (!isIsoDay(v)) {
+    console.error(`ERROR: --end erwartet YYYY-MM-DD, nicht '${v}'`);
+    process.exit(2);
+  }
+  return v;
+})();
 const MANIFEST_MODE_OVERRIDE = (() => {
   const i = args.indexOf('--manifest-mode');
   const v = i >= 0 ? args[i + 1] : null;
@@ -209,6 +221,29 @@ export function mergeBaseError({ mergeMode, manifestUrlSet, baseEntryCount, allo
 // (gemessen 15.10.2026: gleiche Adresse → MISS, dann HIT).
 const RUN_ID = `${Date.now().toString(36)}`;
 
+// Volle Tage (Migration 0095): EIN Endtag E fuer den ganzen Lauf, als &end= an
+// jede Permutation (die Routen nehmen ihn nur mit der Publisher-Kopfzeile
+// an) und als manifest.dataThrough fuer die Besucher. Ohne Pin rechnete jede
+// Route ihr eigenes E — kommt waehrend des Laufs eine Region dazu, laegen in
+// einem Manifest Staende mit zwei Endtagen. null = kein Pin: dann bestimmt
+// jede Route E selbst (bzw. rechnet das alte Fenster, wenn die Seite
+// FULL_DAY_WINDOW=0 hat — den Schalter liest die Seite, nicht dieses Skript).
+let DATA_END = null;
+// Endtag der ersten Comps-Antwort (Route im Publisher-Modus, ohne Wartezeit)
+// — Rueckfall, wenn weder --end noch die Uebergabe der Vorab-Rechnung da ist.
+let _apiDataEnd = null;
+
+export function pinDataEnd({ env = process.env, endArg = END_ARG, mergeMode = MERGE_MODE, mergeBase = null, handoff, apiDataEnd = null } = {}) {
+  if (env.FULL_DAY_WINDOW === '0') return { end: null, source: 'off' };
+  if (endArg) return { end: endArg, source: '--end' };
+  // Teil-Lauf: Endtag der Basis, wie die gepinnten Patches — sonst stuenden
+  // neue und uebernommene Staende mit verschiedenen Endtagen im Manifest.
+  if (mergeMode && isIsoDay(mergeBase?.dataThrough)) return { end: mergeBase.dataThrough, source: 'manifest' };
+  // Die Vorab-Rechnung derselben Unit hat ihre Listen unter diesem Tag abgelegt.
+  if (handoff !== undefined) return { end: handoff, source: 'precompute' };
+  return { end: isIsoDay(apiDataEnd) ? apiDataEnd : null, source: 'api' };
+}
+
 function buildUrl(apiPath, p) {
   const qs = new URLSearchParams({
     patch: p.patch,
@@ -218,6 +253,7 @@ function buildUrl(apiPath, p) {
     source: 'data',
   });
   if (p.minGames > 0) qs.set('minGames', String(p.minGames));
+  if (DATA_END) qs.set('end', DATA_END);
   qs.set('_pub', RUN_ID);
   return `${BASE}${apiPath}?${qs.toString()}`;
 }
@@ -318,6 +354,7 @@ async function resolvePatches() {
   ]);
   let current = cur?.filters?.patch || null;
   let previous = prev?.filters?.patch || null;
+  _apiDataEnd = cur?.filters?.dataEnd ?? null;
   // Fingerabdruck je Patch (Tage + Spielzahl) direkt aus der DB — NICHT aus
   // der API-Antwort: die Seite haelt ihre Patch-Liste bis zu 6 h im Speicher
   // und kann Nachzuegler-Spiele der Nacht noch nicht kennen.
@@ -466,6 +503,7 @@ async function publishDetailPermutation(perm, patches, { retry = false } = {}) {
     source: 'data',
   });
   if (perm.minGames > 0) qs.set('minGames', String(perm.minGames));
+  if (DATA_END) qs.set('end', DATA_END);
   qs.set('_pub', retry ? `${RUN_ID}-r2` : RUN_ID);
   const url = `${BASE}/api/tft/comps?${qs.toString()}`;
   const t0 = Date.now();
@@ -656,6 +694,14 @@ async function main() {
     console.error(`[${ts()}] FATAL: could not resolve "current" patch — aborting`);
     process.exit(3);
   }
+
+  const pinned = pinDataEnd({
+    mergeBase: MERGE_MODE ? await loadOldManifest() : null,
+    handoff: readDataEndHandoff(),
+    apiDataEnd: _apiDataEnd,
+  });
+  DATA_END = pinned.end;
+  console.log(`[${ts()}] Endtag: ${DATA_END ?? '— (kein Pin, Routen bestimmen ihn selbst)'} (Quelle: ${pinned.source})`);
 
   const manifestEntries = {};
   // Pro-Endpoint-Abdeckung: ein Gesamt-Fehlerquotient allein kann verbergen,
@@ -904,6 +950,10 @@ async function main() {
     // gilt im Teil-Lauf der Wert der Basis (deren Eintraege bleiben stehen).
     compsDetailSource: compsDetailSource
       ?? (MERGE_MODE ? ((await loadOldManifest())?.compsDetailSource ?? null) : null),
+    // Endtag fuer die Besucher (resolveDataEnd liest ihn, solange das Manifest
+    // hoechstens 50 h alt ist). Nur der Voll-Lauf setzt ihn; ein Teil-Lauf
+    // behaelt den der Basis, deren Staende er ja weitertraegt.
+    dataThrough: MERGE_MODE ? ((await loadOldManifest())?.dataThrough ?? null) : DATA_END,
     entries: finalEntries,
   };
   const manifestBody = JSON.stringify(manifest);

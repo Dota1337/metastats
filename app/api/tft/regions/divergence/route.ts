@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  callRpc, expandBuckets, BUCKET_GROUPS, getAvailablePatches, resolveDefaultBucket,
+  callRpc, expandBuckets, BUCKET_GROUPS, getAvailablePatches, resolveDefaultBucket, resolveDataEnd,
 } from '../../../../lib/tft-supabase-reader';
 import { parsePatch, parseBoundedInt } from '../../../../lib/query-params';
 import { CURRENT_SET } from '../../../../lib/current-set';
@@ -60,12 +60,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Volle Tage (0095): das Fenster endet spaetestens am letzten
+    // vollstaendigen Tag, die Funktion sucht darunter den juengsten Datentag.
+    const dataEnd = await resolveDataEnd(searchParams.get('end')).catch(() => null);
     const rows = await callRpc<RegionRow[]>('get_tft_region_divergence', {
       p_buckets: buckets,
       p_set: CURRENT_SET,
       p_patch: patch,
       p_days: days,
       p_min_games: minGames,
+      ...(dataEnd ? { p_end_day: dataEnd } : {}),
     }, 20000);
 
     // KR-Ahead score: weight pickrate-Δ higher than avg-place-Δ because the

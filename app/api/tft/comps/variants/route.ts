@@ -108,10 +108,16 @@ export async function GET(request: NextRequest) {
     if (filters.patchFilter) {
       params.set('patch', `eq.${filters.patchFilter}`);
     }
-    // Day window: PostgREST supports gte. Use today-days as ISO date.
-    const cutoff = new Date();
-    cutoff.setUTCDate(cutoff.getUTCDate() - filters.days);
-    params.set('day', `gte.${cutoff.toISOString().slice(0, 10)}`);
+    // Tagesfenster wie die Detail-Abfrage: mit Endtag (volle Tage, 0095) genau
+    // [startDay, endDay], sonst wie bisher ab heute - days ohne Obergrenze.
+    if (filters.startDay && filters.endDay) {
+      params.append('day', `gte.${filters.startDay}`);
+      params.append('day', `lte.${filters.endDay}`);
+    } else {
+      const cutoff = new Date();
+      cutoff.setUTCDate(cutoff.getUTCDate() - filters.days);
+      params.set('day', `gte.${cutoff.toISOString().slice(0, 10)}`);
+    }
     // Eindeutige Reihenfolge (= Unique-Schluessel der Tabelle, 0001:104),
     // sonst ueberlappen oder fehlen Zeilen an den Seitengrenzen.
     params.set('order', 'cluster_key,day,region,bucket,patch');
@@ -249,6 +255,9 @@ export async function GET(request: NextRequest) {
           bucket: filters.bucketLabel,
           days: filters.requestedDays,
           patch: filters.patch,
+          startDay: filters.startDay,
+          endDay: filters.endDay,
+          dataEnd: filters.dataEnd,
         },
       },
       { headers: cacheHeaders(cacheControl) },

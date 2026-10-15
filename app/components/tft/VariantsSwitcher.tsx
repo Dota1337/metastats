@@ -87,6 +87,7 @@ export default function VariantsSwitcher({
   familySize = 1,
   families = null,
   activeKey = null,
+  end = null,
 }: {
   clusterKey: string;
   region: string;
@@ -105,6 +106,9 @@ export default function VariantsSwitcher({
   // Kennung, die die genaue Ansicht gerade anfragt (?variant=<Kennung>). Sie
   // ist sofort beim Klick markiert, nicht erst, wenn die Antwort da ist.
   activeKey?: string | null;
+  // Endtag der gezeigten Seite (volle Tage): die Knopf-Zahlen rechnen ueber
+  // dieselben Tage wie die Seite, auch wenn der Endtag inzwischen weiter ist.
+  end?: string | null;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -131,6 +135,7 @@ export default function VariantsSwitcher({
         days: String(days),
       });
       if (patch) params.set('patch', patch);
+      if (end) params.set('end', end);
       return fetch(`/api/tft/comps/variants?${params.toString()}`)
         .then(r => r.ok ? r.json() as Promise<VariantsResponse> : null)
         .catch(() => null);
@@ -150,7 +155,7 @@ export default function VariantsSwitcher({
       setData({ family: ok[0].family, familyTotal, variants });
     });
     return () => { cancelled = true; };
-  }, [familiesKey, region, bucket, days, patch]);
+  }, [familiesKey, region, bucket, days, patch, end]);
 
   if (!data) return null;
 

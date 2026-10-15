@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
 import { normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
-import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { coreFromListRow, unitDetailBody, type DetailCore } from '../../../lib/tft-detail-payload';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
     try {
-      const filters = await resolveFilters(searchParams);
+      const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
       filterPatch = filters.patch;
       // Wie die Liste unten: der Snapshot enthaelt patchuebergreifende Zahlen,
@@ -99,6 +99,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
       });
       const snapUnits = (hit?.payload as { units?: any[] } | undefined)?.units;
       if (Array.isArray(snapUnits) && snapUnits.length > 0) {
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
         const rows = await callRpc<UnitListRow[]>('get_tft_unit_stats', {
           p_regions: filters.regions,
           p_buckets: filters.buckets,
-          p_days: filters.days,
+          ...rpcWindowArgs(filters),
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
         });
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
     if (redirect) return redirect;
     const cacheControl = cacheControlForPatches(patches);
 
-    const filters = await resolveFilters(searchParams);
+    const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
     // Mit ausdruecklich gewaehltem Patch passt das patchuebergreifende Bundle
     // nicht (siehe Snapshot-Pfad unten) — dann keine Notreserve.
     if (filters.patchFilter == null) fallbackFilters = filters;
@@ -166,6 +167,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: 0,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern → sonst
@@ -189,7 +191,7 @@ export async function GET(request: NextRequest) {
     const topItemsCall = callRpc<UnitTopItemRow[]>('get_tft_unit_top_items', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
-      p_days: filters.days,
+      ...rpcWindowArgs(filters),
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
       p_top: LIST_TOP_ITEMS,
@@ -201,7 +203,7 @@ export async function GET(request: NextRequest) {
       callRpc<UnitListRow[]>('get_tft_unit_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       }),
@@ -302,6 +304,9 @@ export async function GET(request: NextRequest) {
         set: filters.setNumber,
         velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
+        startDay: filters.startDay,
+        endDay: filters.endDay,
+        dataEnd: filters.dataEnd,
       },
       patches,
       units,

@@ -45,7 +45,7 @@ export default function CompsClient({ initialFilters, initial }: {
     filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
     comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
     currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
-    partial, awaitingStored, awaitingFull,
+    partial, awaitingStored, awaitingFull, dataEnd,
   } = useTftCompsData({ initialFilters, initial, wantFull });
 
   // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
@@ -182,6 +182,7 @@ export default function CompsClient({ initialFilters, initial }: {
                   tierCutoffs={tierCutoffs}
                   compareSelected={compareSelection.includes(f.mainComp.slug)}
                   onCompareToggle={() => toggleCompare(f.mainComp.slug)}
+                  end={dataEnd}
                 />
               ))}
             </div>

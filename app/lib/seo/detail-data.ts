@@ -41,14 +41,14 @@ type Payload = Record<string, unknown>;
 const snapCache = new Map<string, { ts: number; value: Promise<Payload | null> }>();
 
 function snapshotPayload(endpoint: SnapshotEndpoint, r: Resolved): Promise<Payload | null> {
-  const key = `${endpoint}|${r.patch}|${r.setNumber}|${r.regionLabel}|${r.requestedDays}|${r.bucketLabel}`;
+  const key = `${endpoint}|${r.patch}|${r.setNumber}|${r.regionLabel}|${r.requestedDays}|${r.bucketLabel}|${r.endDay}`;
   const hit = snapCache.get(key);
   if (hit && Date.now() - hit.ts <= CACHE_TTL_MS) return hit.value;
   // mg0 = der Stand, den die Routen zuerst nehmen (Comps: angepasste Schwelle
   // ohne ?minGames; Units/Items/Traits: immer mg0).
   const value = lookupSnapshot(endpoint, {
     patch: r.patch, region: r.regionLabel, days: r.requestedDays,
-    bucket: r.bucketLabel, minGames: 0, setNumber: r.setNumber,
+    bucket: r.bucketLabel, minGames: 0, setNumber: r.setNumber, endDay: r.endDay,
   }).then((h: LookupHit | null) => (h?.payload as Payload | undefined) ?? null, () => null);
   snapCache.delete(key);
   snapCache.set(key, { ts: Date.now(), value });

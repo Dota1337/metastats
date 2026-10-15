@@ -182,6 +182,7 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
   const hit = await withTimeout(lookupSnapshot(spec.endpoint, {
     patch: resolved.patch, region: resolved.regionLabel, days: resolved.requestedDays,
     bucket: resolved.bucketLabel, minGames: 0, setNumber: resolved.setNumber,
+    endDay: resolved.endDay,
   }), left());
   const payload = hit?.payload as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[]; minGames?: unknown }) | undefined;
   const raw = payload?.[spec.field];

@@ -3,7 +3,7 @@
 // alles, was der Teil-Lauf nicht selbst publiziert hat, war weg.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeBaseError, patchFingerprint, reusableEntry, REUSE_MAX_AGE_MS } from './publish-snapshot-bundle.mjs';
+import { mergeBaseError, patchFingerprint, reusableEntry, REUSE_MAX_AGE_MS, pinDataEnd } from './publish-snapshot-bundle.mjs';
 
 const base = { mergeMode: true, manifestUrlSet: true, baseEntryCount: 700, allowEmptyBase: false };
 
@@ -90,5 +90,43 @@ test('Umbenennung vor dem Bau oder an anderem Patch stoert nicht', () => {
 test('fehlende oder kaputte Markerangaben aendern nichts', () => {
   for (const relabeledAt of [undefined, null, {}, { '18.2': 'kein-datum' }]) {
     assert.equal(reusableEntry({ ...reuseArgs, relabeledAt }).url, 'https://blob/x.json', String(relabeledAt));
+  }
+});
+
+// Volle Tage (Migration 0095): ein Endtag je Lauf.
+const pinArgs = { env: {}, endArg: null, mergeMode: false, mergeBase: null, handoff: undefined, apiDataEnd: '2026-10-14' };
+
+test('Endtag: Notschalter FULL_DAY_WINDOW=0 pinnt nichts', () => {
+  assert.deepEqual(pinDataEnd({ ...pinArgs, env: { FULL_DAY_WINDOW: '0' }, endArg: '2026-10-13' }), { end: null, source: 'off' });
+});
+
+test('Endtag: --end schlaegt Basis, Uebergabe und API', () => {
+  const r = pinDataEnd({ ...pinArgs, endArg: '2026-10-12', mergeMode: true, mergeBase: { dataThrough: '2026-10-13' }, handoff: '2026-10-14' });
+  assert.deepEqual(r, { end: '2026-10-12', source: '--end' });
+});
+
+test('Endtag: Teil-Lauf nimmt den Tag der Basis', () => {
+  const r = pinDataEnd({ ...pinArgs, mergeMode: true, mergeBase: { dataThrough: '2026-10-13' }, handoff: '2026-10-14' });
+  assert.deepEqual(r, { end: '2026-10-13', source: 'manifest' });
+});
+
+test('Endtag: Basis ohne Tag (vor der Umstellung) faellt auf die Uebergabe zurueck', () => {
+  const r = pinDataEnd({ ...pinArgs, mergeMode: true, mergeBase: { entries: {} }, handoff: '2026-10-14' });
+  assert.deepEqual(r, { end: '2026-10-14', source: 'precompute' });
+});
+
+test('Endtag: Voll-Lauf ignoriert die Basis und nimmt die Uebergabe', () => {
+  const r = pinDataEnd({ ...pinArgs, mergeBase: { dataThrough: '2026-10-11' }, handoff: '2026-10-14' });
+  assert.deepEqual(r, { end: '2026-10-14', source: 'precompute' });
+});
+
+test('Endtag: Vorab-Rechnung bewusst ohne Endtag → kein Pin, auch nicht aus der API', () => {
+  assert.deepEqual(pinDataEnd({ ...pinArgs, handoff: null }), { end: null, source: 'precompute' });
+});
+
+test('Endtag: ohne Uebergabe zaehlt die API, kaputte Werte nicht', () => {
+  assert.deepEqual(pinDataEnd(pinArgs), { end: '2026-10-14', source: 'api' });
+  for (const apiDataEnd of [null, undefined, '', '2026-13-01', '14.10.2026']) {
+    assert.deepEqual(pinDataEnd({ ...pinArgs, apiDataEnd }), { end: null, source: 'api' }, String(apiDataEnd));
   }
 });

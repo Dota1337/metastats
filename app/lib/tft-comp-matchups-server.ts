@@ -1,9 +1,9 @@
 // Abfragen fuer die Comp-Duelle (Migration 0092). Rechnen: tft-comp-matchups.ts.
-import { callRpc, DEFAULT_BUCKET, type ResolvedFilters } from './tft-supabase-reader';
+import { callRpc, DEFAULT_BUCKET, rpcWindowArgs, type ResolvedFilters } from './tft-supabase-reader';
 import { lookupSnapshot } from './snapshot-lookup';
 import { familyRepresentatives, type MatchupResult, type MatchupRow } from './tft-comp-matchups';
 
-type MatchupFilters = Pick<ResolvedFilters, 'regions' | 'buckets' | 'days' | 'patchFilter' | 'setNumber'>;
+type MatchupFilters = Pick<ResolvedFilters, 'regions' | 'buckets' | 'days' | 'startDay' | 'endDay' | 'patchFilter' | 'setNumber'>;
 
 /**
  * Duell-Zeilen fuer `fams` (optional nur gegen `oppFams`), summiert ueber die
@@ -29,7 +29,7 @@ export async function fetchCompMatchups(
     p_opp_fams: oppFams,
     p_regions: filters.regions,
     p_buckets: filters.buckets,
-    p_days: filters.days,
+    ...rpcWindowArgs(filters),
     p_set: filters.setNumber,
     p_min_games: 1,
   };

@@ -69,6 +69,12 @@ import { TFT_HOME } from '../../../lib/games';
 // damit der User Noise-Cards visuell unterscheidet von belastbaren).
 const MIN_GAMES_PER_OUTCOME_CARD = 30;
 
+// Endtag einer Detail-Antwort (volle Tage, filters.dataEnd) oder null.
+function dataEndOf(filters: unknown): string | null {
+  const v = (filters as { dataEnd?: unknown } | null | undefined)?.dataEnd;
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
 // Same region set as /tft/patch/winners — the regions where the daily-crawl
 // has enough volume to make comp-detail rendering meaningful.
 const REGIONS = [
@@ -125,6 +131,12 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // Startdaten nur, wenn sie zu dieser Adresse gehoeren (Zurueck-Knopf nach
   // einem Rangwechsel: die Huelle kann aeltere Startdaten mitbringen).
   const [start] = useState(() => (initial && initial.key === dataKey ? initial : null));
+  // Endtag der gezeigten Seite (volle Tage). Folgeabfragen — genaue Ansicht,
+  // Varianten, Brett, Tageskurve, Pro-Vergleich — haengen ihn als &end= an und
+  // rechnen so ueber dieselben Tage, auch wenn der Server inzwischen einen
+  // neueren Endtag kennt. Ref fuer die Abruf-Effekte, State fuers Rendern.
+  const [pageEnd, setPageEnd] = useState<string | null>(() => dataEndOf(start?.detail.filters));
+  const pageEndRef = useRef<string | null>(pageEnd);
   const [comp, setComp] = useState<any | null | undefined>(() => (start ? start.detail.comp ?? null : undefined));
   // Filterstand, zu dem `comp` geladen wurde. Beim Filterwechsel bleibt die alte
   // Comp stehen, bis die neue da ist — das Aufstellungsbrett fragt mit diesem
@@ -188,12 +200,13 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
     const familySlugs = variantMode === 'family' && comp?.aliasedFromFamily?.mergedFrom?.length > 1
       ? `&familySlugs=${[...comp.aliasedFromFamily.mergedFrom].sort().map((s: string) => encodeURIComponent(s)).join(',')}`
       : '';
-    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(trendSlug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}`)
+    const endQ = pageEnd ? `&end=${pageEnd}` : '';
+    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(trendSlug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}${endQ}`)
       .then(r => r.ok ? r.json() : { points: [] })
       .then(d => { if (!cancelled) setTrendPoints(d.points || []); })
       .catch(() => { if (!cancelled) setTrendPoints([]); });
     return () => { cancelled = true; };
-  }, [trendSlug, region, bucket, trendDays, variantMode, comp]);
+  }, [trendSlug, region, bucket, trendDays, variantMode, comp, pageEnd]);
 
   useEffect(() => {
     // Schon geladene Staende zeigt showLoaded beim Klick. Ein Fehlschlag wird
@@ -216,10 +229,16 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
     let cancelled = false;
     setDataState('loading');
     // Schwelle = DETAIL_MIN_GAMES, sonst greift kein vorgerechneter Stand.
-    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=${DETAIL_MIN_GAMES}&variant=${variantMode}`)
+    const endQ = pageEndRef.current ? `&end=${pageEndRef.current}` : '';
+    fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&slug=${encodeURIComponent(slug)}&days=${days}&minGames=${DETAIL_MIN_GAMES}&variant=${variantMode}${endQ}`)
       .then(r => { if (!r.ok) throw new Error(`comps ${r.status}`); return r.json(); })
       .then(normal => {
         if (cancelled) return;
+        const end = dataEndOf(normal.filters);
+        if (end && end !== pageEndRef.current) {
+          pageEndRef.current = end;
+          setPageEnd(end);
+        }
         const v: Loaded = { hasData: !!normal.hasData, comp: normal.comp || null, filters: { slug, region, bucket, days } };
         loaded.current.set(dataKey, v);
         shownKey.current = dataKey;
@@ -240,7 +259,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // eigener Abruf, damit ein Rangwechsel ihn nicht neu anstoesst.
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=${days}&minGames=5&variant=${variantMode}`)
+    const endQ = pageEndRef.current ? `&end=${pageEndRef.current}` : '';
+    fetch(`/api/tft/comps?region=all&bucket=pro_pool&slug=${encodeURIComponent(slug)}&days=${days}&minGames=5&variant=${variantMode}${endQ}`)
       .then(r => r.ok ? r.json() : { comp: null })
       .catch(() => ({ comp: null }))
       .then(pro => { if (!cancelled) setProComp(pro.comp || null); });
@@ -296,6 +316,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
         guide: compGuidesBundle.bundle ? guideMatch?.slug ?? null : undefined,
         // Fruehe Boards der Anleitung als Reiter „Aufbau“ (frueher eigene Box).
         early: true,
+        end: pageEnd,
       }
     : null;
   const hasOutcomeItems: boolean = !!comp?.outcome
@@ -714,6 +735,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
               // nach dem Klick (mergedFamilies ist dort nur die eigene).
               families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
               activeKey={variantMode === 'exact' ? slug : null}
+              end={pageEnd}
             />
 
             {/* „In der Runde" (Level-Boards) steht ueber die volle Breite, nur

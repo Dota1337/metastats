@@ -10,6 +10,7 @@ import {
   mergeJsonbCountArrays,
   mergeJsonbCountDicts,
   resolveTrendAnchorOffset,
+  rpcWindowArgs,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
@@ -125,14 +126,16 @@ async function readPrecomputedList(
   // sonst gehoert der Eintrag zu einer anderen Abfrage.
   if (!tiers || listKey(tiers) !== listKey(filters.buckets)) return none;
   try {
-    const found = await callRpc<Array<{ last_day: string; min_games: number; computed_at: string; comp_rows: CompRow[] }>>(
+    // Volle Tage (0095): mit Endtag sucht die Abfrage den Eintrag genau dieses
+    // Fensters (window_end = Endtag), ohne wie bisher den des letzten Datentags.
+    const found = await callRpc<Array<{ last_day: string; window_end?: string | null; min_games: number; computed_at: string; comp_rows: CompRow[] }>>(
       'get_tft_comp_list_precomputed',
       {
         p_patch_key: filters.patchFilter ?? '',
         p_set: filters.setNumber,
         p_regions_key: listKey(filters.regions),
         p_buckets_key: listKey(filters.buckets),
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
       },
       timeoutMs,
     );
@@ -140,7 +143,7 @@ async function readPrecomputedList(
     const rows = e && Array.isArray(e.comp_rows) && e.comp_rows.length > 0 ? e.comp_rows : null;
     // Nicht mehr frisch, aber vorhanden: bleibt als Notreserve, falls die
     // Live-Abfrage gleich scheitert (naechtliche Vollauslastung der DB).
-    if (!precomputedEntryUsable(e, { latestDay, requestedMinGames, now: Date.now() })) return { fresh: null, stale: rows };
+    if (!precomputedEntryUsable(e, { latestDay, endDay: filters.endDay, requestedMinGames, now: Date.now() })) return { fresh: null, stale: rows };
     return { fresh: rows, stale: rows };
   } catch (err) {
     console.error('[tft/comps] precomputed read failed, live fallback:', (err as Error).message);
@@ -326,7 +329,7 @@ export async function GET(request: NextRequest) {
     // den Cache prägt. Hilfsfunktion liest patches[0].first_day.
     const cacheControl = cacheControlForPatches(patches);
 
-    const filters = await resolveFilters(searchParams);
+    const filters = await resolveFilters(searchParams, { publisher });
 
     // Detail view: full metrics (death-curve, comp-DNA, matchups) for the one
     // matched cluster only. These are heavy per row — entropy, variance and
@@ -351,6 +354,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
         slug,
         skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial'
           || isSnapshotPublisher(request),
@@ -388,7 +392,7 @@ export async function GET(request: NextRequest) {
       const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
@@ -517,7 +521,7 @@ export async function GET(request: NextRequest) {
         p_cluster_keys: familySlugs,
         p_regions: filters.regions,
         p_buckets: filters.buckets,
-        p_days: filters.days,
+        ...rpcWindowArgs(filters),
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       };
@@ -600,7 +604,7 @@ export async function GET(request: NextRequest) {
         const pairsMs = publisher ? Math.min(20000, 55_000 - (Date.now() - startedAt)) : 20000;
         const pairs = pairsMs < 3000 ? [] : await compPairsMemo({
           p_regions: filters.regions,
-          p_days: filters.days,
+          ...rpcWindowArgs(filters),
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
           p_min_games: 10,
@@ -697,6 +701,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         minGames: mg,
         setNumber: filters.setNumber,
+        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Seit 2026-10-02 publiziert der Publisher die Liste ohne ?minGames
@@ -766,7 +771,7 @@ export async function GET(request: NextRequest) {
     const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
-      p_days: filters.days,
+      ...rpcWindowArgs(filters),
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
       p_min_games: listMinGames,
@@ -857,6 +862,9 @@ export async function GET(request: NextRequest) {
         set: filters.setNumber,
         velocityShift: trendShift > 0 && !(publisherTrend && trendFailed) ? trendShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
+        startDay: filters.startDay,
+        endDay: filters.endDay,
+        dataEnd: filters.dataEnd,
       },
       patches,
       minGames: effectiveMinGames,

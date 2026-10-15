@@ -33,6 +33,8 @@ export interface CompBoardParams {
   guide?: string | null;
   /** Auch die fruehen Boards der Anleitung (Stufe 4-7) als Reiter — nur die Detailseite. */
   early?: boolean;
+  /** Endtag der gezeigten Seite (volle Tage), null = der Server waehlt. */
+  end?: string | null;
 }
 
 type BoardData = CompBoardResponse | null;
@@ -50,6 +52,7 @@ function boardUrl(p: CompBoardParams): string {
   if (p.carries.length > 0) qs.set('carries', p.carries.join(','));
   if (p.guide !== undefined) qs.set('guide', p.guide ?? 'none');
   if (p.early) qs.set('early', '1');
+  if (p.end) qs.set('end', p.end);
   return `/api/tft/comps/board?${qs.toString()}`;
 }
 

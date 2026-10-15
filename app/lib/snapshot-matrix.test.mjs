@@ -31,6 +31,9 @@ import {
   META_PULSE_VELOCITY_SHIFTS,
   META_PULSE_VELOCITY_MAX_AGE_MS,
   metaPulseCompleteDay,
+  fullDayComplete,
+  dataWindow,
+  addDays,
   trendAnchorOffsetDays,
   PATCH_DIFF_ENTITIES,
   PATCH_DIFF_RPC,
@@ -491,4 +494,121 @@ test('Patch-Diff-Blob: Muell wird abgelehnt statt zu werfen', () => {
   for (const bad of [null, undefined, 'x', 42, [], {}, { ...PD_SNAP, v: 2 }, { ...PD_SNAP, rows: null }, { ...PD_SNAP, generatedAt: 'kaputt' }]) {
     assert.equal(isValidPatchDiff(bad, PD_WANT), false);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Volle Tage (User 15.10.2026): „N Tage" = die letzten N vollstaendigen Tage.
+
+test('Volle Tage: Tag zaehlt erst, wenn alle Regionen ihn geliefert haben', () => {
+  const rows = [...FULL_29, metaRow('euw1', '2026-09-30', '2026-10-01T10:10:19Z'), metaRow('kr', '2026-09-30', '2026-10-01T14:20:00Z')];
+  assert.equal(fullDayComplete(rows, REG3, at('2026-10-01T15:00:00Z')), '2026-09-29');
+  rows.push(metaRow('vn2', '2026-09-30', '2026-10-01T21:34:52Z'));
+  assert.equal(fullDayComplete(rows, REG3, at('2026-10-01T21:40:00Z')), '2026-09-29');
+  assert.equal(fullDayComplete(rows, REG3, at('2026-10-01T21:45:00Z')), '2026-09-30');
+  // Publisher ohne Wartezeit.
+  assert.equal(fullDayComplete(rows, REG3, at('2026-10-01T21:36:00Z'), 0), '2026-09-30');
+  // Mehrere Zeilen je Region und Tag (eine je Rang) stoeren nicht.
+  assert.equal(fullDayComplete([...rows, ...rows], REG3, at('2026-10-01T21:45:00Z')), '2026-09-30');
+});
+
+test('Volle Tage: Luecke einer Region macht den Tag nicht vollstaendig (data-skeptic F1)', () => {
+  // euw1 fehlt am 22.09. — metaPulseCompleteDay nennt den 22.09., hier zaehlt erst der 21.09.
+  const gap = [
+    metaRow('kr', '2026-09-21', '2026-09-22T15:00:00Z'), metaRow('vn2', '2026-09-21', '2026-09-22T21:00:00Z'), metaRow('euw1', '2026-09-21', '2026-09-22T10:00:00Z'),
+    metaRow('kr', '2026-09-22', '2026-09-23T15:00:00Z'), metaRow('vn2', '2026-09-22', '2026-09-23T21:00:00Z'),
+    metaRow('euw1', '2026-09-23', '2026-09-24T10:00:00Z'),
+  ];
+  assert.equal(metaPulseCompleteDay(gap, REG3, at('2026-09-24T12:00:00Z')), '2026-09-22');
+  assert.equal(fullDayComplete(gap, REG3, at('2026-09-24T12:00:00Z')), '2026-09-21');
+  // Sobald alle den 23.09. haben, ist er der Endtag (der 22.09. bleibt eine Luecke im Fenster).
+  const later = [...gap, metaRow('kr', '2026-09-23', '2026-09-24T15:00:00Z'), metaRow('vn2', '2026-09-23', '2026-09-24T21:00:00Z')];
+  assert.equal(fullDayComplete(later, REG3, at('2026-09-24T22:00:00Z')), '2026-09-23');
+  // Ausgefallene Region (vn2 seit 28.09.) haelt den Tag nicht fest.
+  const dead = [...FULL_29.filter(r => r.region !== 'vn2'), metaRow('vn2', '2026-09-28', '2026-09-29T21:00:00Z'),
+    metaRow('euw1', '2026-09-30', '2026-10-01T10:10:00Z'), metaRow('kr', '2026-09-30', '2026-10-01T14:20:00Z')];
+  assert.equal(fullDayComplete(dead, REG3, at('2026-10-01T15:00:00Z')), '2026-09-30');
+  // Keine (fertigen) Zeilen → keine Aussage.
+  assert.equal(fullDayComplete([], REG3, at('2026-10-01T15:00:00Z')), null);
+  assert.equal(fullDayComplete([metaRow('kr', '2026-09-30', null)], REG3, at('2026-10-01T15:00:00Z')), null);
+});
+
+// Datenlage 15.10.: 18.4 seit 08.10., neuester Tag 14.10. (halb), voll bis 13.10.
+const P184 = { first_day: '2026-10-08', last_day: '2026-10-14' };
+
+test('Fenster volle Tage: endet am Endtag, N Tage, ohne Filter nicht am Patch-Start gekappt', () => {
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 3, patchFilter: null, patch: P184 }),
+    { startDay: '2026-10-11', endDay: '2026-10-13', days: 3 });
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 1, patchFilter: null, patch: P184 }),
+    { startDay: '2026-10-13', endDay: '2026-10-13', days: 1 });
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 7, patchFilter: null, patch: P184 }),
+    { startDay: '2026-10-07', endDay: '2026-10-13', days: 7 });
+  // ?patch=any / kein Vorpatch: kein Patch bekannt → nur der Endtag zaehlt.
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 2, patchFilter: '__kein_vorpatch__', patch: undefined }),
+    { startDay: '2026-10-12', endDay: '2026-10-13', days: 2 });
+});
+
+test('Fenster volle Tage: Patch-Filter kappt am Start, beendeter Patch endet an seinem letzten Tag', () => {
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 7, patchFilter: '18.4', patch: P184 }),
+    { startDay: '2026-10-08', endDay: '2026-10-13', days: 6 });
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-13', requestedDays: 3, patchFilter: '18.3', patch: { first_day: '2026-09-24', last_day: '2026-10-07' } }),
+    { startDay: '2026-10-05', endDay: '2026-10-07', days: 3 });
+});
+
+test('Fenster volle Tage: neuer Patch ohne vollen Tag zeigt seine Teildaten (User 15.10.)', () => {
+  const p185 = { first_day: '2026-10-21', last_day: '2026-10-21' };
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-20', requestedDays: 3, patchFilter: null, patch: p185 }),
+    { startDay: '2026-10-19', endDay: '2026-10-21', days: 3 });
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-20', requestedDays: 3, patchFilter: '18.5', patch: p185 }),
+    { startDay: '2026-10-21', endDay: '2026-10-21', days: 1 });
+  // Sobald der erste Tag voll ist, gilt wieder der Endtag.
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-21', requestedDays: 3, patchFilter: null, patch: { ...p185, last_day: '2026-10-22' } }),
+    { startDay: '2026-10-19', endDay: '2026-10-21', days: 3 });
+  assert.equal(addDays('2026-10-31', 1), '2026-11-01');
+  assert.equal(addDays('2026-03-01', -1), '2026-02-28');
+});
+
+test('Jobs volle Tage: Fenster je Stufe wie dataWindow, Ende im Schluessel', () => {
+  const dataEnd = '2026-09-11';
+  const jobs = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY, dataEnd });
+  assert.ok(jobs.every(j => j.fullDay));
+  const cases = [
+    { key: '', filter: null, row: PATCHES[0] },
+    { key: '18.2', filter: '18.2', row: PATCHES[0] },
+    { key: '18.1', filter: '18.1', row: PATCHES[1] },
+  ];
+  for (const c of cases) {
+    for (let d = 1; d <= 7; d++) {
+      const w = dataWindow({ dataEnd, requestedDays: d, patchFilter: c.filter, patch: c.row });
+      for (const b of Object.keys(COMP_PRECOMPUTE_BUCKETS)) {
+        assert.ok(
+          jobs.some(j => j.patchKey === c.key && j.bucketLabel === b && j.dataStart === w.startDay && j.windowEnd === w.endDay && j.days === w.days),
+          `kein Eintrag fuer ${c.key || 'aktuell'}/${b}/${d}d (${w.startDay}..${w.endDay})`,
+        );
+      }
+    }
+  }
+  const groups = Object.keys(COMP_PRECOMPUTE_BUCKETS).length;
+  assert.equal(jobs.filter(j => j.patchKey === '').length, 7 * groups);
+  assert.equal(jobs.filter(j => j.patchKey === '18.2').length, 2 * groups);
+  assert.ok(jobs.filter(j => j.patchKey === '18.1').every(j => j.windowEnd === '2026-09-09'));
+  const keys = jobs.map(j => `${j.patchKey}|${j.bucketLabel}|${j.dataStart}|${j.windowEnd}`);
+  assert.equal(new Set(keys).size, keys.length);
+  // Ohne Endtag: altes Fenster, Ende = letzter Datentag (beendeter Patch: sein letzter Tag).
+  const legacy = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY });
+  assert.ok(legacy.every(j => !j.fullDay));
+  assert.ok(legacy.filter(j => j.patchKey !== '18.1').every(j => j.windowEnd === '2026-09-11'));
+  assert.ok(legacy.filter(j => j.patchKey === '18.1').every(j => j.windowEnd === '2026-09-09'));
+});
+
+test('Eintrag volle Tage: nur mit gleichem Fenster-Ende', () => {
+  const now = Date.parse('2026-09-13T09:00:00Z');
+  const e = { last_day: '2026-09-12', window_end: '2026-09-11', min_games: 30, computed_at: '2026-09-13T06:30:00Z' };
+  const o = { latestDay: '2026-09-12', endDay: '2026-09-11', requestedMinGames: 30, now };
+  assert.equal(precomputedEntryUsable(e, o), true);
+  assert.equal(precomputedEntryUsable(e, { ...o, endDay: '2026-09-12' }), false);
+  assert.equal(precomputedEntryUsable({ ...e, window_end: undefined }, o), false);
+  assert.equal(precomputedEntryUsable(e, { ...o, requestedMinGames: 10 }), false);
+  // Ohne endDay der bisherige Vergleich ueber last_day.
+  assert.equal(precomputedEntryUsable(e, { ...o, endDay: null }), true);
+  assert.equal(precomputedEntryUsable(e, { ...o, endDay: null, latestDay: '2026-09-11' }), false);
 });

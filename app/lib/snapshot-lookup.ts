@@ -11,7 +11,7 @@
 // jedes Mal eine schwere Supabase-RPC. Bei 6h Edge-TTL trifft das nur den
 // ersten User pro Cache-Cycle.
 
-import { compFamilySnapshotKey, snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
+import { addDays, compFamilySnapshotKey, snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
 
 const MANIFEST_URL_BASE = process.env.SNAPSHOT_MANIFEST_URL || '';
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
@@ -32,6 +32,9 @@ interface SnapshotManifest {
   version: string;
   builtAt: string;
   patches: { current: string; previous: string | null };
+  // Endtag, mit dem der Publisher gerechnet hat (volle Tage, 15.10.2026).
+  // Fehlt bei Manifesten von vor der Umstellung.
+  dataThrough?: string | null;
   entries: Record<string, ManifestEntry>;
 }
 
@@ -75,6 +78,13 @@ async function loadManifest(): Promise<SnapshotManifest | null> {
   return _inflight;
 }
 
+/** Bauzeit + Endtag des Manifests fuer den Endtag der Besucher (resolveDataEnd). */
+export async function loadManifestWindow(): Promise<{ builtAt: string | null; dataThrough: string | null } | null> {
+  const m = await loadManifest();
+  if (!m) return null;
+  return { builtAt: m.builtAt ?? null, dataThrough: m.dataThrough ?? null };
+}
+
 export interface LookupOptions {
   patch: string | null;
   region: string;
@@ -98,6 +108,10 @@ export interface LookupOptions {
   // Source=editorial. Caller setzt sie auf true wenn das Snapshot übersprungen
   // werden soll.
   skip?: boolean;
+  // Letzter Tag des Fensters der Anfrage (ResolvedFilters.endDay). Gesetzt →
+  // Fenster-Waechter in fetchEntry. Ohne (OG-Bild, Sitemap, Rueckfall bei
+  // Datenbank-Fehlern) wird jeder Stand genommen.
+  endDay?: string | null;
 }
 
 export interface LookupHit {
@@ -237,9 +251,18 @@ async function fetchEntry(
     // Listing-Payloads tragen das Set als `filters.set`, der Detail-Payload
     // reicht die kompletten ResolvedFilters durch und nennt es `setNumber`.
     const payloadFilters = (payload as
-      { filters?: { set?: number | null; setNumber?: number | null } } | null)?.filters;
+      { filters?: { set?: number | null; setNumber?: number | null; endDay?: string | null } } | null)?.filters;
     const payloadSet = payloadFilters?.set ?? payloadFilters?.setNumber ?? null;
     if (payloadSet !== (opts.setNumber ?? null)) return null;
+    // Fenster-Waechter (volle Tage, 15.10.2026): ein Stand mit anderem Endtag
+    // zeigt andere Tage als die Live-Abfragen derselben Seite. Ohne Feld (Stand
+    // von vor der Umstellung, Fenster = Bautag - 1) → annehmen. Endtag + 1 →
+    // annehmen: der Publisher ueberschreibt die Dateien waehrend seines Laufs,
+    // das Manifest mit dem neuen Endtag kommt erst am Ende.
+    if (opts.endDay) {
+      const pe = payloadFilters?.endDay;
+      if (pe != null && pe !== opts.endDay && pe !== addDays(opts.endDay, 1)) return null;
+    }
     return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes, builtAt: entry.builtAt };
   } catch {
     return null;

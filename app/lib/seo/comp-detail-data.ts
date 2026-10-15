@@ -27,7 +27,7 @@ const MAX_BLOB_BYTES = 250 * 1024;
 export interface CompDetailInitial {
   key: string;
   /** Antwort von /api/tft/comps?slug=…&minGames=30 (Familien-Ansicht). */
-  detail: { hasData?: boolean; comp?: unknown };
+  detail: { hasData?: boolean; comp?: unknown; filters?: { dataEnd?: string | null } };
   assets: TftAssetsBundle;
 }
 
@@ -98,7 +98,7 @@ export async function compDetailStart(routeKey: string, sp: URLSearchParams): Pr
   if (!r) return null;
   const hit = await withTimeout(lookupCompDetailSnapshot({
     patch: r.patch, region: r.regionLabel, days: r.requestedDays, bucket: r.bucketLabel,
-    minGames: DETAIL_MIN_GAMES, setNumber: r.setNumber, slug,
+    minGames: DETAIL_MIN_GAMES, setNumber: r.setNumber, endDay: r.endDay, slug,
   }), left());
   if (!hit || !(hit.blobBytes <= MAX_BLOB_BYTES)) return null;
   const detail = hit.payload as CompDetailInitial['detail'] | null;

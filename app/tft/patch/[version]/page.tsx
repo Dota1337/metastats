@@ -12,6 +12,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
 } from 'recharts';
+import { compPath } from '../../../lib/tft-comp-path';
 
 // Per-patch winners/losers page. Diffs the current patch against the
 // previous one using /api/tft/patch-diff. Three entity tabs (units / items
@@ -336,7 +337,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     displayName = m
       ? `${trait?.name || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} · ${carry?.name || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}`
       : entry.key;
-    href = `/tft/comps/${encodeURIComponent(entry.key)}`;
+    href = compPath(entry.key);
   } else {
     const [traitId, activation] = entry.key.split('@');
     const trait = assets?.traits[traitId];

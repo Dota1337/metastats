@@ -16,6 +16,7 @@ import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../l
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../lib/tft-cluster';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import RegionCompare, { REGION_COMPARE_DEFAULT, parseCompareRegions } from '../../components/tft/RegionCompare';
+import { compPath } from '../../lib/tft-comp-path';
 
 // W5: Meta-Pulse Landing:
 //   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
@@ -259,7 +260,7 @@ function PulseRow({
 
   return (
     <a
-      href={withLang(`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=${bucket}`)}
+      href={withLang(`${compPath(clusterKey)}?bucket=${bucket}`)}
       className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-center gap-2">

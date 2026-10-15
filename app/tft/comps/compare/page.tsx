@@ -15,6 +15,7 @@ import { aggregateComponents, type CarryItemSet } from '../../../lib/tft-compone
 import type { CompareTrendPoint } from '../../../components/tft/CompareTrendChart';
 import { familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
 import { familyParts, MATCHUP_MIN_N, type MatchupVerdict } from '../../../lib/tft-comp-matchups';
+import { compPath } from '../../../lib/tft-comp-path';
 
 // Comp-Comparison-View — zwei Comps nebeneinander. Zugang via URL-Param
 // `?a=<slug>&b=<slug>` oder Compare-Button der Liste.
@@ -561,7 +562,7 @@ function OpponentList({
             return e.slug ? (
               <a
                 key={e.fam}
-                href={withLang(`/tft/comps/${encodeURIComponent(e.slug)}?bucket=${bucket}`)}
+                href={withLang(`${compPath(e.slug)}?bucket=${bucket}`)}
                 title={`${traitName} · ${carryName}`}
                 className="flex items-center gap-2 hover:opacity-80 transition"
               >{body}</a>

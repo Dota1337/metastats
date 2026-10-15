@@ -122,10 +122,8 @@ export function isSnapshotPublisher(request: Request): boolean {
   return request.headers.get('x-snapshot-publisher') === '1';
 }
 
-export async function lookupSnapshot(
-  endpoint: SnapshotEndpoint,
-  opts: LookupOptions,
-): Promise<LookupHit | null> {
+// Manifest, Patch und Achse einer Anfrage — gemeinsamer Teil aller Leser.
+async function resolveRequest(opts: LookupOptions) {
   if (opts.skip) return null;
   const manifest = await loadManifest();
   if (!manifest) return null;
@@ -145,11 +143,66 @@ export async function lookupSnapshot(
     : req.patch === manifest.patches.previous
       ? req.patch
       : req.patch;
+  return { manifest, req, resolvedPatch };
+}
+
+export async function lookupSnapshot(
+  endpoint: SnapshotEndpoint,
+  opts: LookupOptions,
+): Promise<LookupHit | null> {
+  const ctx = await resolveRequest(opts);
+  if (!ctx) return null;
+  const { manifest, req, resolvedPatch } = ctx;
   const key = endpoint === 'comps-detail' && opts.family
     ? compFamilySnapshotKey({ ...req, patch: resolvedPatch, family: opts.family })
     : snapshotKey(endpoint, { ...req, patch: resolvedPatch });
   const entry = manifest.entries[key];
   if (!entry) return null;
+  return fetchEntry(endpoint, entry, resolvedPatch, opts);
+}
+
+// Hoechstens so viele Slug-Eintraege je Familie und Achse probieren; der
+// Publisher legt je Familie einen an (sein Ziel), selten zwei.
+const MEMBER_CANDIDATES = 3;
+
+/**
+ * comps-detail: Slug-Eintrag eines Mitglieds der Familie `<trait>__<carry>` auf
+ * derselben Achse — Rueckfall, wenn der Familien-Eintrag fehlt. `accept`
+ * prueft die Mitgliedschaft am Stand (comp-detail-snapshot.ts). Nur ueber
+ * lookupCompDetailSnapshot benutzen.
+ */
+export async function lookupCompDetailMemberSlugs(
+  opts: LookupOptions,
+  family: { trait: string; carry: string },
+  accept: (payload: unknown) => boolean,
+): Promise<LookupHit | null> {
+  const ctx = await resolveRequest(opts);
+  if (!ctx) return null;
+  const { manifest, req, resolvedPatch } = ctx;
+  const marker = 'SLUGMARKER';
+  const [head, tail] = snapshotKey('comps-detail', { ...req, patch: resolvedPatch, slug: marker }).split(marker);
+  // Mitglieds-Slug `<trait>@<n>_<carry>[*3|~aug|#zweiter]`, im Schluessel mit _
+  // statt @ * ~ #. Trait und Carry sind [A-Za-z0-9_] (parseFamilyKey), also
+  // ohne Regex-Sonderzeichen.
+  if (!/^\w+$/.test(family.trait) || !/^\w+$/.test(family.carry)) return null;
+  const slugRe = new RegExp(`^${family.trait}_\\d+_${family.carry}(?:_|$)`);
+  const candidates = Object.keys(manifest.entries)
+    .filter(k => k.startsWith(head) && k.endsWith(tail) && slugRe.test(k.slice(head.length, k.length - tail.length)))
+    .sort()
+    .slice(0, MEMBER_CANDIDATES);
+  for (const key of candidates) {
+    const hit = await fetchEntry('comps-detail', manifest.entries[key], resolvedPatch, opts);
+    if (hit && accept(hit.payload)) return hit;
+  }
+  return null;
+}
+
+async function fetchEntry(
+  endpoint: SnapshotEndpoint,
+  entry: ManifestEntry,
+  resolvedPatch: string,
+  opts: LookupOptions,
+): Promise<LookupHit | null> {
   try {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), SNAPSHOT_FETCH_TIMEOUT_MS);

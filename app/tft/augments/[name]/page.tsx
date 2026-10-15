@@ -14,6 +14,7 @@ import {
   type AugmentStage,
   type AugmentStagesOverride,
 } from '../../../lib/tft-augment-stages';
+import { compPath } from '../../../lib/tft-comp-path';
 
 // Pure reference detail — Riot has restricted augment-statistics display, so
 // this page intentionally surfaces only name + description + tier from the
@@ -182,7 +183,7 @@ export default function TftAugmentReferenceDetailPage() {
                 return (
                   <a
                     key={`${m.trait}__${m.carry}`}
-                    href={withLang(`/tft/comps/${encodeURIComponent(compSlug)}`)}
+                    href={withLang(compPath(compSlug))}
                     className="flex items-center gap-3 p-3 rounded-md bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                   >
                     {carryUrl ? (

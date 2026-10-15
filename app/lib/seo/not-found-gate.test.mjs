@@ -70,6 +70,18 @@ test('erfundene Adressen → 404', () => {
   assert.equal(unknown('/teams/DA_18_Azir'), true, 'Teams ohne Praefix-Ausnahme');
 });
 
+test('lesbare Comp-Adressen und Familien-Kennungen (L2)', () => {
+  if (known.currentSet !== 18) return; // Namen von Set 18
+  assert.equal(unknown('/tft/comps/lunar-aphelios'), false);
+  assert.equal(unknown('/tft/comps/Lunar-Aphelios'), false, 'Grossschreibung leitet die Middleware um');
+  assert.equal(unknown('/tft/comps/fake-nosuchunit'), true);
+  assert.equal(unknown('/tft/comps/lunar-nosuchunit'), true);
+  assert.equal(unknown('/tft/comps/DA_18_Lunar__DA_18_Aphelios'), false, 'Familien-Kennung');
+  assert.equal(unknown('/tft/comps/DA_18_Lunar__NoSuchUnit'), true);
+  // Eigene Pruefung reinreichbar (leere Namenstabelle laesst lesbare Formen durch).
+  assert.equal(isUnknownDetailPath('/tft/comps/fake-nosuchunit', undefined, () => true), false);
+});
+
 test('kaputte Kodierung → 404 statt Absturz', () => {
   assert.equal(unknown('/tft/units/%E0%A4%A'), true);
   assert.equal(unknown('/tft/comps/%'), true);
@@ -81,7 +93,7 @@ test('leere Liste (fehlt oder kaputt) laesst alles durch', () => {
   for (const p of ['/tft/units/NoSuchUnit123', '/tft/traits/NoSuchTrait', '/teams/doesnotexist', `/tft/comps/${enc('Fake@9_X')}`]) {
     assert.equal(isUnknownDetailPath(p, empty), false, p);
   }
-  // Grammatik bleibt hart: ein Comp-Slug ohne @ ist nie eine Seite.
+  // Grammatik bleibt hart: ohne @ nur lesbare Namen, die die Namenstabelle kennt.
   assert.equal(isUnknownDetailPath('/tft/comps/kein-slug', empty), true);
 });
 

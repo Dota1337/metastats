@@ -15,6 +15,7 @@ import {
   buildRegionNarrative,
   type RegionPattern,
 } from '../../lib/tft-region-pattern';
+import { compPath } from '../../lib/tft-comp-path';
 
 // W2-A Region-Meta-Divergence — Redesign 2026-06-18 (User-Feedback):
 //   Statt 3 Tabs (KR-voraus / EU-voraus / NA-voraus) eine Hauptliste mit
@@ -211,7 +212,7 @@ function RegionRowCard({
 
   return (
     <a
-      href={withLang(`/tft/comps/${encodeURIComponent(row.cluster_key)}?bucket=master_plus`)}
+      href={withLang(`${compPath(row.cluster_key)}?bucket=master_plus`)}
       className="block bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-center gap-3">

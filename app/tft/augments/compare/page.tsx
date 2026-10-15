@@ -7,6 +7,7 @@ import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, allGuides, augmentRowsByRarity, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
+import { compPath } from '../../../lib/tft-comp-path';
 
 // Augment-Compare-View — zwei Augments nebeneinander mit Tier-Badge,
 // Description und Reverse-Lookup auf Comps die sie spielen. User-Flow
@@ -169,7 +170,7 @@ function AugmentPanel({
               return (
                 <a
                   key={`${m.trait}__${m.carry}`}
-                  href={withLang(`/tft/comps/${encodeURIComponent(compSlug)}`)}
+                  href={withLang(compPath(compSlug))}
                   className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                 >
                   {carryUrl ? (

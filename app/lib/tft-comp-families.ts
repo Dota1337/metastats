@@ -367,8 +367,27 @@ export function topFamilyKeys(families: CompFamily[]): Set<string> | null {
   );
 }
 
+/**
+ * Kennung, auf die eine Familie verlinkt (Liste, Atlas, Sitemap) und die der
+ * Publisher abfragt: die Hauptvariante, wenn sie in der Anker-Haelfte
+ * (`familyKey`) liegt, sonst deren meistgespielte Variante. Bei zusammengelegten
+ * Familien kann die Hauptvariante (beste Platzierung) in der anderen Haelfte
+ * liegen — dann truege die lesbare Adresse einen anderen Carry als der erste
+ * Name der Karte, und der Vorrat laege unter der falschen Haelfte (L2).
+ */
+type LinkVariant = { slug?: string | null; clusterKey?: string | null; games?: number | null };
+export function familyLinkSlug(f: { familyKey: string; mainComp: LinkVariant; variants?: LinkVariant[] }): string {
+  const slugOf = (v: LinkVariant) => v.slug || v.clusterKey || '';
+  const main = slugOf(f.mainComp);
+  if (main && compTraitFamilyKey(main) === f.familyKey) return main;
+  const own = (f.variants || [])
+    .filter(v => compTraitFamilyKey(slugOf(v)) === f.familyKey)
+    .sort((a, b) => (b.games ?? 0) - (a.games ?? 0));
+  return own.length > 0 ? slugOf(own[0]) : main;
+}
+
 // Die Familien der Standardliste (laufendes Set, 40 meistgespielte, ohne Suche)
-// mit dem Slug, auf den die Liste verlinkt (Hauptvariante). Sitemap und der
+// mit dem Slug, auf den die Liste verlinkt (familyLinkSlug). Sitemap und der
 // Detail-Vorrat des Publishers (/api/tft/comps/families) nutzen dieselbe Regel —
 // sonst verlinkt die Sitemap Seiten, fuer die nichts vorgerechnet ist.
 // `familyKey` ist der Schluessel des Detail-Vorrats (familyKeyForMerge).
@@ -377,7 +396,7 @@ export function listFamilyTargets(
   assets: TftAssetsBundle | null,
 ): { slug: string; familyKey: string }[] {
   return standardListFamilies(rows, assets)
-    .map(f => f.mainComp.slug)
+    .map(f => familyLinkSlug(f))
     .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
     .map(slug => ({ slug, familyKey: compTraitFamilyKey(slug) }));
 }

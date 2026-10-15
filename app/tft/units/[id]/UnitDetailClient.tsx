@@ -16,6 +16,7 @@ import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
+import { compPath } from '../../../lib/tft-comp-path';
 
 type ItemEntry = { item: string; games: number; avgPlacement: number | null; top4Rate: number | null };
 type ItemSetEntry = { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null };
@@ -571,7 +572,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
                       return (
                         <a
                           key={c.slug}
-                          href={withLang(`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
+                          href={withLang(`${compPath(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (

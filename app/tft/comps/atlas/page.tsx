@@ -12,7 +12,8 @@ import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
-import { dedupeByCarry, visibleFamilies, familyTrend, type CompSortBy } from '../../../lib/tft-comp-families';
+import { dedupeByCarry, visibleFamilies, familyTrend, familyLinkSlug, type CompSortBy } from '../../../lib/tft-comp-families';
+import { compPath } from '../../../lib/tft-comp-path';
 import { costColor, HEX_CLIP } from '../../../lib/tft-ui';
 import { useTftCompsData } from '../../../lib/useTftCompsData';
 
@@ -63,7 +64,7 @@ export default function TftCompsAtlasPage() {
   };
 
   const href = (f: CompFamily) =>
-    `/tft/comps/${encodeURIComponent(f.mainComp.slug)}?bucket=${filters.bucket}&region=${filters.region}${filters.days ? `&days=${filters.days}` : ''}`;
+    `${compPath(familyLinkSlug(f))}?bucket=${filters.bucket}&region=${filters.region}${filters.days ? `&days=${filters.days}` : ''}`;
 
   return (
     <main className="min-h-screen bg-surface-page">

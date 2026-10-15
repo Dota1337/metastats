@@ -10,6 +10,10 @@ import nextTs from "eslint-config-next/typescript";
 const INTERNAL_PATH = '/^\\x2F(?!\\x2F|api\\x2F|internal|auth\\x2F|companion\\x2F|_next\\x2F)/';
 const INTERNAL_VALUE = `:matches(Literal[value=${INTERNAL_PATH}], TemplateLiteral[quasis.0.value.raw=${INTERNAL_PATH}], BinaryExpression[left.value=${INTERNAL_PATH}])`;
 const LANG_LINK_MSG = 'Interner Link ohne Sprach-Adresse: withLang(...) aus useI18n() nutzen (Server: withLangPrefix + getServerPathLang).';
+// Lesbare Comp-Adressen (L2, app/lib/tft-comp-path.ts): Comp-Seiten nur ueber
+// compPath(kennung) verlinken, sonst trifft jeder Klick die Weiterleitung.
+const COMP_PATH = '/^(?!.*api\\x2Ftft).*\\x2Ftft\\x2Fcomps\\x2F$/';
+const COMP_LINK_MSG = 'Comp-Detailseite ohne compPath(): lesbare Adresse aus app/lib/tft-comp-path.ts nutzen.';
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -25,6 +29,8 @@ const eslintConfig = defineConfig([
         { selector: `CallExpression[callee.object.property.name='location'][callee.property.name=/^(assign|replace)$/] > ${INTERNAL_VALUE}`, message: LANG_LINK_MSG },
         { selector: `CallExpression[callee.name='redirect'] > ${INTERNAL_VALUE}`, message: LANG_LINK_MSG },
         { selector: `AssignmentExpression[left.property.name='href'] > ${INTERNAL_VALUE}.right`, message: LANG_LINK_MSG },
+        { selector: `TemplateElement[value.raw=${COMP_PATH}]`, message: COMP_LINK_MSG },
+        { selector: `BinaryExpression > Literal[value=${COMP_PATH}]`, message: COMP_LINK_MSG },
       ],
     },
   },

@@ -6,6 +6,7 @@ import TftHero from '../../components/tft/TftHero';
 import { listBookmarks, removeBookmark, type Bookmark } from '../../lib/bookmarks';
 import { useI18n } from '../../lib/i18n';
 import { legacyTftPlayerSlug } from '../../lib/og/slugs';
+import { compPath } from '../../lib/tft-comp-path';
 
 // Local-only saved view. Reads from window.localStorage on mount and
 // re-reads on the `metastats:bookmarks:change` event so toggles elsewhere
@@ -44,7 +45,7 @@ export default function SavedPage() {
               title={t('nav.comps')}
               empty={t('tft.savedEmptyComps')}
               items={comps}
-              hrefOf={b => `/tft/comps/${encodeURIComponent(b.key)}`}
+              hrefOf={b => compPath(b.key)}
               onRemove={b => removeBookmark(b.type, b.key, b.region)}
             />
             <Section

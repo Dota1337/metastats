@@ -31,12 +31,31 @@ export function parseClusterKey(key: string): ClusterKeyParts | null {
   };
 }
 
+/** Familien-Kennung `<trait>__<carry>` (compTraitFamilyKey) zerlegen. Keine
+ *  Trait- oder Unit-Kennung enthaelt `__` (Test in tft-comp-path.test.mjs). */
+export function parseFamilyKey(key: string): { trait: string; carry: string } | null {
+  if (!key || key.includes('@')) return null;
+  const m = /^([A-Za-z0-9_]+?)__([A-Za-z0-9_]+)$/.exec(key);
+  return m ? { trait: m[1], carry: m[2] } : null;
+}
+
+/** Trait und Carry aus einer Cluster- oder Familien-Kennung. */
+export function compTraitCarry(key: string): { trait: string; carry: string } | null {
+  const parts = parseClusterKey(key);
+  return parts ? { trait: parts.trait, carry: parts.carry } : parseFamilyKey(key);
+}
+
 /** Die Kennungen in einem Comp-Slug: Trait, Carry, ggf. zweiter Carry. null =
  *  keine Comp-Grammatik. Gemeinsame Regel fuer die 404-Pruefung der Middleware
- *  (seo/not-found-gate.ts) und das noindex-Netz der Layouts (seo/names.ts). */
+ *  (seo/not-found-gate.ts) und das noindex-Netz der Layouts (seo/names.ts).
+ *  Familien-Kennungen (`<trait>__<carry>`) zaehlen mit: dahin loest eine
+ *  lesbare Adresse auf (tft-comp-path.ts). */
 export function compSlugIds(slug: string): { trait: string; units: string[] } | null {
   const parts = parseClusterKey(slug);
-  if (!parts) return null;
+  if (!parts) {
+    const fam = parseFamilyKey(slug);
+    return fam ? { trait: fam.trait, units: [fam.carry] } : null;
+  }
   return { trait: parts.trait, units: parts.secondary != null ? [parts.carry, parts.secondary] : [parts.carry] };
 }
 

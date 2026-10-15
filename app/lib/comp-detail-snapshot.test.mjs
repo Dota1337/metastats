@@ -76,6 +76,43 @@ test('andere Schwelle als 30 oder skip → kein Vorrat (live)', async () => {
   assert.equal(calls.length, 0);
 });
 
+// Lesbare Adressen (L2) fragen mit der Familien-Kennung.
+const FAM = 'TFT18_Solar__TFT18_Xayah';
+const OTHER = 'TFT18_Solar__TFT18_Kayle';
+
+test('Familien-Kennung: Mitglied ueber mergedFamilies, sonst ueber clusterKey; Stand unveraendert', () => {
+  const merged = { comp: { ...familyPayload().comp, mergedFamilies: [OTHER, FAM] } };
+  assert.equal(familyPayloadFor(merged, FAM), merged);
+  assert.equal(familyPayloadFor(merged, OTHER), merged);
+  assert.equal(familyPayloadFor(merged, 'TFT18_Solar__TFT18_Nope'), null);
+  assert.ok(familyPayloadFor(familyPayload(), FAM), 'ohne mergedFamilies: Familie des clusterKey');
+  assert.equal(familyPayloadFor(familyPayload(), OTHER), null);
+});
+
+test('Familien-Kennung ohne Familien-Eintrag → Slug-Eintrag eines Mitglieds, nie der eigene Slug-Schluessel', async () => {
+  const { fn, calls } = fakeLookup({}, {});
+  const seen = [];
+  const member = async (opts, family, accept) => {
+    seen.push(family);
+    const ok = { comp: { clusterKey: A, mergedFamilies: [FAM] } };
+    const foreign = { comp: { clusterKey: 'TFT18_Solar@5_TFT18_Kayle', mergedFamilies: [OTHER] } };
+    assert.equal(accept(foreign), false, 'fremde Familie wird verworfen');
+    return accept(ok) ? { payload: ok, tag: 'comps-detail-v2', blobUrl: 'u', blobBytes: 1, builtAt: 'x' } : null;
+  };
+  const hit = await lookupCompDetailSnapshot({ ...OPTS, slug: FAM }, fn, member);
+  assert.equal(hit.tag, 'comps-detail-member');
+  assert.deepEqual(seen, [{ trait: 'TFT18_Solar', carry: 'TFT18_Xayah' }]);
+  assert.deepEqual(calls.map(c => c.family), [FAM], 'kein Slug-Schluessel fuer die Familien-Kennung');
+});
+
+test('Familien-Kennung mit Familien-Eintrag → kein Rueckfall', async () => {
+  const payload = { hasData: true, comp: { clusterKey: A, mergedFamilies: [FAM] } };
+  const { fn } = fakeLookup({ [FAM]: payload }, {});
+  const hit = await lookupCompDetailSnapshot({ ...OPTS, slug: FAM }, fn, async () => assert.fail('kein Rueckfall erwartet'));
+  assert.equal(hit.tag, 'comps-detail-family');
+  assert.equal(hit.payload, payload);
+});
+
 test('Familien-Schluessel: eigener Unterordner, __ der Familie wird zu .', () => {
   assert.equal(
     compFamilySnapshotKey({ patch: '18.3', region: 'all', days: 3, bucket: 'master_plus', family: 'TFT18_Solar__TFT18_Xayah' }),

@@ -12,7 +12,7 @@ import path from 'node:path';
 import { CURRENT_SET } from '../current-set';
 import { lookupCompDetailSnapshot } from '../comp-detail-snapshot';
 import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
-import { parseClusterKey } from '../tft-cluster';
+import { compTraitCarry } from '../tft-cluster';
 import { computeRoles, componentCheckFromItems, namedCarries, type RoleUnit } from '../tft-comp-roles';
 import { tftTraitDisplayName, type TftAssetsBundle } from '../tft-cdragon';
 import { lolPlayersLookup, tftDirectoryLookup } from '../player-lookup-server';
@@ -56,9 +56,10 @@ export interface CompOg {
   stats: { games: number; avgPlacement: number; top4Rate: number; top1Rate: number } | null;
 }
 
-/** Name ohne Netz: Trait aus dem Slug + Carry aus dem Slug. Fuer den Seitentitel. */
+/** Name ohne Netz: Trait aus dem Slug + Carry aus dem Slug (Cluster- oder
+ *  Familien-Kennung). Fuer den Seitentitel. */
 export function compNameFromSlug(slug: string): string | null {
-  const parts = parseClusterKey(slug);
+  const parts = compTraitCarry(slug);
   if (!parts) return null;
   const bundle = tftAssets();
   return `${tftTraitDisplayName(bundle, parts.trait)} · ${championName(bundle, parts.carry)}`;
@@ -77,7 +78,7 @@ function tileUrl(bundle: TftAssetsBundle | null, id: string): string | null {
 }
 
 export async function compOgData(slug: string): Promise<CompOg | null> {
-  const parts = parseClusterKey(slug);
+  const parts = compTraitCarry(slug);
   if (!parts) return null;
   const bundle = tftAssets();
   // Dieselben Filter wie die Detailseite ohne Parameter

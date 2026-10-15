@@ -23,6 +23,14 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DST = resolve(ROOT, 'app/lib/seo/known-ids.generated.json');
+// Namenstabelle der lesbaren Comp-Adressen (app/lib/tft-comp-path.ts, SEO Weg
+// C, L2). Eigene Datei, weil sie auch in den Browser geht (Links) — known-ids
+// ist dafuer zu gross. Nur Rohdaten (Kennung → Anzeigename); Schreibweise,
+// Zwillinge und Rundlauf regelt allein das TS-Modul.
+const DST_NAMES = resolve(ROOT, 'app/lib/tft-comp-names.generated.json');
+// Erstes Set mit lesbaren Adressen. Aeltere Sets bekamen nie welche — Set 17
+// haette 8 Traits namens „Stargazer".
+export const FIRST_READABLE_SET = 18;
 const readJson = p => JSON.parse(readFileSync(resolve(ROOT, p), 'utf8'));
 
 // Routen, deren letztes Segment die Pruefung kennt (not-found-gate.ts).
@@ -129,6 +137,7 @@ export function buildKnownIds() {
 
   const sorted = s => [...s].sort();
   return {
+    names: compNames(currentSet, bundles, warnings),
     data: {
       currentSet: Number.isInteger(currentSet) ? currentSet : null,
       sets: Object.keys(bundles).map(Number),
@@ -141,6 +150,35 @@ export function buildKnownIds() {
     },
     warnings,
   };
+}
+
+/**
+ * Anzeigenamen je Set ab FIRST_READABLE_SET: alle Traits, Units nur mit Traits
+ * (Monster wie Krug tragen denselben Namen wie die spielbare Form, sind aber
+ * nie Carry). Gleiche Rohnamen werden gemeldet — wer gewinnt, entscheidet
+ * tft-comp-path.ts.
+ */
+export function compNames(currentSet, bundles, warnings = []) {
+  const sets = {};
+  for (const [set, bundle] of Object.entries(bundles)) {
+    if (Number(set) < FIRST_READABLE_SET) continue;
+    const traits = {}, units = {};
+    for (const [id, t] of Object.entries(bundle.traits || {})) {
+      if (typeof t?.name === 'string' && t.name) traits[id] = t.name;
+    }
+    for (const [id, c] of Object.entries(bundle.champions || {})) {
+      if (typeof c?.name === 'string' && c.name && Array.isArray(c.traits) && c.traits.length > 0) units[id] = c.name;
+    }
+    for (const [kind, map] of [['Traits', traits], ['Units', units]]) {
+      const byName = {};
+      for (const [id, name] of Object.entries(map)) (byName[name] ??= []).push(id);
+      for (const [name, ids] of Object.entries(byName)) {
+        if (ids.length > 1) warnings.push(`Set ${set}: ${kind} mit gleichem Namen „${name}": ${ids.sort().join(', ')}`);
+      }
+    }
+    sets[set] = { traits, units };
+  }
+  return { currentSet: Number.isInteger(currentSet) ? currentSet : null, sets };
 }
 
 // LoL-Champions (/champions/<id>, SEO-Plan Schritt 6): Kennungen aus Data
@@ -185,9 +223,11 @@ export async function lolChampionIds({ offline = false } = {}) {
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   let data = EMPTY;
+  let names = { currentSet: null, sets: {} };
   try {
     const built = buildKnownIds();
     data = built.data;
+    names = built.names;
     for (const w of built.warnings) console.warn(`[build-known-ids] Warnung: ${w}`);
   } catch (e) {
     console.warn(`[build-known-ids] Warnung: ${e.message} — leere Liste, die 404-Pruefung laesst alles durch`);
@@ -208,5 +248,13 @@ if (isMain) {
   } catch (e) {
     // Auch das darf den aufrufenden Build/Install nicht kippen.
     console.warn(`[build-known-ids] Warnung: ${DST} nicht schreibbar: ${e.message}`);
+  }
+  // Leere Tabelle = keine lesbaren Links, alles wird durchgelassen.
+  try {
+    writeFileSync(DST_NAMES, JSON.stringify(names) + '\n');
+    const counts = Object.entries(names.sets).map(([s, v]) => `Set ${s}: ${Object.keys(v.traits).length} Traits, ${Object.keys(v.units).length} Units`).join('; ');
+    console.log(`[build-known-ids] Comp-Namen: ${counts || 'leer'}`);
+  } catch (e) {
+    console.warn(`[build-known-ids] Warnung: ${DST_NAMES} nicht schreibbar: ${e.message}`);
   }
 }

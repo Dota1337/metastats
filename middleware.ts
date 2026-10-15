@@ -5,7 +5,8 @@
 //   2. Erfundene Detail-Adressen (Unit/Item/Trait/Comp/Team) → 404, siehe
 //      app/lib/seo/not-found-gate.ts; LoL-Champions → 404 bzw. 308 bei
 //      falscher Gross/Klein-Schreibung, siehe app/lib/seo/champion-gate.ts.
-//      Davor: alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag`.
+//      Davor: alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag`,
+//      Comp-Kennungen → lesbarer Name (app/lib/tft-comp-path.ts).
 //   3. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
 //      Cookie nach ~1h ab obwohl der User aktiv ist.
 //   0. Davor: Sprach-Adressen `/en/…` (lang-path.ts). Der Vorsatz wird
@@ -21,6 +22,7 @@ import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
 import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
 import { legacyTftPlayerSlug } from './app/lib/og/slugs';
 import { LANG_HEADER, langPathsEnabled, langRoute, withLangPrefix, type PrefixLang } from './app/lib/lang-path';
+import { compReadableEnabled, compRedirect } from './app/lib/tft-comp-path';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
@@ -102,6 +104,24 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
       url.pathname = withLangPrefix(lang, `/tft/player/${canonical}`);
       return NextResponse.redirect(url, { status: 308, headers: SEC });
     }
+  }
+
+  // --- Comp-Kennungen → lesbarer Name (SEO Weg C, L2) --------------------
+  // `/tft/comps/DA_18_Lunar%404_DA_18_Aphelios` → `/tft/comps/lunar-aphelios`,
+  // Grossschreibung → Kleinschreibung. Vor der 404-Pruefung, ausserhalb von
+  // SEO_404_GATE (eigener Schalter NEXT_PUBLIC_COMP_READABLE=0, der auch die
+  // Links zuruecknimmt). 307 bis 28.10.2026, danach 308 mit einem Tag
+  // Browser-Cache: ein Rueckbau bleibt moeglich (COMP_REDIRECT_STATUS=307).
+  const comp = compRedirect(path, req.nextUrl.searchParams, {
+    now: Date.now(), status: process.env.COMP_REDIRECT_STATUS, enabled: compReadableEnabled(),
+  });
+  if (comp) {
+    const url = req.nextUrl.clone();
+    url.pathname = withLangPrefix(lang, comp.pathname);
+    url.search = comp.search;
+    const headers: Record<string, string> = { ...SEC };
+    if (comp.status === 308) headers['Cache-Control'] = 'public, max-age=86400';
+    return NextResponse.redirect(url, { status: comp.status, headers });
   }
 
   // --- Erfundene Detail-Adressen → echte 404 ----------------------------

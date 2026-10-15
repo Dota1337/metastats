@@ -5,6 +5,7 @@ import { lookupSnapshot } from './lib/snapshot-lookup';
 import { tftAssets } from './lib/og/data';
 import { withTimeout } from './lib/og/frame';
 import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
+import { compPath } from './lib/tft-comp-path';
 import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
 import { LANGS, langAlternates, langPathsEnabled, withLangPrefix } from './lib/lang-path';
@@ -59,8 +60,8 @@ function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits', bucket =
   }), SOURCE_TIMEOUT_MS);
 }
 
-// Die 40 Comp-Familien der Liste, verlinkt wie dort ueber den Slug der
-// Hauptvariante — dieselbe Regel und derselbe Rang (resolveDefaultBucket), nach
+// Die 40 Comp-Familien der Liste, verlinkt wie dort (familyLinkSlug, lesbare
+// Adresse ueber compPath) — dieselbe Regel und derselbe Rang (resolveDefaultBucket), nach
 // denen der Publisher den Detail-Vorrat anlegt (/api/tft/comps/families).
 async function compEntries(): Promise<Entry[]> {
   const bucket = (await withTimeout(resolveDefaultBucket(), SOURCE_TIMEOUT_MS)) ?? 'diamond_plus';
@@ -68,7 +69,7 @@ async function compEntries(): Promise<Entry[]> {
   const rows = (hit?.payload as { comps?: CompApiRow[] } | undefined)?.comps;
   if (!Array.isArray(rows) || rows.length === 0) return [];
   return listFamilyTargets(rows, tftAssets()).map(t => ({
-    path: `/tft/comps/${encodeURIComponent(t.slug)}`,
+    path: compPath(t.slug),
     priority: 0.7,
     changeFrequency: 'daily' as const,
   }));

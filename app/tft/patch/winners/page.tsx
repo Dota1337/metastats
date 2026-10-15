@@ -10,6 +10,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,
 } from 'recharts';
+import { compPath } from '../../../lib/tft-comp-path';
 
 type Entity = 'unit' | 'item' | 'trait' | 'comp';
 const ENTITIES: Entity[] = ['unit', 'item', 'trait', 'comp'];
@@ -367,7 +368,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
         : traitIcon
           ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
           : <div className="w-7 h-7 rounded bg-surface-overlay" />,
-      href: `/tft/comps/${encodeURIComponent(key)}`,
+      href: compPath(key),
     };
   }
   // Trait entity: patch-diff collapses all activation tiers onto one row per

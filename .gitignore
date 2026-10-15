@@ -77,3 +77,5 @@ next-env.d.ts
 # Lauf wie die Bundles und Teams, die sie liest — eine eingecheckte Kopie liefe
 # nach jedem Bot-Update hinterher.
 /app/lib/seo/known-ids.generated.json
+# Namenstabelle der lesbaren Comp-Adressen, gleicher Erzeuger, gleicher Grund.
+/app/lib/tft-comp-names.generated.json

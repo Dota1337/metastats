@@ -5,6 +5,7 @@ import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
+import { compPath } from '../../lib/tft-comp-path';
 
 // Variants-Switcher: surfaces all sub-cluster variants of a comp family on
 // the Comp-Detail page. Family = (trait, level, carry) without *N / ~aug /
@@ -214,7 +215,7 @@ export default function VariantsSwitcher({
         {variants.map(v => {
           const isActive = v.clusterKey === clusterKey;
           const label = variantLabel(v, t, assets, multiFamily);
-          const url = withLang(`/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`);
+          const url = withLang(`${compPath(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`);
           return (
             <button
               key={v.clusterKey}

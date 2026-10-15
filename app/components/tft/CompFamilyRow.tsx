@@ -5,6 +5,8 @@ import { type TierCutoffs } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
 import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompBoardPanel';
 import { useI18n } from '../../lib/i18n';
+import { compPath } from '../../lib/tft-comp-path';
+import { familyLinkSlug } from '../../lib/tft-comp-families';
 
 // CompFamilyRow — Trait+Carry-Family-Card mit Drop-Down (MetaTFT-Style).
 // Hauptcomp rendert als reguläre CompRow mit Toggle-Pfeil zwischen Trait+
@@ -46,8 +48,9 @@ export interface CompFamily {
   augments: Array<{ apiName: string; count: number }>;
 }
 
-function familyHref(comp: FamilyComp, region: string, bucket: string, days?: number): string {
-  return `/tft/comps/${encodeURIComponent(comp.slug)}?bucket=${bucket}&region=${region}${days ? `&days=${days}` : ''}`;
+// Hauptzeile: familyLinkSlug (Anker-Haelfte, wie Sitemap und Vorrat); Unterzeilen: ihre Variante.
+function familyHref(slug: string, region: string, bucket: string, days?: number): string {
+  return `${compPath(slug)}?bucket=${bucket}&region=${region}${days ? `&days=${days}` : ''}`;
 }
 
 export default function CompFamilyRow({
@@ -114,7 +117,7 @@ export default function CompFamilyRow({
           comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
           rank={rank}
           assets={assets}
-          href={withLang(familyHref(family.mainComp, region, bucket, days))}
+          href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
           showVelocity={showVelocity}
           velocityShift={velocityShift}
           tierCutoffs={tierCutoffs}
@@ -149,7 +152,7 @@ export default function CompFamilyRow({
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
         assets={assets}
-        href={withLang(familyHref(family.mainComp, region, bucket, days))}
+        href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
         showVelocity={showVelocity}
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
@@ -187,7 +190,7 @@ export default function CompFamilyRow({
                   comp={v as Parameters<typeof CompRow>[0]['comp']}
                   rank={0}
                   assets={assets}
-                  href={withLang(familyHref(v, region, bucket, days))}
+                  href={withLang(familyHref(v.slug, region, bucket, days))}
                   showVelocity={showVelocity}
                   velocityShift={velocityShift}
                   tierCutoffs={tierCutoffs}

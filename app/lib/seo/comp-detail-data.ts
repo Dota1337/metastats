@@ -12,6 +12,7 @@ import { lookupCompDetailSnapshot } from '../comp-detail-snapshot';
 import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
 import { compDetailKey, detailFiltersFrom } from '../tft-detail-filters';
 import { parseClusterKey } from '../tft-cluster';
+import { compDetailTarget } from '../tft-comp-path';
 import { compDefiningAugmentApiNameFromSlug } from '../tft-comp-defining-augments';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
@@ -83,9 +84,14 @@ function compAssets(bundle: TftAssetsBundle, payload: unknown): TftAssetsBundle 
   };
 }
 
-export async function compDetailStart(slug: string, sp: URLSearchParams): Promise<CompDetailInitial | null> {
+// `routeKey`: interne Kennung der Adresse (tft-comp-path.ts compRouteKey). Die
+// Auslese von ?variant teilt sich der Server mit der Seite (compDetailTarget),
+// sonst passt der Schluessel der Startdaten nie.
+export async function compDetailStart(routeKey: string, sp: URLSearchParams): Promise<CompDetailInitial | null> {
   const bundle = tftAssets();
-  if (!bundle || !slug || sp.get('variant') === 'exact') return null;
+  const target = compDetailTarget(routeKey, sp.get('variant'));
+  const slug = target.apiSlug;
+  if (!bundle || !slug || target.mode === 'exact') return null;
   const f = detailFiltersFrom(sp);
   const left = deadline();
   const r = await resolveFor({ region: f.region, bucket: f.bucket, days: String(f.days) }, left);

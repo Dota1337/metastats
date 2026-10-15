@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { withAlpha } from '../../../lib/color';
 import { CURRENT_SET } from '../../../lib/current-set';
-import { useParams, useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
+import { compDetailTarget } from '../../../lib/tft-comp-path';
 import { compDetailKey, detailFiltersFrom } from '../../../lib/tft-detail-filters';
 import { DETAIL_MIN_GAMES } from '../../../lib/snapshot-matrix';
 import type { CompDetailInitial } from '../../../lib/seo/comp-detail-data';
@@ -59,6 +60,7 @@ import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../.
 import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, augmentRowsByRarity } from '../../../lib/tft-comp-guides';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
+import { compPath } from '../../../lib/tft-comp-path';
 
 // Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
 // grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
@@ -80,13 +82,12 @@ const REGIONS = [
 
 // `initial`: Startdaten der Server-Huelle (page.tsx) — die Antwort, die
 // /api/tft/comps fuer die Filter der Adresse gaebe, oder null (dann fragt die
-// Seite wie bisher selbst).
-export default function TftCompDetailPage({ initial }: { initial: CompDetailInitial | null }) {
+// Seite wie bisher selbst). `routeKey`: interne Kennung der Adresse (page.tsx,
+// lesbarer Name schon aufgeloest — Familien-Kennung oder Cluster-Kennung).
+export default function TftCompDetailPage({ initial, routeKey }: { initial: CompDetailInitial | null; routeKey: string }) {
   const { t, withLang } = useI18n();
-  const params = useParams();
   const search = useSearchParams();
   const pathname = usePathname();
-  const slug = decodeURIComponent(String(params?.slug || ''));
   // Region, Rang und Zeitraum aus der Adresse — dieselbe Funktion wie die
   // Startdaten (tft-detail-filters.ts), sonst passt deren Schluessel nie.
   // Zeitraum wie in der Liste (1/3/7 Tage, Standard 3), damit Liste und Detail
@@ -96,9 +97,11 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
   const [region, setRegion] = useState<string>(urlFilters.region);
   const [bucket, setBucket] = useState<TierBucket>(urlFilters.bucket);
   // Variant-Mode: family (default — alle Sub-Cluster der Family aggregiert) oder
-  // exact (Single-Sub-Cluster). Wird live aus searchParams gelesen, damit der
-  // Toggle im VariantsSwitcher ohne Page-Reload reagiert.
-  const variantMode = search.get('variant') === 'exact' ? 'exact' : 'family';
+  // exact (Single-Sub-Cluster, ?variant=exact oder ?variant=<Kennung>). Wird
+  // live aus searchParams gelesen, damit der Toggle im VariantsSwitcher ohne
+  // Page-Reload reagiert; dieselbe Auslese wie die Startdaten (comp-detail-data.ts).
+  // `slug` = Kennung, mit der die Seite /api/tft/comps fragt.
+  const { apiSlug: slug, mode: variantMode } = compDetailTarget(routeKey, search.get('variant'));
   const dataKey = compDetailKey(slug, { region, bucket, days }, variantMode);
 
   // Adresse nachfuehren (teilbare Links). history.replaceState statt
@@ -175,17 +178,21 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => { loadCompGuidesBundle().then(setCompGuidesBundle); }, []);
 
+  // Trend fragt mit einer echten Cluster-Kennung (Familien-Kennungen kennt die
+  // Trend-RPC nicht) — der gezeigten Comp, also erst nach dem Laden.
+  const trendSlug = typeof comp?.clusterKey === 'string' ? comp.clusterKey : null;
   useEffect(() => {
+    if (!trendSlug) return;
     let cancelled = false;
     const familySlugs = variantMode === 'family' && comp?.aliasedFromFamily?.mergedFrom?.length > 1
       ? `&familySlugs=${[...comp.aliasedFromFamily.mergedFrom].sort().map((s: string) => encodeURIComponent(s)).join(',')}`
       : '';
-    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(slug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}`)
+    fetch(`/api/tft/comps/trend?slug=${encodeURIComponent(trendSlug)}&region=${region}&bucket=${bucket}&days=${trendDays}&variant=${variantMode}${familySlugs}`)
       .then(r => r.ok ? r.json() : { points: [] })
       .then(d => { if (!cancelled) setTrendPoints(d.points || []); })
       .catch(() => { if (!cancelled) setTrendPoints([]); });
     return () => { cancelled = true; };
-  }, [slug, region, bucket, trendDays, variantMode, comp]);
+  }, [trendSlug, region, bucket, trendDays, variantMode, comp]);
 
   useEffect(() => {
     // Schon geladene Staende zeigt showLoaded beim Klick. Ein Fehlschlag wird
@@ -531,7 +538,7 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <a
-            href={withLang(`/tft/comps?compareA=${encodeURIComponent(slug)}`)}
+            href={withLang(`/tft/comps?compareA=${encodeURIComponent(trendSlug ?? slug)}`)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
             title={t('tft.compare.fromDetail')}
           >
@@ -1148,7 +1155,7 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
             return (
               <a
                 key={e.opponent}
-                href={withLang(`/tft/comps/${encodeURIComponent(e.opponent)}?bucket=${bucket}`)}
+                href={withLang(`${compPath(e.opponent)}?bucket=${bucket}`)}
                 title={`${traitName} · ${carryName}`}
                 className="flex items-start gap-2 hover:opacity-80 transition"
               >

@@ -16,7 +16,7 @@ import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupCompDetailSnapshot } from '../../../lib/comp-detail-snapshot';
-import { parseClusterKey } from '../../../lib/tft-cluster';
+import { parseClusterKey, parseFamilyKey } from '../../../lib/tft-cluster';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
 import {
@@ -377,7 +377,13 @@ export async function GET(request: NextRequest) {
       // (gleicher Trait, gleicher Carry) — beide liegen unter demselben Trait.
       // Carry-genau ginge nicht als Prefix, weil das Level im Key davor steht.
       // Die exakte Family-Auswahl bleibt unten in JS; SQL filtert nur grob vor.
-      const detailTrait = parseClusterKey(slug)?.trait ?? null;
+      //
+      // Lesbare Adressen (L2) fragen mit der Familien-Kennung `<trait>__<carry>`
+      // (tft-comp-path.ts). Ohne ableitbaren Trait keine Abfrage: ohne Praefix
+      // laese die RPC alle Cluster mit allen Spalten (s. o.) und fande nichts.
+      const familySlug = parseFamilyKey(slug);
+      const detailTrait = (familySlug ?? parseClusterKey(slug))?.trait ?? null;
+      if (!detailTrait) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
       const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -385,10 +391,17 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
-        p_cluster_prefix: detailTrait ? `${detailTrait}@` : null,
+        p_cluster_prefix: `${detailTrait}@`,
       }, 20000);
       const participants = rows[0]?.participants || 0;
-      let row = rows.find(r => r.cluster_key === slug);
+      // Familien-Kennung: die meistgespielte Zeile der Familie ist der Anker
+      // (dieselbe Wahl wie mergeFamilyRows), der Familien-Modus unten legt die
+      // uebrigen dazu; ?variant=exact zeigt genau diese Zeile.
+      let row = familySlug
+        ? rows
+          .filter(r => familyKeyForMerge(r.cluster_key) === slug)
+          .sort((a, b) => Number(b.games) - Number(a.games))[0]
+        : rows.find(r => r.cluster_key === slug);
       let aliasedFrom: string | null = null;
       // Core-Comp Consolidation: 1-3 unit / activation-level Varianten einer
       // Comp sind keine eigenständigen Comps (User-Vorgabe). Wenn der exakte

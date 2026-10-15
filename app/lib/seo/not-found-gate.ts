@@ -15,6 +15,7 @@
 // Test (nicht eingecheckt). Kein node:-Import: laeuft in der Edge-Middleware.
 import known from './known-ids.generated.json';
 import { compSlugIds } from '../tft-cluster';
+import { isKnownReadable } from '../tft-comp-path';
 
 export interface KnownIds {
   currentSet?: number | null;
@@ -75,7 +76,11 @@ function decode(segment: string): string | null {
 }
 
 /** true = die Adresse gibt es sicher nicht. Nur Detail-Routen, sonst false. */
-export function isUnknownDetailPath(pathname: string, l: Lookup = defaultLookup()): boolean {
+export function isUnknownDetailPath(
+  pathname: string,
+  l: Lookup = defaultLookup(),
+  readable: (segment: string) => boolean = isKnownReadable,
+): boolean {
   const parts = pathname.split('/');
   // ['', 'tft', 'units', '<id>'] bzw. ['', 'teams', '<id>']; tiefere Pfade
   // (z. B. .../opengraph-image) und Listen-Seiten bleiben unberuehrt.
@@ -104,6 +109,8 @@ export function isUnknownDetailPath(pathname: string, l: Lookup = defaultLookup(
   if (route === 'tft/traits') return !check(l.traits, id, l);
 
   const comp = compSlugIds(id);
-  if (!comp) return true;
+  // Lesbare Adresse (/tft/comps/lunar-aphelios, tft-comp-path.ts): nur, wenn
+  // die Namenstabelle sie kennt; leere Tabelle = durchlassen.
+  if (!comp) return !readable(id);
   return !check(l.traits, comp.trait, l) || comp.units.some(u => !check(l.units, u, l));
 }

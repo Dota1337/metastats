@@ -185,7 +185,14 @@ function read(path) {
 {
   // Keine Ausnahmen mehr: nach dem Umbau darf keine Datei ein Set-Literal
   // tragen. Wer eines braucht, traegt es hier bewusst ein und begruendet es.
-  const PINNED = {};
+  // Zahl = Anzahl Literale, die mit CURRENT_SET gleich sein muessen. Objekt mit
+  // `historic` = feste Set-Nummer aus der Vergangenheit, die beim Bump bewusst
+  // NICHT mitzieht (dann entfaellt der Vergleich mit dem laufenden Set).
+  const PINNED = {
+    // Erstes Set mit lesbaren Comp-Adressen (SEO Weg C, L2). Set 17 hat
+    // 8 Traits namens „Stargazer", deshalb nie rueckwirkend.
+    'scripts/build-known-ids.mjs': { count: 1, historic: true },
+  };
 
   // SoT ist tft-set.json, NICHT tft-assets.json — nur erstere kennt das
   // Bump-Gate aus detect-tft-set.mjs. Begruendung in scripts/lib/current-set.mjs.
@@ -371,14 +378,15 @@ function read(path) {
     }
 
     for (const [f, hits] of Object.entries(found)) {
+      const pin = PINNED[f];
       for (const h of hits) {
-        if (h.value !== currentSet) {
+        if (h.value !== currentSet && !pin?.historic) {
           console.error(`✗ DRIFT: ${f}:${h.line} kodiert Set ${h.value}, aktuell ist ${currentSet}`);
           console.error(`    → CURRENT_SET nutzen (app/lib/current-set.ts bzw. scripts/lib/current-set.mjs).`);
           setDrift++;
         }
       }
-      const expected = PINNED[f];
+      const expected = typeof pin === 'object' ? pin.count : pin;
       if (expected === undefined) {
         console.error(`✗ DRIFT: ${f} fuehrt ${hits.length} neue(s) Set-Literal(e) ein`);
         console.error(`    → CURRENT_SET importieren statt hartkodieren; nur mit Begruendung in PINNED aufnehmen.`);

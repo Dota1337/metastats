@@ -12,6 +12,7 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, for
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
+import { compPath } from '../../../lib/tft-comp-path';
 
 interface ItemDetail {
   apiName: string;
@@ -297,7 +298,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                       return (
                         <a
                           key={c.slug}
-                          href={withLang(`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
+                          href={withLang(`${compPath(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (

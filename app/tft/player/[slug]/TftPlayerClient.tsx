@@ -46,6 +46,7 @@ import { decodeSlug, parseTftPlayerSlug } from '../../../lib/og/slugs';
 import { getDdragonVersion } from '../../../lib/ddragon-version';
 import type { TftMatchSummary } from '../../../lib/tft-match-processor';
 import type { PlayerHead } from '../../../lib/player-lookup';
+import { compPath } from '../../../lib/tft-comp-path';
 
 interface SummonerData {
   summoner: { name: string; puuid: string; profileIconId: number | null; summonerLevel: number | null; tier: string | null; rank: string | null };
@@ -991,7 +992,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               const carryAsset = assets?.champions[carry];
               // Comp page if this cluster resolves there, else the carry's unit page.
               const href = compKeys?.has(c.clusterKey)
-                ? `/tft/comps/${encodeURIComponent(c.clusterKey)}`
+                ? compPath(c.clusterKey)
                 : `/tft/units/${encodeURIComponent(c.carryUnit)}`;
               return (
                 <a

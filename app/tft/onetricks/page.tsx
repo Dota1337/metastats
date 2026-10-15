@@ -8,6 +8,7 @@ import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAss
 
 import { ONETRICK_REGIONS } from '../../lib/tft-onetrick-regions.mjs';
 import { tftProfileHref } from '../../lib/tft-player-search';
+import { compPath } from '../../lib/tft-comp-path';
 
 // Gemeinsame Quelle mit scripts/warm-tft-stats-cache.mjs — sonst bietet die
 // Seite Regionen an, die nie gewaermt werden.
@@ -147,7 +148,7 @@ export default function TftOneTricksPage() {
                     return (
                       <a
                         key={c.clusterKey}
-                        href={withLang(`/tft/comps/${encodeURIComponent(c.clusterKey)}`)}
+                        href={withLang(compPath(c.clusterKey))}
                         className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40"
                       >
                         {tftChampionTileUrl(assets, carry) && (

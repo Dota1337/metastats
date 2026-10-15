@@ -1224,6 +1224,12 @@ async function checkEndpoint(c, r) {
  * PAGE_ROOTS in app/lib/lang-path.ts, lang-path.test.mjs prueft das) oder die
  * Startseite. Der ESLint-Waechter faengt feste Texte; das hier faengt Links,
  * die als Variable durchgereicht werden.
+ *
+ * `expectCompRedirect` (lesbare Comp-Adressen, SEO Weg C L2): die erste
+ * Kennung mit `@` aus `source` (Familien-Ziele der Liste) muss je Vorsatz per
+ * 307/308 auf `<Vorsatz>/tft/comps/<lesbarer-name>` umleiten, und das Ziel muss
+ * 200 antworten. Aus Live-Daten statt einer festen Kennung, die mit dem
+ * Set-Wechsel veraltet.
  */
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
@@ -1238,6 +1244,15 @@ async function checkHttpStatus(c, r) {
     ...(c.expect404 || []).map(path => ({ path, want: 404 })),
     ...Object.entries(c.expectRedirect || {}).map(([path, target]) => ({ path, want: 'redirect', target })),
   ];
+  if (c.expectCompRedirect) {
+    const res = await fetch(base + c.expectCompRedirect.source, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) return r('broken', `${c.expectCompRedirect.source} antwortet HTTP ${res.status}`);
+    const slug = ((await res.json())?.targets || []).map(t => t?.slug).find(s => typeof s === 'string' && s.includes('@'));
+    if (!slug) return r('broken', `${c.expectCompRedirect.source} liefert keine Kennung mit @`);
+    for (const prefix of c.expectCompRedirect.prefixes || ['']) {
+      probes.push({ path: `${prefix}/tft/comps/${encodeURIComponent(slug)}`, want: 'readable', prefix });
+    }
+  }
   if (c.sitemapPrefixes?.length) {
     const res = await fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return r('broken', `sitemap.xml antwortet HTTP ${res.status}`);
@@ -1275,6 +1290,15 @@ async function checkHttpStatus(c, r) {
       if ((got.code !== 307 && got.code !== 308) || got.target !== p.target) {
         wrong.push(`${p.path} → ${got.code} ${got.target ?? ''} (soll 307/308 → ${p.target})`);
       }
+    } else if (p.want === 'readable') {
+      const ok = (got.code === 307 || got.code === 308)
+        && new RegExp(`^${p.prefix}/tft/comps/[a-z0-9]+(?:-[a-z0-9]+)+$`).test(got.target ?? '');
+      if (!ok) {
+        wrong.push(`${p.path} → ${got.code} ${got.target ?? ''} (soll 307/308 → ${p.prefix}/tft/comps/<name>)`);
+        continue;
+      }
+      const page = await status(got.target);
+      if (page.code !== 200) wrong.push(`${got.target} → ${page.code} (soll 200)`);
     } else if (got.code !== p.want) {
       wrong.push(`${p.path} → ${got.code} (soll ${p.want})`);
     }
@@ -1282,7 +1306,7 @@ async function checkHttpStatus(c, r) {
   const count = want => probes.filter(p => p.want === want).length;
   return wrong.length
     ? r('broken', `${wrong.length}/${probes.length + langLinks.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${probes.length + langLinks.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${langLinks.length}× Sprach-Links)`);
+    : r('ok', `${probes.length + langLinks.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links)`);
 }
 
 /**

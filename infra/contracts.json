@@ -377,9 +377,11 @@
         "/tft/items/TFT17_Item_Fake",
         "/tft/traits/NoSuchTrait",
         "/tft/comps/Fake%409_NoSuchUnit",
-        "/teams/doesnotexist"
+        "/teams/doesnotexist",
+        "/champions/Fake123"
       ],
-      "note": "Die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts) lebt von einer Liste, die scripts/build-known-ids.mjs bei jedem Build aus den Bundles erzeugt (nicht committet). Der teure Fehler ist eine ECHTE Seite, die ploetzlich 404 antwortet — Besucher merken es nicht (sie klicken aus der Liste, die Liste laeuft weiter), Google wirft sie aus dem Index. Deshalb kommen die 200er-Proben aus der Live-Sitemap statt aus festen Kennungen, die mit dem Set-Wechsel veralten. Die 404er-Proben fangen die Gegenrichtung: Liste leer oder Notschalter SEO_404_GATE=0 vergessen. /champions/ ist bis Schritt 6 nicht geprueft, steht hier, damit dessen 404 nicht echte Champions trifft."
+      "expect308": ["/champions/ahri"],
+      "note": "Die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts) lebt von einer Liste, die scripts/build-known-ids.mjs bei jedem Build aus den Bundles erzeugt (nicht committet). Der teure Fehler ist eine ECHTE Seite, die ploetzlich 404 antwortet — Besucher merken es nicht (sie klicken aus der Liste, die Liste laeuft weiter), Google wirft sie aus dem Index. Deshalb kommen die 200er-Proben aus der Live-Sitemap statt aus festen Kennungen, die mit dem Set-Wechsel veralten. Die 404er-Proben fangen die Gegenrichtung: Liste leer oder Notschalter SEO_404_GATE=0 vergessen. LoL-Champions (app/lib/seo/champion-gate.ts) gleichen Unbekannte zur Laufzeit mit Data Dragon ab; die 404-Probe ist deshalb eine Kennung, die schon an der Schreibweise scheitert (Fake123), nicht eine, die am Abgleich haengt — sonst gaebe ein kurzer Data-Dragon-Ausfall Fehlalarm. /champions/ahri prueft die 308 auf die richtige Schreibweise."
     },
 
     {

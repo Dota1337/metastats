@@ -3,22 +3,24 @@
 //      Auth, KEIN Supabase-SSR-Call. Wenn Feature-Flag aus, 404. Wenn nicht
 //      authentifiziert, 401 für /api/internal/*, 307→/internal/login für Pages.
 //   2. Erfundene Detail-Adressen (Unit/Item/Trait/Comp/Team) → 404, siehe
-//      app/lib/seo/not-found-gate.ts.
+//      app/lib/seo/not-found-gate.ts; LoL-Champions → 404 bzw. 308 bei
+//      falscher Gross/Klein-Schreibung, siehe app/lib/seo/champion-gate.ts.
 //   3. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
 //      Cookie nach ~1h ab obwohl der User aktiv ist.
 
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './app/lib/internal-auth';
 import { securityHeaderRecord } from './app/lib/security-headers';
 import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
+import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
 // rausgehen — ausgerechnet die, die eine Auth-Entscheidung transportieren.
 const SEC = securityHeaderRecord();
 
-export async function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest, event: NextFetchEvent) {
   const path = req.nextUrl.pathname;
 
   // --- Internal-Dashboard Branch (no Supabase-SSR) -----------------------
@@ -53,8 +55,21 @@ export async function middleware(req: NextRequest) {
   // Vor dem Supabase-Teil: kein getUser-Roundtrip fuer Muell-Adressen. Der
   // Rewrite auf einen Pfad ohne Route laesst Next die not-found-Seite mit
   // Status 404 rendern, auch fuer RSC und HEAD. Notschalter SEO_404_GATE=0.
-  if (process.env.SEO_404_GATE !== '0' && isUnknownDetailPath(path)) {
-    return NextResponse.rewrite(new URL('/__not-found', req.url));
+  if (process.env.SEO_404_GATE !== '0') {
+    if (isUnknownDetailPath(path)) {
+      return NextResponse.rewrite(new URL('/__not-found', req.url));
+    }
+    const championId = championIdFromPath(path);
+    if (championId !== undefined) {
+      const d = championId === null ? { kind: 'missing' as const } : await championGate(championId, p => event.waitUntil(p));
+      if (d.kind === 'missing') return NextResponse.rewrite(new URL('/__not-found', req.url));
+      if (d.kind === 'redirect') {
+        // clone() behaelt die Abfrage (auch ?_rsc); das Ziel ist exakt bekannt, also keine Schleife.
+        const url = req.nextUrl.clone();
+        url.pathname = `/champions/${d.id}`;
+        return NextResponse.redirect(url, { status: 308, headers: SEC });
+      }
+    }
   }
 
   // --- Default Supabase-SSR-Pfad ---------------------------------------

@@ -26,10 +26,11 @@ const DST = resolve(ROOT, 'app/lib/seo/known-ids.generated.json');
 const readJson = p => JSON.parse(readFileSync(resolve(ROOT, p), 'utf8'));
 
 // Routen, deren letztes Segment die Pruefung kennt (not-found-gate.ts).
-const GATED_ROUTES = ['tft/units', 'tft/items', 'tft/traits', 'tft/comps', 'teams'];
+const GATED_ROUTES = ['tft/units', 'tft/items', 'tft/traits', 'tft/comps', 'teams', 'champions'];
 
 const EMPTY = {
-  currentSet: null, sets: [], plausiblePrefixes: [], units: [], items: [], traits: [], teams: [], staticSegments: {},
+  currentSet: null, sets: [], plausiblePrefixes: [], units: [], items: [], traits: [], teams: [], lolChampions: [],
+  staticSegments: {},
 };
 
 // Feste Ordner neben dem dynamischen Segment: app/tft/comps/atlas usw. Kommt
@@ -142,6 +143,45 @@ export function buildKnownIds() {
   };
 }
 
+// LoL-Champions (/champions/<id>, SEO-Plan Schritt 6): Kennungen aus Data
+// Dragon — lokal gibt es keine Liste (die Sammel-Dateien fuehren Zahlen-Keys).
+// Netz nur in build und dev; mit --offline (postinstall, pretest: kein
+// Netz-Abhaengigkeit im Test, kein Warten beim Push) bleibt die vorige Liste.
+// Scheitert der Abruf, ebenfalls die vorige, sonst leer — dann gleicht die
+// Middleware jede Champion-Adresse zur Laufzeit ab (not-found-gate.ts). Die
+// Liste spart nur diesen Abgleich; eine veraltete Liste fuehrt nie zu einer
+// falschen 404, weil Unbekannte immer erst zur Laufzeit geprueft werden.
+const LOL_FETCH_MS = 5000; // fuer beide Abrufe zusammen
+const DDRAGON = 'https://ddragon.leagueoflegends.com';
+
+function previousLolChampions() {
+  try {
+    const prev = JSON.parse(readFileSync(DST, 'utf8')).lolChampions;
+    return Array.isArray(prev) ? prev.filter(id => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function lolChampionIds({ offline = false } = {}) {
+  const previous = previousLolChampions();
+  if (offline) return { ids: previous, warning: null };
+  const signal = AbortSignal.timeout(LOL_FETCH_MS);
+  try {
+    const vres = await fetch(`${DDRAGON}/api/versions.json`, { signal });
+    if (!vres.ok) throw new Error(`versions.json HTTP ${vres.status}`);
+    const version = (await vres.json())?.[0];
+    if (typeof version !== 'string') throw new Error('keine Version');
+    const res = await fetch(`${DDRAGON}/cdn/${version}/data/en_US/champion.json`, { signal });
+    if (!res.ok) throw new Error(`champion.json HTTP ${res.status}`);
+    const ids = Object.keys((await res.json())?.data || {}).filter(id => /^[A-Za-z]+$/.test(id)).sort();
+    if (ids.length < 100) throw new Error(`nur ${ids.length} Champions`);
+    return { ids, warning: null };
+  } catch (e) {
+    return { ids: previous, warning: `Data Dragon: ${e.message} — vorige LoL-Liste (${previous.length} Champions)` };
+  }
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isMain) {
   let data = EMPTY;
@@ -153,10 +193,18 @@ if (isMain) {
     console.warn(`[build-known-ids] Warnung: ${e.message} — leere Liste, die 404-Pruefung laesst alles durch`);
   }
   try {
+    const lol = await lolChampionIds({ offline: process.argv.includes('--offline') });
+    data = { ...data, lolChampions: lol.ids };
+    if (lol.warning) console.warn(`[build-known-ids] Warnung: ${lol.warning}`);
+  } catch (e) {
+    data = { ...data, lolChampions: [] };
+    console.warn(`[build-known-ids] Warnung: LoL-Champions: ${e.message}`);
+  }
+  try {
     mkdirSync(dirname(DST), { recursive: true });
     writeFileSync(DST, JSON.stringify(data) + '\n');
     const seg = Object.entries(data.staticSegments).filter(([, v]) => v.length).map(([k, v]) => `${k}: ${v.join('/')}`).join(', ');
-    console.log(`[build-known-ids] Set ${data.currentSet}, Bundles ${data.sets.join('/')}: ${data.units.length} Units, ${data.items.length} Items, ${data.traits.length} Traits, ${data.teams.length} Teams, Praefixe ${data.plausiblePrefixes.join(' ')}; feste Unterseiten ${seg || '–'}`);
+    console.log(`[build-known-ids] Set ${data.currentSet}, Bundles ${data.sets.join('/')}: ${data.units.length} Units, ${data.items.length} Items, ${data.traits.length} Traits, ${data.teams.length} Teams, ${data.lolChampions.length} LoL-Champions, Praefixe ${data.plausiblePrefixes.join(' ')}; feste Unterseiten ${seg || '–'}`);
   } catch (e) {
     // Auch das darf den aufrufenden Build/Install nicht kippen.
     console.warn(`[build-known-ids] Warnung: ${DST} nicht schreibbar: ${e.message}`);

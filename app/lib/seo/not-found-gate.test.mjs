@@ -44,7 +44,7 @@ test('Comp-Slugs: Grammatik + bekannter Trait/Carry, %40 und %23 kodiert', () =>
 
 test('statische Nachbarn und Listen bleiben unberuehrt', () => {
   for (const p of ['/tft/comps/atlas', '/tft/comps/community', '/tft/comps/compare', '/tft/comps', '/tft/units',
-    '/tft/units/', '/teams', '/tft/comps/DA_18_X@3_Fake/opengraph-image', '/champions/NoSuchChamp', '/tft/augments/Nope']) {
+    '/tft/units/', '/teams', '/tft/comps/DA_18_X@3_Fake/opengraph-image', '/tft/augments/Nope']) {
     assert.equal(unknown(p), false, p);
   }
 });

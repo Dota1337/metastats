@@ -1224,7 +1224,10 @@ async function checkHttpStatus(c, r) {
     return res.status;
   };
 
-  const probes = [...(c.expect404 || []).map(path => ({ path, want: 404 }))];
+  const probes = [
+    ...(c.expect404 || []).map(path => ({ path, want: 404 })),
+    ...(c.expect308 || []).map(path => ({ path, want: 308 })),
+  ];
   if (c.sitemapPrefixes?.length) {
     const res = await fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
     if (!res.ok) return r('broken', `sitemap.xml antwortet HTTP ${res.status}`);
@@ -1246,7 +1249,7 @@ async function checkHttpStatus(c, r) {
   }
   return wrong.length
     ? r('broken', `${wrong.length}/${probes.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${probes.length} Proben richtig (${probes.filter(p => p.want === 200).length}× 200, ${probes.filter(p => p.want === 404).length}× 404)`);
+    : r('ok', `${probes.length} Proben richtig (${probes.filter(p => p.want === 200).length}× 200, ${probes.filter(p => p.want === 404).length}× 404, ${probes.filter(p => p.want === 308).length}× 308)`);
 }
 
 /**

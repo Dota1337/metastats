@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { formatTier, type SoloRank } from '../lib/rank-format';
 import { useI18n } from '../lib/i18n';
+import { loadSummonerIndex, type SummonerInfo } from '../lib/dd-assets';
 
 interface Props {
   gameData: any;
@@ -23,18 +24,19 @@ interface PlayerData {
   loading: boolean;
 }
 
-const SUMMONER_SPELL_MAP: Record<number, string> = {
-  1: 'SummonerBoost', 4: 'SummonerFlash', 6: 'SummonerHaste',
-  7: 'SummonerHeal', 11: 'SummonerSmite', 12: 'SummonerTeleport',
-  14: 'SummonerDot', 21: 'SummonerBarrier', 3: 'SummonerExhaust',
-  32: 'SummonerSnowball', 13: 'SummonerMana', 30: 'SummonerPoroRecall',
-  31: 'SummonerPoroThrow', 39: 'SummonerSnowURFSnowball_Mark',
-  2201: 'SummonerCherryHold', 2202: 'SummonerCherryFlash',
-};
-
 export default function LiveGameDetail({ gameData, ddVersion, championMap, region }: Props) {
   const { t } = useI18n();
   const [players, setPlayers] = useState<PlayerData[]>([]);
+  const [summonerIdx, setSummonerIdx] = useState<Record<number, SummonerInfo>>({});
+
+  // Zauber aus Data Dragon, dieselbe Liste wie die Spieldetails — neue
+  // Modus-Zauber kommen so ohne Pflege dazu.
+  useEffect(() => {
+    if (!ddVersion) return;
+    let cancelled = false;
+    loadSummonerIndex(ddVersion).then(idx => { if (!cancelled) setSummonerIdx(idx); });
+    return () => { cancelled = true; };
+  }, [ddVersion]);
 
   useEffect(() => {
     if (!gameData?.participants) return;
@@ -122,8 +124,8 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
           const wr = p.ranked && p.ranked !== 'unknown' && p.ranked.wins + p.ranked.losses > 0
             ? Math.round((p.ranked.wins / (p.ranked.wins + p.ranked.losses)) * 100)
             : null;
-          const spell1 = SUMMONER_SPELL_MAP[p.spell1Id];
-          const spell2 = SUMMONER_SPELL_MAP[p.spell2Id];
+          const spell1 = summonerIdx[p.spell1Id];
+          const spell2 = summonerIdx[p.spell2Id];
           const champ = championMap[p.championId];
 
           return (
@@ -138,8 +140,8 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               <div className="flex flex-col gap-0.5">
                 {spell1 && (
                   <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell1}.png`}
-                    alt=""
+                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell1.iconFile}`}
+                    alt={spell1.name}
                     className="w-4 h-4 rounded-sm"
                   />
                 )}
@@ -147,8 +149,8 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
               <div className="flex flex-col gap-0.5">
                 {spell2 && (
                   <img
-                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell2}.png`}
-                    alt=""
+                    src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell2.iconFile}`}
+                    alt={spell2.name}
                     className="w-4 h-4 rounded-sm"
                   />
                 )}

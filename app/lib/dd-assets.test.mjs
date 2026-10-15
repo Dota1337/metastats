@@ -1,5 +1,5 @@
 /**
- * Zauberliste der Spieldetails (dd-assets.ts → MatchDetail.tsx): Anzeigename
+ * Zauberliste der Spielerseite (dd-assets.ts → MatchDetail.tsx, LiveGameDetail.tsx): Anzeigename
  * „Flash“, nicht die Kennung „SummonerFlash“ — dieselbe Regel wie der
  * Builds-Block (lol-builds-view.ts). Der Speicher haengt an der Version, deshalb
  * nutzt jeder Fall eine eigene.

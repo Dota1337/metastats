@@ -5,6 +5,7 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { listBookmarks, removeBookmark, type Bookmark } from '../../lib/bookmarks';
 import { useI18n } from '../../lib/i18n';
+import { legacyTftPlayerSlug } from '../../lib/og/slugs';
 
 // Local-only saved view. Reads from window.localStorage on mount and
 // re-reads on the `metastats:bookmarks:change` event so toggles elsewhere
@@ -50,7 +51,9 @@ export default function SavedPage() {
               title={t('tft.players')}
               empty={t('tft.savedEmptyPlayers')}
               items={players}
-              hrefOf={b => `/tft/player/${encodeURIComponent(b.key)}${b.region ? `?region=${b.region}` : ''}`}
+              // Schluessel ist `Name-Tag` (TftPlayerClient, bleibt so — sonst verlieren
+              // gespeicherte Spieler ihren Stern); als Adresse gilt `Name--Tag`.
+              hrefOf={b => `/tft/player/${legacyTftPlayerSlug(b.key) ?? encodeURIComponent(b.key)}${b.region ? `?region=${b.region}` : ''}`}
               onRemove={b => removeBookmark(b.type, b.key, b.region)}
             />
           </div>

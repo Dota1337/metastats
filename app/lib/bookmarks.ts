@@ -8,7 +8,8 @@ export type BookmarkType = 'comp' | 'player';
 
 export interface Bookmark {
   type: BookmarkType;
-  /** Stable key per item — comp slug or player puuid */
+  /** Stable key per item — comp slug, or `Name-Tag` for TFT players (not the
+   *  address: /tft/saved builds `Name--Tag` from it via legacyTftPlayerSlug) */
   key: string;
   /** Human-readable label for the saved-list view */
   label: string;

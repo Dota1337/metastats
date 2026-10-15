@@ -5,6 +5,7 @@
 //   2. Erfundene Detail-Adressen (Unit/Item/Trait/Comp/Team) → 404, siehe
 //      app/lib/seo/not-found-gate.ts; LoL-Champions → 404 bzw. 308 bei
 //      falscher Gross/Klein-Schreibung, siehe app/lib/seo/champion-gate.ts.
+//      Davor: alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag`.
 //   3. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
 //      Cookie nach ~1h ab obwohl der User aktiv ist.
 
@@ -14,6 +15,7 @@ import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './
 import { securityHeaderRecord } from './app/lib/security-headers';
 import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
 import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
+import { legacyTftPlayerSlug } from './app/lib/og/slugs';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
@@ -49,6 +51,22 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     const loginUrl = new URL('/internal/login', req.url);
     loginUrl.searchParams.set('next', path);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // --- Alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag` --------
+  // Rising und die Lesezeichen bauten sie mit einem Strich; die Seite las dann
+  // alles als Namen und fand den Spieler nicht. Ausserhalb von SEO_404_GATE:
+  // das Ziel ist immer gueltig, ein Notschalter wuerde nur Links brechen.
+  // Das Ziel enthaelt `--` und wird deshalb nie erneut umgeleitet.
+  const legacyPlayer = /^\/tft\/player\/([^/]+)$/.exec(path);
+  if (legacyPlayer) {
+    const canonical = legacyTftPlayerSlug(legacyPlayer[1]);
+    if (canonical) {
+      // clone() behaelt die Abfrage (region, puuid, ?_rsc).
+      const url = req.nextUrl.clone();
+      url.pathname = `/tft/player/${canonical}`;
+      return NextResponse.redirect(url, { status: 308, headers: SEC });
+    }
   }
 
   // --- Erfundene Detail-Adressen → echte 404 ----------------------------

@@ -7,6 +7,7 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 import { ONETRICK_REGIONS } from '../../lib/tft-onetrick-regions.mjs';
+import { tftProfileHref } from '../../lib/tft-player-search';
 
 // Gemeinsame Quelle mit scripts/warm-tft-stats-cache.mjs — sonst bietet die
 // Seite Regionen an, die nie gewaermt werden.
@@ -117,7 +118,9 @@ export default function TftOneTricksPage() {
                     {p.tier.slice(0, 3)}
                   </span>
                   <a
-                    href={`/tft/player/${encodeURIComponent(display)}?region=${region}`}
+                    href={p.gameName && p.tagLine
+                      ? tftProfileHref({ puuid: p.puuid, gameName: p.gameName, tagLine: p.tagLine, region })
+                      : `/tft/player/${encodeURIComponent(display)}?region=${region}`}
                     className="text-white font-medium hover:text-[#a892ff] flex-1 truncate"
                   >
                     {display}{p.tagLine ? <span className="text-fg-muted">#{p.tagLine}</span> : null}

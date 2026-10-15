@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useI18n } from '../../lib/i18n';
+import { tftProfileHref } from '../../lib/tft-player-search';
 
 // Zeigt die Top-Pros die diese Comp gespielt haben. Family-Mode matched alle
 // Sub-Cluster (Level/Star/Augment) der gleichen <trait>__<carry>-Familie.
@@ -84,7 +85,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
           const tag = p.tagLine ? `#${p.tagLine}` : '';
           const region = p.region || 'euw1';
           const playerHref = p.gameName && p.tagLine
-            ? `/tft/player/${encodeURIComponent(p.gameName + '-' + p.tagLine)}?region=${region}`
+            ? tftProfileHref({ puuid: p.puuid, gameName: p.gameName, tagLine: p.tagLine, region })
             : null;
           const card = (
             <div className="bg-surface-base border border-border-subtle hover:border-[#2a3a4f] transition rounded p-2.5">

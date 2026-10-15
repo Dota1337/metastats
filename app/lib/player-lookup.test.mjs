@@ -66,3 +66,15 @@ test('Kopf fuer den Client: nur Name + Tag, keine weiteren Felder', () => {
   assert.deepEqual(toHead({ known: false }), { known: false });
   assert.equal(toHead(null), null);
 });
+
+test('DIRECTORY_LIMIT passt zum Deckel der Namens-RPC (sonst wird „Liste voll“ nie erkannt → falsches noindex)', async () => {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const dir = new URL('../../supabase/migrations/', import.meta.url);
+  const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+    .filter(f => /function public\.search_tft_player_names_exact\s*\(/.test(readFileSync(new URL(f, dir), 'utf8')));
+  assert.ok(files.length > 0, 'keine Migration definiert search_tft_player_names_exact');
+  const sql = readFileSync(new URL(files.at(-1), dir), 'utf8');
+  const cap = /limit\s+least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)/.exec(sql)?.[1];
+  assert.ok(cap, `Deckel in ${files.at(-1)} nicht gefunden — Test an die neue Form anpassen`);
+  assert.equal(Number(cap), DIRECTORY_LIMIT, `${files.at(-1)}: Deckel ${cap}, Code fragt ${DIRECTORY_LIMIT}`);
+});

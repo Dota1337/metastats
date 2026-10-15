@@ -29,7 +29,10 @@ export const LOOKUP_TIMEOUT_MS = 1500;
 // Speicher je Instanz: die Spielerseiten schreiben die gefundene Region per
 // router.replace in die Adresse, das rendert Titel und Huelle ein zweites Mal.
 // Nur sichere Ergebnisse — ein Zeitlimit soll beim naechsten Aufruf neu fragen.
-const MEMO_TTL_MS = 10 * 60_000;
+// „Unbekannt“ nur kurz: wer ein Profil zum ersten Mal oeffnet, steht Sekunden
+// spaeter in players, und das Vorschaubild (1 Tag im CDN) soll ihn dann kennen.
+const MEMO_KNOWN_MS = 10 * 60_000;
+const MEMO_UNKNOWN_MS = 60_000;
 const MEMO_MAX = 500;
 const memo = new Map<string, { expires: number; value: NonNullable<Lookup<unknown>> }>();
 
@@ -39,8 +42,9 @@ async function remembered<T>(key: string, load: () => Promise<Lookup<T>>): Promi
   if (hit && hit.expires > now) return hit.value as Lookup<T>;
   const value = await load();
   if (value) {
+    memo.delete(key);
     if (memo.size >= MEMO_MAX) memo.delete(memo.keys().next().value!);
-    memo.set(key, { expires: now + MEMO_TTL_MS, value });
+    memo.set(key, { expires: now + (value.known ? MEMO_KNOWN_MS : MEMO_UNKNOWN_MS), value });
   }
   return value;
 }
@@ -82,7 +86,8 @@ async function playersRow(fullName: string): Promise<Lookup<LolPlayerRow>> {
 /** Zeile aus players fuer `Name#Tag` (Gross/Klein egal), wie das Vorschaubild sie braucht. */
 export function lolPlayersLookup(name: string, tag: string): Promise<Lookup<LolPlayerRow>> {
   if (!name.trim() || !tag.trim()) return Promise.resolve(null);
-  return remembered(`players|${riotIdKey(name, tag)}`, async () =>
+  // Schluessel wie die Abfrage: ohne Gross/Klein, Leerzeichen zaehlen (ilike).
+  return remembered(`players|${`${name}#${tag}`.toLowerCase()}`, async () =>
     (await withTimeout(playersRow(`${name}#${tag}`), LOOKUP_TIMEOUT_MS)) ?? null);
 }
 

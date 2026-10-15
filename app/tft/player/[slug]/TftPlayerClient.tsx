@@ -148,6 +148,9 @@ function LoadingHead({ head }: { head: Promise<PlayerHead> }) {
 
 // `head`: Abfrage der Server-Huelle (page.tsx), nicht abgewartet.
 export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHead> | null }) {
+  // Erstes Versprechen festhalten: router.replace(?region=) liefert ein neues,
+  // dessen Ergebnis nicht von der Region abhaengt — sonst wartete der Wechsel darauf.
+  const [headOnce] = useState(head);
   const { t, lang } = useI18n();
   const params = useParams();
   const searchParams = useSearchParams();
@@ -345,8 +348,8 @@ export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHe
     <main className="min-h-screen bg-surface-page">
       <Nav active="search" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        {loading && !data && head && (
-          <Suspense fallback={null}><LoadingHead head={head} /></Suspense>
+        {loading && !data && headOnce && (
+          <Suspense fallback={null}><LoadingHead head={headOnce} /></Suspense>
         )}
         {loading && <div className="text-fg-secondary text-center py-12">{t('tft.player.loading')}</div>}
 

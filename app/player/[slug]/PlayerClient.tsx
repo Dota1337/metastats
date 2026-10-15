@@ -49,6 +49,9 @@ function LoadingHead({ head }: { head: Promise<PlayerHead> }) {
 
 // `head`: Abfrage der Server-Huelle (page.tsx), nicht abgewartet.
 export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead> | null }) {
+  // Erstes Versprechen festhalten: router.replace(?region=) liefert ein neues,
+  // dessen Ergebnis nicht von der Region abhaengt — sonst wartete der Wechsel darauf.
+  const [headOnce] = useState(head);
   const { slug } = useParams();
   const router = useRouter();
   // Sprung auf den richtigen Server hoechstens einmal je Spieler — sonst
@@ -509,8 +512,8 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
       <Nav />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        {loading && head && (
-          <Suspense fallback={null}><LoadingHead head={head} /></Suspense>
+        {loading && headOnce && (
+          <Suspense fallback={null}><LoadingHead head={headOnce} /></Suspense>
         )}
         {loading && (
           <div className="text-center text-fg-secondary mt-20">{t('player.loading')}</div>

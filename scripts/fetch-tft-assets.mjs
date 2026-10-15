@@ -356,6 +356,13 @@ async function main() {
       icon: normalizeIconPath(a.icon || ''),
       desc: en.desc,
       tier: deriveAugmentTier(apiName, a.name || '', a.icon || '', tierOverride),
+      // Riots eigene Zuordnung Augment -> Trait (Set 18: 19 Trait-Augments,
+      // z. B. Beast Within -> DA_Primal18). Die Comp-Seite stellt damit die
+      // Augments der aktiven Traits vorne an (augmentRowsByRarity). Nur wenn
+      // befuellt, damit das Bundle nicht um 570 leere Listen waechst.
+      ...(Array.isArray(a.associatedTraits) && a.associatedTraits.length > 0
+        ? { traits: a.associatedTraits.filter(t => typeof t === 'string') }
+        : {}),
       i18n,
     };
   }

@@ -52,6 +52,9 @@ export interface TftAugment {
   icon: string | null;
   desc?: string;
   tier: number;
+  // Traits, an die Riot das Augment bindet (CDragon associatedTraits), nur bei
+  // Trait-Augments gesetzt. Fehlt in Bundles vor dem 15.10.2026.
+  traits?: string[];
   // Per-locale name + desc from CDragon's localised TFT bundles.
   // Built by scripts/fetch-tft-assets.mjs from {de,en,ko,zh,es,fr}_<region>.json.
   i18n?: Partial<Record<'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr', { name: string; desc: string }>>;

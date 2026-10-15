@@ -153,6 +153,78 @@ test('ohne Asset-Bundle keine Reihen statt geratener Rarity', () => {
   assert.deepEqual(augmentRowsByRarity(guideOf([]), bundle([['a', 1]])), []);
 });
 
+// ── Comp-eigene Augments zuerst, gleichnamige Varianten einmal (F3) ─────────
+// Nachgestellt ist Lunar·Aphelios·Nidalee vom 15.10.2026: „Beast Within" stand
+// auf Platz 10 der Gold-Reihe und fiel unter die Kappung, obwohl Primal aktiv
+// ist; je Unit gibt es eine eigene Variante mit gleichem Namen.
+
+const aug = (name, tier, extra = {}) => ({ name, tier, desc: '', ...extra });
+const assetsOf = (augments, champions = {}) => ({ augments, champions });
+
+test('Augments eines aktiven Traits ruecken vor, der Rest behaelt die Reihenfolge', () => {
+  const ids = Array.from({ length: 9 }, (_, i) => `g${i}`);
+  const augments = Object.fromEntries(ids.map(id => [id, aug(id, 2)]));
+  augments.own = aug('Beast Within', 2, { traits: ['DA_Primal18'] });
+  const rows = augmentRowsByRarity(
+    { augments: [...ids, 'own'], traits: ['DA_Primal18'], units: [] },
+    assetsOf(augments),
+  );
+  assert.deepEqual(rows[0].augments, ['own', ...ids.slice(0, AUGMENTS_PER_RARITY - 1)]);
+});
+
+test('Trait-Augment eines NICHT aktiven Traits bleibt an seinem Platz', () => {
+  const augments = { a: aug('A', 2), b: aug('Item Extraction', 2, { traits: ['DA_18_Blackthorn'] }) };
+  const rows = augmentRowsByRarity({ augments: ['a', 'b'], traits: ['DA_Primal18'], units: [] }, assetsOf(augments));
+  assert.deepEqual(rows[0].augments, ['a', 'b']);
+});
+
+test('gleichnamige Varianten: die mit Units der Comp bleibt, an der Stelle der ersten', () => {
+  const augments = {
+    sivir: aug('Beast Within', 2, { traits: ['P'], desc: 'Gain a Vi now and a Sivir after 3 rounds.' }),
+    nidalee: aug('Beast Within', 2, { traits: ['P'], desc: 'Gain a Vi now and a Nidalee after 3 rounds.' }),
+    x: aug('Other', 2),
+  };
+  const champions = { U_Vi: { name: 'Vi' }, U_Nid: { name: 'Nidalee' } };
+  const rows = augmentRowsByRarity(
+    { augments: ['x', 'sivir', 'nidalee'], traits: ['P'], units: ['U_Vi', 'U_Nid'] },
+    assetsOf(augments, champions),
+  );
+  assert.deepEqual(rows[0].augments, ['nidalee', 'x']);
+});
+
+test('gleichnamige Varianten, die gleich gut passen: beide bleiben', () => {
+  const augments = {
+    nid: aug('Beast Within', 2, { desc: 'Gain a Vi now and a Nidalee after 3 rounds.' }),
+    siv: aug('Beast Within', 2, { desc: 'Gain a Vi now and a Sivir after 3 rounds.' }),
+  };
+  const champions = { U_Nid: { name: 'Nidalee' }, U_Siv: { name: 'Sivir' } };
+  const rows = augmentRowsByRarity({ augments: ['nid', 'siv'], traits: [], units: ['U_Nid', 'U_Siv'] }, assetsOf(augments, champions));
+  assert.deepEqual(rows[0].augments, ['nid', 'siv']);
+});
+
+test('gleichnamige Varianten ohne Unit-Bezug: die erste bleibt', () => {
+  const augments = { v1: aug('Twin', 1, { desc: 'Gain a Sivir.' }), v2: aug('Twin', 1, { desc: 'Gain a Nidalee.' }) };
+  const rows = augmentRowsByRarity({ augments: ['v1', 'v2'], traits: [], units: [] }, assetsOf(augments));
+  assert.deepEqual(rows[0].augments, ['v1']);
+});
+
+test('Unit-Namen mit Sonderzeichen und Teilwoerter: kein Fehler, kein Teiltreffer', () => {
+  const augments = {
+    a: aug('Twin', 1, { desc: 'Gain a Vision of Kai\'Sa.' }),
+    b: aug('Twin', 1, { desc: 'Gain a Kai\'Sa (Vi).' }),
+  };
+  const champions = { U_K: { name: 'Kai\'Sa' }, U_Vi: { name: 'Vi' } };
+  // a: „Vision" ist kein Vi, nennt nur Kai'Sa (1); b nennt Kai'Sa und Vi (2).
+  const rows = augmentRowsByRarity({ augments: ['a', 'b'], traits: [], units: ['U_K', 'U_Vi'] }, assetsOf(augments, champions));
+  assert.deepEqual(rows[0].augments, ['b']);
+});
+
+test('alte Guides ohne traits/units: Reihenfolge wie vorher', () => {
+  const augments = { a: aug('A', 3), b: aug('B', 3, { traits: ['P'] }) };
+  const rows = augmentRowsByRarity({ augments: ['a', 'b'] }, assetsOf(augments));
+  assert.deepEqual(rows[0].augments, ['a', 'b']);
+});
+
 // ── Zuordnung zur MetaTFT-Comp nach Spielweise ──────────────────────────────
 // Nachgestellt ist der Azir-Fall vom 2026-10-10: unsere Reroll-Comp
 // ueberlappt mit einer Fast-8-Comp zu 0,7 und mit der Reroll-Comp nur zu 0,6.

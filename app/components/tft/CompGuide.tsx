@@ -1,16 +1,22 @@
 'use client';
+import { useEffect, useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, findItem, formatTftDesc } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
   augmentTierBorderColor,
-  augmentGradeColor,
   augmentRowsByRarity,
-  type AugmentGrade,
   parseLevelling,
   significantLevelSteps,
 } from '../../lib/tft-comp-guides';
+import {
+  type AugmentStage,
+  type AugmentStagesOverride,
+  augmentStagesFor,
+  loadAugmentStages,
+  stageColor,
+} from '../../lib/tft-augment-stages';
 
 // CompGuide — rendert die aus MetaTFT-Clustern abgeleiteten Build-Daten:
 // Levelplan, Augments nach Tier und die Round-1-Carousel-Picks (je ein
@@ -29,12 +35,32 @@ interface AugmentMeta {
   tier?: number;
 }
 
-// Rand = Rarity aus dem Asset-Bundle, Buchstabe oben rechts = Performance-Grade.
+const STAGE_ORDER: AugmentStage[] = ['2-1', '3-2', '4-2'];
+
+// Stages, in denen das Augment angeboten wird — nur wenn es NICHT in allen
+// drei kommt (User 2026-10-15, F3). Quelle tft-augment-stages-<set>.json
+// (tactics.tools), Spielmechanik, keine Statistik. Ohne Eintrag nichts.
+function StageBadge({ stages }: { stages: AugmentStage[] }) {
+  const { t } = useI18n();
+  const sorted = STAGE_ORDER.filter(s => stages.includes(s));
+  return (
+    <span
+      className="absolute -top-1 -right-1 inline-flex gap-[3px] px-1 rounded bg-surface-base border border-border-subtle text-[9px] leading-[13px] font-bold tabular-nums whitespace-nowrap"
+      title={`${t('tft.augment.stage.appearsIn')}: ${sorted.join(', ')}`}
+    >
+      {sorted.map(s => (
+        <span key={s} style={{ color: stageColor(s) }}>{s}</span>
+      ))}
+    </span>
+  );
+}
+
+// Rand = Rarity aus dem Asset-Bundle, oben rechts die Stages (StageBadge).
 // Rendert nichts, wenn das Augment nicht im Bundle steht: MetaTFT rankt über
 // Sets hinweg, gemessen 28 von 1791 Referenzen (1,6 %) sind nicht in Set 17.
 function AugmentTile({
-  apiName, assets, grade,
-}: { apiName: string; assets: TftAssetsBundle | null; grade?: AugmentGrade }) {
+  apiName, assets, stages,
+}: { apiName: string; assets: TftAssetsBundle | null; stages: AugmentStage[] | null }) {
   const { withLang } = useI18n();
   // assets.augments, nicht assets.items — Augments stehen im Bundle in einer
   // eigenen Map. Die Vorgängerfassung las hier items[] und traf nie.
@@ -59,14 +85,7 @@ function AugmentTile({
             <div className="w-full h-full bg-surface-overlay" />
           )}
         </div>
-        {grade && (
-          <span
-            className="absolute -top-1 -right-1 min-w-[16px] px-1 rounded bg-surface-base border border-border-subtle text-[10px] leading-[14px] font-bold text-center"
-            style={{ color: augmentGradeColor(grade) }}
-          >
-            {grade}
-          </span>
-        )}
+        {stages && stages.length > 0 && stages.length < STAGE_ORDER.length && <StageBadge stages={stages} />}
       </div>
       <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
         {meta?.name || apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?/, '')}
@@ -126,13 +145,17 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
 }
 
 /** Augments — drei Reihen nach Rarity (Prismatic → Gold → Silver): ein Angebot
-    im Spiel hat immer eine Rarity, der Spieler sucht in genau einer Reihe. Der
-    Grade dieser Comp steht als Buchstabe auf der Kachel. Ohne Asset-Bundle
-    keine Sektion: die Rarity wird nicht geraten.
+    im Spiel hat immer eine Rarity, der Spieler sucht in genau einer Reihe.
+    Seit 2026-10-15 ohne Buchstaben (das war eine Profi-Einschaetzung, keine
+    Messung); oben rechts stehen stattdessen die Stages, wenn das Augment nicht
+    in allen drei kommt. Ohne Asset-Bundle keine Sektion: die Rarity wird nicht
+    geraten.
     Ohne eigene Box, die Rarity steht links vor der Reihe — Teil der Bauteil-
     Box der Detailseite (User 2026-10-10, etwa 120 px kuerzer als vorher). */
 export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
   const { t } = useI18n();
+  const [stagesOverride, setStagesOverride] = useState<AugmentStagesOverride | null>(null);
+  useEffect(() => { loadAugmentStages().then(setStagesOverride); }, []);
   const rarityRows = augmentRowsByRarity(guide, assets);
   if (rarityRows.length === 0) return null;
   return (
@@ -147,7 +170,7 @@ export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets:
           </div>
           <div className="flex flex-wrap gap-2 min-w-0">
             {row.augments.map(a => (
-              <AugmentTile key={a} apiName={a} assets={assets} grade={guide.augmentGrades[a]} />
+              <AugmentTile key={a} apiName={a} assets={assets} stages={augmentStagesFor(stagesOverride, a)} />
             ))}
           </div>
         </div>

@@ -29,12 +29,16 @@ const GUIDE_SET = CURRENT_SET;
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
 /**
- * MetaTFTs Augment-Grade — wie gut das Augment IN DIESER COMP abschneidet.
+ * Buchstabe S-D aus MetaTFTs „Pro Augments" — die Einschaetzung EINER
+ * Profi-Vorlage (team-builder-Eintraege eines Autors), die MetaTFT dem Cluster
+ * per Aehnlichkeitsabstand zuordnet. KEINE Messung: Cluster mit derselben
+ * Vorlage tragen Zeichen fuer Zeichen dieselbe Liste (gemessen 15.10.2026,
+ * 38 Cluster, 18 Vorlagen). Deshalb seit 15.10.2026 nicht mehr angezeigt
+ * (User F3) — er bestimmt nur noch die Reihenfolge hinter den Comp-eigenen
+ * Augments (augmentRowsByRarity).
  *
- * Nicht zu verwechseln mit der Rarity (Silver/Gold/Prismatic, 1-3), die im
- * Asset-Bundle steht. Der Grade ist die für den Pick nützlichere Größe: die
- * Rarity sieht der Spieler im Angebot ohnehin, die comp-spezifische Stärke
- * nicht. Beides wird gerendert — Rarity als Reihe, Grade als Buchstabe.
+ * Nicht zu verwechseln mit der Rarity (Silver/Gold/Prismatic, 1-3) aus dem
+ * Asset-Bundle.
  */
 export type AugmentGrade = 'S' | 'A' | 'B' | 'C' | 'D';
 
@@ -118,7 +122,7 @@ export interface MetaTftComp {
   levelling: string | null;
   itemNames: string[];
   builds: CompBuild[];
-  /** `tier` ist MetaTFTs Performance-Grade IN DIESER COMP, nicht die Rarity. */
+  /** `tier` ist die Profi-Einschaetzung der Vorlage (siehe AugmentGrade), nicht die Rarity. */
   augments: Array<{ id: string; tier: AugmentGrade }>;
 }
 
@@ -141,9 +145,12 @@ export interface CompGuide {
   difficulty: Difficulty | null;
   levelling: string | null;
   games: number;
-  /** Augment-apiNames, nach Grade absteigend, ungekappt (Anzeige: augmentRowsByRarity). */
+  /** Augment-apiNames in der Reihenfolge der Profi-Vorlage, ungekappt (Anzeige: augmentRowsByRarity). */
   augments: string[];
-  augmentGrades: Record<string, AugmentGrade>;
+  /** Aktive Traits der MetaTFT-Comp ohne Stufe (`DA_Primal18_1` -> `DA_Primal18`). */
+  traits: string[];
+  /** Units der MetaTFT-Comp. */
+  units: string[];
   /** Spielerstufe ("4".."7") -> meistgespielte Early-Boards. */
   earlyByLevel: Record<string, EarlyOption[]>;
   carousel: CarouselPick[];
@@ -212,7 +219,7 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
     const i = GRADE_ORDER.indexOf(g);
     return i < 0 ? GRADE_ORDER.length : i;
   };
-  // Volle Liste, stabil nach Grade — gekappt wird erst je Rarity-Reihe.
+  // Volle Liste, stabil nach Vorlagen-Buchstabe — gekappt wird erst je Rarity-Reihe.
   const augs = [...(comp.augments || [])]
     .sort((a, b) => rank(a.tier) - rank(b.tier));
   return {
@@ -222,7 +229,10 @@ function toGuide(comp: MetaTftComp, details: CompDetails | null, cuts: LoadedGui
     levelling: comp.levelling,
     games: comp.games,
     augments: augs.map(a => a.id),
-    augmentGrades: Object.fromEntries(augs.map(a => [a.id, a.tier])),
+    // MetaTFT fuehrt nur aktive Traits, mit Stufe als Endung (gemessen
+    // 15.10.2026: alle 397 Eintraege nach dem Abschneiden in assets.traits).
+    traits: (comp.traits || []).map(t => t.replace(/_\d+$/, '')),
+    units: comp.units || [],
     earlyByLevel: details?.earlyByLevel
       || (details?.early?.length ? { 4: details.early } : {}),
     carousel: details?.carousel || [],
@@ -452,40 +462,87 @@ export function augmentTierBorderColor(tier: number | null | undefined): string 
   }
 }
 
-// Farbe eines Performance-Grades.
-// Roh-Hex bei C und D, bewusst: Rang-Leiter, nicht Text-Hierarchie. C traegt
-// heute denselben Wert wie --fg-muted, doch --fg-muted wird in der
-// F2-Lesbarkeitswelle aufgehellt; die Note C darf davon nicht wandern.
-export function augmentGradeColor(grade: AugmentGrade | null | undefined): string {
-  switch (grade) {
-    case 'S': return '#e0c75a';
-    case 'A': return '#3ecf8e';
-    case 'B': return '#5aa7e0';
-    case 'C': return '#7a8aa0';
-    case 'D': return '#5a6a80';
-    default: return '#5a6a80';
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Reihenfolge vor der Kappung: Comp-eigene Augments zuerst, dann der Rest in
+ * MetaTFTs Reihenfolge (User 2026-10-15, F3). Comp-eigen heisst: Riot bindet
+ * das Augment an einen aktiven Trait der Comp (assets.augments[id].traits).
+ * Bewusst KEINE Namens- oder Textsuche: gemessen ordnete die Textsuche „Sun
+ * and Moon" Solar zu (dort nur Bedingung) und fand „Unrivaled" nicht
+ * (classification-reviewer 15.10.2026). Fehlt das Feld (Bundle vor dem
+ * 15.10.), bleibt die Reihenfolge wie vorher.
+ *
+ * Gleichnamige Varianten: „Beast Within" gibt es je Unit (Nidalee/Sivir),
+ * beide Kacheln sehen gleich aus und tragen denselben Namen. Es bleibt die
+ * Variante, deren Text die meisten Units der Comp nennt (bei Gleichstand alle
+ * gleich guten; nennt keine eine Unit der Comp, die erste). Sie steht an der
+ * Stelle der ersten Variante.
+ */
+function orderedCompAugments(
+  guide: CompGuide,
+  assets: Pick<TftAssetsBundle, 'augments'> & Partial<Pick<TftAssetsBundle, 'champions'>>,
+): string[] {
+  const compTraits = new Set(guide.traits ?? []);
+  const isOwn = (id: string) => (assets.augments[id]?.traits ?? []).some(t => compTraits.has(t));
+  const ordered = [...guide.augments.filter(isOwn), ...guide.augments.filter(id => !isOwn(id))];
+
+  const unitNames = (guide.units ?? [])
+    .map(u => assets.champions?.[u]?.name)
+    .filter((n): n is string => typeof n === 'string' && n.length > 0);
+  const unitHits = (id: string): number => {
+    const desc = assets.augments[id]?.desc || '';
+    return unitNames.filter(n => new RegExp(`(^|[^\\p{L}])${escapeRegExp(n)}($|[^\\p{L}])`, 'u').test(desc)).length;
+  };
+  const byName = new Map<string, string[]>();
+  for (const id of ordered) {
+    const name = assets.augments[id]?.name;
+    if (name) byName.set(name, [...(byName.get(name) ?? []), id]);
   }
+  // Nur bei echten Varianten den Text pruefen — die Augment-Seiten rufen das
+  // fuer jede Comp auf. Passen mehrere Varianten gleich gut (die Comp hat
+  // Nidalee UND Sivir), bleiben alle: beide werden im Spiel angeboten.
+  const keep = new Map<string, string[]>();
+  for (const [name, ids] of byName) {
+    if (ids.length === 1) { keep.set(name, ids); continue; }
+    const hits = ids.map(unitHits);
+    const max = Math.max(...hits);
+    keep.set(name, max > 0 ? ids.filter((_, i) => hits[i] === max) : [ids[0]]);
+  }
+  const out: string[] = [];
+  const placed = new Set<string>();
+  for (const id of ordered) {
+    const name = assets.augments[id]?.name;
+    if (!name) { out.push(id); continue; }
+    if (placed.has(name)) continue;
+    placed.add(name);
+    out.push(...keep.get(name)!);
+  }
+  return out;
 }
 
 /**
  * Augments in Rarity-Reihen: Prismatic, Gold, Silver (User 2026-09-27).
  *
  * Die Rarity steht in `assets.augments[apiName].tier` (1-3). Nicht aufgelöste
- * IDs (Stand Set 18: 4 IDs, 11 Verweise) und unbekannte Tiers fallen VOR der
- * Kappung heraus, sonst hätte eine Reihe Lücken. Innerhalb der Reihe bleibt
- * MetaTFTs Reihenfolge (nach Grade sortiert). Ohne Bundle gibt es keine
- * Reihen — die Rarity wird nicht geraten.
+ * IDs (Stand 15.10.2026: 4 IDs, 9 Verweise) und unbekannte Tiers fallen VOR
+ * der Kappung heraus, sonst hätte eine Reihe Lücken. Innerhalb der Reihe
+ * stehen die Comp-eigenen Augments vorne, danach MetaTFTs Reihenfolge
+ * (orderedCompAugments). Ohne Bundle gibt es keine Reihen — die Rarity wird
+ * nicht geraten.
  *
  * Einzige Quelle für „welche Augments zeigt eine Comp": die Augment-Seiten
  * suchen ihre Comps hierüber, damit beide Seiten dasselbe sagen.
  */
 export function augmentRowsByRarity(
   guide: CompGuide,
-  assets: Pick<TftAssetsBundle, 'augments'> | null,
+  assets: (Pick<TftAssetsBundle, 'augments'> & Partial<Pick<TftAssetsBundle, 'champions'>>) | null,
 ): Array<{ rarity: AugmentRarity; augments: string[] }> {
   if (!assets?.augments || guide.augments.length === 0) return [];
   const byRarity = new Map<AugmentRarity, string[]>();
-  for (const apiName of guide.augments) {
+  for (const apiName of orderedCompAugments(guide, assets)) {
     const tier = (assets.augments[apiName] as { tier?: unknown } | undefined)?.tier;
     if (tier !== 1 && tier !== 2 && tier !== 3) continue;
     const list = byRarity.get(tier) ?? [];
@@ -498,7 +555,7 @@ export function augmentRowsByRarity(
 }
 
 // Difficulty-Farbe für das Badge.
-// Roh-Hex im Standardfall, bewusst: Rang-Leiter (siehe augmentGradeColor).
+// Roh-Hex im Standardfall, bewusst: Rang-Leiter, nicht Text-Hierarchie.
 export function difficultyColor(d: Difficulty | null): string {
   switch (d) {
     case 'EASY': return '#3ecf8e';

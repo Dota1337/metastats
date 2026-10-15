@@ -129,8 +129,10 @@ export default function ChampionBuildsSection({ championKey, initial = null }: P
   const v = ddVersion || '';
   const ddImg = (path: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/${path}`;
   const runeImg = (icon: string) => `https://ddragon.leagueoflegends.com/cdn/img/${icon}`;
-  // Bildtext: Name aus der Antwort (lol-item-names.ts), sonst wie bisher die Nummer.
-  const itemAlt = (id: number) => data.itemNames?.[String(id)] ?? `Item ${id}`;
+  // Name aus der Antwort (lol-item-names.ts). Tooltip nur mit echtem Namen wie
+  // bei Runen/Zaubern; der Bildtext faellt sonst wie bisher auf die Nummer zurueck.
+  const itemTitle = (id: number): string | undefined => data.itemNames?.[String(id)];
+  const itemAlt = (id: number) => itemTitle(id) ?? `Item ${id}`;
   const matches = data.matchesAnalyzed || 0;
 
   return (
@@ -249,7 +251,7 @@ export default function ChampionBuildsSection({ championKey, initial = null }: P
       {/* Boots */}
       {role.topBoots.length > 0 && (
         <Section title={t('champBuild.boots')}>
-          <ItemRow items={role.topBoots} ddImg={ddImg} itemAlt={itemAlt} gamesLabel={t('champBuild.games') as string} />
+          <ItemRow items={role.topBoots} ddImg={ddImg} itemAlt={itemAlt} itemTitle={itemTitle} gamesLabel={t('champBuild.games') as string} />
         </Section>
       )}
 
@@ -266,6 +268,7 @@ export default function ChampionBuildsSection({ championKey, initial = null }: P
                         key={`${i}-${it}`}
                         src={ddImg(`item/${it}.png`)}
                         alt={itemAlt(it)}
+                        title={itemTitle(it)}
                         className="w-10 h-10 rounded border border-border-subtle"
                       />
                     ) : null
@@ -284,7 +287,7 @@ export default function ChampionBuildsSection({ championKey, initial = null }: P
       {/* Most-used items */}
       {role.topItems.length > 0 && (
         <Section title={t('champBuild.items')}>
-          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} itemAlt={itemAlt} gamesLabel={t('champBuild.games') as string} verdicts={role.itemVerdicts} verdictLabel={v => t(VERDICT_KEY[v])} />
+          <ItemRow items={role.topItems.slice(0, 12)} ddImg={ddImg} itemAlt={itemAlt} itemTitle={itemTitle} gamesLabel={t('champBuild.games') as string} verdicts={role.itemVerdicts} verdictLabel={v => t(VERDICT_KEY[v])} />
         </Section>
       )}
 
@@ -319,10 +322,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function ItemRow({ items, ddImg, itemAlt, gamesLabel, verdicts, verdictLabel }: {
+function ItemRow({ items, ddImg, itemAlt, itemTitle, gamesLabel, verdicts, verdictLabel }: {
   items: ItemEntry[];
   ddImg: (p: string) => string;
   itemAlt: (id: number) => string;
+  itemTitle: (id: number) => string | undefined;
   gamesLabel: string;
   verdicts?: RoleData['itemVerdicts'];
   verdictLabel?: (v: Verdict) => string;
@@ -334,7 +338,7 @@ function ItemRow({ items, ddImg, itemAlt, gamesLabel, verdicts, verdictLabel }: 
         const delta = v?.delta != null ? `${v.delta > 0 ? '+' : ''}${(v.delta * 100).toFixed(1)} %` : undefined;
         return (
           <div key={idx} className="flex flex-col items-center gap-1 bg-surface-raised border border-border-subtle rounded p-1.5">
-            <img src={ddImg(`item/${it.item}.png`)} alt={itemAlt(it.item)} className="w-9 h-9 rounded" />
+            <img src={ddImg(`item/${it.item}.png`)} alt={itemAlt(it.item)} title={itemTitle(it.item)} className="w-9 h-9 rounded" />
             <div className="text-[10px] text-white">{pct(it.wins, it.games)}</div>
             <div className="text-[10px] text-fg-muted whitespace-nowrap">{it.games} {gamesLabel}</div>
             {v && verdictLabel && (

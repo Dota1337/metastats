@@ -10,6 +10,7 @@ import { getDdragonVersion } from '../../lib/ddragon-version';
 import {
   championDetailUrl, pickChampionDetail, type ChampionData, type ChampionDetailStart,
 } from '../../lib/lol-champion-detail';
+import type { ChampionBuildsStart } from '../../lib/lol-builds-view';
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '');
@@ -70,8 +71,12 @@ function SkinImage({ championId, skinNum, alt, className }: {
 
 // `initial`: Champion vom Server in der Sprache des Besuchers (page.tsx,
 // SEO-Plan Schritt 6) — dann entfaellt der erste Abruf. Fehlt er, laedt die
-// Seite wie bisher im Browser.
-export default function ChampionDetailPage({ initial = null }: { initial?: ChampionDetailStart | null }) {
+// Seite wie bisher im Browser. `builds`: Standardansicht des Builds-Blocks
+// (Nachtrag 8), eigenes Zeitlimit — fehlt sie, laedt der Block im Browser.
+export default function ChampionDetailPage({ initial = null, builds = null }: {
+  initial?: ChampionDetailStart | null;
+  builds?: ChampionBuildsStart | null;
+}) {
   const { id } = useParams();
   const [champion, setChampion] = useState<ChampionData | null>(initial?.champion ?? null);
   const [version, setVersion] = useState(initial?.version ?? '');
@@ -213,7 +218,7 @@ export default function ChampionDetailPage({ initial = null }: { initial?: Champ
 
           <div className="max-w-4xl mx-auto px-6 pb-12">
             {/* Builds & Runes (op.gg-style) — renders nothing until the first crawl produces data */}
-            <ChampionBuildsSection championKey={champion.key} />
+            <ChampionBuildsSection championKey={champion.key} initial={builds} />
 
             {/* Stats Section */}
             <section className="mb-8">

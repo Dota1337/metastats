@@ -53,7 +53,10 @@ function inScope(o: Scope): boolean {
   return !!groupBuckets && listKey(groupBuckets) === listKey(o.buckets);
 }
 
-async function fetchBlob(path: string): Promise<unknown | null> {
+// Auch von lol-builds-snapshot.ts benutzt (Builds der LoL-Champion-Seite).
+// Frische kommt vom Ueberschreiben (cacheControlMaxAge 60 beim put), nicht von
+// `_min` — das Blob-CDN beachtet die Abfrage nicht (gemessen 15.10.2026).
+export async function fetchBlob(path: string): Promise<unknown | null> {
   const origin = blobOrigin();
   if (!origin) return null;
   const ctrl = new AbortController();

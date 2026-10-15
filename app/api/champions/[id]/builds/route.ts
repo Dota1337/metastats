@@ -8,6 +8,9 @@ import { parseRegion } from '../../../../lib/regions';
 import { itemVerdict, type StratumCount, type VerdictResult } from '../../../../lib/lol-item-verdict';
 import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../../../lib/ddragon-version-server';
 import { pickCounters } from '../../../../lib/lol-counters.mjs';
+import { isSnapshotPublisher } from '../../../../lib/snapshot-lookup';
+import { loadLolBuildsSnapshot } from '../../../../lib/lol-builds-snapshot';
+import { LOL_BUILDS_DEFAULT } from '../../../../lib/lol-builds-blob.mjs';
 
 interface BuildEntry {
   items: number[];
@@ -60,6 +63,9 @@ const MIN_PATCH_GAMES = 500;
 // Darunter gilt die Datei (siehe GET).
 const MIN_DB_GAMES = 200;
 const PAGE = 1000;
+// Antwort aus der Datei: die Edge holt sie stuendlich neu (kostet dann nur den
+// Blob, ~0,1 s), damit API und Seite nach einem Lauf nicht lange auseinanderliegen.
+const SNAPSHOT_CACHE_CONTROL = 'public, s-maxage=3600, stale-while-revalidate=21600';
 
 // Resolve championKey: route param can be the Riot integer key (e.g. "157" for Yasuo)
 // OR the Data Dragon string id (e.g. "Yasuo"). The builds JSON keys by integer key,
@@ -231,6 +237,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ error: 'Champion not found' }, { status: 404 });
   }
 
+  // Standardansicht aus der vorgerechneten Datei (lol-builds-snapshot.ts) —
+  // dieselbe, die die Seite im ersten HTML zeigt. Der Publisher, der sie
+  // schreibt, bekommt immer live gerechnet und nichts fuer die Edge.
+  const publisher = isSnapshotPublisher(request);
+  if (!publisher && region === LOL_BUILDS_DEFAULT.region && rank === LOL_BUILDS_DEFAULT.rank) {
+    const snap = await loadLolBuildsSnapshot(championKey);
+    // Die Datei ist eine fruehere Antwort dieser Route (volle Item-Urteile); der
+    // Typ der Seite kennt nur die angezeigten Felder.
+    if (snap) return cachedJson({ ...snap, roles: orderRoles(snap.roles as unknown as Record<string, RoleData>, requestedRole) }, { cache: SNAPSHOT_CACHE_CONTROL });
+  }
+  const cache = publisher ? 'no-store' : STATS_CACHE_CONTROL;
+
   // Rang-Daten aus Supabase; fehlen sie, gilt die Datei (alle Raenge, source: 'json').
   let dbDown = false;
   if (rank) {
@@ -262,13 +280,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ddragonVersion,
           matchesAnalyzed: sampleSize,
           roles: ordered,
-        }, { cache: STATS_CACHE_CONTROL });
+        }, { cache });
       }
     }
   }
 
   const payload = readJsonFile(region);
-  const base = { championKey, region, source: 'json' as const, rank: null };
+  // dbUnavailable: Datenbank-Ausfall sieht sonst aus wie „unter 200 Spielen“ —
+  // der Publisher wuerde dann die Datei loeschen statt den Lauf abzubrechen.
+  const base = { championKey, region, source: 'json' as const, rank: null, ...(dbDown ? { dbUnavailable: true } : {}) };
   if (!payload) {
     return cachedJson({ ...base, hasBuilds: false, roles: {} }, { degraded: dbDown });
   }
@@ -280,5 +300,5 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     ddragonVersion: payload.ddragonVersion,
     matchesAnalyzed: payload.matchesAnalyzed,
     roles: ordered,
-  }, { cache: STATS_CACHE_CONTROL, degraded: dbDown });
+  }, { cache, degraded: dbDown });
 }

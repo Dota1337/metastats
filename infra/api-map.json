@@ -11,7 +11,7 @@
     "tables": 39,
     "rpcs": 32,
     "files": 14,
-    "edges": 556,
+    "edges": 557,
     "unused": 7,
     "unresolved": 1
   },
@@ -197,13 +197,16 @@
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/ddragon-version-server.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/regions.ts",
+        "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
       "used": true,
       "usedBy": [
-        "app/components/ChampionBuildsSection.tsx"
+        "app/components/ChampionBuildsSection.tsx",
+        "scripts/publish-lol-builds.mjs"
       ]
     },
     {
@@ -2375,6 +2378,11 @@
       "from": "api:/api/champions",
       "to": "fn:get_tft_available_patches",
       "kind": "calls"
+    },
+    {
+      "from": "api:/api/champions/[id]/builds",
+      "to": "blob:manifest",
+      "kind": "fetches"
     },
     {
       "from": "api:/api/champions/[id]/builds",

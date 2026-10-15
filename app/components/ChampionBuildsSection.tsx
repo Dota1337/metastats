@@ -1,55 +1,12 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
-
-interface BuildEntry { items: number[]; games: number; wins: number }
-interface ItemEntry { item: number; games: number; wins: number }
-interface RuneEntry {
-  primary: number; keystone: number;
-  p1: number; p2: number; p3: number;
-  secondary: number; s1: number; s2: number;
-  off: number; flex: number; def: number;
-  games: number; wins: number;
-}
-interface KeystoneEntry { id: number; games: number; wins: number }
-interface SummonerEntry { spells: number[]; games: number; wins: number }
-interface CounterEntry { enemy: string; gamesAgainst: number; lossesAgainst: number }
-interface RoleData {
-  games: number; wins: number;
-  topBuilds: BuildEntry[];
-  topBoots: ItemEntry[];
-  topItems: ItemEntry[];
-  topRunes: RuneEntry[];
-  topKeystones: KeystoneEntry[];
-  topSummoners: SummonerEntry[];
-  counters: { strongAgainst: CounterEntry[]; weakAgainst: CounterEntry[] };
-  itemVerdicts?: Record<string, { verdict: Verdict; delta: number | null }>;
-}
-type Verdict = 'core' | 'important' | 'optional' | 'weak';
-interface BuildsResponse {
-  championKey: string;
-  region: string;
-  hasBuilds: boolean;
-  collectedAt?: string;
-  ddragonVersion?: string;
-  matchesAnalyzed?: number;
-  roles: Record<string, RoleData>;
-  source?: 'db' | 'json';
-  rank?: string | null;
-  patch?: string;
-}
-
-interface RuneTree {
-  id: number;
-  key: string;
-  icon: string;
-  name: string;
-  slots: { runes: { id: number; icon: string; name: string }[] }[];
-}
-
-interface SummonerInfo { id: number; key: string; iconFile: string }
-
-interface ChampionInfo { key: string; id: string; name: string; image: string }
+import { LOL_BUILDS_DEFAULT } from '../lib/lol-builds-blob.mjs';
+import {
+  buildsAssetsFrom, EMPTY_BUILDS_ASSETS,
+  type BuildsAssets, type BuildsResponse, type ChampionBuildsStart, type ChampionInfo,
+  type CounterEntry, type ItemEntry, type RoleData, type RuneEntry, type Verdict,
+} from '../lib/lol-builds-view';
 
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' },
@@ -103,79 +60,71 @@ function pct(n: number, d: number) {
   return `${Math.round((n / d) * 1000) / 10}%`;
 }
 
-interface Props { championKey: string }
+// `initial`: Standardansicht (euw1 + EMERALD_PLUS) samt der Namen, die sie
+// zeigt, vom Server (seo/lol-detail-data.ts, Weg B Nachtrag 8) — dann steht
+// der Block im ersten HTML und der erste Abruf entfaellt. Fehlt sie, laedt der
+// Block wie bisher im Browser.
+interface Props { championKey: string; initial?: ChampionBuildsStart | null }
 
-export default function ChampionBuildsSection({ championKey }: Props) {
+const viewKey = (region: string, rank: string) => (region === RANK_REGION ? `${region}|${rank}` : region);
+
+export default function ChampionBuildsSection({ championKey, initial = null }: Props) {
   const { t, lang } = useI18n();
-  const [region, setRegion] = useState('euw1');
-  const [rank, setRank] = useState('EMERALD_PLUS');
-  const [data, setData] = useState<BuildsResponse | null>(null);
+  const start = initial && initial.data.championKey === championKey ? initial : null;
+  const [region, setRegion] = useState<string>(LOL_BUILDS_DEFAULT.region);
+  const [rank, setRank] = useState<string>(LOL_BUILDS_DEFAULT.rank);
+  // Geladene Staende je Auswahl (Startdaten zaehlen mit): zurueck zu einer
+  // schon gesehenen Auswahl kostet keinen Abruf. Fehlschlaege werden nicht gemerkt.
+  const [loaded, setLoaded] = useState<Record<string, BuildsResponse>>(() =>
+    start ? { [viewKey(LOL_BUILDS_DEFAULT.region, LOL_BUILDS_DEFAULT.rank)]: start.data } : {});
+  // Was bis zum Eintreffen der neuen Auswahl stehen bleibt (null = nichts).
+  const [shownKey, setShownKey] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string | null>(null);
-  const [runeTrees, setRuneTrees] = useState<RuneTree[]>([]);
-  const [summoners, setSummoners] = useState<Record<number, SummonerInfo>>({});
-  const [championMap, setChampionMap] = useState<Record<string, ChampionInfo>>({});
+  const [fullAssets, setFullAssets] = useState<(BuildsAssets & { version: string }) | null>(null);
+  const key = viewKey(region, rank);
 
   // Builds data
   useEffect(() => {
     // Alte Werte bleiben stehen, bis die neuen da sind — sonst verschwindet der
-    // Block bei jedem Rangwechsel samt Aufklappliste. Die gewaehlte Rolle bleibt,
-    // solange es sie im neuen Stand gibt.
+    // Block bei jedem Rangwechsel samt Aufklappliste.
+    if (loaded[key]) return;
     let cancelled = false;
     const rankQuery = region === RANK_REGION ? `&rank=${rank}` : '';
     fetch(`/api/champions/${encodeURIComponent(championKey)}/builds?region=${region}${rankQuery}`)
       .then(r => r.ok ? r.json() : null)
       .then((d: BuildsResponse | null) => {
         if (cancelled) return;
-        setData(d);
-        setActiveRole(prev => (prev && d?.roles?.[prev] ? prev : (d?.roles && Object.keys(d.roles)[0]) || null));
+        if (d) setLoaded(m => ({ ...m, [key]: d }));
+        else setShownKey(null);
       })
-      .catch(() => { if (!cancelled) setData(null); });
+      .catch(() => { if (!cancelled) setShownKey(null); });
     return () => { cancelled = true; };
-  }, [championKey, region, rank]);
+  }, [championKey, region, rank, key, loaded]);
 
-  // DataDragon assets — fetched once per ddragonVersion change
+  const data: BuildsResponse | null = loaded[key] ?? (shownKey ? loaded[shownKey] ?? null : null);
+  // Beim Wechsel merken, was gerade zu sehen ist — das bleibt stehen, bis die
+  // neue Auswahl da ist (im Klick, nicht im Effekt).
+  const keepShown = () => setShownKey(loaded[key] ? key : shownKey);
+
+  // Namen fuer Runen/Zauber/Konter: die Startdaten bringen die benutzten mit;
+  // die vollen Data-Dragon-Listen erst, wenn etwas anderes gezeigt wird.
   const ddVersion = data?.ddragonVersion;
+  const needFull = !!ddVersion && data !== start?.data;
   useEffect(() => {
-    if (!ddVersion) return;
-    Promise.all([
-      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/runesReforged.json`).then(r => r.json()).catch(() => []),
-      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/summoner.json`).then(r => r.json()).catch(() => null),
-      fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/champion.json`).then(r => r.json()).catch(() => null),
-    ]).then(([runes, sums, champs]) => {
-      setRuneTrees(runes || []);
-      const sumMap: Record<number, SummonerInfo> = {};
-      if (sums?.data) {
-        for (const s of Object.values(sums.data) as any[]) {
-          sumMap[Number(s.key)] = { id: Number(s.key), key: s.id, iconFile: s.image.full };
-        }
-      }
-      setSummoners(sumMap);
-      const champMap: Record<string, ChampionInfo> = {};
-      if (champs?.data) {
-        for (const c of Object.values(champs.data) as any[]) {
-          champMap[c.key] = { key: c.key, id: c.id, name: c.name, image: c.image.full };
-        }
-      }
-      setChampionMap(champMap);
+    if (!needFull || !ddVersion || fullAssets?.version === ddVersion) return;
+    let cancelled = false;
+    const dd = (file: string) => fetch(`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/data/en_US/${file}`).then(r => r.json()).catch(() => null);
+    Promise.all([dd('runesReforged.json'), dd('summoner.json'), dd('champion.json')]).then(([runes, sums, champs]) => {
+      if (!cancelled) setFullAssets({ version: ddVersion, ...buildsAssetsFrom(runes, sums?.data, champs?.data) });
     });
-  }, [ddVersion]);
+    return () => { cancelled = true; };
+  }, [needFull, ddVersion, fullAssets?.version]);
+  const { runeIndex, summoners, championMap } = fullAssets ?? start?.assets ?? EMPTY_BUILDS_ASSETS;
 
-  // Rune ID → tree+name+icon lookup
-  const runeIndex = useMemo(() => {
-    const idx: Record<number, { name: string; icon: string }> = {};
-    for (const tree of runeTrees) {
-      idx[tree.id] = { name: tree.name, icon: tree.icon };
-      for (const slot of tree.slots || []) {
-        for (const r of slot.runes || []) {
-          idx[r.id] = { name: r.name, icon: r.icon };
-        }
-      }
-    }
-    return idx;
-  }, [runeTrees]);
-
-  if (!data || !data.hasBuilds || !activeRole) return null;
-  const role = data.roles[activeRole];
+  if (!data || !data.hasBuilds) return null;
+  // Die gewaehlte Rolle bleibt, solange es sie im gezeigten Stand gibt.
+  const roleKey = activeRole && data.roles[activeRole] ? activeRole : Object.keys(data.roles)[0];
+  const role = roleKey ? data.roles[roleKey] : undefined;
   if (!role) return null;
   const v = ddVersion || '';
   const ddImg = (path: string) => `https://ddragon.leagueoflegends.com/cdn/${v}/img/${path}`;
@@ -200,7 +149,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
             {REGIONS.map(r => (
               <button
                 key={r.value}
-                onClick={() => setRegion(r.value)}
+                onClick={() => { keepShown(); setRegion(r.value); }}
                 className={`px-3 py-1.5 text-xs uppercase ${region === r.value ? 'bg-surface-overlay text-accent' : 'text-fg-secondary hover:text-white'}`}
               >
                 {r.label}
@@ -214,7 +163,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
       <div className="flex flex-wrap items-end gap-1 mb-5 border-b border-border-subtle">
         {ROLE_TABS.filter(rt => data.roles[rt.value]).map(rt => {
           const r = data.roles[rt.value];
-          const isActive = activeRole === rt.value;
+          const isActive = roleKey === rt.value;
           const wr = pct(r.wins, r.games);
           return (
             <button
@@ -239,7 +188,7 @@ export default function ChampionBuildsSection({ championKey }: Props) {
             <span className="text-fg-secondary text-xs uppercase tracking-wider">{t('champBuild.rank')}</span>
             <select
               value={rank}
-              onChange={e => setRank(e.target.value)}
+              onChange={e => { keepShown(); setRank(e.target.value); }}
               className="bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-xs text-fg-secondary focus:outline-none focus:border-accent-a50"
             >
               {RANK_OPTIONS.map(o => (

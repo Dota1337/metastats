@@ -1,0 +1,47 @@
+[Unit]
+Description=metastats — LoL-Champion-Builds der Standardansicht als Blob-Dateien veroeffentlichen (nach metastats-lol-builds)
+Wants=network-online.target
+After=network-online.target
+# Kein Timer und kein [Install]: gestartet per OnSuccess= aus
+# metastats-lol-builds.service, also nur nach einem vollstaendigen
+# Verdichtungslauf. Laeuft er noch, wenn der naechste Anstoss kommt, geht der
+# Anstoss im laufenden Auftrag auf — kein Doppellauf.
+# Rueckbau: ERST diese Unit maskieren oder metastats-lol-builds.service ohne
+# OnSuccess= aufspielen, DANN den Commit zuruecknehmen — sonst startet die
+# Verdichtung alle 6 h eine Unit ohne Skript.
+
+[Service]
+# Keine Riot-Anfragen, keine DB-Verbindung: ruft die oeffentliche Builds-Route
+# (Publisher-Kopfzeile) und schreibt lol/champion-builds/* in den Blob.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet unter einer Minute (173 Abrufe, 3 gleichzeitig, je hoechstens 20 s).
+# Ohne Zeitlimit wuerde ein Haenger jeden weiteren Lauf schlucken.
+TimeoutStartSec=30min
+ExecStart=/usr/bin/node scripts/publish-lol-builds.mjs
+StandardOutput=journal
+StandardError=journal
+Nice=15
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

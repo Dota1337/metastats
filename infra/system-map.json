@@ -246,11 +246,22 @@
       "persistent": true
     },
     {
+      "name": "metastats-lol-builds-publish.service",
+      "kind": "service",
+      "description": "metastats — LoL-Champion-Builds der Standardansicht als Blob-Dateien veroeffentlichen (nach metastats-lol-builds)",
+      "scripts": [
+        "scripts/publish-lol-builds.mjs"
+      ]
+    },
+    {
       "name": "metastats-lol-builds.service",
       "kind": "service",
       "description": "metastats — LoL-Champion-Builds je Rang verdichten (Box-Rohablage -> Supabase lol_champion_build_stats)",
       "scripts": [
         "scripts/aggregate-lol-builds.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-lol-builds-publish.service"
       ],
       "Wants": [
         "postgresql.service"
@@ -1252,6 +1263,9 @@
     ],
     "app/api/tft/comps/share": [
       "set-achse/comp-galerie"
+    ],
+    "metastats-lol-builds-publish.service": [
+      "lol-builds/blob-frische"
     ],
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",

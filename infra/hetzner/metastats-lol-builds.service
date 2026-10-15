@@ -2,6 +2,10 @@
 Description=metastats — LoL-Champion-Builds je Rang verdichten (Box-Rohablage -> Supabase lol_champion_build_stats)
 Wants=network-online.target postgresql.service
 After=network-online.target postgresql.service
+# Nach jedem vollstaendigen Lauf die Standardansicht als Blob-Dateien
+# veroeffentlichen (Startdaten der Champion-Seite, Weg B Nachtrag 8). Bricht
+# ein Patch ab (Exit 1), feuert das nicht — die alten Dateien bleiben stimmig.
+OnSuccess=metastats-lol-builds-publish.service
 
 [Service]
 # Keine Riot-Anfragen, deshalb keine Riot-Sperre. Rechnet die zwei neuesten

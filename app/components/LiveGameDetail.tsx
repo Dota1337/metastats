@@ -142,6 +142,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell1.iconFile}`}
                     alt={spell1.name}
+                    title={spell1.name}
                     className="w-4 h-4 rounded-sm"
                   />
                 )}
@@ -151,6 +152,7 @@ export default function LiveGameDetail({ gameData, ddVersion, championMap, regio
                   <img
                     src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${spell2.iconFile}`}
                     alt={spell2.name}
+                    title={spell2.name}
                     className="w-4 h-4 rounded-sm"
                   />
                 )}

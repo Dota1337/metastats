@@ -148,7 +148,7 @@ export function buildKnownIds() {
 // Netz nur in build und dev; mit --offline (postinstall, pretest: kein
 // Netz-Abhaengigkeit im Test, kein Warten beim Push) bleibt die vorige Liste.
 // Scheitert der Abruf, ebenfalls die vorige, sonst leer — dann gleicht die
-// Middleware jede Champion-Adresse zur Laufzeit ab (not-found-gate.ts). Die
+// Middleware jede Champion-Adresse zur Laufzeit ab (champion-gate.ts). Die
 // Liste spart nur diesen Abgleich; eine veraltete Liste fuehrt nie zu einer
 // falschen 404, weil Unbekannte immer erst zur Laufzeit geprueft werden.
 const LOL_FETCH_MS = 5000; // fuer beide Abrufe zusammen
@@ -174,7 +174,7 @@ export async function lolChampionIds({ offline = false } = {}) {
     if (typeof version !== 'string') throw new Error('keine Version');
     const res = await fetch(`${DDRAGON}/cdn/${version}/data/en_US/champion.json`, { signal });
     if (!res.ok) throw new Error(`champion.json HTTP ${res.status}`);
-    const ids = Object.keys((await res.json())?.data || {}).filter(id => /^[A-Za-z]+$/.test(id)).sort();
+    const ids = Object.keys((await res.json())?.data || {}).sort();
     if (ids.length < 100) throw new Error(`nur ${ids.length} Champions`);
     return { ids, warning: null };
   } catch (e) {

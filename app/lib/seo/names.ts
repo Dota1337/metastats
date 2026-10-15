@@ -88,7 +88,8 @@ export async function lolChampionInfo(id: string, lang: Lang): Promise<{ name: s
     if (!res.ok) return null;
     const data = (await res.json()) as { data?: Record<string, { name?: string }> };
     if (!data.data) return null;
-    const name = data.data[id]?.name;
+    // hasOwn: `constructor`, `toString` usw. sind keine Champions.
+    const name = Object.hasOwn(data.data, id) ? data.data[id]?.name : undefined;
     return { name: name || id, known: !!name };
   };
   return (await withTimeout(load(), DATA_TIMEOUT_MS)) || { name: id, known: null };

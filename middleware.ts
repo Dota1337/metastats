@@ -67,7 +67,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         // clone() behaelt die Abfrage (auch ?_rsc); das Ziel ist exakt bekannt, also keine Schleife.
         const url = req.nextUrl.clone();
         url.pathname = `/champions/${d.id}`;
-        return NextResponse.redirect(url, { status: 308, headers: SEC });
+        return NextResponse.redirect(url, { status: d.permanent ? 308 : 307, headers: SEC });
       }
     }
   }

@@ -9,7 +9,8 @@ import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../ddragon-version-
 import { championDetailUrl, pickChampionDetail, type ChampionDetailStart } from '../lol-champion-detail';
 
 const BUDGET_MS = 1500;
-const CHAMPION_ID = /^[A-Za-z]+$/;
+// Gleiche Form wie champion-gate.ts (ID_SHAPE).
+const CHAMPION_ID = /^[A-Za-z0-9_]+$/;
 
 /** Champion in der Sprache des Besuchers; null = Browser laedt wie bisher. */
 export async function championDetailStart(id: string, lang: Lang): Promise<ChampionDetailStart | null> {

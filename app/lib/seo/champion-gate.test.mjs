@@ -1,5 +1,5 @@
 /**
- * 404-/308-Pruefung der LoL-Champion-Adressen (champion-gate.ts).
+ * 404-/308-/307-Pruefung der LoL-Champion-Adressen (champion-gate.ts).
  *
  * Wie bei not-found-gate.test.mjs ist der teure Fehler die echte Seite, die
  * ploetzlich 404 antwortet — besonders ein neuer Champion am Patch-Tag, den
@@ -26,27 +26,42 @@ test('Pfad → Kennung: nur /champions/<id>, kaputte Kodierung = null', () => {
   }
 });
 
-test('bekannte Champions gehen ohne Abruf durch', async () => {
+test('bekannte Champions und feste Unterseiten gehen ohne Abruf durch', async () => {
   for (const id of ['Ahri', 'MonkeyKing', 'JarvanIV']) {
     assert.deepEqual(await decideChampion(id, noFetch, build), { kind: 'pass' }, id);
   }
+  const withStatic = championIds(['Ahri'], ['tierlist']);
+  assert.deepEqual(await decideChampion('tierlist', noFetch, withStatic), { kind: 'pass' });
 });
 
-test('falsche Gross/Klein-Schreibung → 308 auf die richtige, ohne Abruf', async () => {
-  assert.deepEqual(await decideChampion('ahri', noFetch, build), { kind: 'redirect', id: 'Ahri' });
-  assert.deepEqual(await decideChampion('monkeyking', noFetch, build), { kind: 'redirect', id: 'MonkeyKing' });
-  assert.deepEqual(await decideChampion('JARVANIV', noFetch, build), { kind: 'redirect', id: 'JarvanIV' });
+test('falsche Gross/Klein-Schreibung → 308 nur mit Bestaetigung der Laufzeit-Liste', async () => {
+  const red = (id, permanent) => ({ kind: 'redirect', id, permanent });
+  assert.deepEqual(await decideChampion('ahri', async () => live, build), red('Ahri', true));
+  assert.deepEqual(await decideChampion('monkeyking', async () => live, build), red('MonkeyKing', true));
+  assert.deepEqual(await decideChampion('JARVANIV', async () => live, build), red('JarvanIV', true));
+  // Data Dragon weg: nur die Build-Liste kennt die Schreibweise → voruebergehend (307)
+  assert.deepEqual(await decideChampion('ahri', async () => null, build), red('Ahri', false));
+  // Riot hat die Schreibweise geaendert, die Build-Liste ist alt: nie auf die alte Adresse
+  const renamed = championIds(['AHRI', 'MonkeyKing', 'JarvanIV']);
+  assert.deepEqual(await decideChampion('ahri', async () => renamed, build), red('AHRI', true));
 });
 
-test('keine reine Buchstaben-Kennung → 404 ohne Abruf', async () => {
-  for (const id of ['Fake123', 'Ahri_', 'Nunu & Willump', "Kai'Sa", '../etc']) {
+test('keine Kennungs-Form → 404 ohne Abruf', async () => {
+  for (const id of ['Ahri-', 'No-Such-Champ', 'Nunu & Willump', "Kai'Sa", '../etc', 'Ahri.']) {
     assert.deepEqual(await decideChampion(id, noFetch, build), { kind: 'missing' }, id);
   }
 });
 
+test('Kennung mit Ziffer oder Unterstrich geht an den Abgleich (kuenftige Champions)', async () => {
+  const withDigit = championIds([...live.ids, 'Champ2']);
+  assert.deepEqual(await decideChampion('Champ2', async () => withDigit, build), { kind: 'pass' });
+  assert.deepEqual(await decideChampion('Fake123', async () => live, build), { kind: 'missing' });
+  assert.deepEqual(await decideChampion('Ahri_', async () => live, build), { kind: 'missing' });
+});
+
 test('neuer Champion (nicht in der Build-Liste) geht ueber den Laufzeit-Abgleich durch', async () => {
   assert.deepEqual(await decideChampion('NewChamp', async () => live, build), { kind: 'pass' });
-  assert.deepEqual(await decideChampion('newchamp', async () => live, build), { kind: 'redirect', id: 'NewChamp' });
+  assert.deepEqual(await decideChampion('newchamp', async () => live, build), { kind: 'redirect', id: 'NewChamp', permanent: true });
 });
 
 test('Faelschung → 404 nur mit Laufzeit-Liste; ohne sie geht sie durch', async () => {
@@ -54,11 +69,12 @@ test('Faelschung → 404 nur mit Laufzeit-Liste; ohne sie geht sie durch', async
   assert.deepEqual(await decideChampion('NoSuchChampion', async () => null, build), { kind: 'pass' });
 });
 
-test('leere Build-Liste (Abruf im Build gescheitert): alles ueber die Laufzeit, Kleinschreibung trotzdem 308', async () => {
+test('leere Build-Liste (Abruf im Build gescheitert): alles ueber die Laufzeit', async () => {
   const empty = championIds([]);
   assert.deepEqual(await decideChampion('Ahri', async () => live, empty), { kind: 'pass' });
-  assert.deepEqual(await decideChampion('ahri', async () => live, empty), { kind: 'redirect', id: 'Ahri' });
+  assert.deepEqual(await decideChampion('ahri', async () => live, empty), { kind: 'redirect', id: 'Ahri', permanent: true });
   assert.deepEqual(await decideChampion('Ahri', async () => null, empty), { kind: 'pass' });
+  assert.deepEqual(await decideChampion('ahri', async () => null, empty), { kind: 'pass' });
 });
 
 // ---------- Laufzeit-Liste ----------
@@ -137,6 +153,41 @@ test('Laufzeit: zu langsamer Abruf → null nach der Wartezeit, waitUntil haelt 
   assert.equal(kept.length, 1);
   await kept[0];
   assert.equal((await load()).ids.size, 150, 'danach aus dem Speicher');
+});
+
+test('Laufzeit: vor einer 404 wird eine Liste aelter als 60 s nachgeprueft (Patch-Tag)', async () => {
+  let t = 0;
+  const dd = fakeDdragon({ ids: many(150) });
+  const load = createLiveChampionIds({ fetch: dd.fetch, now: () => t });
+  const decide = id => decideChampion(id, confirm => load(undefined, confirm), build);
+  await load();
+  // 2 min spaeter: neuer Patch mit neuem Champion, die gemerkte Liste kennt ihn nicht
+  dd.state.version = '16.21.1';
+  dd.state.ids = [...many(150), 'NewChamp'];
+  t = 2 * 60 * 1000;
+  assert.deepEqual(await decide('NewChamp'), { kind: 'pass' });
+  assert.deepEqual(dd.calls.slice(2), ['/api/versions.json', '/cdn/16.21.1/data/en_US/champion.json']);
+  // Faelschungs-Serie: innerhalb der naechsten 60 s kein weiterer Abruf
+  t += 30 * 1000;
+  assert.deepEqual(await decide('NoSuchChampion'), { kind: 'missing' });
+  assert.deepEqual(await decide('AlsoFake'), { kind: 'missing' });
+  assert.equal(dd.calls.length, 4);
+  // danach hoechstens versions.json
+  t += 60 * 1000;
+  assert.deepEqual(await decide('NoSuchChampion'), { kind: 'missing' });
+  assert.deepEqual(dd.calls.slice(4), ['/api/versions.json']);
+});
+
+test('Laufzeit: Nachpruefung scheitert → Adresse geht durch, Treffer kommen weiter aus der Liste', async () => {
+  let t = 0;
+  const dd = fakeDdragon({ ids: [...many(150), 'NewChamp'] });
+  const load = createLiveChampionIds({ fetch: dd.fetch, now: () => t });
+  const decide = id => decideChampion(id, confirm => load(undefined, confirm), build);
+  await load();
+  dd.state.fail = true;
+  t = 5 * 60 * 1000;
+  assert.deepEqual(await decide('NoSuchChampion'), { kind: 'pass' });
+  assert.deepEqual(await decide('newchamp'), { kind: 'redirect', id: 'NewChamp', permanent: true });
 });
 
 test('Laufzeit: zu wenige Champions in der Antwort gelten als Fehlschlag', async () => {

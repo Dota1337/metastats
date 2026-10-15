@@ -1206,9 +1206,11 @@ async function checkEndpoint(c, r) {
 }
 
 /**
- * Status-Vertrag: echte Seiten antworten 200, erfundene 404.
+ * Status-Vertrag: echte Seiten antworten 200, erfundene 404, Umleitungen
+ * (`expectRedirect`: Pfad → Zielpfad) 307/308 mit genau diesem Ziel.
  *
- * Gebaut fuer die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts).
+ * Gebaut fuer die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts,
+ * LoL-Champions: champion-gate.ts mit Umleitung bei falscher Gross/Klein-Schreibung).
  * Der teure Fehler dort ist nicht die durchgelassene Muell-Adresse, sondern
  * die echte Seite, die ploetzlich 404 antwortet — Google wirft sie aus dem
  * Index, und niemand sieht es, weil Besucher von der Liste aus klicken und
@@ -1221,12 +1223,13 @@ async function checkHttpStatus(c, r) {
   if (!base) return r('error', `keine Basis-URL (weder baseUrl noch ${c.baseUrlEnv})`);
   const status = async path => {
     const res = await fetch(base + path, { method: 'HEAD', redirect: 'manual', signal: AbortSignal.timeout(20_000) });
-    return res.status;
+    const location = res.headers.get('location');
+    return { code: res.status, target: location ? new URL(location, base).pathname : null };
   };
 
   const probes = [
     ...(c.expect404 || []).map(path => ({ path, want: 404 })),
-    ...(c.expect308 || []).map(path => ({ path, want: 308 })),
+    ...Object.entries(c.expectRedirect || {}).map(([path, target]) => ({ path, want: 'redirect', target })),
   ];
   if (c.sitemapPrefixes?.length) {
     const res = await fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
@@ -1240,16 +1243,23 @@ async function checkHttpStatus(c, r) {
     }
     if (empty.length) return r('broken', `Sitemap ohne Eintraege fuer ${empty.join(', ')}`);
   }
-  if (probes.length === 0) return r('error', 'keine Proben (expect404 und sitemapPrefixes leer)');
+  if (probes.length === 0) return r('error', 'keine Proben (expect404, expectRedirect und sitemapPrefixes leer)');
 
   const wrong = [];
   for (const p of probes) {
     const got = await status(p.path);
-    if (got !== p.want) wrong.push(`${p.path} → ${got} (soll ${p.want})`);
+    if (p.want === 'redirect') {
+      if ((got.code !== 307 && got.code !== 308) || got.target !== p.target) {
+        wrong.push(`${p.path} → ${got.code} ${got.target ?? ''} (soll 307/308 → ${p.target})`);
+      }
+    } else if (got.code !== p.want) {
+      wrong.push(`${p.path} → ${got.code} (soll ${p.want})`);
+    }
   }
+  const count = want => probes.filter(p => p.want === want).length;
   return wrong.length
     ? r('broken', `${wrong.length}/${probes.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${probes.length} Proben richtig (${probes.filter(p => p.want === 200).length}× 200, ${probes.filter(p => p.want === 404).length}× 404, ${probes.filter(p => p.want === 308).length}× 308)`);
+    : r('ok', `${probes.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung)`);
 }
 
 /**

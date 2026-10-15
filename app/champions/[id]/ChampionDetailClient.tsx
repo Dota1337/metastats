@@ -37,11 +37,14 @@ function SkinImage({ championId, skinNum, alt, className }: {
   const imgRef = useRef<HTMLImageElement>(null);
   // Reset cascade when the source changes
   useEffect(() => { setStage(0); }, [championId, skinNum]);
+  // Eine Stufe weiter nur, wenn die gescheiterte noch die aktuelle ist —
+  // Mount-Pruefung und onError koennen denselben Fehler beide melden.
+  const next = (failed: 0 | 1 | 2 | 3) => setStage(s => (s === failed && s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s));
   // Das Bild steht schon im Server-HTML (Startdaten): scheitert es vor der
   // Hydration, kommt onError nie an — dann hier die naechste Stufe.
   useEffect(() => {
     const img = imgRef.current;
-    if (img?.complete && img.naturalWidth === 0) setStage(s => (s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s));
+    if (img?.complete && img.naturalWidth === 0) next(0);
   }, []);
   if (stage === 3) {
     return (
@@ -61,7 +64,7 @@ function SkinImage({ championId, skinNum, alt, className }: {
       src={src}
       alt={alt}
       className={className}
-      onError={() => setStage(s => (s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s))}
+      onError={() => next(stage)}
     />
   );
 }

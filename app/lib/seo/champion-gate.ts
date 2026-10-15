@@ -1,5 +1,5 @@
 // Erfundene LoL-Champion-Adressen (/champions/<id>) → echte 404, falsche
-// Gross/Klein-Schreibung → 308 auf die richtige (SEO-Plan Schritt 6). Laeuft
+// Gross/Klein-Schreibung → 308 (307) auf die richtige (SEO-Plan Schritt 6). Laeuft
 // in der Edge-Middleware vor der Seite, aus demselben Grund wie
 // not-found-gate.ts: ein notFound() in der Seite kaeme erst nach dem
 // Antwortbeginn und endete als 200.
@@ -12,7 +12,7 @@
 //      Build-Liste, die Seite zeigt ihn aber schon (sie liest Data Dragon
 //      ebenfalls live).
 // Hart abgelehnt wird nur, was die Laufzeit-Liste sicher nicht kennt oder was
-// keine reine Buchstaben-Kennung ist. Ist Data Dragon nicht erreichbar (oder
+// keine Kennungs-Form hat. Ist Data Dragon nicht erreichbar (oder
 // zu langsam), geht die Adresse durch — die Seite zeigt dann wie bisher
 // „nicht gefunden“, das Layout setzt noindex.
 //
@@ -23,21 +23,29 @@ export interface ChampionIds {
   ids: Set<string>;
   /** Kleinschreibung → richtige Schreibweise (`ahri` → `Ahri`). */
   lower: Map<string, string>;
+  /** Feste Unterseiten neben [id] (app/champions/<name>/), aus build-known-ids. */
+  statics?: Set<string>;
 }
 
-export type ChampionDecision = { kind: 'pass' } | { kind: 'missing' } | { kind: 'redirect'; id: string };
+/** `permanent`: 308 nur, wenn eine frische Laufzeit-Liste das Ziel bestaetigt, sonst 307. */
+export type ChampionDecision = { kind: 'pass' } | { kind: 'missing' } | { kind: 'redirect'; id: string; permanent: boolean };
 
-const LETTERS = /^[A-Za-z]+$/;
+// Data-Dragon-Kennungen sind heute reine Buchstaben (173/173); Ziffern und
+// Unterstrich gehen trotzdem an den Abgleich, damit ein kuenftiger Champion
+// mit Ziffer nicht dauerhaft 404 bekommt. Alles andere (Bindestrich, Leer-,
+// Satzzeichen) gibt es dort nicht.
+const ID_SHAPE = /^[A-Za-z0-9_]+$/;
 const PASS: ChampionDecision = { kind: 'pass' };
 const MISSING: ChampionDecision = { kind: 'missing' };
 
-export function championIds(list: readonly string[]): ChampionIds {
-  return { ids: new Set(list), lower: new Map(list.map(id => [id.toLowerCase(), id])) };
+export function championIds(list: readonly string[], statics: readonly string[] = []): ChampionIds {
+  return { ids: new Set(list), lower: new Map(list.map(id => [id.toLowerCase(), id])), statics: new Set(statics) };
 }
 
 let buildIds: ChampionIds | null = null;
 function defaultBuildIds(): ChampionIds {
-  return (buildIds ??= championIds((known as { lolChampions?: string[] }).lolChampions || []));
+  const k = known as { lolChampions?: string[]; staticSegments?: Record<string, string[]> };
+  return (buildIds ??= championIds(k.lolChampions || [], k.staticSegments?.champions || []));
 }
 
 /**
@@ -54,35 +62,56 @@ export function championIdFromPath(pathname: string): string | null | undefined 
   }
 }
 
+function matchLive(id: string, live: ChampionIds): ChampionDecision | null {
+  if (live.ids.has(id)) return PASS;
+  const fromLive = live.lower.get(id.toLowerCase());
+  return fromLive ? { kind: 'redirect', id: fromLive, permanent: true } : null;
+}
+
 /**
- * Reihenfolge: Build-Liste exakt → Build-Liste ohne Gross/Klein → Form →
- * Laufzeit-Liste (exakt, dann ohne Gross/Klein). `loadLive` liefert null,
- * wenn Data Dragon gerade nicht zur Verfuegung steht.
+ * Reihenfolge: feste Unterseite oder Build-Liste exakt → durch; falsche Form →
+ * 404; sonst Laufzeit-Liste (exakt → durch, ohne Gross/Klein → 308, sonst
+ * 404). Steht Data Dragon nicht zur Verfuegung (`loadLive` → null): Treffer
+ * ohne Gross/Klein in der Build-Liste → 307, sonst durch.
+ *
+ * Die 308 braucht die Bestaetigung der Laufzeit-Liste, weil Browser sie
+ * dauerhaft speichern: aenderte Riot je die Schreibweise einer Kennung, wiese
+ * eine 308 allein aus der Build-Liste bis zum naechsten Build auf die tote
+ * Adresse — und danach in eine Schleife.
+ *
+ * Die 404 braucht eine nachgepruefte Liste (`loadLive(true)`, hoechstens 60 s
+ * alt): am Patch-Tag kennt die gemerkte Liste den neuen Champion womoeglich
+ * noch nicht, die Seite verlinkt ihn aber schon.
  */
 export async function decideChampion(
   id: string,
-  loadLive: () => Promise<ChampionIds | null>,
+  loadLive: (confirm: boolean) => Promise<ChampionIds | null>,
   build: ChampionIds = defaultBuildIds(),
 ): Promise<ChampionDecision> {
-  if (build.ids.has(id)) return PASS;
-  const fromBuild = build.lower.get(id.toLowerCase());
-  if (fromBuild) return { kind: 'redirect', id: fromBuild };
-  if (!LETTERS.test(id)) return MISSING;
-  const live = await loadLive();
-  if (!live) return PASS;
-  if (live.ids.has(id)) return PASS;
-  const fromLive = live.lower.get(id.toLowerCase());
-  return fromLive ? { kind: 'redirect', id: fromLive } : MISSING;
+  if (build.statics?.has(id) || build.ids.has(id)) return PASS;
+  if (!ID_SHAPE.test(id)) return MISSING;
+  const live = await loadLive(false);
+  if (!live) {
+    const fromBuild = build.lower.get(id.toLowerCase());
+    return fromBuild ? { kind: 'redirect', id: fromBuild, permanent: false } : PASS;
+  }
+  const hit = matchLive(id, live);
+  if (hit) return hit;
+  const confirmed = await loadLive(true);
+  if (!confirmed) return PASS;
+  return matchLive(id, confirmed) ?? MISSING;
 }
 
 // ---------- Laufzeit-Liste ----------
 
 const DDRAGON = 'https://ddragon.leagueoflegends.com';
-// Eine Liste gilt 10 min (wie der Versions-Speicher der Seite,
-// ddragon-version-server.ts). Danach prueft der naechste Fehltreffer, ob es
-// eine neue Version gibt (5 KB); champion.json kommt nur bei neuer Version.
-// Faelschungs-Serien loesen so hoechstens einen kleinen Abruf je 10 min aus.
+// Eine Liste gilt 10 min fuer Treffer (wie der Versions-Speicher der Seite,
+// ddragon-version-server.ts). Vor einer 404 muss sie juenger als 60 s sein,
+// sonst prueft der Fehltreffer erst, ob es eine neue Version gibt (5 KB);
+// champion.json kommt nur bei neuer Version. Faelschungs-Serien loesen so
+// hoechstens einen kleinen Abruf je Minute und Instanz aus.
 const FRESH_MS = 10 * 60 * 1000;
+const CONFIRM_MS = 60 * 1000;
 const RETRY_MS = 60 * 1000; // Pause nach einem Fehlschlag
 const FETCH_MS = 5000; // beide Abrufe zusammen
 const WAIT_MS = 1500; // so lange wartet eine Anfrage hoechstens
@@ -97,9 +126,9 @@ export function createLiveChampionIds(opts: { fetch?: FetchLike; now?: () => num
   let inflight: Promise<void> | null = null;
   let failedAt = -Infinity;
 
-  // Nur eine frische Liste darf zu einer 404 fuehren. Ist sie alt und der
-  // Abgleich scheitert, geht die Adresse durch.
-  const fresh = () => (state && now() - state.checkedAt < FRESH_MS ? state.list : null);
+  // Nur eine frische Liste zaehlt. Ist sie zu alt und der Abgleich scheitert,
+  // geht die Adresse durch.
+  const fresh = (maxAgeMs: number) => (state && now() - state.checkedAt < maxAgeMs ? state.list : null);
 
   async function refresh(): Promise<void> {
     const ctl = new AbortController();
@@ -126,9 +155,13 @@ export function createLiveChampionIds(opts: { fetch?: FetchLike; now?: () => num
     }
   }
 
-  /** `waitUntil`: haelt einen Abruf, der laenger als die Wartezeit braucht, nach der Antwort am Leben. */
-  return function load(waitUntil?: (p: Promise<unknown>) => void): Promise<ChampionIds | null> {
-    const list = fresh();
+  /**
+   * `waitUntil`: haelt einen Abruf, der laenger als die Wartezeit braucht, nach
+   * der Antwort am Leben. `confirm`: Liste fuer eine 404, hoechstens 60 s alt.
+   */
+  return function load(waitUntil?: (p: Promise<unknown>) => void, confirm = false): Promise<ChampionIds | null> {
+    const maxAgeMs = confirm ? CONFIRM_MS : FRESH_MS;
+    const list = fresh(maxAgeMs);
     if (list) return Promise.resolve(list);
     if (!inflight && now() - failedAt >= RETRY_MS) {
       inflight = refresh().finally(() => { inflight = null; });
@@ -137,7 +170,7 @@ export function createLiveChampionIds(opts: { fetch?: FetchLike; now?: () => num
     if (!inflight) return Promise.resolve(null);
     let timer: ReturnType<typeof setTimeout> | undefined;
     return Promise.race([
-      inflight.then(fresh),
+      inflight.then(() => fresh(maxAgeMs)),
       new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), waitMs); }),
     ]).finally(() => clearTimeout(timer));
   };
@@ -147,5 +180,5 @@ const liveChampionIds = createLiveChampionIds();
 
 /** Entscheidung fuer die Middleware mit Build-Liste und Laufzeit-Abgleich. */
 export function championGate(id: string, waitUntil?: (p: Promise<unknown>) => void): Promise<ChampionDecision> {
-  return decideChampion(id, () => liveChampionIds(waitUntil));
+  return decideChampion(id, confirm => liveChampionIds(waitUntil, confirm));
 }

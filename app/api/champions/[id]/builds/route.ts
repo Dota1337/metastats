@@ -11,6 +11,7 @@ import { pickCounters } from '../../../../lib/lol-counters.mjs';
 import { isSnapshotPublisher } from '../../../../lib/snapshot-lookup';
 import { loadLolBuildsSnapshot } from '../../../../lib/lol-builds-snapshot';
 import { LOL_BUILDS_DEFAULT } from '../../../../lib/lol-builds-blob.mjs';
+import { lolItemNameTable, withItemNames } from '../../../../lib/lol-item-names';
 
 interface BuildEntry {
   items: number[];
@@ -252,6 +253,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   // Rang-Daten aus Supabase; fehlen sie, gilt die Datei (alle Raenge, source: 'json').
   let dbDown = false;
   if (rank) {
+    // Item-Namen schon waehrend der Datenbank-Abfrage holen (Kaltstart ~75 ms).
+    void getLatestDdragonVersion().then((v) => (v ? lolItemNameTable(v) : null)).catch(() => null);
     const db = await loadDbRows(region, Number(championKey), LOL_RANK_GROUPS[rank]);
     if (db === null) dbDown = true;
     // Unter MIN_DB_GAMES (Anlaufphase, seltene Champions) waeren die Top-Builds
@@ -269,7 +272,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const sampleSize = Object.values(roles).reduce((s, r) => s + r.games, 0);
       const ddragonVersion = (await getLatestDdragonVersion()) ?? readJsonFile(region)?.ddragonVersion;
       if (ddragonVersion && Object.keys(ordered).length) {
-        return cachedJson({
+        // itemNames reisen mit in die Blob-Datei (Publisher holt diesen Pfad).
+        return cachedJson(await withItemNames({
           championKey,
           region,
           source: 'db',
@@ -280,7 +284,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
           ddragonVersion,
           matchesAnalyzed: sampleSize,
           roles: ordered,
-        }, { cache });
+        }), { cache });
       }
     }
   }
@@ -293,12 +297,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return cachedJson({ ...base, hasBuilds: false, roles: {} }, { degraded: dbDown });
   }
   const ordered = orderRoles(rerankFileCounters(payload.byChampionRole?.[championKey] || {}), requestedRole);
-  return cachedJson({
+  return cachedJson(await withItemNames({
     ...base,
     hasBuilds: Object.keys(ordered).length > 0,
     collectedAt: payload.collectedAt,
     ddragonVersion: payload.ddragonVersion,
     matchesAnalyzed: payload.matchesAnalyzed,
     roles: ordered,
-  }, { cache, degraded: dbDown });
+  }), { cache, degraded: dbDown });
 }

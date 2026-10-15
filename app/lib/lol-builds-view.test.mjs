@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildsAssetsFrom, usedBuildsIds } from './lol-builds-view.ts';
+import { buildsAssetsFrom, itemNamesFrom, usedBuildsIds, usedItemIds } from './lol-builds-view.ts';
 
 const runeTrees = [
   { id: 8100, name: 'Domination', icon: 'd.png', slots: [
@@ -62,4 +62,30 @@ test('kaputte Eingaben ergeben leere Teile, keinen Fehler', () => {
   assert.deepEqual(buildsAssetsFrom(null, null, null), { runeIndex: {}, summoners: {}, championMap: {} });
   assert.deepEqual(buildsAssetsFrom({}, [], 'x'), { runeIndex: {}, summoners: {}, championMap: {} });
   assert.deepEqual(usedBuildsIds({ roles: undefined }).runes.size, 0);
+});
+
+test('Item-Kennungen: Builds, Stiefel, Items aller Rollen, ohne leere Plaetze', () => {
+  const ids = usedItemIds({ roles: {
+    MIDDLE: { topBuilds: [{ items: [3089, 0, 4645] }], topBoots: [{ item: 3020 }], topItems: [{ item: 3089 }, { item: 3100 }] },
+    TOP: { topBuilds: [], topBoots: [], topItems: [{ item: 6653 }] },
+    BROKEN: undefined,
+  } });
+  assert.deepEqual([...ids].sort((a, b) => a - b), [3020, 3089, 3100, 4645, 6653]);
+  assert.equal(usedItemIds({}).size, 0);
+});
+
+test('Item-Namen: nur benutzte, ohne Auszeichnungen, leere fehlen', () => {
+  const items = {
+    3089: { name: "Rabadon's Deathcap" },
+    3901: { name: '<rarityLegendary>Fire at Will</rarityLegendary><br><subtitleLeft><silver>500 Silver Serpents</silver></subtitleLeft>' },
+    2008: { name: '' },
+    3100: { name: 'Lich Bane' },
+  };
+  assert.deepEqual(itemNamesFrom(items, [3089, 3901, 2008, 9999]), {
+    3089: "Rabadon's Deathcap",
+    3901: 'Fire at Will 500 Silver Serpents',
+  });
+  assert.deepEqual(itemNamesFrom(null, [3089]), {});
+  assert.deepEqual(itemNamesFrom('x', [3089]), {});
+  assert.deepEqual(itemNamesFrom({ 3089: { name: 42 } }, [3089]), {});
 });

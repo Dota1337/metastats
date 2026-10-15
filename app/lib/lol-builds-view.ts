@@ -3,6 +3,13 @@
 // (ChampionBuildsSection: volle Listen) und Server (seo/lol-detail-data.ts:
 // nur die Eintraege, die die Startdaten wirklich zeigen — das spart im ersten
 // HTML gut 20 KB). Rein, ohne Abrufe.
+//
+// Item-Namen gehen einen anderen Weg: sie reisen als `itemNames` in der
+// Antwort selbst (Route, app/lib/lol-item-names.ts) und damit auch in der
+// Blob-Datei. Die Bilder brauchen keinen Nachschlag (`item/<id>.png`), und
+// item.json kostet den Browser 100 KB gzip — doppelt so viel wie die drei
+// Listen oben zusammen (49 KB, gemessen 15.10.2026). Englisch wie die Runen;
+// sollen die Namen je Besuchersprache kommen, muessen sie hierher umziehen.
 
 export interface BuildEntry { items: number[]; games: number; wins: number }
 export interface ItemEntry { item: number; games: number; wins: number }
@@ -39,6 +46,8 @@ export interface BuildsResponse {
   source?: 'db' | 'json';
   rank?: string | null;
   patch?: string;
+  /** Item-Kennung → englischer Name, nur fuer die Items dieser Antwort. Fehlt bei Data-Dragon-Ausfall. */
+  itemNames?: Record<string, string>;
 }
 
 export interface RuneInfo { name: string; icon: string }
@@ -70,6 +79,34 @@ export function usedBuildsIds(data: BuildsResponse) {
     for (const c of [...(r.counters?.strongAgainst || []), ...(r.counters?.weakAgainst || [])]) champions.add(String(c.enemy));
   }
   return { runes, summoners, champions };
+}
+
+export type ItemLists = { topBuilds?: { items?: number[] }[]; topBoots?: { item: number }[]; topItems?: { item: number }[] };
+
+/** Item-Kennungen, deren Bild der Block zeigt (Builds, Stiefel, Items). 0 = leerer Platz. */
+export function usedItemIds(data: { roles?: Record<string, ItemLists | undefined> }): Set<number> {
+  const ids = new Set<number>();
+  for (const r of Object.values(data.roles || {})) {
+    for (const b of r?.topBuilds || []) for (const id of b.items || []) if (id > 0) ids.add(id);
+    for (const e of [...(r?.topBoots || []), ...(r?.topItems || [])]) if (e.item > 0) ids.add(e.item);
+  }
+  return ids;
+}
+
+/**
+ * Namen aus item.json (`data`) fuer genau diese Kennungen. Einige Namen tragen
+ * Riots Auszeichnungen (`<rarityLegendary>…`) — die fliegen raus; leere Namen
+ * fehlen, dann zeigt der Block „Item N“. Kaputte Eingaben ergeben {}.
+ */
+export function itemNamesFrom(itemData: unknown, ids: Iterable<number>): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!itemData || typeof itemData !== 'object') return out;
+  for (const id of ids) {
+    const raw = (itemData as Record<string, { name?: unknown } | undefined>)[String(id)]?.name;
+    const name = typeof raw === 'string' ? raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : '';
+    if (name) out[String(id)] = name;
+  }
+  return out;
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- rohes Data-Dragon-JSON */

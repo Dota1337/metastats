@@ -7,6 +7,7 @@ import { withTimeout } from '../og/frame';
 import { getLatestDdragonVersion } from '../ddragon-version-server';
 import { tftTraitDisplayName } from '../tft-cdragon';
 import { compSlugIds } from '../tft-cluster';
+import { DDRAGON_LOCALE } from '../lol-champion-detail';
 
 // Anzeigenamen fuer Seitentitel der Detailseiten. Nur lokale Daten (Asset-
 // Bundle, Team-Liste) oder ein zwischengespeicherter Data-Dragon-Abruf mit
@@ -69,11 +70,13 @@ export function tournamentName(slug: string): string {
 
 // ---------- LoL-Champions (Data Dragon, je Sprache) ----------
 
-const DDRAGON_LOCALE: Record<Lang, string> = {
-  de: 'de_DE', en: 'en_US', ko: 'ko_KR', zh: 'zh_CN', es: 'es_ES', fr: 'fr_FR',
-};
-
-export async function lolChampionName(id: string, lang: Lang): Promise<string> {
+/**
+ * Name in der Sprache des Besuchers und ob Data Dragon die Kennung kennt
+ * (`known: null` = nicht erreichbar, dann steht die Kennung im Titel). `known`
+ * ist das zweite Netz hinter der 404-Pruefung der Middleware: was sie
+ * durchlaesst, Data Dragon aber nicht kennt, bekommt noindex.
+ */
+export async function lolChampionInfo(id: string, lang: Lang): Promise<{ name: string; known: boolean | null }> {
   const load = async () => {
     const version = await getLatestDdragonVersion();
     if (!version) return null;
@@ -84,9 +87,11 @@ export async function lolChampionName(id: string, lang: Lang): Promise<string> {
     );
     if (!res.ok) return null;
     const data = (await res.json()) as { data?: Record<string, { name?: string }> };
-    return data.data?.[id]?.name ?? null;
+    if (!data.data) return null;
+    const name = data.data[id]?.name;
+    return { name: name || id, known: !!name };
   };
-  return (await withTimeout(load(), DATA_TIMEOUT_MS)) || id;
+  return (await withTimeout(load(), DATA_TIMEOUT_MS)) || { name: id, known: null };
 }
 
 // ---------- LoL-Teams (public/pro-teams/index.json, wie app/teams/[id]/layout.tsx) ----------

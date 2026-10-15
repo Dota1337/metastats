@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { withAlpha } from '../../lib/color';
 import { useParams } from 'next/navigation';
 import Nav from '../../components/Nav';
@@ -7,58 +7,9 @@ import Footer from '../../components/Footer';
 import ChampionBuildsSection from '../../components/ChampionBuildsSection';
 import { useI18n } from '../../lib/i18n';
 import { getDdragonVersion } from '../../lib/ddragon-version';
-
-interface ChampionSpell {
-  id: string;
-  name: string;
-  description: string;
-  image: { full: string };
-}
-
-interface ChampionPassive {
-  name: string;
-  description: string;
-  image: { full: string };
-}
-
-interface ChampionStats {
-  hp: number;
-  hpperlevel: number;
-  mp: number;
-  mpperlevel: number;
-  armor: number;
-  armorperlevel: number;
-  spellblock: number;
-  spellblockperlevel: number;
-  attackdamage: number;
-  attackdamageperlevel: number;
-  attackspeed: number;
-  attackspeedperlevel: number;
-  movespeed: number;
-  attackrange: number;
-}
-
-interface ChampionSkin {
-  id: string;
-  num: number;
-  name: string;
-  chromas: boolean;
-}
-
-interface ChampionData {
-  id: string;
-  key: string;
-  name: string;
-  title: string;
-  tags: string[];
-  lore: string;
-  allytips: string[];
-  enemytips: string[];
-  stats: ChampionStats;
-  spells: ChampionSpell[];
-  passive: ChampionPassive;
-  skins: ChampionSkin[];
-}
+import {
+  championDetailUrl, pickChampionDetail, type ChampionData, type ChampionDetailStart,
+} from '../../lib/lol-champion-detail';
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]*>/g, '');
@@ -83,8 +34,15 @@ function SkinImage({ championId, skinNum, alt, className }: {
   championId: string; skinNum: number; alt: string; className?: string;
 }) {
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
+  const imgRef = useRef<HTMLImageElement>(null);
   // Reset cascade when the source changes
   useEffect(() => { setStage(0); }, [championId, skinNum]);
+  // Das Bild steht schon im Server-HTML (Startdaten): scheitert es vor der
+  // Hydration, kommt onError nie an — dann hier die naechste Stufe.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth === 0) setStage(s => (s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s));
+  }, []);
   if (stage === 3) {
     return (
       <div className={`flex items-center justify-center bg-surface-raised text-fg-muted text-[10px] text-center px-1 ${className || ''}`}>
@@ -99,6 +57,7 @@ function SkinImage({ championId, skinNum, alt, className }: {
     `${base}/splash/${championId}_0.jpg`;
   return (
     <img
+      ref={imgRef}
       src={src}
       alt={alt}
       className={className}
@@ -107,59 +66,61 @@ function SkinImage({ championId, skinNum, alt, className }: {
   );
 }
 
-export default function ChampionDetailPage() {
+// `initial`: Champion vom Server in der Sprache des Besuchers (page.tsx,
+// SEO-Plan Schritt 6) — dann entfaellt der erste Abruf. Fehlt er, laedt die
+// Seite wie bisher im Browser.
+export default function ChampionDetailPage({ initial = null }: { initial?: ChampionDetailStart | null }) {
   const { id } = useParams();
-  const [champion, setChampion] = useState<ChampionData | null>(null);
-  const [version, setVersion] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [champion, setChampion] = useState<ChampionData | null>(initial?.champion ?? null);
+  const [version, setVersion] = useState(initial?.version ?? '');
+  const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState('');
   const [selectedSkin, setSelectedSkin] = useState(0);
   const { t, lang } = useI18n();
+  // Zu welcher Kennung + Sprache der gezeigte Champion gehoert. Gleich → kein
+  // Abruf (Startdaten, auch beim doppelten Effekt im StrictMode); ein Wechsel
+  // der Sprache oder des Champions laedt wie bisher.
+  const shownKey = useRef<string | null>(initial ? `${initial.id}|${initial.lang}` : null);
 
-  // Riot Data Dragon expects locale codes in `xx_YY` form (de_DE, en_US, …);
-  // our app stores languages as ISO short codes (de, en, …). Map both ways.
-  const ddLocale: Record<string, string> = {
-    de: 'de_DE', en: 'en_US', ko: 'ko_KR', zh: 'zh_CN', es: 'es_ES', fr: 'fr_FR',
-  };
-
+  // Abbruch im Cleanup: bei schnellem Sprachwechsel (de → en → de) gewinnt
+  // sonst die zuletzt EINTREFFENDE Antwort, nicht die zuletzt angeforderte.
   useEffect(() => {
     if (!id) return;
-    loadChampion(id as string);
+    const key = `${id}|${lang}`;
+    if (shownKey.current === key) return;
+    shownKey.current = null;
+    const ctl = new AbortController();
+    loadChampion(id as string, key, ctl.signal);
+    return () => ctl.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, lang]);
 
-  const loadChampion = async (championId: string) => {
+  const loadChampion = async (championId: string, key: string, signal: AbortSignal) => {
     setLoading(true);
     setError('');
     try {
       const ver = await getDdragonVersion();
+      if (signal.aborted) return;
       if (!ver) throw new Error(t('champDetail.loadError'));
       setVersion(ver);
 
-      const locale = ddLocale[lang] || 'en_US';
-      const res = await fetch(
-        `https://ddragon.leagueoflegends.com/cdn/${ver}/data/${locale}/champion/${championId}.json`
-      );
+      const res = await fetch(championDetailUrl(ver, lang, championId), { signal });
       // Unbekannte Champions beantwortet Data Dragon mit 403 (gemessen), nicht 404.
       if (res.status === 403 || res.status === 404) throw new Error(t('champDetail.notFound'));
       if (!res.ok) throw new Error(t('champDetail.loadError'));
-      const data = await res.json();
-      const champData = data.data[championId];
+      // Dieselbe Auswahl wie die Startdaten (ohne Chroma-Varianten).
+      const champData = pickChampionDetail(await res.json(), championId);
+      if (signal.aborted) return;
       if (!champData) throw new Error(t('champDetail.notFound'));
-      // Filter chroma variants — Riot lists them as separate skin entries
-      // whose name ends in `<original> (Color)`. The boolean `chromas` flag
-      // on the parent skin already tells us "this skin has chromas", so the
-      // suffix entries are pure noise in the gallery.
-      if (Array.isArray(champData.skins)) {
-        champData.skins = champData.skins.filter((s: any) => !/\s+\([^)]+\)\s*$/.test(s.name || ''));
-      }
       setChampion(champData);
+      shownKey.current = key;
       // Reset selectedSkin if it no longer points to a valid index after filtering
       setSelectedSkin(0);
     } catch (e: any) {
+      if (signal.aborted) return;
       setError(e.message || t('champDetail.loadError'));
     } finally {
-      setLoading(false);
+      if (!signal.aborted) setLoading(false);
     }
   };
 

@@ -18,13 +18,33 @@ test('Haupt-Carry: meiste Carry-Items je Spiel vorne, Key-Carry nur bei < 10 % A
     u('Veigar', 99, { DA_JeweledGauntlet: 90, DA_RabadonsDeathcap: 87 }, { carryItemGamesAll: 97 }),
   ];
   assert.deepEqual(computeRoles(units, 100, { ...opts, keyCarry: 'LeBlanc' }).carries, ['Veigar', 'LeBlanc']);
-  // knapp (Veigar 1,49 vs Key 1,40): Key bleibt vorne
+  // knapp (Veigar 1,42 vs Key 1,40, auch an Items je Spiel < 3 %): Key bleibt vorne
   const close = [
     u('Cassiopeia', 100, { DA_JeweledGauntlet: 80, DA_SpearOfShojin: 60 }, { carryItemGamesAll: 100 }),
-    u('Veigar', 100, { DA_JeweledGauntlet: 80, DA_RabadonsDeathcap: 69 }, { carryItemGamesAll: 99 }),
+    u('Veigar', 100, { DA_JeweledGauntlet: 80, DA_RabadonsDeathcap: 62 }, { carryItemGamesAll: 99 }),
   ];
   assert.deepEqual(computeRoles(close, 100, { ...opts, keyCarry: 'Cassiopeia' }).carries, ['Cassiopeia', 'Veigar']);
   assert.deepEqual(computeRoles(close, 100, opts).carries, ['Veigar', 'Cassiopeia']);
+});
+
+test('Reihenfolge der Carries: mehr fertige Items je Spiel vorne, Artefakte zaehlen (User 2026-10-16)', () => {
+  // Spellweaver__LeBlanc: LeBlanc fuehrt bei Carry-Items, Veigar traegt mit dem
+  // Artefakt mehr fertige Items je Spiel → Veigar vorne, auch gegen den Key.
+  const units = [
+    u('LeBlanc', 100, { DA_JeweledGauntlet: 80, DA_SpearOfShojin: 70, DA_Morellonomicon: 84 }, { carryItemGamesAll: 90 }),
+    u('Veigar', 100, { DA_JeweledGauntlet: 90, DA_RabadonsDeathcap: 70, DA_Artifact_Dawncore: 87 }, { carryItemGamesAll: 99 }),
+  ];
+  const r = computeRoles(units, 100, { ...opts, keyCarry: 'LeBlanc' });
+  assert.deepEqual(namedCarries(r, 'LeBlanc'), ['Veigar', 'LeBlanc'], '2,47 gegen 2,34 Items je Spiel');
+  // Unter 3 % Abstand bei den Items bleibt die Carry-Item-Reihenfolge.
+  const near = [
+    u('LeBlanc', 100, { DA_JeweledGauntlet: 80, DA_SpearOfShojin: 70, DA_Morellonomicon: 90 }, { carryItemGamesAll: 90 }),
+    u('Veigar', 100, { DA_JeweledGauntlet: 90, DA_RabadonsDeathcap: 70, DA_Artifact_Dawncore: 85 }, { carryItemGamesAll: 99 }),
+  ];
+  assert.deepEqual(computeRoles(near, 100, { ...opts, keyCarry: 'LeBlanc' }).carries, ['LeBlanc', 'Veigar'], '2,45 gegen 2,40');
+  // Ein dritter Carry bleibt dritter; nur die zwei Namen tauschen.
+  const three = [...units, u('Ahri', 100, { DA_JeweledGauntlet: 50, DA_SpearOfShojin: 50 }, { carryItemGamesAll: 80 })];
+  assert.deepEqual(computeRoles(three, 100, { ...opts, keyCarry: 'LeBlanc' }).carries, ['Veigar', 'LeBlanc', 'Ahri']);
 });
 
 test('Hand of Justice und Edge of Night zaehlen als Carry-Items, nicht als Tank-Items', () => {

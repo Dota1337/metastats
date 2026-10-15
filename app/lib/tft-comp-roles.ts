@@ -21,6 +21,11 @@ export const MAX_NAMED_CARRIES = 2;
 // Comp-Spiel die meisten Carry-Items traegt. Liegt der Key-Carry weniger als
 // 10 % dahinter, bleibt er vorne, damit knappe Paare nicht je Region kippen.
 export const KEY_CARRY_MARGIN = 1.1;
+// Reihenfolge der zwei Carries (User 2026-10-16, Spellweaver: „Veigar ist der
+// Main Carry … anhand der Itemization"): wer je Spiel mehr fertige Items traegt,
+// steht vorne — auch Artefakte und Utility-Items zaehlen, wie bei tactics.tools.
+// Unter 3 % Abstand bleibt die Reihenfolge von oben.
+export const CARRY_LOAD_MARGIN = 1.03;
 // Item-Traeger (User 2026-09-27: „Erweitere es auf 3 oder 4 … Fülle das immer
 // auf 3 auf"): Units, die in dieser Comp regelmaessig fertige Items tragen.
 export const ITEM_CARRIER_MIN_PRESENCE = 0.4;
@@ -153,6 +158,9 @@ export function computeRoles(
   if (key && key !== carryStats[0] && carryStats[0].carryVolume < key.carryVolume * KEY_CARRY_MARGIN) {
     carryStats.splice(carryStats.indexOf(key), 1);
     carryStats.unshift(key);
+  }
+  if (carryStats.length >= 2 && carryStats[1].itemLoad >= carryStats[0].itemLoad * CARRY_LOAD_MARGIN) {
+    [carryStats[0], carryStats[1]] = [carryStats[1], carryStats[0]];
   }
   const carries = carryStats.map(s => s.characterId);
   const carrySet = new Set(carries);

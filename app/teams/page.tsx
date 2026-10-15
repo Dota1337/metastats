@@ -115,7 +115,7 @@ export default function TeamsPage() {
   const [sortKey, setSortKey] = useState<SortKey>('prize');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [season, setSeason] = useState('all');
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
 
   useEffect(() => {
     // Listing-Derivat (~204 KB) statt der kompletten SoT (~2,9 MB). Alle hier
@@ -305,7 +305,7 @@ export default function TeamsPage() {
               return (
                 <a
                   key={team.id}
-                  href={`/teams/${team.id}`}
+                  href={withLang(`/teams/${team.id}`)}
                   className="bg-surface-base border border-border-subtle rounded p-4 hover:border-accent-a40 transition-colors group"
                 >
                   <div className="flex items-center gap-3 sm:gap-4">

@@ -39,7 +39,11 @@ const ESLINT_BIN = join(dirname(require_.resolve('eslint/package.json')), 'bin',
 // Beim Senken das Datum mitziehen.
 const BUDGET = {
   '@typescript-eslint/no-explicit-any': 602,
-  '@next/next/no-html-link-for-pages': 28,
+  // 28 -> 0 am 15.10.2026: Links laufen seitdem ueber withLang() (Sprach-Adressen),
+  // die Regel sieht nur feste Texte. Ihren Platz nimmt no-restricted-syntax ein.
+  '@next/next/no-html-link-for-pages': 0,
+  // Interne Links ohne Sprach-Adresse (eslint.config.mjs, SEO Weg C). Bleibt 0.
+  'no-restricted-syntax': 0,
   'react-hooks/set-state-in-effect': 29,
   'prefer-const': 4,
   'react-hooks/immutability': 0,

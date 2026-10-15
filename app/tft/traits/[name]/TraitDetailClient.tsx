@@ -58,7 +58,7 @@ const STYLE_COLORS: Record<number, { label: string; hex: string }> = {
 // `initial`: Startdaten der Server-Huelle (page.tsx) — die Zeilen der drei
 // Listen-Abrufe, schon auf diesen Trait gekuerzt, oder null je Block.
 export default function TftTraitDetailPage({ initial }: { initial: TraitDetailInitial | null }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const apiName = decodeURIComponent(String(params?.name || ''));
@@ -184,7 +184,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
     <main className="min-h-screen bg-surface-page">
       <Nav active="traits" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/traits" className="text-accent text-xs hover:underline">← {t('nav.traits')}</a>
+        <a href={withLang("/tft/traits")} className="text-accent text-xs hover:underline">← {t('nav.traits')}</a>
 
         {/* Header: icon + name + tier-pill row */}
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
@@ -209,7 +209,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
               )}
             </div>
             <a
-              href={buildExplorerUrl({ traits: [unitCountName] })}
+              href={withLang(buildExplorerUrl({ traits: [unitCountName] }))}
               className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5 self-start"
               title={t('tft.drill.openInExplorer')}
             >
@@ -474,7 +474,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                 return (
                   <a
                     key={u.characterId}
-                    href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                    href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
                     className="flex flex-col items-center bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50 transition"
                   >
                     {champUrl ? (
@@ -513,7 +513,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                 return (
                   <a
                     key={c.slug}
-                    href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`}
+                    href={withLang(`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}`)}
                     className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 hover:border-accent-a40 transition-colors"
                   >
                     {carryUrl && (

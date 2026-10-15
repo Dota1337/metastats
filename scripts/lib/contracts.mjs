@@ -1217,6 +1217,13 @@ async function checkEndpoint(c, r) {
  * die Liste weiter funktioniert. Die echten Adressen kommen deshalb aus der
  * Live-Sitemap (je Praefix die ersten `perPrefix`), nicht aus festen
  * Kennungen, die mit dem Set-Wechsel veralten.
+ *
+ * `expectLangLinks` (Pfad → Sprache, SEO Weg C): die Seite antwortet 200 mit
+ * <html lang> der Sprache, und KEIN interner Seiten-Link im HTML verliert den
+ * Sprach-Vorsatz. Seiten-Link = erster Pfadteil in `pageRoots` (gleich
+ * PAGE_ROOTS in app/lib/lang-path.ts, lang-path.test.mjs prueft das) oder die
+ * Startseite. Der ESLint-Waechter faengt feste Texte; das hier faengt Links,
+ * die als Variable durchgereicht werden.
  */
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
@@ -1243,9 +1250,24 @@ async function checkHttpStatus(c, r) {
     }
     if (empty.length) return r('broken', `Sitemap ohne Eintraege fuer ${empty.join(', ')}`);
   }
-  if (probes.length === 0) return r('error', 'keine Proben (expect404, expectRedirect und sitemapPrefixes leer)');
+  const langLinks = Object.entries(c.expectLangLinks || {});
+  if (probes.length === 0 && langLinks.length === 0) return r('error', 'keine Proben (expect404, expectRedirect und sitemapPrefixes leer)');
 
   const wrong = [];
+  const roots = new Set(c.pageRoots || []);
+  for (const [path, lang] of langLinks) {
+    const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) { wrong.push(`${path} → ${res.status} (soll 200)`); continue; }
+    const html = await res.text();
+    if (!html.includes(`<html lang="${lang}"`)) wrong.push(`${path}: <html lang> ist nicht ${lang}`);
+    const own = h => h === `/${lang}` || ['/', '?', '#'].some(sep => h.startsWith(`/${lang}${sep}`));
+    const bad = [...html.matchAll(/\shref="([^"]*)"/g)].map(m => m[1]).filter(h => {
+      if (!h.startsWith('/') || h.startsWith('//')) return false;
+      const first = h.slice(1).split(/[/?#]/, 1)[0];
+      return (first === '' || roots.has(first)) && !own(h);
+    });
+    if (bad.length) wrong.push(`${path}: ${bad.length} Links ohne /${lang} (z.B. ${bad.slice(0, 3).join(', ')})`);
+  }
   for (const p of probes) {
     const got = await status(p.path);
     if (p.want === 'redirect') {
@@ -1259,7 +1281,7 @@ async function checkHttpStatus(c, r) {
   const count = want => probes.filter(p => p.want === want).length;
   return wrong.length
     ? r('broken', `${wrong.length}/${probes.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${probes.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung)`);
+    : r('ok', `${probes.length + langLinks.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${langLinks.length}× Sprach-Links)`);
 }
 
 /**

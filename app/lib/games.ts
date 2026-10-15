@@ -9,6 +9,8 @@
 // reine Funktion des Pfads, und das muss so bleiben: eine Cookie-Quelle würde
 // eine lila LoL-Seite erzeugen, sobald der Cookie auf tft steht.
 
+import { splitLangPrefix, withLangPrefix } from './lang-path';
+
 export type Game = 'lol' | 'tft';
 
 // Farben stehen hier bewusst NICHT. Source-of-Truth für beide Game-Farben ist
@@ -52,12 +54,20 @@ const PAGE_MAP_TFT_TO_LOL: { match: RegExp; to: string }[] = [
 ];
 
 export function detectGameFromPath(pathname: string): Game {
+  // Sprach-Vorsatz (/en/tft/…) zaehlt nicht mit.
+  const path = splitLangPrefix(pathname).rest;
   // Exakt `/tft` oder ein Segment darunter — nicht startsWith('/tft'), sonst
   // würde eine künftige Top-Level-Route wie /tftips still als TFT gelten.
-  return pathname === '/tft' || pathname.startsWith('/tft/') ? 'tft' : 'lol';
+  return path === '/tft' || path.startsWith('/tft/') ? 'tft' : 'lol';
 }
 
 export function mapPathToGame(pathname: string, target: Game): string {
+  // Der Sprach-Vorsatz bleibt: /en/tft/units → /en/champions.
+  const { lang, rest } = splitLangPrefix(pathname);
+  return withLangPrefix(lang, mapRestToGame(rest, target));
+}
+
+function mapRestToGame(pathname: string, target: Game): string {
   const rules = target === 'tft' ? PAGE_MAP_LOL_TO_TFT : PAGE_MAP_TFT_TO_LOL;
   for (const rule of rules) {
     const m = pathname.match(rule.match);

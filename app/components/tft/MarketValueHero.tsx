@@ -144,7 +144,7 @@ function PeakDropdown({ peaks, lang }: { peaks: PeakEntry[]; lang: Lang }) {
 }
 
 export default function MarketValueHero({ fullName, region, lang }: MarketValueHeroProps) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [data, setData] = useState<MarketValueResponse | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [setInfo, setSetInfo] = useState<SetInfo | null>(null);
@@ -435,7 +435,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
               .map(s => <SignalRow key={s.signal} sig={s} />)}
           </div>
           <Link
-            href="/tft/marktwert/methodik"
+            href={withLang("/tft/marktwert/methodik")}
             className="inline-flex items-center gap-1 mt-3 text-[11px] text-accent hover:text-[#9d7bff] transition-colors"
           >
             <span aria-hidden>ⓘ</span> {t('tft.mv.method.link')}
@@ -535,13 +535,13 @@ function ContributionChart({ agents }: { agents: SkillSignal[] }) {
 // One row of the skill-score breakdown: weight, z-score + detail, and the
 // signed contribution (w·z/Σw) to the overall skill score.
 function SignalRow({ sig }: { sig: SkillSignal }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const known = !!SIGNAL_LABEL_KEYS[sig.signal];
   const label = known ? t(SIGNAL_LABEL_KEYS[sig.signal] as TranslationKey) : sig.signal;
   const weightPct = `${Math.round(sig.weight * 100)}%`;
   // Label deep-links to its explanation; hover shows the short description.
   const labelEl = known
-    ? <Link href={`/tft/marktwert/methodik#${sig.signal}`} title={t(`tft.mv.method.sig.${sig.signal}` as TranslationKey)} className="hover:text-[#9d7bff] transition-colors">{label}</Link>
+    ? <Link href={withLang(`/tft/marktwert/methodik#${sig.signal}`)} title={t(`tft.mv.method.sig.${sig.signal}` as TranslationKey)} className="hover:text-[#9d7bff] transition-colors">{label}</Link>
     : label;
 
   if (!sig.available) {

@@ -381,7 +381,7 @@
       "type": "http-status",
       "baseUrlEnv": "SITE_STATUS_BASE_URL",
       "baseUrl": "https://www.metastats.gg",
-      "sitemapPrefixes": ["/tft/comps/", "/tft/units/", "/tft/items/", "/tft/traits/", "/champions/"],
+      "sitemapPrefixes": ["/tft/comps/", "/tft/units/", "/tft/items/", "/tft/traits/", "/champions/", "/en/tft/units/", "/ko/champions/"],
       "perPrefix": 3,
       "expect404": [
         "/tft/units/NoSuchUnit123",
@@ -389,10 +389,23 @@
         "/tft/traits/NoSuchTrait",
         "/tft/comps/Fake%409_NoSuchUnit",
         "/teams/doesnotexist",
-        "/champions/No-Such-Champ"
+        "/champions/No-Such-Champ",
+        "/en/tft/units/NoSuchUnit123",
+        "/en/api/internal/ops-snapshot",
+        "/en/internal/login",
+        "/en/robots.txt",
+        "/de/tft/comps"
       ],
-      "expectRedirect": { "/champions/ahri": "/champions/Ahri", "/tft/player/ViggoZe-EUW": "/tft/player/ViggoZe--EUW" },
-      "note": "Die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts) lebt von einer Liste, die scripts/build-known-ids.mjs bei jedem Build aus den Bundles erzeugt (nicht committet). Der teure Fehler ist eine ECHTE Seite, die ploetzlich 404 antwortet — Besucher merken es nicht (sie klicken aus der Liste, die Liste laeuft weiter), Google wirft sie aus dem Index. Deshalb kommen die 200er-Proben aus der Live-Sitemap statt aus festen Kennungen, die mit dem Set-Wechsel veralten. Die 404er-Proben fangen die Gegenrichtung: Liste leer oder Notschalter SEO_404_GATE=0 vergessen. LoL-Champions (app/lib/seo/champion-gate.ts) gleichen Unbekannte zur Laufzeit mit Data Dragon ab; die 404-Probe ist deshalb eine Kennung, die schon an der Schreibweise scheitert (Bindestrich: No-Such-Champ), nicht eine, die am Abgleich haengt — sonst gaebe ein kurzer Data-Dragon-Ausfall Fehlalarm. /champions/ahri prueft die Umleitung auf die richtige Schreibweise (308, bei Data-Dragon-Ausfall 307) samt Ziel. /tft/player/ViggoZe-EUW prueft die 308 alter Ein-Strich-Spieleradressen (Rising, Lesezeichen) auf Name--Tag (middleware.ts, legacyTftPlayerSlug in app/lib/og/slugs.ts)."
+      "expectRedirect": {
+        "/champions/ahri": "/champions/Ahri",
+        "/tft/player/ViggoZe-EUW": "/tft/player/ViggoZe--EUW",
+        "/en/champions/ahri": "/en/champions/Ahri",
+        "/en/tft": "/en/tft/comps",
+        "/fr/tft/player/ViggoZe-EUW": "/fr/tft/player/ViggoZe--EUW"
+      },
+      "expectLangLinks": { "/en/tft/comps": "en", "/ko/champions": "ko", "/fr": "fr" },
+      "pageRoots": ["champions", "compare", "datenschutz", "impressum", "leaderboard", "ligen", "marktwert", "player", "search", "teams", "tft"],
+      "note": "Die 404-Pruefung der Middleware (app/lib/seo/not-found-gate.ts) lebt von einer Liste, die scripts/build-known-ids.mjs bei jedem Build aus den Bundles erzeugt (nicht committet). Der teure Fehler ist eine ECHTE Seite, die ploetzlich 404 antwortet — Besucher merken es nicht (sie klicken aus der Liste, die Liste laeuft weiter), Google wirft sie aus dem Index. Deshalb kommen die 200er-Proben aus der Live-Sitemap statt aus festen Kennungen, die mit dem Set-Wechsel veralten. Die 404er-Proben fangen die Gegenrichtung: Liste leer oder Notschalter SEO_404_GATE=0 vergessen. LoL-Champions (app/lib/seo/champion-gate.ts) gleichen Unbekannte zur Laufzeit mit Data Dragon ab; die 404-Probe ist deshalb eine Kennung, die schon an der Schreibweise scheitert (Bindestrich: No-Such-Champ), nicht eine, die am Abgleich haengt — sonst gaebe ein kurzer Data-Dragon-Ausfall Fehlalarm. /champions/ahri prueft die Umleitung auf die richtige Schreibweise (308, bei Data-Dragon-Ausfall 307) samt Ziel. /tft/player/ViggoZe-EUW prueft die 308 alter Ein-Strich-Spieleradressen (Rising, Lesezeichen) auf Name--Tag (middleware.ts, legacyTftPlayerSlug in app/lib/og/slugs.ts). Sprach-Adressen (SEO Weg C, app/lib/lang-path.ts, seit 15.10.2026): /en/… usw. muessen dieselben Antworten geben wie die deutsche Adresse (200 aus der Sitemap, 404, Umleitung MIT Vorsatz); /en/api/…, /en/internal/… und Dateien sind gesperrt (404, nie umgeschrieben — sonst ginge ein Vorsatz an der Anmeldung vorbei); /de/… gibt es nicht. expectLangLinks prueft <html lang> und dass kein Seiten-Link im HTML den Vorsatz verliert; pageRoots = PAGE_ROOTS (lang-path.test.mjs vergleicht)."
     },
 
     {

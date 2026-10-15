@@ -66,7 +66,7 @@ const GRID_SUB = 'grid-cols-[1fr_5rem_5rem_5rem_7rem]';
 const GRID_SUB_NO_MV = 'grid-cols-[1fr_5rem_5rem_5rem]';
 
 export default function TftLeaderboardPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const [region, setRegion] = useState(WORLD);
   const [tier, setTier] = useState(ALL_TIERS);
   const [division, setDivision] = useState('I');
@@ -342,7 +342,7 @@ export default function TftLeaderboardPage() {
               return (
                 <a
                   key={`${rowRegion(p)}:${p.puuid}`}
-                  href={slug ? `/tft/player/${slug}?region=${rowRegion(p)}` : '#'}
+                  href={withLang(slug ? `/tft/player/${slug}?region=${rowRegion(p)}` : '#')}
                   className={`block sm:grid ${gridCls} gap-2 px-4 py-2 sm:items-center text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   {/* Mobile: Rang (nur Apex) + Name in Zeile 1, Stats darunter.

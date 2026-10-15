@@ -39,7 +39,7 @@ function regionLabel(region: string | null): string {
 }
 
 export default function ProsByCompSection({ familyKey, setNumber }: Props) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [pros, setPros] = useState<ProEntry[] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -113,7 +113,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
             </div>
           );
           return playerHref ? (
-            <Link key={p.puuid} href={playerHref} className="block">
+            <Link key={p.puuid} href={withLang(playerHref)} className="block">
               {card}
             </Link>
           ) : (

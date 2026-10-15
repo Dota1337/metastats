@@ -6,7 +6,7 @@
 // Wirkung = Ø Platz mit − Ø Platz ohne; negativ ist gut.
 import { useState } from 'react';
 import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import type { TranslationKey } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { costColor } from '../../lib/tft-ui';
 import TftItemIcon from './TftItemIcon';
 import { compEmblemsFromUnits } from '../../lib/tft-comp-outcome';
@@ -139,11 +139,12 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
 }
 
 function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssetsBundle | null; bucket: string; t: T }) {
+  const { withLang } = useI18n();
   const name = assets?.items[it.item]?.name || it.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
   return (
     <tr className="border-t border-border-subtle">
       <td className="py-1.5 pr-1 sm:pr-2">
-        <a href={`/tft/items/${encodeURIComponent(it.item)}?bucket=${bucket}`} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
+        <a href={withLang(`/tft/items/${encodeURIComponent(it.item)}?bucket=${bucket}`)} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
           <TftItemIcon apiName={it.item} assets={assets} className="w-7 h-7 flex-shrink-0" />
           <span className="hidden sm:inline text-white truncate sm:max-w-[14rem]">{name}</span>
           {it.perCopy >= 1.5 && <span className="text-fg-muted text-[10px] tabular-nums">×{it.perCopy.toFixed(1)}</span>}
@@ -164,6 +165,7 @@ function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssets
 function EmblemRow({ e, basis, assets, bucket, t }: {
   e: CompEmblem; basis: CompEmblems['basis']; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
+  const { withLang } = useI18n();
   const name = assets?.items[e.item]?.name || e.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
   return (
     <tr className="border-t border-border-subtle">
@@ -171,7 +173,7 @@ function EmblemRow({ e, basis, assets, bucket, t }: {
         {/* flex-wrap: Traeger rutschen bei wenig Platz unter den Namen, statt
             die Tabelle breiter als die Box zu machen. */}
         <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-1 min-w-0">
-          <a href={`/tft/items/${encodeURIComponent(e.item)}?bucket=${bucket}`} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
+          <a href={withLang(`/tft/items/${encodeURIComponent(e.item)}?bucket=${bucket}`)} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
             <TftItemIcon apiName={e.item} assets={assets} className="w-7 h-7 flex-shrink-0" />
             <span className="hidden sm:inline text-white truncate sm:max-w-[10rem]">{name}</span>
           </a>
@@ -323,6 +325,7 @@ export function hasUnitEffect(outcome: CompOutcome | null | undefined): boolean 
 export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
+  const { withLang } = useI18n();
   const [showAll, setShowAll] = useState(false);
   if (!hasUnitEffect(outcome)) return null;
   const all = outcome.units
@@ -349,7 +352,7 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
             {rows.map(u => (
               <tr key={u.characterId} className="border-t border-border-subtle">
                 <td className="py-1.5 pr-2">
-                  <a href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`} className="flex items-center gap-2 hover:text-accent">
+                  <a href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)} className="flex items-center gap-2 hover:text-accent">
                     <UnitTile cid={u.characterId} assets={assets} size="w-7 h-7" />
                     <span className="text-white truncate max-w-[9rem] sm:max-w-none">{unitName(assets, u.characterId)}</span>
                     {u.lowData && <LowData t={t} />}

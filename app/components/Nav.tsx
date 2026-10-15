@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath } from '../lib/games';
+import { stripLangPrefix } from '../lib/lang-path';
 import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
@@ -62,7 +63,7 @@ function activeMetaHref(pathname: string): string | null {
 }
 
 export default function Nav({ active }: NavProps) {
-  const { lang, setLang, t } = useI18n();
+  const { lang, setLang, t, withLang } = useI18n();
   const { user, signOut } = useAuth();
   const pathname = usePathname() || '/';
   const game = detectGameFromPath(pathname);
@@ -88,7 +89,7 @@ export default function Nav({ active }: NavProps) {
   const linkClass = (key: NavProps['active']) =>
     key === active ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white';
 
-  const metaHref = activeMetaHref(pathname);
+  const metaHref = activeMetaHref(stripLangPrefix(pathname));
   const metaLinkClass = (l: (typeof TFT_META_LINKS)[number]) =>
     'pulse' in l ? 'text-sm text-[#3ecf8e]' : l.href === metaHref ? 'text-white text-sm' : 'text-fg-secondary text-sm hover:text-white';
 
@@ -187,12 +188,12 @@ export default function Nav({ active }: NavProps) {
   const navigateToResult = (result: SearchResult) => {
     if (result.type === 'none') return;
     if (result.type === 'account' && result.href) {
-      window.location.assign(result.href);
+      window.location.assign(withLang(result.href));
     } else if (result.type === 'champion') {
       // No champion-detail route in TFT — send the user to the units list
-      window.location.assign(game === 'tft' ? '/tft/units' : `/champions/${result.id}`);
+      window.location.assign(withLang(game === 'tft' ? '/tft/units' : `/champions/${result.id}`));
     } else {
-      window.location.assign(playerHref(result.name));
+      window.location.assign(withLang(playerHref(result.name)));
     }
     setSearchOpen(false);
     setSearchQuery('');
@@ -205,14 +206,14 @@ export default function Nav({ active }: NavProps) {
       if (!hasTag) {
         // Ohne Tag ist der Name mehrdeutig: Liste aller Konten mit diesem
         // Namen samt Region, bei genau einem direkt weiter (/tft/search, /search).
-        window.location.assign(`${game === 'tft' ? '/tft/search' : '/search'}?q=${encodeURIComponent(q.split('#')[0].trim())}`);
+        window.location.assign(withLang(`${game === 'tft' ? '/tft/search' : '/search'}?q=${encodeURIComponent(q.split('#')[0].trim())}`));
         setSearchOpen(false);
         setSearchQuery('');
         return;
       }
       const first = results[0];
       if (first?.type === 'none') return;
-      window.location.assign(first?.type === 'account' && first.href ? first.href : playerHref(searchQuery));
+      window.location.assign(withLang(first?.type === 'account' && first.href ? first.href : playerHref(searchQuery)));
       setSearchOpen(false);
       setSearchQuery('');
     }
@@ -233,7 +234,7 @@ export default function Nav({ active }: NavProps) {
         <div className="flex items-center flex-1">
           {/* text-accent statt zweier hartkodierter Hexe — das war die dritte
               unabhängige Stelle, an der beide Spielfarben standen. */}
-          <a href={homeHref} className="flex items-center gap-2 text-accent text-lg font-medium flex-shrink-0">
+          <a href={withLang(homeHref)} className="flex items-center gap-2 text-accent text-lg font-medium flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={ggMark.src} width={24} height={24} alt="" className="w-6 h-6" />
             <span>meta<span className="text-white">stats</span>.gg</span>
@@ -246,28 +247,28 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:flex items-center gap-4 flex-shrink-0">
           {game === 'tft' ? (
             <>
-              <a href="/tft/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
-              <a href="/tft/tournaments" className={linkClass('tournaments')}>{t('nav.leagues')}</a>
+              <a href={withLang("/tft/leaderboard")} className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
+              <a href={withLang("/tft/tournaments")} className={linkClass('tournaments')}>{t('nav.leagues')}</a>
               {TFT_PROS_ENABLED && (
-                <a href="/tft/pros" className={linkClass('pros')}>{t('nav.tftPros')}</a>
+                <a href={withLang("/tft/pros")} className={linkClass('pros')}>{t('nav.tftPros')}</a>
               )}
-              <a href="/tft/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
-              <a href="/tft/builder" className={linkClass('builder')}>{t('tft.builderTitle')}</a>
-              <a href="/tft/comps/community" className={linkClass('community')}>{t('nav.community')}</a>
+              <a href={withLang("/tft/compare")} className={linkClass('analyse')}>{t('nav.analyse')}</a>
+              <a href={withLang("/tft/builder")} className={linkClass('builder')}>{t('tft.builderTitle')}</a>
+              <a href={withLang("/tft/comps/community")} className={linkClass('community')}>{t('nav.community')}</a>
               {TFT_COACH_ENABLED && (
-                <a href="/tft/coach" className={linkClass('coach')}>{t('nav.coach')}</a>
+                <a href={withLang("/tft/coach")} className={linkClass('coach')}>{t('nav.coach')}</a>
               )}
-              <a href="/tft/saved" className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
+              <a href={withLang("/tft/saved")} className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
             </>
           ) : (
             <>
-              <a href="/" className={linkClass('search')}>{t('nav.search')}</a>
-              <a href="/leaderboard" className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
-              <a href="/champions" className={linkClass('champions')}>{t('nav.champions')}</a>
-              <a href="/marktwert" className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
-              <a href="/teams" className={linkClass('teams')}>{t('nav.proTeams')}</a>
-              <a href="/ligen" className={linkClass('ligen')}>{t('nav.leagues')}</a>
-              <a href="/compare" className={linkClass('analyse')}>{t('nav.analyse')}</a>
+              <a href={withLang("/")} className={linkClass('search')}>{t('nav.search')}</a>
+              <a href={withLang("/leaderboard")} className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
+              <a href={withLang("/champions")} className={linkClass('champions')}>{t('nav.champions')}</a>
+              <a href={withLang("/marktwert")} className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
+              <a href={withLang("/teams")} className={linkClass('teams')}>{t('nav.proTeams')}</a>
+              <a href={withLang("/ligen")} className={linkClass('ligen')}>{t('nav.leagues')}</a>
+              <a href={withLang("/compare")} className={linkClass('analyse')}>{t('nav.analyse')}</a>
             </>
           )}
 
@@ -363,7 +364,7 @@ export default function Nav({ active }: NavProps) {
               </>
             ) : (
               <a
-                href={`/auth/login?next=${encodeURIComponent(pathname)}`}
+                href={withLang(`/auth/login?next=${encodeURIComponent(pathname)}`)}
                 className="bg-surface-raised border border-border-default rounded px-2.5 py-1 text-xs text-fg-secondary hover:text-white hover:border-brand transition-colors"
               >{t('nav.login')}</a>
             )}
@@ -390,10 +391,11 @@ export default function Nav({ active }: NavProps) {
                     <button
                       key={l.code}
                       onClick={() => {
-                        setLang(l.code);
+                        // true = Sprach-Adresse: die Seite laedt schon unter der neuen Adresse.
+                        const navigating = setLang(l.code);
                         setLangOpen(false);
                         // Hard reload so server-rendered metadata (tab title, OG tags) update for the new language
-                        if (l.code !== lang) window.location.reload();
+                        if (!navigating && l.code !== lang) window.location.reload();
                       }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${
                         lang === l.code
@@ -446,7 +448,7 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:block mt-3 pt-3 border-t border-border-subtle overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-4 w-max mx-auto whitespace-nowrap">
             {TFT_META_LINKS.map(l => (
-              <a key={l.href} href={l.href} className={metaLinkClass(l)}>
+              <a key={l.href} href={withLang(l.href)} className={metaLinkClass(l)}>
                 {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
               </a>
             ))}
@@ -513,28 +515,28 @@ export default function Nav({ active }: NavProps) {
             <>
               <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
               {TFT_META_LINKS.map(l => (
-                <a key={l.href} href={l.href} className={`pl-3 ${metaLinkClass(l)}`} onClick={() => setMenuOpen(false)}>
+                <a key={l.href} href={withLang(l.href)} className={`pl-3 ${metaLinkClass(l)}`} onClick={() => setMenuOpen(false)}>
                   {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
                 </a>
               ))}
-              <a href="/tft/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
-              <a href="/tft/tournaments" className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
+              <a href={withLang("/tft/leaderboard")} className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
+              <a href={withLang("/tft/tournaments")} className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
               {TFT_PROS_ENABLED && (
-                <a href="/tft/pros" className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
+                <a href={withLang("/tft/pros")} className={linkClass('pros')} onClick={() => setMenuOpen(false)}>{t('nav.tftPros')}</a>
               )}
-              <a href="/tft/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
-              <a href="/tft/builder" className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
-              <a href="/tft/saved" className={linkClass('saved')} onClick={() => setMenuOpen(false)}>★ {t('tft.savedTitle')}</a>
+              <a href={withLang("/tft/compare")} className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
+              <a href={withLang("/tft/builder")} className={linkClass('builder')} onClick={() => setMenuOpen(false)}>{t('tft.builderTitle')}</a>
+              <a href={withLang("/tft/saved")} className={linkClass('saved')} onClick={() => setMenuOpen(false)}>★ {t('tft.savedTitle')}</a>
             </>
           ) : (
             <>
-              <a href="/" className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
-              <a href="/leaderboard" className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
-              <a href="/champions" className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
-              <a href="/marktwert" className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
-              <a href="/teams" className={linkClass('teams')} onClick={() => setMenuOpen(false)}>{t('nav.proTeams')}</a>
-              <a href="/ligen" className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
-              <a href="/compare" className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
+              <a href={withLang("/")} className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
+              <a href={withLang("/leaderboard")} className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
+              <a href={withLang("/champions")} className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
+              <a href={withLang("/marktwert")} className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>
+              <a href={withLang("/teams")} className={linkClass('teams')} onClick={() => setMenuOpen(false)}>{t('nav.proTeams')}</a>
+              <a href={withLang("/ligen")} className={linkClass('ligen')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>
+              <a href={withLang("/compare")} className={linkClass('analyse')} onClick={() => setMenuOpen(false)}>{t('nav.analyse')}</a>
             </>
           )}
 
@@ -544,9 +546,9 @@ export default function Nav({ active }: NavProps) {
               <button
                 key={l.code}
                 onClick={() => {
-                  setLang(l.code);
+                  const navigating = setLang(l.code);
                   setMenuOpen(false);
-                  if (l.code !== lang) window.location.reload();
+                  if (!navigating && l.code !== lang) window.location.reload();
                 }}
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-xs ${
                   lang === l.code ? 'bg-[#c89b3c]/10 text-[#c89b3c]' : 'text-fg-secondary'

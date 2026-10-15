@@ -33,7 +33,7 @@ export function riotPatchNotesUrl(patch: string, lang: string): string {
 }
 
 export default function TftPatchListPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const [patches, setPatches] = useState<PatchInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +68,7 @@ export default function TftPatchListPage() {
               >
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <a
-                    href={`/tft/patch/${encodeURIComponent(p.patch)}`}
+                    href={withLang(`/tft/patch/${encodeURIComponent(p.patch)}`)}
                     className="flex-1 min-w-0"
                   >
                     <div className="text-white text-base font-medium">
@@ -85,7 +85,7 @@ export default function TftPatchListPage() {
                   </a>
                   <div className="flex items-center gap-4">
                     <a
-                      href={riotPatchNotesUrl(p.patch, lang)}
+                      href={withLang(riotPatchNotesUrl(p.patch, lang))}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}

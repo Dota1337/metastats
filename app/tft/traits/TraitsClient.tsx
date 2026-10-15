@@ -59,6 +59,7 @@ export default function TraitsClient({ initialFilters, initial }: {
   initialFilters: Filters;
   initial: StatsInitial<TraitRow> | null;
 }) {
+  const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Items. Die
   // Liste zeigt keine Tier-Buchstaben → keine Grenzen laden.
@@ -179,7 +180,7 @@ export default function TraitsClient({ initialFilters, initial }: {
               return (
                 <a
                   key={g.name}
-                  href={`/tft/traits/${encodeURIComponent(g.name)}`}
+                  href={withLang(`/tft/traits/${encodeURIComponent(g.name)}`)}
                   className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-border-subtle hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">

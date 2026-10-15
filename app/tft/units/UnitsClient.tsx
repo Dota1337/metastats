@@ -43,6 +43,7 @@ export default function UnitsClient({ initialFilters, initial }: {
   initialFilters: Filters;
   initial: StatsInitial<UnitRow> | null;
 }) {
+  const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Items/Traits.
   const { filters, setFilters, rows: units, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
@@ -226,7 +227,7 @@ export default function UnitsClient({ initialFilters, initial }: {
               return (
                 <a
                   key={u.characterId}
-                  href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
+                  href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
                   className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   {/* Mobile: tier badge inline next to the icon; desktop has its own column. */}

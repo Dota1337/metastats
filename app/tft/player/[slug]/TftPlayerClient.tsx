@@ -638,7 +638,7 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg, className = 'flex' }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null; lobbyAvg?: number; className?: string }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const info = assets?.champions[characterId];
   const url = tftChampionTileUrl(assets, info);
   const cost = info?.cost ?? 1;
@@ -650,7 +650,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg, className =
   const diffColor = diff == null ? 'var(--fg-muted)' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? '#e44040' : 'var(--fg-secondary)';
   return (
     <a
-      href={`/tft/units/${encodeURIComponent(characterId)}`}
+      href={withLang(`/tft/units/${encodeURIComponent(characterId)}`)}
       title={`#${rank} ${name} — ${games} ${t('tft.gamesShort')}, Ø ${avg.toFixed(2)}${lobbyAvg != null ? ` (Lobby Ø ${lobbyAvg.toFixed(2)})` : ''}`}
       className={`${className} items-center gap-2.5 bg-surface-sunken border border-border-subtle rounded-md px-2.5 py-2 hover:border-accent-a50 hover:bg-[#101729] transition`}
     >
@@ -950,6 +950,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
   assets: TftAssetsBundle | null;
   t: (k: any) => string;
 }) {
+  const { withLang } = useI18n();
   const [data, setData] = useState<{ comps: SpecialtyComp[]; unitBuilds: SpecialtyUnit[]; classifiedGames: number } | null>(null);
   // Cluster keys that actually resolve to a comp page. The detail page only
   // shows data for euw1/master_plus clusters, so we mirror that exact query and
@@ -995,7 +996,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               return (
                 <a
                   key={c.clusterKey}
-                  href={href}
+                  href={withLang(href)}
                   className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-[#a892ff]/40 transition-colors"
                 >
                   {tftChampionTileUrl(assets, carryAsset) && (
@@ -1028,7 +1029,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               return (
                 <div key={u.unitId} className="bg-surface-raised border border-border-subtle rounded p-2.5">
                   <a
-                    href={`/tft/units/${encodeURIComponent(u.unitId)}`}
+                    href={withLang(`/tft/units/${encodeURIComponent(u.unitId)}`)}
                     className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"
                   >
                     {tftChampionTileUrl(assets, unitAsset) && (
@@ -1048,7 +1049,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                             return iconUrl ? (
                               <a
                                 key={j}
-                                href={`/tft/items/${encodeURIComponent(it)}`}
+                                href={withLang(`/tft/items/${encodeURIComponent(it)}`)}
                                 title={itemName}
                                 className="hover:scale-110 transition-transform"
                               >

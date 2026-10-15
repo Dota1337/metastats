@@ -142,7 +142,7 @@ function familySlugsParam(comp: CompData): string {
 }
 
 export default function TftCompsComparePage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const search = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -249,7 +249,7 @@ export default function TftCompsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href={withLang("/tft/comps")} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2 mb-5">
           <h1 className="text-white text-xl font-medium">{t('tft.compare.title')}</h1>
@@ -265,7 +265,7 @@ export default function TftCompsComparePage() {
               {t('tft.compare.pickTwo.hint')}
             </div>
             <a
-              href="/tft/comps"
+              href={withLang("/tft/comps")}
               className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
             >
               {t('tft.compare.goToList')}
@@ -518,6 +518,7 @@ function OpponentList({
   title: string; tone: string; edges: DuelEdge[]; assets: TftAssetsBundle | null; bucket: string;
   also?: Set<string>; alsoLabel?: string;
 }) {
+  const { withLang } = useI18n();
   return (
     <div className="mb-3 last:mb-0">
       <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: tone }}>{title}</div>
@@ -560,7 +561,7 @@ function OpponentList({
             return e.slug ? (
               <a
                 key={e.fam}
-                href={`/tft/comps/${encodeURIComponent(e.slug)}?bucket=${bucket}`}
+                href={withLang(`/tft/comps/${encodeURIComponent(e.slug)}?bucket=${bucket}`)}
                 title={`${traitName} · ${carryName}`}
                 className="flex items-center gap-2 hover:opacity-80 transition"
               >{body}</a>

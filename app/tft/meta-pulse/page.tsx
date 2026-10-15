@@ -40,7 +40,7 @@ interface MetaPulse {
 }
 
 export default function TftMetaPulsePage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -196,7 +196,7 @@ export default function TftMetaPulsePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
           <a
-            href="/tft/regions"
+            href={withLang("/tft/regions")}
             className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c39bff]/40 transition-colors"
           >
             <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
@@ -245,6 +245,7 @@ function PulseRow({
   meta: string;
   bucket: string;
 }) {
+  const { withLang } = useI18n();
   const parts = parseClusterKey(clusterKey);
   const traitName = parts && assets
     ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
@@ -258,7 +259,7 @@ function PulseRow({
 
   return (
     <a
-      href={`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=${bucket}`}
+      href={withLang(`/tft/comps/${encodeURIComponent(clusterKey)}?bucket=${bucket}`)}
       className="block bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-center gap-2">

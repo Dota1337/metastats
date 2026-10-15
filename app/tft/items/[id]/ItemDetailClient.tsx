@@ -30,7 +30,7 @@ interface ItemDetail {
 // `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
 // Unit-Detailseite (UnitDetailClient.tsx).
 export default function TftItemDetailPage({ initial }: { initial: ItemDetailInitial | null }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
@@ -164,7 +164,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
       <Nav active="items" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-          <a href="/tft/items" className="text-accent text-xs hover:underline">← {t('nav.items')}</a>
+          <a href={withLang("/tft/items")} className="text-accent text-xs hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
             {url ? (
               <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-accent" />
@@ -190,7 +190,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                   return (
                     <div key={i} className="flex items-center gap-3">
                       <a
-                        href={`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`}
+                        href={withLang(`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`)}
                         title={compMeta?.name || compId}
                         className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-2 py-1 hover:border-accent-a50"
                       >
@@ -217,7 +217,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
 
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
-            href={buildExplorerUrl({ items: [id], bucket })}
+            href={withLang(buildExplorerUrl({ items: [id], bucket }))}
             className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
@@ -264,7 +264,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                       return (
                         <a
                           key={u.characterId}
-                          href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                          href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
                           className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-border-subtle"
                         >
                           <div className="flex items-center gap-2 min-w-0">
@@ -297,7 +297,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                       return (
                         <a
                           key={c.slug}
-                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`}
+                          href={withLang(`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (
@@ -342,7 +342,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                       return iurl ? (
                         <a
                           key={j}
-                          href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                          href={withLang(`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`)}
                           onClick={e => e.stopPropagation()}
                           title={im?.name || it}
                           className="hover:scale-110 transition-transform"
@@ -375,7 +375,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
                 return (
                   <a
                     key={k}
-                    href={`/tft/items/${encodeURIComponent(k)}?bucket=${bucket}`}
+                    href={withLang(`/tft/items/${encodeURIComponent(k)}?bucket=${bucket}`)}
                     className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50"
                   >
                     {sUrl ? (

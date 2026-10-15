@@ -6,7 +6,7 @@
 // gamesWithUnitOutcome → Win-Rate bleibt grayed-out bis genug neue Daten da
 // sind. Keine erfundenen Werte (`feedback_no_fake_values`).
 import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import type { TranslationKey } from '../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../lib/i18n';
 
 export interface FlexUnit {
   characterId: string;
@@ -44,6 +44,7 @@ export default function CompFlexUnits({
   bucket: string;
   t: (k: TranslationKey) => string;
 }) {
+  const { withLang } = useI18n();
   if (!units || units.length === 0) return null;
   return (
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
@@ -62,7 +63,7 @@ export default function CompFlexUnits({
           return (
             <a
               key={u.characterId}
-              href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+              href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
               className="flex items-center gap-3 bg-surface-sunken border border-border-subtle rounded p-2 hover:border-[#2a3d57] transition"
               title={`n = ${u.n} picks${u.nOutcome > 0 ? ` · outcome n = ${u.nOutcome}` : ''}`}
             >

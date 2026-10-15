@@ -26,7 +26,7 @@ const ROLE_ICONS: Record<string, string> = {
 
 export default function TeamDetailPage() {
   const { id } = useParams();
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [team, setTeam] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -85,7 +85,7 @@ export default function TeamDetailPage() {
           >
             {t('error.retry')}
           </button>
-          <a href="/teams" className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
+          <a href={withLang("/teams")} className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
         </div>
       </main>
     );
@@ -97,7 +97,7 @@ export default function TeamDetailPage() {
         <Nav />
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="text-red-400 text-xl mb-4">{t('team.notFound')}</div>
-          <a href="/teams" className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
+          <a href={withLang("/teams")} className="text-accent text-sm hover:underline">&larr; {t('team.allTeams')}</a>
         </div>
       </main>
     );
@@ -142,7 +142,7 @@ export default function TeamDetailPage() {
       {/* Hero */}
       <div className="bg-surface-base border-b border-border-subtle">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          <a href="/teams" className="text-fg-secondary text-xs hover:text-white mb-4 inline-block">&larr; {t('team.allTeams')}</a>
+          <a href={withLang("/teams")} className="text-fg-secondary text-xs hover:text-white mb-4 inline-block">&larr; {t('team.allTeams')}</a>
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
             {team.logo ? (
               <img src={team.logo} alt={team.short} className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-contain bg-surface-raised p-2" />
@@ -205,7 +205,7 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-4 text-center ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
+                  <Card key={i} href={withLang(link || undefined)} className={`bg-surface-base border border-border-subtle rounded p-4 text-center ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
                     {m.image ? (
                       <img src={m.image} alt={m.name}
                         className="w-16 h-16 rounded-full mx-auto mb-2 object-cover border-2 border-border-subtle bg-surface-raised"
@@ -234,7 +234,7 @@ export default function TeamDetailPage() {
                 const link = makePlayerLink(m);
                 const Card = link ? 'a' : 'div';
                 return (
-                  <Card key={i} href={link || undefined} className={`bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3 ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
+                  <Card key={i} href={withLang(link || undefined)} className={`bg-surface-base border border-border-subtle rounded p-3 flex items-center gap-3 ${link ? 'hover:border-accent-a40 transition-colors cursor-pointer' : ''}`}>
                     <div className="w-10 h-10 rounded-full bg-surface-raised border border-border-subtle flex items-center justify-center text-fg-muted text-sm flex-shrink-0">
                       ?
                     </div>

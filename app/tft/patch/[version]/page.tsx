@@ -48,7 +48,7 @@ interface DiffResponse {
 }
 
 export default function TftPatchDetailPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const version = decodeURIComponent(String(params?.version || ''));
@@ -74,12 +74,12 @@ export default function TftPatchDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/patch" className="text-accent text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
+        <a href={withLang("/tft/patch")} className="text-accent text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
 
         <div className="flex items-start justify-between gap-3 mt-3 mb-1 flex-wrap">
           <h1 className="text-white text-2xl font-medium">Patch {version}</h1>
           <a
-            href={riotPatchNotesUrl(version, lang)}
+            href={withLang(riotPatchNotesUrl(version, lang))}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
@@ -300,6 +300,7 @@ function DiffColumn({
 }
 
 function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   // Each entity has its own key shape, image source, and target page. The
   // old version routed all non-unit/item entries to /tft/traits/<key>, which
   // broke comp- and trait-rows (comp keys = "trait@level_carry", trait keys
@@ -350,7 +351,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
   const deltaColor = entry.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040';
   return (
     <a
-      href={href}
+      href={withLang(href)}
       className="grid grid-cols-[2.5rem_1fr_5rem_4rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle hover:bg-white/5"
     >
       {imageEl}

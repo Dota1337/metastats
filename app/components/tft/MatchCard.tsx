@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function MatchCard({ match, selfPuuid, region }: Props) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [open, setOpen] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
 
@@ -72,7 +72,7 @@ export default function MatchCard({ match, selfPuuid, region }: Props) {
             <ParticipantRow key={p.puuid} participant={p} isSelf={p.puuid === selfPuuid} assets={assets} region={region || regionFromMatchId(match.matchId)} />
           ))}
           <a
-            href={`/tft/match/${encodeURIComponent(match.matchId)}`}
+            href={withLang(`/tft/match/${encodeURIComponent(match.matchId)}`)}
             onClick={e => e.stopPropagation()}
             className="block text-right text-[10px] text-accent hover:text-[#a892ff] uppercase tracking-widest pt-1 border-t border-border-subtle"
           >
@@ -101,6 +101,7 @@ function PlacementBadge({ placement }: { placement: number }) {
 }
 
 function ActivatedTraits({ participant, assets }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   const active = participant.traits.filter(t => t.tierCurrent > 0).slice(0, 6);
   return (
     <div className="flex gap-0.5 sm:gap-1 flex-wrap">
@@ -111,7 +112,7 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
         return (
           <a
             key={t.name}
-            href={`/tft/traits/${encodeURIComponent(t.name)}`}
+            href={withLang(`/tft/traits/${encodeURIComponent(t.name)}`)}
             onClick={e => e.stopPropagation()}
             title={tftTraitDescription(assets, t.name) || undefined}
             className="flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
@@ -130,6 +131,7 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
 // own full-width row now.)
 
 function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   if (!augments?.length) return null;
   // Used to be hidden on <lg — but augments are core context. Show them
   // everywhere; just size them down on small screens so they don't crowd.
@@ -147,7 +149,7 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
           </div>
         );
         return (
-          <a key={i} href={`/tft/augments/${encodeURIComponent(a)}`} onClick={e => e.stopPropagation()}>
+          <a key={i} href={withLang(`/tft/augments/${encodeURIComponent(a)}`)} onClick={e => e.stopPropagation()}>
             {inner}
           </a>
         );
@@ -157,6 +159,7 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
 }
 
 function ParticipantRow({ participant, isSelf, assets, region }: { participant: TftParticipantSummary; isSelf: boolean; assets: TftAssetsBundle | null; region: string }) {
+  const { withLang } = useI18n();
   const riotId = (participant as any).riotIdName as string | null;
   const [gameName, tagLine] = riotId ? riotId.split('#') : [null, null];
   const slug = gameName
@@ -170,7 +173,7 @@ function ParticipantRow({ participant, isSelf, assets, region }: { participant: 
         <div className="min-w-0 flex-1">
           {slug ? (
             <a
-              href={`/tft/player/${slug}?region=${region}`}
+              href={withLang(`/tft/player/${slug}?region=${region}`)}
               onClick={e => e.stopPropagation()}
               className="text-white text-xs truncate block hover:text-accent transition-colors"
             >
@@ -204,6 +207,7 @@ function regionFromMatchId(matchId: string | undefined): string {
 }
 
 function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: TftAssetsBundle | null; small?: boolean; interactive?: boolean }) {
+  const { withLang } = useI18n();
   const info = assets?.champions[unit.characterId];
   const sz = small ? 'w-9 h-9' : 'w-12 h-12';
   const itemSz = small ? 'w-3 h-3' : 'w-4 h-4';
@@ -247,7 +251,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
     <>
       {linked ? (
         <a
-          href={`/tft/units/${encodeURIComponent(unit.characterId)}`}
+          href={withLang(`/tft/units/${encodeURIComponent(unit.characterId)}`)}
           // Stop the click from toggling the match-card's expanded view.
           onClick={e => e.stopPropagation()}
           className="block"
@@ -264,7 +268,7 @@ function UnitTile({ unit, assets, small, interactive }: { unit: any; assets: Tft
             return iurl ? (
               <a
                 key={i}
-                href={`/tft/items/${encodeURIComponent(it)}`}
+                href={withLang(`/tft/items/${encodeURIComponent(it)}`)}
                 onClick={e => e.stopPropagation()}
                 title={itemName}
                 className="hover:scale-125 transition-transform"

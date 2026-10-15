@@ -26,7 +26,7 @@ const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 
 export default function TablesView({ loot, wisps }: { loot: LootTablesFile | null; wisps: WispsFile | null }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [view, setView] = useState<View>('loot');
   const source = view === 'wisps' ? wisps?.source : loot?.source;
 
@@ -55,7 +55,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
         {source && (
           <div className="mt-5 text-fg-faint text-[11px]">
             {t('tft.tables.source')}{' '}
-            <a href={source.url} target="_blank" rel="noopener noreferrer" className="hover:text-fg-secondary underline-offset-2 hover:underline">
+            <a href={withLang(source.url)} target="_blank" rel="noopener noreferrer" className="hover:text-fg-secondary underline-offset-2 hover:underline">
               {source.name}
             </a>
           </div>

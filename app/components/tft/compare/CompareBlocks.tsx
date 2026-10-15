@@ -40,10 +40,11 @@ function tierLabel(t: T, tier: string | null | undefined, div?: string | null): 
 }
 
 function PlayerName({ p, i, region }: { p: ComparePlayer; i: number; region: string }) {
+  const { withLang } = useI18n();
   const [gn, tl] = p.name.split('#');
   const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
   return (
-    <a href={`/tft/player/${slug}?region=${region}`} className="font-medium hover:underline truncate block" style={{ color: PLAYER_COLORS[i] }}>
+    <a href={withLang(`/tft/player/${slug}?region=${region}`)} className="font-medium hover:underline truncate block" style={{ color: PLAYER_COLORS[i] }}>
       {gn}{tl ? <span className="text-fg-muted font-normal">#{tl}</span> : null}
     </a>
   );
@@ -358,7 +359,7 @@ function unitIcon(characterId: string, assets: TftAssetsBundle | null, setNumber
 }
 
 export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; assets: TftAssetsBundle | null; setNumber: number }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const withData = players.filter(({ p }) => p.stats?.extras?.units.length);
   if (withData.length === 0) return null;
   return (
@@ -371,7 +372,7 @@ export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; 
               {p.stats!.extras!.units.map(u => {
                 const name = findChampion(assets, u.characterId)?.name || stripPrefix(u.characterId);
                 return (
-                  <a key={u.characterId} href={`/tft/units/${encodeURIComponent(u.characterId)}`} className="flex flex-col items-center min-w-0 group" title={name}>
+                  <a key={u.characterId} href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}`)} className="flex flex-col items-center min-w-0 group" title={name}>
                     <div className="relative">
                       <img src={unitIcon(u.characterId, assets, setNumber)} alt={name} className="w-11 h-11 rounded border border-border-subtle object-cover group-hover:border-accent-a60" />
                       {u.star3Rate >= 0.05 && (

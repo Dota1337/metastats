@@ -14,7 +14,7 @@ import { lolProfileHref, tftRegionLabel, type TftAccountHit } from '../lib/tft-p
 type State = 'loading' | 'ready' | 'error';
 
 export default function LolSearchResults({ q, initialHits }: { q: string; initialHits: TftAccountHit[] }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [hits, setHits] = useState<TftAccountHit[]>(initialHits);
   const needsFetch = initialHits.length === 0 && q.replace(/\s/g, '').length >= 3;
   const [state, setState] = useState<State>(needsFetch ? 'loading' : 'ready');
@@ -30,7 +30,7 @@ export default function LolSearchResults({ q, initialHits }: { q: string; initia
         const d: { players?: TftAccountHit[] } = await r.json();
         const list = d.players || [];
         // Genau ein Konto beginnt mit dem Namen: direkt dorthin.
-        if (list.length === 1) { window.location.replace(lolProfileHref(list[0])); return; }
+        if (list.length === 1) { window.location.replace(withLang(lolProfileHref(list[0]))); return; }
         setHits(list);
         setState('ready');
       } catch {
@@ -66,7 +66,7 @@ export default function LolSearchResults({ q, initialHits }: { q: string; initia
               return (
                 <li key={`${h.gameName}#${h.tagLine}@${h.region}`}>
                   <a
-                    href={lolProfileHref(h)}
+                    href={withLang(lolProfileHref(h))}
                     className="flex items-center justify-between gap-3 min-h-14 px-4 py-3 rounded-lg bg-surface-base border border-border-subtle hover:border-brand transition-colors"
                   >
                     <span className="min-w-0 truncate text-white">

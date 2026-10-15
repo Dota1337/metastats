@@ -17,7 +17,7 @@ function placeColor(min: number | null): string {
 }
 
 export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const locale = LOCALE_MAP[lang];
   const [loaded, setLoaded] = useState<{ puuid: string; data: History } | null>(null);
   const [openFor, setOpenFor] = useState<string | null>(null);
@@ -78,7 +78,7 @@ export default function PlayerTournamentHistory({ puuid }: { puuid: string }) {
               <div className="min-w-0 truncate text-white">
                 {e.href ? (
                   <a
-                    href={e.href}
+                    href={withLang(e.href)}
                     {...(e.internal ? {} : { target: '_blank', rel: 'noreferrer' })}
                     className="hover:text-series-purple-soft"
                   >

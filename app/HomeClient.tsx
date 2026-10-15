@@ -1,0 +1,478 @@
+'use client';
+import { useState, useEffect, useRef } from 'react';
+import Nav from './components/Nav';
+import DdragonImg from './components/DdragonImg';
+import Footer from './components/Footer';
+import { useI18n, LOCALE_MAP } from './lib/i18n';
+import { REGIONS, regionLabel } from './lib/regions';
+import ApiUnavailable from './components/ApiUnavailable';
+import { formatTier } from './lib/rank-format';
+import crest from './assets/brand/crest.png';
+
+interface Champion {
+  id: string;
+  name: string;
+  role: string;
+  games: number;
+  winRate: number;
+}
+
+interface SiteStats {
+  totalTeams?: number;
+  totalProPlayers?: number;
+  regions?: number;
+  matchesAnalyzed?: number;
+}
+
+// Nur echte Zahlen > 0; sonst bleibt das Skelett statt einer erfundenen 0.
+function positiveOrUndefined(v: unknown): number | undefined {
+  return typeof v === 'number' && v > 0 ? v : undefined;
+}
+
+export default function Home() {
+  const [name, setName] = useState('');
+  const [region, setRegion] = useState('euw1');
+  const [activeTab, setActiveTab] = useState<'search' | 'marktwert'>('search');
+  const [topPlayers, setTopPlayers] = useState<any[]>([]);
+  const [gainers, setGainers] = useState<any[]>([]);
+  const [losers, setLosers] = useState<any[]>([]);
+  const [recentPlayers, setRecentPlayers] = useState<any[]>([]);
+  const [recentError, setRecentError] = useState(false);
+  const [loadingMarket, setLoadingMarket] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  // Die Partikel setzen ihre `animation` als Inline-Style; eine
+  // prefers-reduced-motion-Regel in globals.css würde dagegen verlieren.
+  // Deshalb werden die 20 Knoten bei `reduce` gar nicht erst gerendert —
+  // statisch wären sie ohnehin nur 20 Goldpunkte in der Luft, und ihr
+  // doppelter box-shadow-Glow kostet auch unbewegt Paint.
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(null);
+  const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+  const { t, lang, withLang } = useI18n();
+  const locale = LOCALE_MAP[lang];
+
+  useEffect(() => {
+    let visitorId = document.cookie.split('; ').find(r => r.startsWith('visitor_id='))?.split('=')[1];
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      document.cookie = `visitor_id=${visitorId}; max-age=31536000; path=/`;
+    }
+    fetchRecentPlayers();
+    fetchHomepageStats();
+    setMounted(true);
+
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduceMotion(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'marktwert') {
+      fetchMarketData();
+    }
+  }, [activeTab]);
+
+  const fetchRecentPlayers = async () => {
+    try {
+      const res = await fetch('/api/recent-players');
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      setRecentPlayers(Array.isArray(data.players) ? data.players : []);
+      setRecentError(false);
+    } catch {
+      setRecentError(true);
+    }
+  };
+
+  const fetchHomepageStats = async () => {
+    try {
+      const res = await fetch('/api/homepage-stats');
+      const data = res.ok ? await res.json() : {};
+      if (data.topChampions?.length >= 3) setFeaturedChamps(data.topChampions);
+      else setFeaturedChamps([]); // API returned but empty → show empty state, not skeleton
+      if (data.stats) setSiteStats({
+        totalTeams: positiveOrUndefined(data.stats.totalTeams),
+        totalProPlayers: positiveOrUndefined(data.stats.totalProPlayers),
+        regions: positiveOrUndefined(data.stats.regions),
+        matchesAnalyzed: positiveOrUndefined(data.stats.matchesAnalyzed),
+      });
+    } catch {
+      setFeaturedChamps([]);
+    }
+  };
+
+  const fetchMarketData = async () => {
+    setLoadingMarket(true);
+    try {
+      const res = await fetch('/api/market-rankings');
+      const data = await res.json();
+      if (data.top) setTopPlayers(data.top);
+      if (data.gainers) setGainers(data.gainers);
+      if (data.losers) setLosers(data.losers);
+    } catch {}
+    setLoadingMarket(false);
+  };
+
+  const search = () => {
+    if (!name.trim()) return;
+    const parts = name.split('#');
+    const gameName = parts[0].trim();
+    const tag = parts[1]?.trim();
+    // Ohne Tag ist der Name mehrdeutig: Trefferliste ueber alle Server.
+    if (!tag) { window.location.href = withLang('/search?q=' + encodeURIComponent(gameName)); return; }
+    const slug = encodeURIComponent(gameName) + '--' + encodeURIComponent(tag);
+    window.location.href = withLang('/player/' + slug + '?region=' + region);
+  };
+
+  const formatValue = (v: number) => {
+    return '$' + v.toLocaleString('de-DE');
+  };
+
+  const makePlayerLink = (p: any) => {
+    const [n, tag] = String(p.summoner_name || '').split('#');
+    if (!tag) return '/search?q=' + encodeURIComponent(n);
+    return '/player/' + encodeURIComponent(n) + '--' + encodeURIComponent(tag) + (p.region ? '?region=' + encodeURIComponent(p.region) : '');
+  };
+
+  return (
+    <main className="min-h-screen bg-surface-page">
+      <Nav active="search" />
+
+      {/* === HERO SECTION === */}
+      <div className="relative overflow-hidden">
+        {/* Hero background — LoL champion splash art.
+           pointer-events-none on the whole decorative stack so it doesn't
+           swallow mousedown when the user starts a text selection on the
+           hero copy below. */}
+        <div className="absolute inset-0 pointer-events-none">
+          <link
+            rel="preload"
+            as="image"
+            href="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
+          />
+          <img
+            src="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Kaisa_0.jpg"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center 10%' }}
+            fetchPriority="high"
+          />
+          {/* Gradient overlay — bottom fades to page bg, center stays visible */}
+          <div className="absolute inset-0" style={{
+            background: 'linear-gradient(to bottom, rgb(var(--surface-page-rgb) / 30%) 0%, rgb(var(--surface-page-rgb) / 40%) 50%, rgb(var(--surface-page-rgb) / 90%) 100%)',
+          }} />
+        </div>
+
+        {/* Gold particles (client-only to avoid hydration mismatch) */}
+        {mounted && !reduceMotion && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {Array.from({ length: 20 }).map((_, i) => (
+              <div
+                key={i}
+                className="particle"
+                style={{
+                  left: `${(i * 5 + 2.5) % 100}%`,
+                  bottom: '-10px',
+                  animation: `float ${8 + (i * 0.6)}s linear infinite`,
+                  animationDelay: `${i * 0.5}s`,
+                  width: `${1.5 + (i % 3) * 0.5}px`,
+                  height: `${1.5 + (i % 4) * 0.4}px`,
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Gradient overlays — pointer-events-none so they don't intercept
+           text-selection drags on the hero copy below. */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-surface-page via-transparent to-surface-page" />
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-surface-page via-transparent to-surface-page" />
+
+        {/* Hero content */}
+        <div className="relative px-6 pt-20 pb-4 text-center hero-animate">
+          {/* Gold accent line */}
+          <div className="w-12 h-0.5 bg-gradient-to-r from-transparent via-[#c89b3c] to-transparent mx-auto mb-6" />
+
+          <h1 className="mb-10">
+            {/* Kein preload: groesstes Bild der Seite bleibt der Splash. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={crest.src} width={208} height={193} alt="metastats.gg" loading="eager" decoding="async" className="mx-auto w-40 sm:w-52 h-auto" />
+          </h1>
+
+          {/* Search bar with gold border */}
+          <div className="max-w-xl mx-auto gold-border rounded-lg p-0.5 mb-8">
+            <div className="flex flex-col sm:flex-row bg-surface-base rounded-lg overflow-hidden">
+              <select
+                value={region}
+                onChange={e => setRegion(e.target.value)}
+                className="bg-surface-raised border-b sm:border-b-0 sm:border-r border-border-subtle text-fg-secondary text-sm px-4 py-2 sm:py-0 outline-none"
+              >
+                {REGIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+              <input
+                className="flex-1 bg-transparent text-white text-sm px-5 py-3.5 outline-none placeholder-fg-muted"
+                placeholder={t('home.searchPlaceholder')}
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && search()}
+              />
+              <button
+                onClick={search}
+                className="bg-[#c89b3c] hover:bg-[#d4a94a] text-surface-sunken text-sm font-semibold px-6 py-3 sm:py-0 transition-colors"
+              >
+                {t('home.searchBtn')}
+              </button>
+            </div>
+          </div>
+
+          {/* Kennzahlen. Standen frueher als drei Karten unterhalb der Reiter
+              und damit nur im Suche-Reiter; hier tragen sie die Kopfzone mit,
+              ohne einen weiteren Block Hoehe zu kosten. Solange die Werte nicht
+              da sind, steht ein Skelett und keine erfundene Zahl. */}
+          <div className="flex flex-wrap justify-center gap-x-12 gap-y-4 mb-8">
+            {[
+              { label: t('home.analyzedMatches'), value: siteStats?.matchesAnalyzed },
+              { label: t('home.proPlayers'), value: siteStats?.totalProPlayers },
+              { label: t('teams.title'), value: siteStats?.totalTeams },
+            ].map(s => (
+              <div key={s.label} className="text-center">
+                {typeof s.value === 'number' ? (
+                  <div className="text-white text-xl font-bold">{s.value.toLocaleString(locale)}</div>
+                ) : (
+                  <div className="h-5 w-20 bg-surface-overlay rounded animate-pulse mx-auto my-1" />
+                )}
+                <div className="text-fg-muted text-[11px] uppercase tracking-wider">{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Tab switcher */}
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => setActiveTab('search')}
+              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'search' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-fg-muted hover:text-fg-secondary'}`}
+            >
+              {t('home.searchTab')}
+            </button>
+            <button
+              onClick={() => setActiveTab('marktwert')}
+              className={`px-5 py-2 rounded-lg text-xs font-medium transition-all ${activeTab === 'marktwert' ? 'bg-[#c89b3c]/10 text-[#c89b3c] border border-[#c89b3c]/30' : 'text-fg-muted hover:text-fg-secondary'}`}
+            >
+              {t('home.marketTab')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* === TOP CHAMPIONS (most played) === */}
+      {activeTab === 'search' && (
+        <div className="max-w-6xl mx-auto px-6 mt-4 mb-8">
+          <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3 px-1">
+            {t('home.topChampions')}
+          </div>
+          {featuredChamps === null ? (
+            // Skeleton loader while data is loading
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="glass rounded-xl overflow-hidden h-36 relative animate-pulse">
+                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-surface-raised to-surface-base" />
+                  <div className="absolute bottom-3 left-4 right-4">
+                    <div className="h-4 w-24 bg-surface-overlay rounded mb-2" />
+                    <div className="h-3 w-32 bg-surface-overlay rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : featuredChamps.length === 0 ? (
+            <div className="glass rounded-xl p-8 text-center text-fg-muted text-sm">
+              {t('champ.statsCollecting')}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {featuredChamps.map((champ, i) => (
+                <a
+                  key={champ.id}
+                  href={withLang(`/champions/${champ.id}`)}
+                  className="card-3d glass rounded-xl overflow-hidden group cursor-pointer"
+                  onMouseEnter={() => setHoveredCard(i)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                >
+                  <div className="relative h-36 overflow-hidden">
+                    <img
+                      src={`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${champ.id}_0.jpg`}
+                      alt={champ.name}
+                      className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
+                      style={{ filter: hoveredCard === i ? 'brightness(0.7)' : 'brightness(0.5)' }}
+                    />
+                    <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-surface-base via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#c89b3c] text-xs font-bold bg-[#c89b3c]/20 px-1.5 py-0.5 rounded">#{i + 1}</span>
+                        <span className="text-white text-lg font-semibold">{champ.name}</span>
+                      </div>
+                      <div className="text-fg-secondary text-xs mt-0.5">
+                        {champ.games?.toLocaleString(locale)} {t('champ.games')} · {champ.winRate}% WR
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* === MAIN CONTENT === */}
+      <div className="max-w-6xl mx-auto px-6 pb-8">
+        {activeTab === 'search' && (
+          <>
+            {/* Recent searches + Features */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 glass-strong rounded-xl p-5">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
+                {recentError ? (
+                  <ApiUnavailable compact badge={false} messageKey="error.temporarilyUnavailable" onRetry={fetchRecentPlayers} />
+                ) : recentPlayers.length === 0 ? (
+                  <div className="text-fg-muted text-sm text-center py-8">{t('home.noSearches')}</div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {recentPlayers.map((p, i) => (
+                      <a key={i} href={withLang(makePlayerLink(p))} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-white/5 transition-colors">
+                        {p.profile_icon_id ? (
+                          <DdragonImg
+                            path={`img/profileicon/${p.profile_icon_id}.png`}
+                            className="w-9 h-9 rounded-full border border-border-default"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-[#1a2438] border border-border-default flex items-center justify-center text-fg-secondary text-xs font-medium">
+                            {p.summoner_name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="text-white text-sm font-medium">{p.summoner_name}</div>
+                          <div className="text-fg-muted text-xs">{regionLabel(p.region)} · {t('player.level')} {p.summoner_level}</div>
+                        </div>
+                        {p.tier && (
+                          <div className="text-fg-secondary text-xs">{formatTier(p.tier, p.rank)}</div>
+                        )}
+                        {p.market_value && (
+                          <div className="text-[#c89b3c] text-xs font-medium">{formatValue(p.market_value)}</div>
+                        )}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="glass-strong rounded-xl p-5">
+                <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.features')}</div>
+                <div className="flex flex-col gap-4">
+                  {[
+                    { icon: '◆', title: t('home.feat1title'), desc: t('home.feat1desc') },
+                    { icon: '◈', title: t('home.feat2title'), desc: t('home.feat2desc') },
+                    { icon: '◉', title: t('home.feat3title'), desc: t('home.feat3desc') },
+                    { icon: '◇', title: t('home.feat4title'), desc: t('home.feat4desc') },
+                  ].map(f => (
+                    <div key={f.title} className="flex gap-3 items-start">
+                      <span className="text-[#c89b3c] text-sm mt-0.5">{f.icon}</span>
+                      <div>
+                        <div className="text-white text-sm font-medium">{f.title}</div>
+                        <div className="text-fg-muted text-xs">{f.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'marktwert' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
+            {loadingMarket ? (
+              <div className="col-span-1 lg:col-span-3 text-center text-fg-secondary py-20">{t('common.loading')}</div>
+            ) : (
+              <>
+                <div className="col-span-1 lg:col-span-3 glass-strong rounded-xl p-5">
+                  <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.topMarketValues')}</div>
+                  {topPlayers.length === 0 ? (
+                    <div className="text-fg-muted text-sm text-center py-8">{t('home.noMarketData')}</div>
+                  ) : (
+                    <div className="hidden sm:grid grid-cols-5 gap-2 text-xs text-fg-muted px-2 mb-2">
+                      <div>#</div><div>{t('mv.player')}</div><div className="text-right">{t('mv.marketValue')}</div>
+                      <div className="text-right">{t('mv.rank')}</div><div className="text-right">{t('mv.winrate')}</div>
+                    </div>
+                  )}
+                  {topPlayers.map((p, i) => (
+                    <a key={i} href={withLang(makePlayerLink(p))} className="flex flex-col sm:grid sm:grid-cols-5 gap-1 sm:gap-2 px-2 py-2.5 rounded-lg hover:bg-white/5 transition-colors border-b border-border-subtle/30 sm:border-0">
+                      <div className="hidden sm:block text-fg-muted text-sm">{i + 1}</div>
+                      <div className="text-white text-sm font-medium">
+                        <span className="sm:hidden text-fg-muted mr-2">{i + 1}.</span>{p.summoner_name}
+                      </div>
+                      <div className="text-[#c89b3c] text-sm font-medium sm:text-right">{formatValue(p.market_value)}</div>
+                      <div className="text-fg-secondary text-xs sm:text-sm sm:text-right">{formatTier(p.tier, p.rank)} · {p.winrate}%</div>
+                      <div className="hidden sm:block text-sm text-right">{p.winrate}%</div>
+                    </a>
+                  ))}
+                </div>
+
+                <div className="glass-strong rounded-xl p-5">
+                  <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
+                    {t('home.winnersWeek')} <span className="text-green-400">&#9650;</span>
+                  </div>
+                  {gainers.length === 0 ? (
+                    <div className="text-fg-muted text-xs text-center py-6">{t('home.noData')}</div>
+                  ) : gainers.map((p, i) => (
+                    <a key={i} href={withLang(makePlayerLink(p))} className="flex items-center justify-between py-2 hover:bg-white/5 px-2 rounded-lg transition-colors">
+                      <span className="text-white text-sm">{p.summoner_name}</span>
+                      <span className="text-green-400 text-sm font-medium">+{formatValue(p.change)}</span>
+                    </a>
+                  ))}
+                </div>
+
+                <div className="glass-strong rounded-xl p-5">
+                  <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">
+                    {t('home.losersWeek')} <span className="text-red-400">&#9660;</span>
+                  </div>
+                  {losers.length === 0 ? (
+                    <div className="text-fg-muted text-xs text-center py-6">{t('home.noData')}</div>
+                  ) : losers.map((p, i) => (
+                    <a key={i} href={withLang(makePlayerLink(p))} className="flex items-center justify-between py-2 hover:bg-white/5 px-2 rounded-lg transition-colors">
+                      <span className="text-white text-sm">{p.summoner_name}</span>
+                      <span className="text-red-400 text-sm font-medium">-{formatValue(-p.change)}</span>
+                    </a>
+                  ))}
+                </div>
+
+                <div className="glass-strong rounded-xl p-5">
+                  <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.howCalc')}</div>
+                  <div className="flex flex-col gap-3">
+                    {[
+                      { label: t('home.rank'), desc: t('home.baseFromDia') },
+                      { label: t('home.winrate'), desc: t('home.last30') },
+                      { label: 'KDA', desc: t('home.roleSpecific') },
+                      { label: 'Objectives', desc: t('home.objectives') },
+                      { label: 'Vision', desc: t('home.vision') },
+                    ].map(f => (
+                      <div key={f.label} className="flex justify-between">
+                        <span className="text-white text-xs">{f.label}</span>
+                        <span className="text-fg-muted text-xs">{f.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        <Footer />
+      </div>
+    </main>
+  );
+}

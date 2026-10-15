@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type { Lang } from '../i18n';
+import { langAlternates, langPathsEnabled, withLangPrefix, type Lang } from '../lang-path';
 import { SITE_URL } from '../site';
 import { CURRENT_SET } from '../current-set';
 
@@ -419,22 +419,30 @@ export function siteText(lang: Lang): SeoText {
 }
 
 /**
- * Fertige Metadaten. `path` = Pfad ohne Query (canonical, og:url); null, wenn
+ * Fertige Metadaten. `path` = Pfad ohne Query und ohne Sprach-Vorsatz; null, wenn
  * die Seite ohne Query nicht dasselbe zeigt (Spieler, Matches haengen an
  * ?region=). Ein eigenes openGraph ersetzt das geerbte als Ganzes — ohne
  * `images` verschwaende das Vorschaubild (gemessen: /tft/rising hatte kein
  * og:image). Hat der Abschnitt eine eigene opengraph-image-Datei, gewinnt die
  * Datei. twitter ohne images: X nimmt dann das og:image.
+ *
+ * `pathLang` = Sprache der ADRESSE (Vorsatz /en/…, ohne = de), nicht des
+ * Besuchers: canonical zeigt auf die Adresse selbst, hreflang auf alle sechs
+ * Sprach-Adressen plus x-default (Englisch). Eine deutsche Adresse, die ein
+ * Besucher mit englischem Cookie auf Englisch sieht, bleibt so die deutsche.
  */
-export function buildMetadata(text: SeoText, lang: Lang, path: string | null, game: 'lol' | 'tft'): Metadata {
+export function buildMetadata(
+  text: SeoText, lang: Lang, path: string | null, game: 'lol' | 'tft', pathLang: Lang = 'de',
+): Metadata {
   const title = `${text.title} · metastats.gg`;
   const description = text.description;
-  const url = path ? `${SITE_URL}${path}` : undefined;
+  const url = path ? `${SITE_URL}${withLangPrefix(pathLang, path)}` : undefined;
+  const languages = path && langPathsEnabled() ? langAlternates(SITE_URL, path) : undefined;
   const image = game === 'tft' ? '/tft/opengraph-image' : '/opengraph-image';
   return {
     title,
     description,
-    ...(url ? { alternates: { canonical: url } } : {}),
+    ...(url ? { alternates: { canonical: url, ...(languages ? { languages } : {}) } } : {}),
     openGraph: {
       title,
       description,

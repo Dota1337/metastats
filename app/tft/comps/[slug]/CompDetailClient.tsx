@@ -82,7 +82,7 @@ const REGIONS = [
 // /api/tft/comps fuer die Filter der Adresse gaebe, oder null (dann fragt die
 // Seite wie bisher selbst).
 export default function TftCompDetailPage({ initial }: { initial: CompDetailInitial | null }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const pathname = usePathname();
@@ -408,7 +408,7 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
                 return (
                   <a
                     key={c.component}
-                    href={`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`}
+                    href={withLang(`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`)}
                     title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
                     className="flex flex-col items-center w-12 hover:scale-105 transition-transform"
                   >
@@ -527,11 +527,11 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
           Spalten bleiben (Unit-Wirkung ≥ 460, Items ≥ 580). Prozent statt vw,
           damit die Scrollleiste nicht mitzaehlt. */}
       <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px] min-[100rem]:px-[clamp(1.5rem,calc((100%_-_1552px)_/_2),108px)]' : ''} mx-auto px-4 sm:px-6 py-6`}>
-        <a href="/tft/comps" className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href={withLang("/tft/comps")} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <a
-            href={`/tft/comps?compareA=${encodeURIComponent(slug)}`}
+            href={withLang(`/tft/comps?compareA=${encodeURIComponent(slug)}`)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"
             title={t('tft.compare.fromDetail')}
           >
@@ -652,7 +652,7 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
                                     return (
                                       <a
                                         key={j}
-                                        href={`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`}
+                                        href={withLang(`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`)}
                                         title={meta?.name || it}
                                         className="hover:scale-110 transition"
                                       >
@@ -778,7 +778,7 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
                                     return (
                                       <div key={u.characterId} className="flex flex-col items-center gap-1 flex-shrink-0">
                                         <a
-                                          href={`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`}
+                                          href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
                                           className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform shadow-sm"
                                           style={{ borderColor: isCarry ? '#c39bff' : costColor(cost) }}
                                           title={ch?.name || u.characterId}
@@ -793,7 +793,7 @@ export default function TftCompDetailPage({ initial }: { initial: CompDetailInit
                                               return (
                                                 <a
                                                   key={it.apiName}
-                                                  href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                                                  href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                                                   className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
                                                   title={meta?.name || it.apiName}
                                                 >
@@ -1123,6 +1123,7 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   bucket: string;
   t: (k: any) => string;
 }) {
+  const { withLang } = useI18n();
   const merged = dedupeMatchupEdges(edges);
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3">
@@ -1147,7 +1148,7 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
             return (
               <a
                 key={e.opponent}
-                href={`/tft/comps/${encodeURIComponent(e.opponent)}?bucket=${bucket}`}
+                href={withLang(`/tft/comps/${encodeURIComponent(e.opponent)}?bucket=${bucket}`)}
                 title={`${traitName} · ${carryName}`}
                 className="flex items-start gap-2 hover:opacity-80 transition"
               >

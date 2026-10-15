@@ -4,6 +4,7 @@ import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { type TierCutoffs } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
 import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompBoardPanel';
+import { useI18n } from '../../lib/i18n';
 
 // CompFamilyRow — Trait+Carry-Family-Card mit Drop-Down (MetaTFT-Style).
 // Hauptcomp rendert als reguläre CompRow mit Toggle-Pfeil zwischen Trait+
@@ -79,6 +80,7 @@ export default function CompFamilyRow({
   compareSelected?: boolean;
   onCompareToggle?: (() => void) | null;
 }) {
+  const { withLang } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   // MetaTFT-Comp der Hauptzeile (CompRow meldet sie); undefined bis die
@@ -112,7 +114,7 @@ export default function CompFamilyRow({
           comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
           rank={rank}
           assets={assets}
-          href={familyHref(family.mainComp, region, bucket, days)}
+          href={withLang(familyHref(family.mainComp, region, bucket, days))}
           showVelocity={showVelocity}
           velocityShift={velocityShift}
           tierCutoffs={tierCutoffs}
@@ -147,7 +149,7 @@ export default function CompFamilyRow({
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
         assets={assets}
-        href={familyHref(family.mainComp, region, bucket, days)}
+        href={withLang(familyHref(family.mainComp, region, bucket, days))}
         showVelocity={showVelocity}
         velocityShift={velocityShift}
         tierCutoffs={tierCutoffs}
@@ -185,7 +187,7 @@ export default function CompFamilyRow({
                   comp={v as Parameters<typeof CompRow>[0]['comp']}
                   rank={0}
                   assets={assets}
-                  href={familyHref(v, region, bucket, days)}
+                  href={withLang(familyHref(v, region, bucket, days))}
                   showVelocity={showVelocity}
                   velocityShift={velocityShift}
                   tierCutoffs={tierCutoffs}

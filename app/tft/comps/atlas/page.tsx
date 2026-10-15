@@ -31,7 +31,7 @@ function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
 }
 
 export default function TftCompsAtlasPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const {
     filters, handleFiltersChange, sortBy, chooseSort,
     hasData, patches, assets, loading, currentPatchLabel, error, retry,
@@ -118,7 +118,7 @@ export default function TftCompsAtlasPage() {
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-3 min-w-0">
                   {row.families.map(f => (
-                    <AtlasTile key={f.familyKey} family={f} assets={assets} href={href(f)} t={t} />
+                    <AtlasTile key={f.familyKey} family={f} assets={assets} href={withLang(href(f))} t={t} />
                   ))}
                 </div>
               </section>
@@ -139,6 +139,7 @@ function AtlasTile({
   href: string;
   t: (k: TranslationKey) => string;
 }) {
+  const { withLang } = useI18n();
   const named = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry);
   const lead = named[0];
   const champ = lead ? assets.champions[lead] : null;
@@ -157,7 +158,7 @@ function AtlasTile({
 
   return (
     <Link
-      href={href}
+      href={withLang(href)}
       title={tip}
       className="group w-[76px] sm:w-[88px] flex flex-col items-center gap-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
     >

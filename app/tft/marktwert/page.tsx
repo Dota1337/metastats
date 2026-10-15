@@ -300,6 +300,7 @@ function TopTab({
   lang: Lang;
   t: (k: any) => string;
 }) {
+  const { withLang } = useI18n();
   const tierOptions = ['', 'CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
   const tierOptionLabel: Record<string, string> = {
     MASTER_PLUS: t('tier.masterPlus'),
@@ -348,7 +349,7 @@ function TopTab({
             return (
               <a
                 key={p.puuid}
-                href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
+                href={withLang(slug ? `/tft/player/${slug}?region=${region}` : '#')}
                 className="block sm:grid sm:grid-cols-[3rem_1fr_5rem_4rem_5rem_8rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle"
               >
                 {/* Mobile: rank + name + tier inline, value + multiplier as
@@ -404,6 +405,7 @@ function MoversTab({
   lang: Lang;
   t: (k: any) => string;
 }) {
+  const { withLang } = useI18n();
   return (
     <>
       <div className="flex flex-wrap gap-3 mb-3">
@@ -466,7 +468,7 @@ function MoversTab({
             return (
               <a
                 key={m.puuid}
-                href={slug ? `/tft/player/${slug}?region=${region}` : '#'}
+                href={withLang(slug ? `/tft/player/${slug}?region=${region}` : '#')}
                 className="block sm:grid sm:grid-cols-[3rem_1fr_7rem_5rem_6rem] gap-2 px-4 py-2 sm:items-center text-xs hover:bg-white/5 border-t border-border-subtle"
               >
                 <div className="hidden sm:block text-right text-fg-secondary tabular-nums">{i + 1}</div>

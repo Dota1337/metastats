@@ -214,6 +214,7 @@ function byGames(list: CompanionEarlyBoard[] | undefined): CompanionEarlyBoard[]
 }
 
 function EarlyUnitTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   const champ = findChampion(assets, apiName);
   const url = tftChampionTileUrl(assets, champ);
   const name = champ?.name || prettyChar(apiName);
@@ -221,7 +222,7 @@ function EarlyUnitTile({ apiName, assets }: { apiName: string; assets: TftAssets
   // Kosten 0 = keine Shop-Einheit (z. B. Pflanzen) → kein Kostenrahmen.
   return (
     <a
-      href={`/tft/units/${encodeURIComponent(apiName)}`}
+      href={withLang(`/tft/units/${encodeURIComponent(apiName)}`)}
       className={`block w-8 h-8 rounded border-2 overflow-hidden bg-surface-overlay hover:scale-105 transition${cost === 0 ? ' border-border-subtle' : ''}`}
       style={cost === 0 ? undefined : { borderColor: costColor(cost) }}
       title={name}

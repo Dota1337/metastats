@@ -90,7 +90,7 @@ export default function VariantsSwitcher({
   // Anker zuerst. Fehlt es (alter Snapshot), gilt nur die eigene Familie.
   families?: string[] | null;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -214,7 +214,7 @@ export default function VariantsSwitcher({
         {variants.map(v => {
           const isActive = v.clusterKey === clusterKey;
           const label = variantLabel(v, t, assets, multiFamily);
-          const url = `/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`;
+          const url = withLang(`/tft/comps/${encodeURIComponent(v.slug)}?region=${region}&bucket=${bucket}&days=${days}`);
           return (
             <button
               key={v.clusterKey}

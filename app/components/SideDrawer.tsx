@@ -463,6 +463,7 @@ function TournamentsContent({
 }
 
 function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; formatTime: (d: string) => string; relativeTime: (d: string) => string; t: (key: any) => string }) {
+  const { withLang } = useI18n();
   const isLive = match.state === 'inProgress';
   const isUpcoming = match.state === 'unstarted';
   const team1 = match.teams?.[0];
@@ -471,12 +472,12 @@ function MatchCard({ match, formatTime, relativeTime, t }: { match: Tournament; 
 
   return (
     <a
-      href={href}
+      href={withLang(href)}
       title={t('drawer.viewTournament')}
       onClick={(e) => {
         // Allow Ctrl/Cmd-click to open in new tab, otherwise navigate same tab and let drawer close via route change
         if (e.metaKey || e.ctrlKey || e.shiftKey) return;
-        window.location.href = href;
+        window.location.href = withLang(href);
         e.preventDefault();
       }}
       className={`block px-4 py-2.5 border-b border-surface-raised hover:bg-surface-base transition-colors cursor-pointer ${isLive ? 'bg-red-500/5 hover:bg-red-500/10' : ''}`}
@@ -596,10 +597,11 @@ function SectionHeader({ label, count, accent, pulse }: { label: string; count: 
 function TftTournamentRow({
   tournament, dateFmt, tierColor,
 }: { tournament: TftTournament; dateFmt: (s: string | null) => string; tierColor: (t: string | null) => string }) {
+  const { withLang } = useI18n();
   const color = tierColor(tournament.tier);
   return (
     <a
-      href={`/tft/tournaments/${encodeURIComponent(tournament.id)}`}
+      href={withLang(`/tft/tournaments/${encodeURIComponent(tournament.id)}`)}
       className="block px-4 py-2.5 border-b border-surface-raised hover:bg-surface-base transition-colors"
     >
       <div className="flex items-start gap-2.5">
@@ -642,12 +644,13 @@ function cleanTournamentName(raw: string): string {
 
 /* ── Patches Tab ── */
 function PatchesContent({ patches, t }: { patches: PatchNote[]; t: (key: any) => string }) {
+  const { withLang } = useI18n();
   return (
     <div className="px-4 py-3 space-y-2">
       {patches.map((patch, i) => (
         <a
           key={patch.version}
-          href={patch.url}
+          href={withLang(patch.url)}
           target="_blank"
           rel="noopener noreferrer"
           className={`block rounded-lg border transition-all hover:border-[#c89b3c]/50 hover:bg-surface-raised ${

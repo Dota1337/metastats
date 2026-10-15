@@ -132,7 +132,7 @@ export default function CompRow({
   // Anleitungen geladen sind — das Aufstellungsbrett nagelt sie fest.
   onGuide?: (guideId: string | null) => void;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
@@ -278,7 +278,7 @@ export default function CompRow({
     );
   };
 
-  // Outer wrapper used to be an <a href={href}>, which produced invalid HTML
+  // Outer wrapper used to be an <a href>, which produced invalid HTML
   // (nested <a> for the carry + 9 unit tiles inside). Replaced with a div that
   // mimics native anchor behavior: Cmd/Ctrl/Mid-click opens in a new tab,
   // Enter/Space activates, focus ring stays visible for keyboard nav.
@@ -289,21 +289,21 @@ export default function CompRow({
       onClick={(e) => {
         if (e.defaultPrevented) return;
         if (e.metaKey || e.ctrlKey) {
-          window.open(href, '_blank', 'noopener');
+          window.open(withLang(href), '_blank', 'noopener');
           return;
         }
-        router.push(href);
+        router.push(withLang(href));
       }}
       onAuxClick={(e) => {
         if (e.button === 1) {
           e.preventDefault();
-          window.open(href, '_blank', 'noopener');
+          window.open(withLang(href), '_blank', 'noopener');
         }
       }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          router.push(href);
+          router.push(withLang(href));
         }
       }}
       className="block px-2.5 sm:px-3.5 py-2.5 sm:py-3 rounded-md border border-border-subtle bg-surface-comp-row hover:bg-surface-comp-row-hover hover:border-accent-a40 transition-colors text-xs sm:text-sm cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
@@ -343,7 +343,7 @@ export default function CompRow({
                 Zeile; stopPropagation, sonst oeffnet die Zeile das Ziel bei
                 Strg-/Mittelklick ein zweites Mal. */}
             <Link
-              href={href}
+              href={withLang(href)}
               prefetch={false}
               tabIndex={-1}
               onClick={e => e.stopPropagation()}
@@ -474,7 +474,7 @@ export default function CompRow({
                 className="flex flex-col items-center gap-1 flex-shrink-0"
               >
                 <a
-                  href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                  href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}`)}
                   onClick={e => e.stopPropagation()}
                   className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm focus-visible:ring-2 focus-visible:ring-accent-a60"
                   style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
@@ -500,7 +500,7 @@ export default function CompRow({
                       return (
                         <a
                           key={it.apiName}
-                          href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                          href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                           onClick={e => e.stopPropagation()}
                           className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
                           title={meta?.name || it.apiName}

@@ -7,7 +7,7 @@ import { useI18n, LANGUAGES } from '../lib/i18n';
 // compact (single bar) so it doesn't dominate above-the-fold on short pages.
 
 export default function Footer() {
-  const { lang, setLang, t } = useI18n();
+  const { lang, setLang, t, withLang } = useI18n();
   const [open, setOpen] = useState(false);
   const current = LANGUAGES.find(l => l.code === lang) || LANGUAGES[0];
 
@@ -21,8 +21,8 @@ export default function Footer() {
         </div>
 
         <nav className="flex items-center gap-4 justify-center" aria-label="legal links">
-          <a href="/impressum" className="hover:text-white transition">{t('legal.imprint')}</a>
-          <a href="/datenschutz" className="hover:text-white transition">{t('legal.privacy')}</a>
+          <a href={withLang("/impressum")} className="hover:text-white transition">{t('legal.imprint')}</a>
+          <a href={withLang("/datenschutz")} className="hover:text-white transition">{t('legal.privacy')}</a>
         </nav>
 
         <div className="flex items-center sm:justify-end relative">

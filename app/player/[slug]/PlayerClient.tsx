@@ -98,7 +98,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
   const seasonReq = useRef(0);
   const loadReq = useRef(0);
   const region = searchParams.get('region') || 'euw1';
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
 
   useEffect(() => {
@@ -640,7 +640,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                     <div className="flex items-center gap-3 bg-surface-raised border border-accent-a30 rounded p-3">
                       <div className="text-[10px] text-accent font-bold uppercase tracking-wider w-10 shrink-0">Main</div>
                       <a
-                        href={`/player/${encodeURIComponent(proInfo.mainAccount.name)}--${encodeURIComponent(proInfo.mainAccount.tag)}?region=${proInfo.mainAccount.region === 'kr' ? 'kr' : proInfo.mainAccount.region === 'na' ? 'na1' : 'euw1'}`}
+                        href={withLang(`/player/${encodeURIComponent(proInfo.mainAccount.name)}--${encodeURIComponent(proInfo.mainAccount.tag)}?region=${proInfo.mainAccount.region === 'kr' ? 'kr' : proInfo.mainAccount.region === 'na' ? 'na1' : 'euw1'}`)}
                         className="text-white hover:text-accent font-medium text-sm transition-colors"
                       >
                         {proInfo.mainAccount.name}<span className="text-fg-muted">#{proInfo.mainAccount.tag}</span>
@@ -656,7 +656,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                     <div key={i} className="flex items-center gap-3 bg-surface-raised rounded p-3">
                       <div className="text-[10px] text-fg-muted font-bold uppercase tracking-wider w-10 shrink-0">Smurf</div>
                       <a
-                        href={`/player/${encodeURIComponent(smurf.name)}--${encodeURIComponent(smurf.tag)}?region=${smurf.region === 'kr' ? 'kr' : smurf.region === 'na' ? 'na1' : 'euw1'}`}
+                        href={withLang(`/player/${encodeURIComponent(smurf.name)}--${encodeURIComponent(smurf.tag)}?region=${smurf.region === 'kr' ? 'kr' : smurf.region === 'na' ? 'na1' : 'euw1'}`)}
                         className="text-fg-secondary hover:text-white text-sm transition-colors"
                       >
                         {smurf.name}<span className="text-fg-muted">#{smurf.tag}</span>

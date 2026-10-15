@@ -152,6 +152,7 @@ function TraitDrillDown({
   t: (k: any) => string;
   bucket?: string;
 }) {
+  const { withLang } = useI18n();
   const color = activeTraitStyleColor(trait.style);
   return (
     <div
@@ -174,7 +175,7 @@ function TraitDrillDown({
           return (
             <a
               key={`${u.characterId}-${idx}`}
-              href={href}
+              href={withLang(href)}
               className="flex flex-col items-center gap-1 hover:scale-105 transition-transform"
               title={ch?.name || u.characterId}
             >

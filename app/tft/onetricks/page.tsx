@@ -38,7 +38,7 @@ function parseCluster(key: string) {
 }
 
 export default function TftOneTricksPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [region, setRegion] = useState<Region>('euw1');
   const [data, setData] = useState<OneTrick[]>([]);
   const [loading, setLoading] = useState(false);
@@ -118,9 +118,9 @@ export default function TftOneTricksPage() {
                     {p.tier.slice(0, 3)}
                   </span>
                   <a
-                    href={p.gameName && p.tagLine
+                    href={withLang(p.gameName && p.tagLine
                       ? tftProfileHref({ puuid: p.puuid, gameName: p.gameName, tagLine: p.tagLine, region })
-                      : `/tft/player/${encodeURIComponent(display)}?region=${region}`}
+                      : `/tft/player/${encodeURIComponent(display)}?region=${region}`)}
                     className="text-white font-medium hover:text-[#a892ff] flex-1 truncate"
                   >
                     {display}{p.tagLine ? <span className="text-fg-muted">#{p.tagLine}</span> : null}
@@ -147,7 +147,7 @@ export default function TftOneTricksPage() {
                     return (
                       <a
                         key={c.clusterKey}
-                        href={`/tft/comps/${encodeURIComponent(c.clusterKey)}`}
+                        href={withLang(`/tft/comps/${encodeURIComponent(c.clusterKey)}`)}
                         className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40"
                       >
                         {tftChampionTileUrl(assets, carry) && (

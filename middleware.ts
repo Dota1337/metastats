@@ -8,6 +8,10 @@
 //      Davor: alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag`.
 //   3. Default-Pfad: Supabase-Session refreshen, sonst läuft der End-User-
 //      Cookie nach ~1h ab obwohl der User aktiv ist.
+//   0. Davor: Sprach-Adressen `/en/…` (lang-path.ts). Der Vorsatz wird
+//      abgetrennt, alle Pruefungen laufen auf dem Rest, die Antwort ist ein
+//      Rewrite auf den Rest mit Anfrage-Header x-ms-lang. Vorsatz vor etwas,
+//      das keine Seite ist (/en/api, /en/internal, Dateien) → 404, nie Rewrite.
 
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
@@ -16,14 +20,45 @@ import { securityHeaderRecord } from './app/lib/security-headers';
 import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
 import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
 import { legacyTftPlayerSlug } from './app/lib/og/slugs';
+import { LANG_HEADER, langPathsEnabled, langRoute, withLangPrefix, type PrefixLang } from './app/lib/lang-path';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
 // rausgehen — ausgerechnet die, die eine Auth-Entscheidung transportieren.
 const SEC = securityHeaderRecord();
 
+// Jede Durchreiche geht hierueber: Header-Kopie INNERHALB, weil der Supabase-
+// Teil per req.cookies.set in req.headers schreibt und die Antwort danach neu
+// baut. Ein x-ms-lang von aussen wird immer entfernt — nur die Middleware setzt
+// ihn, und nur unter einer Sprach-Adresse.
+function forward(req: NextRequest, lang: PrefixLang | null, rewriteTo?: URL): NextResponse {
+  const headers = new Headers(req.headers);
+  headers.delete(LANG_HEADER);
+  if (lang) headers.set(LANG_HEADER, lang);
+  const init = { request: { headers } };
+  return rewriteTo ? NextResponse.rewrite(rewriteTo, init) : NextResponse.next(init);
+}
+
+function notFound(req: NextRequest, lang: PrefixLang | null): NextResponse {
+  return forward(req, lang, new URL('/__not-found', req.url));
+}
+
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
-  const path = req.nextUrl.pathname;
+  // --- Sprach-Adressen ---------------------------------------------------
+  const route = langRoute(req.nextUrl.pathname);
+  // Gesperrt: zuerst, vor allem anderen — ein Vorsatz darf nie am Login-Zweig
+  // von /internal vorbei oder eine API erreichen.
+  if (route.kind === 'blocked') return notFound(req, route.lang);
+  const lang = route.kind === 'rewrite' ? route.lang : null;
+  const path = route.kind === 'rewrite' ? route.rest : req.nextUrl.pathname;
+  if (lang && !langPathsEnabled()) {
+    // Notschalter: Sprach-Adressen aus, voruebergehend auf die deutsche Adresse.
+    const url = req.nextUrl.clone();
+    url.pathname = path;
+    return NextResponse.redirect(url, { status: 307, headers: SEC });
+  }
+  // Ziel der Weiterleitung: Rest-Pfad bei Sprach-Adressen, sonst wie bisher.
+  const target = lang ? (() => { const u = req.nextUrl.clone(); u.pathname = path; return u; })() : undefined;
 
   // --- Internal-Dashboard Branch (no Supabase-SSR) -----------------------
   if (path.startsWith('/internal') || path.startsWith('/api/internal')) {
@@ -40,10 +75,10 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     const isSelfAuthedPath = path === '/internal/login'
       || path === '/api/internal/login'
       || path === '/api/internal/revalidate';
-    if (isSelfAuthedPath) return NextResponse.next();
+    if (isSelfAuthedPath) return forward(req, null);
 
     const cookie = req.cookies.get(INTERNAL_COOKIE)?.value;
-    if (await verifyCookieValue(cookie)) return NextResponse.next();
+    if (await verifyCookieValue(cookie)) return forward(req, null);
 
     if (path.startsWith('/api/internal')) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401, headers: SEC });
@@ -64,7 +99,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     if (canonical) {
       // clone() behaelt die Abfrage (region, puuid, ?_rsc).
       const url = req.nextUrl.clone();
-      url.pathname = `/tft/player/${canonical}`;
+      url.pathname = withLangPrefix(lang, `/tft/player/${canonical}`);
       return NextResponse.redirect(url, { status: 308, headers: SEC });
     }
   }
@@ -74,24 +109,22 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
   // Rewrite auf einen Pfad ohne Route laesst Next die not-found-Seite mit
   // Status 404 rendern, auch fuer RSC und HEAD. Notschalter SEO_404_GATE=0.
   if (process.env.SEO_404_GATE !== '0') {
-    if (isUnknownDetailPath(path)) {
-      return NextResponse.rewrite(new URL('/__not-found', req.url));
-    }
+    if (isUnknownDetailPath(path)) return notFound(req, lang);
     const championId = championIdFromPath(path);
     if (championId !== undefined) {
       const d = championId === null ? { kind: 'missing' as const } : await championGate(championId, p => event.waitUntil(p));
-      if (d.kind === 'missing') return NextResponse.rewrite(new URL('/__not-found', req.url));
+      if (d.kind === 'missing') return notFound(req, lang);
       if (d.kind === 'redirect') {
         // clone() behaelt die Abfrage (auch ?_rsc); das Ziel ist exakt bekannt, also keine Schleife.
         const url = req.nextUrl.clone();
-        url.pathname = `/champions/${d.id}`;
+        url.pathname = withLangPrefix(lang, `/champions/${d.id}`);
         return NextResponse.redirect(url, { status: d.permanent ? 308 : 307, headers: SEC });
       }
     }
   }
 
   // --- Default Supabase-SSR-Pfad ---------------------------------------
-  let response = NextResponse.next({ request: req });
+  let response = forward(req, lang, target);
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -100,7 +133,7 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
         getAll() { return req.cookies.getAll(); },
         setAll(items) {
           for (const { name, value } of items) req.cookies.set(name, value);
-          response = NextResponse.next({ request: req });
+          response = forward(req, lang, target);
           for (const { name, value, options } of items) {
             response.cookies.set(name, value, options);
           }

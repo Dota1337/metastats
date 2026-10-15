@@ -131,7 +131,7 @@ function ParticipantCard({
   region: string;
   assets: TftAssetsBundle | null;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const placement = participant.placement;
   const top4 = placement <= 4;
   const barColor = top4 ? 'border-green-500' : 'border-red-500';
@@ -151,7 +151,7 @@ function ParticipantCard({
           <div className="flex items-center gap-2 flex-wrap">
             {slug ? (
               <a
-                href={`/tft/player/${slug}?region=${region}`}
+                href={withLang(`/tft/player/${slug}?region=${region}`)}
                 className="text-white text-sm font-medium hover:text-accent truncate max-w-[160px] sm:max-w-none"
               >
                 {gameName}
@@ -199,6 +199,7 @@ function PlacementBadge({ placement }: { placement: number }) {
 function ActivatedTraits({
   participant, assets,
 }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   const active = participant.traits.filter(t => t.tierCurrent > 0);
   return (
     <div className="flex gap-1 flex-wrap">
@@ -209,7 +210,7 @@ function ActivatedTraits({
         return (
           <a
             key={tr.name}
-            href={`/tft/traits/${encodeURIComponent(tr.name)}`}
+            href={withLang(`/tft/traits/${encodeURIComponent(tr.name)}`)}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
             style={{ backgroundColor: `${withAlpha(styleColor, 0x25)}`, color: styleColor }}
           >
@@ -223,6 +224,7 @@ function ActivatedTraits({
 }
 
 function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   const info = assets?.champions[unit.characterId];
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
@@ -237,7 +239,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
 
   return (
     <a
-      href={`/tft/units/${encodeURIComponent(unit.characterId)}`}
+      href={withLang(`/tft/units/${encodeURIComponent(unit.characterId)}`)}
       title={tooltip}
       className="flex flex-col items-center gap-0.5 hover:scale-105 transition"
     >
@@ -263,7 +265,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
             return iurl ? (
               <a
                 key={i}
-                href={`/tft/items/${encodeURIComponent(it)}`}
+                href={withLang(`/tft/items/${encodeURIComponent(it)}`)}
                 onClick={e => e.stopPropagation()}
                 title={itemName}
                 className="hover:scale-125 transition-transform"
@@ -281,6 +283,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
 }
 
 function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   if (!augments?.length) return null;
   return (
     <div className="flex flex-col gap-1 flex-shrink-0">
@@ -306,7 +309,7 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
           </div>
         );
         return (
-          <a key={i} href={`/tft/augments/${encodeURIComponent(a)}`}>
+          <a key={i} href={withLang(`/tft/augments/${encodeURIComponent(a)}`)}>
             {inner}
           </a>
         );

@@ -23,7 +23,7 @@ interface CommunityComp {
 type Sort = 'top' | 'recent';
 
 export default function TftCommunityGalleryPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const router = useRouter();
   const [sort, setSort] = useState<Sort>('top');
   const [comps, setComps] = useState<CommunityComp[]>([]);
@@ -62,7 +62,7 @@ export default function TftCommunityGalleryPage() {
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-baseline justify-between mb-1">
           <h1 className="text-white text-2xl font-medium">{t('tft.community.title')}</h1>
-          <a href="/tft/builder" className="text-[#a892ff] text-xs hover:underline">{t('tft.community.buildOwn')} →</a>
+          <a href={withLang("/tft/builder")} className="text-[#a892ff] text-xs hover:underline">{t('tft.community.buildOwn')} →</a>
         </div>
         <p className="text-fg-secondary text-sm mb-5">{t('tft.community.subtitle')}</p>
 
@@ -84,7 +84,7 @@ export default function TftCommunityGalleryPage() {
         {!loading && comps.length === 0 && (
           <div className="text-fg-secondary text-center py-8">
             {t('tft.community.empty')}{' '}
-            <a href="/tft/builder" className="text-[#a892ff] hover:underline">{t('tft.community.buildFirst')}</a>
+            <a href={withLang("/tft/builder")} className="text-[#a892ff] hover:underline">{t('tft.community.buildFirst')}</a>
           </div>
         )}
 
@@ -98,7 +98,7 @@ export default function TftCommunityGalleryPage() {
                 <div className="flex items-start gap-3 mb-2">
                   {carryUrl && c.carryUnit && (
                     <a
-                      href={`/tft/units/${encodeURIComponent(c.carryUnit)}`}
+                      href={withLang(`/tft/units/${encodeURIComponent(c.carryUnit)}`)}
                       title={carry?.name || c.carryUnit}
                       className="flex-shrink-0 hover:scale-105 transition-transform"
                     >
@@ -134,7 +134,7 @@ export default function TftCommunityGalleryPage() {
                     // for the unit, inner <a>s for items — invalid HTML. Outer
                     // is now a div with link semantics; inner item anchors
                     // remain real <a> tags (they stopPropagation).
-                    const unitHref = `/tft/units/${encodeURIComponent(p.characterId)}`;
+                    const unitHref = withLang(`/tft/units/${encodeURIComponent(p.characterId)}`);
                     return (
                       <div
                         key={i}
@@ -174,7 +174,7 @@ export default function TftCommunityGalleryPage() {
                               return iurl ? (
                                 <a
                                   key={j}
-                                  href={`/tft/items/${encodeURIComponent(it)}`}
+                                  href={withLang(`/tft/items/${encodeURIComponent(it)}`)}
                                   onClick={e => e.stopPropagation()}
                                   title={itemName}
                                 >

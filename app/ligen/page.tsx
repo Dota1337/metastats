@@ -84,7 +84,7 @@ interface ProLink {
 type CalendarView = 'week' | 'month';
 
 export default function LigenPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const locale = LOCALE_MAP[lang];
   const searchParams = useSearchParams();
   const initialLeagueSlug = searchParams.get('league');
@@ -425,7 +425,7 @@ export default function LigenPage() {
                                         )}
                                         <div className="min-w-0">
                                           {link ? (
-                                            <Link href={link} className="text-sm font-semibold text-white hover:text-accent transition-colors block truncate">
+                                            <Link href={withLang(link)} className="text-sm font-semibold text-white hover:text-accent transition-colors block truncate">
                                               {team.name}
                                             </Link>
                                           ) : (
@@ -465,7 +465,7 @@ export default function LigenPage() {
                                             <span key={player.proName} className="inline-flex items-center gap-0.5">
                                               <span className={`text-[9px] ${roleColors[player.role] || 'text-fg-muted'}`}>●</span>
                                               {playerLink ? (
-                                                <Link href={playerLink} className="text-[11px] text-fg-secondary hover:text-accent transition-colors">
+                                                <Link href={withLang(playerLink)} className="text-[11px] text-fg-secondary hover:text-accent transition-colors">
                                                   {player.proName}
                                                 </Link>
                                               ) : (
@@ -721,6 +721,7 @@ function MatchRow({ match, formatDate, formatTime, getTeamLink }: {
 }
 
 function TeamLink({ team, getTeamLink }: { team: Team; getTeamLink: (name: string, code: string) => string | null }) {
+  const { withLang } = useI18n();
   const link = getTeamLink(team.name, team.code);
   const cls = `text-sm truncate ${
     team.outcome === 'win' ? 'text-green-400 font-medium' :
@@ -728,7 +729,7 @@ function TeamLink({ team, getTeamLink }: { team: Team; getTeamLink: (name: strin
   }`;
 
   return link ? (
-    <Link href={link} className={`${cls} hover:text-accent transition-colors`}>{team.name}</Link>
+    <Link href={withLang(link)} className={`${cls} hover:text-accent transition-colors`}>{team.name}</Link>
   ) : (
     <span className={cls}>{team.name}</span>
   );

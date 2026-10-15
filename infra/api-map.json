@@ -468,8 +468,8 @@
       ],
       "used": true,
       "usedBy": [
-        "app/internal/design-lab/page.tsx",
-        "app/page.tsx"
+        "app/HomeClient.tsx",
+        "app/internal/design-lab/page.tsx"
       ]
     },
     {
@@ -636,7 +636,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/page.tsx"
+        "app/HomeClient.tsx"
       ]
     },
     {
@@ -745,7 +745,7 @@
       "via": [],
       "used": true,
       "usedBy": [
-        "app/page.tsx"
+        "app/HomeClient.tsx"
       ]
     },
     {

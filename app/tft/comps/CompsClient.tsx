@@ -219,6 +219,7 @@ function CompareBanner({
   t: (k: any) => string;
   onReset: () => void;
 }) {
+  const { withLang } = useI18n();
   const selectedFamilies = selection
     .map(slug => families.find(f => f.mainComp.slug === slug))
     .filter(Boolean) as CompFamily[];
@@ -264,7 +265,7 @@ function CompareBanner({
           </button>
           {canCompare ? (
             <a
-              href={compareHref}
+              href={withLang(compareHref)}
               className="bg-accent hover:bg-[#8B71FF] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
             >
               {t('tft.compare.action')} →

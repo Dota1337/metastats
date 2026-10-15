@@ -35,6 +35,7 @@ interface AugmentMeta {
 function AugmentTile({
   apiName, assets, grade,
 }: { apiName: string; assets: TftAssetsBundle | null; grade?: AugmentGrade }) {
+  const { withLang } = useI18n();
   // assets.augments, nicht assets.items — Augments stehen im Bundle in einer
   // eigenen Map. Die Vorgängerfassung las hier items[] und traf nie.
   const meta = assets?.augments?.[apiName] as AugmentMeta | undefined;
@@ -43,7 +44,7 @@ function AugmentTile({
   const tier = typeof meta?.tier === 'number' ? meta.tier : null;
   return (
     <a
-      href={`/tft/augments/${encodeURIComponent(apiName)}`}
+      href={withLang(`/tft/augments/${encodeURIComponent(apiName)}`)}
       className="flex flex-col items-center w-14 hover:scale-105 transition"
       title={formatTftDesc(meta?.desc) || meta?.name || apiName}
     >
@@ -158,6 +159,7 @@ export function GuideAugments({ guide, assets }: { guide: CompGuideData; assets:
 /** Carousel-Picks der ersten Runde ohne eigene Box — welche Komponenten zu
     dieser Comp fuehren. Steht in der Bauteil-Box der Detailseite. */
 export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
+  const { withLang } = useI18n();
   if (guide.carousel.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-3">
@@ -167,7 +169,7 @@ export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; as
         return (
           <a
             key={`${pick.item}-${i}`}
-            href={`/tft/items/${encodeURIComponent(pick.item)}`}
+            href={withLang(`/tft/items/${encodeURIComponent(pick.item)}`)}
             className="flex flex-col items-center w-10 hover:scale-105 transition"
             title={meta?.name || pick.item}
           >

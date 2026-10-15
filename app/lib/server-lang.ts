@@ -1,8 +1,5 @@
 import { cookies, headers } from 'next/headers';
-import type { Lang } from './i18n';
-
-const LANG_COOKIE = 'metastats-lang';
-const VALID_LANGS: readonly Lang[] = ['de', 'en', 'ko', 'zh', 'es', 'fr'];
+import { DEFAULT_LANG, LANG_COOKIE, LANG_HEADER, isLang, isPrefixLang, type Lang } from './lang-path';
 
 /**
  * Parse an Accept-Language header like "de-DE,de;q=0.9,en;q=0.8" into a ranked
@@ -24,23 +21,40 @@ function pickFromAcceptLanguage(header: string | null): Lang | null {
   for (const { tag } of prefs) {
     // "de-DE" → "de", "zh-Hans-CN" → "zh"
     const primary = tag.split('-')[0];
-    if (VALID_LANGS.includes(primary as Lang)) return primary as Lang;
+    if (isLang(primary)) return primary;
   }
   return null;
 }
 
+/**
+ * Sprache der Adresse (`/en/…` → 'en', ohne Vorsatz 'de'). Den Header setzt
+ * nur die Middleware; einen von aussen mitgeschickten loescht sie.
+ * Fuer canonical, hreflang und Links — die haengen an der Adresse, nicht am
+ * Besucher.
+ */
+export async function getServerPathLang(): Promise<Lang> {
+  try {
+    const fromPath = (await headers()).get(LANG_HEADER);
+    if (isPrefixLang(fromPath)) return fromPath;
+  } catch {}
+  return DEFAULT_LANG;
+}
+
 export async function getServerLang(): Promise<Lang> {
   try {
-    // 1st preference: explicit cookie set by the user's language dropdown
-    const store = await cookies();
-    const saved = store.get(LANG_COOKIE)?.value as Lang | undefined;
-    if (saved && VALID_LANGS.includes(saved)) return saved;
-
-    // 2nd preference: browser Accept-Language on first visit
     const hdrs = await headers();
-    const accept = hdrs.get('accept-language');
-    const fromHeader = pickFromAcceptLanguage(accept);
+    // 1st: Sprach-Adresse (`/en/…`) — sie gilt vor jeder Besucher-Vorliebe.
+    const fromPath = hdrs.get(LANG_HEADER);
+    if (isPrefixLang(fromPath)) return fromPath;
+
+    // 2nd: explicit cookie set by the user's language dropdown
+    const store = await cookies();
+    const saved = store.get(LANG_COOKIE)?.value;
+    if (isLang(saved)) return saved;
+
+    // 3rd: browser Accept-Language on first visit
+    const fromHeader = pickFromAcceptLanguage(hdrs.get('accept-language'));
     if (fromHeader) return fromHeader;
   } catch {}
-  return 'de';
+  return DEFAULT_LANG;
 }

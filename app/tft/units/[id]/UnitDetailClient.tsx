@@ -55,7 +55,7 @@ interface CompWithUnit {
 // Adresse — Hauptdatensatz und Comp-Block jeweils mit der Antwort, die die API
 // gaebe, oder null (dann fragt die Seite wie bisher selbst).
 export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInitial | null }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
@@ -160,7 +160,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
       <Nav active="units" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-          <a href="/tft/units" className="text-accent text-xs hover:underline">← {t('nav.units')}</a>
+          <a href={withLang("/tft/units")} className="text-accent text-xs hover:underline">← {t('nav.units')}</a>
           <div className="flex items-center gap-4 mt-2">
             {tftChampionTileUrl(assets, champ) ? (
               <img src={tftChampionTileUrl(assets, champ)!} alt={champ!.name} className="w-16 h-16 rounded-lg border-2 border-accent object-cover" />
@@ -178,7 +178,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
                       <span key={tr}>
                         {i > 0 && ' · '}
                         <a
-                          href={`/tft/traits/${encodeURIComponent(tr)}`}
+                          href={withLang(`/tft/traits/${encodeURIComponent(tr)}`)}
                           className="hover:text-accent transition-colors"
                         >
                           {tftTraitDisplayName(assets, tr) || prettyChar(tr)}
@@ -194,7 +194,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
 
         <div className="flex justify-end items-center gap-2 mb-4">
           <a
-            href={buildExplorerUrl({ units: [id], bucket })}
+            href={withLang(buildExplorerUrl({ units: [id], bucket }))}
             className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5"
             title={t('tft.drill.openInExplorer')}
           >
@@ -571,7 +571,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
                       return (
                         <a
                           key={c.slug}
-                          href={`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`}
+                          href={withLang(`/tft/comps/${encodeURIComponent(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
                           className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
                         >
                           {carryUrl && (
@@ -622,19 +622,20 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 function ItemIcon({ apiName, assets, size = 10 }: { apiName: string; assets: TftAssetsBundle | null; size?: number }) {
+  const { withLang } = useI18n();
   const item = assets?.items[apiName];
   const sizeClass = size === 10 ? 'w-10 h-10' : 'w-9 h-9';
   const url = tftIconUrl(assets, item?.icon);
   const href = `/tft/items/${encodeURIComponent(apiName)}`;
   if (!url) {
     return (
-      <a href={href} className={`${sizeClass} rounded bg-surface-overlay flex items-center justify-center text-[8px] text-fg-muted text-center px-0.5 hover:bg-surface-overlay-hover transition-colors`} title={item?.name || apiName}>
+      <a href={withLang(href)} className={`${sizeClass} rounded bg-surface-overlay flex items-center justify-center text-[8px] text-fg-muted text-center px-0.5 hover:bg-surface-overlay-hover transition-colors`} title={item?.name || apiName}>
         {prettyItem(apiName)}
       </a>
     );
   }
   return (
-    <a href={href} title={item!.name} className="hover:scale-110 transition-transform inline-block">
+    <a href={withLang(href)} title={item!.name} className="hover:scale-110 transition-transform inline-block">
       <img src={url} alt={item!.name} className={`${sizeClass} rounded`} />
     </a>
   );

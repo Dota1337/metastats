@@ -3,7 +3,7 @@ import { useI18n } from './lib/i18n';
 import Nav from './components/Nav';
 
 export default function NotFound() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   return (
     <main className="min-h-screen bg-surface-page flex flex-col">
       <Nav />
@@ -14,10 +14,10 @@ export default function NotFound() {
           <h1 className="text-white text-xl sm:text-2xl font-semibold mb-3">{t('notFound.title')}</h1>
           <p className="text-fg-secondary text-sm mb-8">{t('notFound.text')}</p>
           <div className="flex flex-col sm:flex-row gap-2 justify-center">
-            <a href="/" className="bg-[#c89b3c] hover:bg-[#d4a94a] text-surface-sunken text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors">
+            <a href={withLang("/")} className="bg-[#c89b3c] hover:bg-[#d4a94a] text-surface-sunken text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors">
               {t('notFound.home')}
             </a>
-            <a href="/leaderboard" className="border border-border-default hover:border-[#c89b3c] text-fg-secondary hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
+            <a href={withLang("/leaderboard")} className="border border-border-default hover:border-[#c89b3c] text-fg-secondary hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
               {t('nav.leaderboard')}
             </a>
           </div>

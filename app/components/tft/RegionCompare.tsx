@@ -56,7 +56,7 @@ export default function RegionCompare({
   patch: string | null;
   assets: TftAssetsBundle | null;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [byRegion, setByRegion] = useState<Record<string, UnitRow[] | null>>({});
   const [query, setQuery] = useState('');
   const [sortPick, setSortPick] = useState<string | null>(null);
@@ -218,7 +218,7 @@ export default function RegionCompare({
               <a
                 key={row.id}
                 title={row.name}
-                href={`/tft/units/${encodeURIComponent(row.id)}?bucket=${encodeURIComponent(bucket)}&region=${linkRegion}&days=${days}`}
+                href={withLang(`/tft/units/${encodeURIComponent(row.id)}?bucket=${encodeURIComponent(bucket)}&region=${linkRegion}&days=${days}`)}
                 className={`${gridCls} gap-x-2 gap-y-1 items-center bg-surface-raised border border-border-subtle rounded px-2 py-1.5 hover:border-accent-a40 transition-colors`}
                 style={nStyle}
               >

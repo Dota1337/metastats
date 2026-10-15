@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useI18n } from './lib/i18n';
 
 export default function ErrorBoundary({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   useEffect(() => {
     console.error('[app error]', error);
   }, [error]);
@@ -21,7 +21,7 @@ export default function ErrorBoundary({ error, reset }: { error: Error & { diges
           >
             {t('error.retry')}
           </button>
-          <a href="/" className="border border-border-default hover:border-[#c89b3c] text-fg-secondary hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
+          <a href={withLang("/")} className="border border-border-default hover:border-[#c89b3c] text-fg-secondary hover:text-white text-sm px-6 py-2.5 rounded-lg transition-colors">
             {t('notFound.home')}
           </a>
         </div>

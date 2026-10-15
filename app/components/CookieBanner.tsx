@@ -11,7 +11,7 @@ import { useI18n } from '../lib/i18n';
 const STORAGE_KEY = 'metastats-cookie-consent';
 
 export default function CookieBanner() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function CookieBanner() {
       </div>
       <p className="text-fg-secondary text-xs leading-relaxed mb-3">
         {t('cookie.body')}{' '}
-        <a href="/datenschutz" className="text-brand hover:underline">
+        <a href={withLang("/datenschutz")} className="text-brand hover:underline">
           {t('legal.privacy')}
         </a>
         .

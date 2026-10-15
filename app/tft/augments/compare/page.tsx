@@ -24,7 +24,7 @@ interface CompMatch {
 }
 
 export default function TftAugmentsComparePage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const search = useSearchParams();
   const apiNameA = decodeURIComponent(search.get('a') || '');
   const apiNameB = decodeURIComponent(search.get('b') || '');
@@ -38,7 +38,7 @@ export default function TftAugmentsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/augments" className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
+        <a href={withLang("/tft/augments")} className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
 
         <h1 className="text-white text-xl font-medium mt-2 mb-5">{t('tft.augmentsCompare.title')}</h1>
 
@@ -49,7 +49,7 @@ export default function TftAugmentsComparePage() {
               {t('tft.augmentsCompare.pickTwo.hint')}
             </div>
             <a
-              href="/tft/augments"
+              href={withLang("/tft/augments")}
               className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
             >
               {t('tft.augmentsCompare.goToList')}
@@ -90,6 +90,7 @@ function AugmentPanel({
   t: (k: any) => string;
   side: 'a' | 'b';
 }) {
+  const { withLang } = useI18n();
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
@@ -168,7 +169,7 @@ function AugmentPanel({
               return (
                 <a
                   key={`${m.trait}__${m.carry}`}
-                  href={`/tft/comps/${encodeURIComponent(compSlug)}`}
+                  href={withLang(`/tft/comps/${encodeURIComponent(compSlug)}`)}
                   className="flex items-center gap-2 p-2 rounded bg-surface-raised border border-border-subtle hover:border-accent-a50 transition-colors"
                 >
                   {carryUrl ? (

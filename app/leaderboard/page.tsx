@@ -11,7 +11,7 @@ import { regionLabel } from '../lib/regions';
 import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
 
 export default function Leaderboard() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
 
   const REGIONS = [
@@ -451,7 +451,7 @@ export default function Leaderboard() {
             {entries.map((entry, i) => (
               <a
                 key={i}
-                href={makePlayerLink(entry.summonerName, entry.region, entry.puuid)}
+                href={withLang(makePlayerLink(entry.summonerName, entry.region, entry.puuid))}
                 className="block md:grid md:grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-3 border-b border-border-subtle/30 hover:bg-surface-raised transition-colors items-center"
               >
                 {/* Mobile layout */}

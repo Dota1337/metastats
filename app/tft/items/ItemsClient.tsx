@@ -38,6 +38,7 @@ export default function ItemsClient({ initialFilters, initial }: {
   initialFilters: Filters;
   initial: StatsInitial<ItemRow> | null;
 }) {
+  const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
   const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
@@ -169,7 +170,7 @@ export default function ItemsClient({ initialFilters, initial }: {
                       <div className="w-10 h-10 rounded-md bg-surface-overlay flex items-center justify-center text-[9px] text-fg-muted px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
                     <a
-                      href={`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
+                      href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
                       className="block text-white font-medium truncate flex-1 md:flex-initial after:absolute after:inset-0"
                     >{meta?.name || prettyApi(it.apiName)}</a>
                   </div>
@@ -191,7 +192,7 @@ export default function ItemsClient({ initialFilters, initial }: {
                       return (
                         <a
                           key={i}
-                          href={`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`}
+                          href={withLang(`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
                           className="relative z-10 w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
                           style={{ borderColor }}
                           title={ch?.name}

@@ -47,7 +47,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
   // Waehrend eines Abrufs leer: scheitert er, laedt die Rueckkehr zu den
   // vorigen Filtern neu, statt die Fehlermeldung stehen zu lassen.
   const shownKey = useRef<string | null>(initial ? `${championListKey(CHAMPION_LIST_DEFAULTS)}|0` : null);
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
 
   const REGIONS = [
     { value: 'euw1', label: 'EUW' },
@@ -343,7 +343,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
                 return (
                   <a
                     key={champ.key}
-                    href={`/champions/${champ.id}`}
+                    href={withLang(`/champions/${champ.id}`)}
                     className="block md:grid md:grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-2 items-center hover:bg-surface-raised transition-colors"
                   >
                     {/* Mobile layout */}

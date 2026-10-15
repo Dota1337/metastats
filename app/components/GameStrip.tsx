@@ -3,6 +3,7 @@ import { useState, useEffect, useTransition } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useI18n } from '../lib/i18n';
 import { GAMES, GAME_COOKIE, detectGameFromPath, mapPathToGame, type Game } from '../lib/games';
+import { stripLangPrefix } from '../lib/lang-path';
 
 // Vollbreiter Game-Streifen unter dem Prototyp-Banner. Ersetzt seit Welle 1.5
 // die zwei Icon-Buttons, die vorher in der Nav-Leiste standen (GameSwitcher).
@@ -34,7 +35,7 @@ const TARGET_LABELS: { match: RegExp; key: TKey }[] = [
 ];
 
 export default function GameStrip() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const router = useRouter();
   const pathname = usePathname() || '/';
   const pathGame = detectGameFromPath(pathname);
@@ -61,7 +62,7 @@ export default function GameStrip() {
   if (pathname.startsWith('/internal')) return null;
 
   const targetLabel = (href: string) => {
-    const hit = TARGET_LABELS.find(r => r.match.test(href));
+    const hit = TARGET_LABELS.find(r => r.match.test(stripLangPrefix(href)));
     return hit ? t(hit.key) : null;
   };
 
@@ -108,7 +109,7 @@ export default function GameStrip() {
         ) : (
           <a
             key={g.id}
-            href={href}
+            href={withLang(href)}
             onClick={e => go(e, g.id, href)}
             className="game-strip-half"
             data-half={g.id}

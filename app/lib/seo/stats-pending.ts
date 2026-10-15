@@ -20,6 +20,7 @@
 import {
   FILTERS_STORAGE_KEY, URL_FILTER_KEYS, VELOCITY_SHIFTS, FILTER_DEFAULTS, DAYS_MIN, DAYS_MAX,
 } from '../tft-filters';
+import { PREFIX_LANGS } from '../lang-path';
 
 export const PENDING_ATTR = 'data-tft-pending';
 // Ausdruecklich gewaehlter Rang aus dem Speicher; das <style> vergleicht ihn
@@ -29,8 +30,9 @@ export const USER_BUCKET_ATTR = 'data-tft-ub';
 // statt einer ewigen Ladeanzeige.
 const RELEASE_MS = 8000;
 
-// Seiten mit Server-Startdaten (Comp-Liste seit Schritt 4).
-const PATHS = /^\/tft\/(units|items|traits|comps)\/?$/;
+// Seiten mit Server-Startdaten (Comp-Liste seit Schritt 4), auch unter den
+// Sprach-Adressen (/en/tft/units).
+const PATHS = new RegExp(`^(?:/(?:${PREFIX_LANGS.join('|')}))?/tft/(?:units|items|traits|comps)/?$`);
 
 export const STATS_PENDING_SCRIPT = `(function(){try{
 var d=document.documentElement;

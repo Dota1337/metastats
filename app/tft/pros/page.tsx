@@ -105,7 +105,7 @@ export default function TftProsPage() {
 }
 
 function ProsDirectory() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -302,7 +302,7 @@ function ProsDirectory() {
               return (
                 <a
                   key={p.puuid ?? p.pro_name}
-                  href={slug ? `/tft/player/${slug}?region=${p.region}` : undefined}
+                  href={withLang(slug ? `/tft/player/${slug}?region=${p.region}` : undefined)}
                   className="grid grid-cols-[2.5rem_1fr_5.5rem_6rem_4rem_5rem_3rem] gap-2 px-4 py-2 items-center text-xs hover:bg-white/5 border-t border-border-subtle"
                 >
                   <div className="flex-shrink-0">

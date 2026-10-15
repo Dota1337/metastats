@@ -70,7 +70,7 @@ export default function CompCard({
   // darunter zeigt die Detailseite sie in der Analyse.
   dna?: React.ReactNode;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   // Carries an den Items erkannt (tft-comp-roles), wie in der Liste — der
@@ -160,21 +160,21 @@ export default function CompCard({
         onClick: (e: React.MouseEvent) => {
           if (e.defaultPrevented) return;
           if (e.metaKey || e.ctrlKey) {
-            window.open(href, '_blank', 'noopener');
+            window.open(withLang(href), '_blank', 'noopener');
             return;
           }
-          router.push(href);
+          router.push(withLang(href));
         },
         onAuxClick: (e: React.MouseEvent) => {
           if (e.button === 1) {
             e.preventDefault();
-            window.open(href, '_blank', 'noopener');
+            window.open(withLang(href), '_blank', 'noopener');
           }
         },
         onKeyDown: (e: React.KeyboardEvent) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            router.push(href);
+            router.push(withLang(href));
           }
         },
       }
@@ -208,7 +208,7 @@ export default function CompCard({
             <h1 className="text-white text-sm font-medium truncate">
               {parts ? (
                 <a
-                  href={`/tft/traits/${encodeURIComponent(parts.trait)}`}
+                  href={withLang(`/tft/traits/${encodeURIComponent(parts.trait)}`)}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-accent transition-colors"
                   title={traitTooltip || undefined}
@@ -220,7 +220,7 @@ export default function CompCard({
                 <span key={cid}>
                   {i > 0 && ' & '}
                   <a
-                    href={`/tft/units/${encodeURIComponent(cid)}`}
+                    href={withLang(`/tft/units/${encodeURIComponent(cid)}`)}
                     onClick={e => e.stopPropagation()}
                     className="hover:text-accent transition-colors"
                     title={tftChampionTooltip(assets, cid) || undefined}
@@ -302,7 +302,7 @@ export default function CompCard({
                   className="flex flex-col items-center gap-0.5 hover:scale-105 transition"
                 >
                   <a
-                    href={`/tft/units/${encodeURIComponent(u.characterId)}`}
+                    href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}`)}
                     onClick={e => e.stopPropagation()}
                     className="block"
                     title={ch?.name || u.characterId}
@@ -335,7 +335,7 @@ export default function CompCard({
                         return (
                           <a
                             key={it.apiName}
-                            href={`/tft/items/${encodeURIComponent(it.apiName)}`}
+                            href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                             onClick={e => e.stopPropagation()}
                             className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
                             title={meta?.name || it.apiName}

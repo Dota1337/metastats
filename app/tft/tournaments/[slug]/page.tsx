@@ -94,7 +94,7 @@ function cleanTournamentName(raw: string): string {
 }
 
 export default function TftTournamentDetailPage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const slug = decodeURIComponent(String(params?.slug || ''));
   const [tournament, setTournament] = useState<Tournament | null | undefined>(undefined);
@@ -191,7 +191,7 @@ export default function TftTournamentDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="tournaments" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href="/tft/tournaments" className="text-accent text-xs hover:underline">← {t('tft.tournaments.title')}</a>
+        <a href={withLang("/tft/tournaments")} className="text-accent text-xs hover:underline">← {t('tft.tournaments.title')}</a>
 
         {/* Header */}
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
@@ -371,6 +371,7 @@ function LiveStandings({ rows, live, locale }: { rows: LiveRow[] | null; live: b
 const playerLinkCache = new Map<string, { gameName: string; tagLine: string; region: string }>();
 
 function PlayerNameLink({ puuid, name }: { puuid: string; name: string }) {
+  const { withLang } = useI18n();
   const [link, setLink] = useState<string | null>(null);
 
   useEffect(() => {
@@ -393,7 +394,7 @@ function PlayerNameLink({ puuid, name }: { puuid: string; name: string }) {
 
   if (link) {
     return (
-      <a href={link} className="text-white font-medium hover:text-accent truncate">
+      <a href={withLang(link)} className="text-white font-medium hover:text-accent truncate">
         {name}
       </a>
     );

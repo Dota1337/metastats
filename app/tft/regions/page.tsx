@@ -194,6 +194,7 @@ function RegionRowCard({
   assets: TftAssetsBundle | null;
   t: (k: any) => string;
 }) {
+  const { withLang } = useI18n();
   const parts = parseClusterKey(row.cluster_key);
   const trait = parts && assets ? assets.traits[parts.trait] : null;
   const traitName = trait?.name || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
@@ -210,7 +211,7 @@ function RegionRowCard({
 
   return (
     <a
-      href={`/tft/comps/${encodeURIComponent(row.cluster_key)}?bucket=master_plus`}
+      href={withLang(`/tft/comps/${encodeURIComponent(row.cluster_key)}?bucket=master_plus`)}
       className="block bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-center gap-3">

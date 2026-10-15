@@ -73,7 +73,7 @@ function Section({
   hrefOf: (b: Bookmark) => string;
   onRemove: (b: Bookmark) => void;
 }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   return (
     <div>
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{title}</h2>
@@ -87,7 +87,7 @@ function Section({
               className="flex items-center gap-2 bg-surface-base border border-border-subtle rounded p-2"
             >
               <a
-                href={hrefOf(b)}
+                href={withLang(hrefOf(b))}
                 className="flex-1 min-w-0 text-white text-sm truncate hover:text-accent transition-colors"
               >
                 {b.label}

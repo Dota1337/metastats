@@ -3,6 +3,7 @@ import path from "path";
 import { closeSync, openSync, readdirSync, readFileSync, readSync } from "fs";
 import { withSentryConfig } from "@sentry/nextjs";
 import { SECURITY_HEADERS } from "./app/lib/security-headers";
+import { PREFIX_LANGS } from "./app/lib/lang-path";
 
 // Wochendateien, deren Kopf ein anderes Set als public/tft-set.json nennt
 // (die Dateien beginnen mit {"set":N, collect-tft-allranks.mjs). Kann der Kopf
@@ -56,8 +57,13 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/(.*)', headers: SECURITY_HEADERS }];
   },
+  // Jede Weiterleitung gilt auch unter den Sprach-Adressen (/en/tft → /en/tft/comps).
+  // Redirects laufen VOR der Middleware; ohne die Spiegelung schriebe sie
+  // /en/tft auf /tft um, und das gibt es als Seite nicht (404) — und
+  // /en/tft/onetricks zeigte die abgeschaltete Seite statt Rising.
   async redirects() {
-    return [
+    const langSource = `/:lang(${PREFIX_LANGS.join('|')})`;
+    const base = [
       {
         source: '/tft',
         destination: '/tft/comps',
@@ -92,6 +98,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
     ];
+    return base.flatMap(r => [r, { ...r, source: langSource + r.source, destination: '/:lang' + r.destination }]);
   },
 };
 

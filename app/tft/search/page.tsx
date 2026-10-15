@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { searchExactNames } from '../../lib/tft-player-search-server';
 import { tftProfileHref } from '../../lib/tft-player-search';
 import TftSearchResults from './TftSearchResults';
+import { getServerPathLang } from '../../lib/server-lang';
+import { withLangPrefix } from '../../lib/lang-path';
 
 // /tft/search?q=Winter — Enter in der Nav-Suche ohne Tag.
 //
@@ -19,6 +21,8 @@ const MAX_QUERY = 40;
 
 export default async function TftSearchPage({ searchParams }: { searchParams: Promise<{ q?: string | string[] }> }) {
   const raw = (await searchParams).q;
+  // Sprach-Adresse (/en/search) bleibt beim Sprung aufs Profil erhalten.
+  const pathLang = await getServerPathLang();
   const q = (Array.isArray(raw) ? raw[0] : raw || '').slice(0, MAX_QUERY).trim();
 
   // Mit Tag ist der Spieler eindeutig — wie bisher direkt aufs Profil.
@@ -26,12 +30,12 @@ export default async function TftSearchPage({ searchParams }: { searchParams: Pr
   if (hash >= 0 && q.slice(hash + 1).trim()) {
     const name = q.slice(0, hash).trim();
     const tag = q.slice(hash + 1).trim();
-    if (name) redirect(`/tft/player/${encodeURIComponent(name)}--${encodeURIComponent(tag)}`);
+    if (name) redirect(withLangPrefix(pathLang, `/tft/player/${encodeURIComponent(name)}--${encodeURIComponent(tag)}`));
   }
   const name = (hash >= 0 ? q.slice(0, hash) : q).trim();
 
   const hits = name ? await searchExactNames(name) : [];
-  if (hits && hits.length === 1) redirect(tftProfileHref(hits[0]));
+  if (hits && hits.length === 1) redirect(withLangPrefix(pathLang, tftProfileHref(hits[0])));
 
   return <TftSearchResults q={name} initialHits={hits || []} />;
 }

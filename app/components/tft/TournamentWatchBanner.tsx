@@ -15,7 +15,7 @@ interface LiveTournament {
 }
 
 export default function TournamentWatchBanner() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [tournaments, setTournaments] = useState<LiveTournament[]>([]);
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function TournamentWatchBanner() {
         {tournaments.map(tr => (
           <a
             key={tr.id}
-            href={`/tft/tournaments/${encodeURIComponent(tr.id)}`}
+            href={withLang(`/tft/tournaments/${encodeURIComponent(tr.id)}`)}
             className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-3 hover:border-[#a892ff]/40 transition-colors"
           >
             {tr.logo_url ? (

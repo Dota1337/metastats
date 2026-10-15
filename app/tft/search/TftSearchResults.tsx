@@ -10,7 +10,7 @@ import { tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from
 // das nichts, zeigt sie Konten, deren Name mit der Eingabe beginnt.
 
 export default function TftSearchResults({ q, initialHits }: { q: string; initialHits: TftAccountHit[] }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [hits, setHits] = useState<TftAccountHit[]>(initialHits);
   const [loading, setLoading] = useState(initialHits.length === 0 && q.length > 0);
 
@@ -22,7 +22,7 @@ export default function TftSearchResults({ q, initialHits }: { q: string; initia
         const r = await fetch(`/api/tft/search-riot?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
         const d: { players?: TftAccountHit[] } = r.ok ? await r.json() : {};
         const riot = d.players || [];
-        if (riot.length === 1) { window.location.replace(tftProfileHref(riot[0])); return; }
+        if (riot.length === 1) { window.location.replace(withLang(tftProfileHref(riot[0]))); return; }
         if (riot.length > 1) setHits(riot);
         else if (q.replace(/\s/g, '').length >= 3) {
           const p = await fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
@@ -62,7 +62,7 @@ export default function TftSearchResults({ q, initialHits }: { q: string; initia
               return (
                 <li key={h.puuid}>
                   <a
-                    href={tftProfileHref(h)}
+                    href={withLang(tftProfileHref(h))}
                     className="flex items-center justify-between gap-3 min-h-14 px-4 py-3 rounded-lg bg-surface-base border border-border-subtle hover:border-brand transition-colors"
                   >
                     <span className="min-w-0 truncate text-white">

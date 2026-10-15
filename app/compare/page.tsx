@@ -509,7 +509,7 @@ function parseMultiLine(line: string, region: string): PlayerResult {
 }
 
 function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; setRegion: (r: string) => void; initialQuery: string }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const [input, setInput] = useState(initialQuery);
   const [results, setResults] = useState<PlayerResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -634,7 +634,7 @@ function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; s
             const marketValue = data?.storedMarketValue;
 
             return (
-              <a key={i} href={getPlayerLink(player)}
+              <a key={i} href={withLang(getPlayerLink(player))}
                 className="bg-surface-base border border-border-subtle rounded-lg p-4 flex items-center gap-3 hover:border-accent-a40 transition-colors">
                 {summoner?.profileIconId ? (
                   <DdragonImg path={`img/profileicon/${summoner.profileIconId}.png`}

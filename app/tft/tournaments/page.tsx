@@ -185,11 +185,12 @@ function Section({ title, accent, pulse, children }: { title: string; accent: st
 }
 
 function TournamentRow({ t, locale }: { t: Tournament; locale: string }) {
+  const { withLang } = useI18n();
   const tierColor = t.tier ? (TIER_COLORS[t.tier] || 'var(--fg-secondary)') : 'var(--fg-secondary)';
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'short' }) : '—';
   return (
     <a
-      href={`/tft/tournaments/${encodeURIComponent(t.id)}`}
+      href={withLang(`/tft/tournaments/${encodeURIComponent(t.id)}`)}
       className="block bg-surface-base border border-border-subtle rounded p-3 sm:p-4 hover:border-accent-a40 transition-colors"
     >
       <div className="flex items-start gap-3 flex-wrap">

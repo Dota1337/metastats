@@ -7,6 +7,7 @@ import { withTimeout } from './lib/og/frame';
 import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
 import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
+import { LANGS, langAlternates, langPathsEnabled, withLangPrefix } from './lib/lang-path';
 
 // Die Route ist dynamisch (das Snapshot-Manifest wird mit cache: 'no-store'
 // gelesen, snapshot-lookup.ts), ein `revalidate` griffe nicht. Deshalb merkt
@@ -142,12 +143,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const sources = { comps: compEntries, units: unitEntries, items: itemEntries, traits: traitEntries, champions: lolChampionEntries };
   const dynamic = await Promise.all(Object.entries(sources).map(([name, load]) => remembered(name, load)));
   const seen = new Set<string>();
-  return [...STATIC_ROUTES, ...dynamic.flat()]
-    .filter(r => (seen.has(r.path) ? false : (seen.add(r.path), true)))
-    .map(r => ({
-      url: `${SITE_URL}${r.path}`,
+  const entries = [...STATIC_ROUTES, ...dynamic.flat()]
+    .filter(r => (seen.has(r.path) ? false : (seen.add(r.path), true)));
+  // Jede Seite in allen sechs Sprach-Adressen, jede mit allen Alternativen
+  // (hreflang, x-default = Englisch). Notschalter LANG_PATHS=0: nur Deutsch.
+  if (!langPathsEnabled()) {
+    return entries.map(r => ({ url: `${SITE_URL}${r.path}`, lastModified: now, changeFrequency: r.changeFrequency, priority: r.priority }));
+  }
+  return entries.flatMap(r => {
+    const languages = langAlternates(SITE_URL, r.path);
+    return LANGS.map(l => ({
+      url: `${SITE_URL}${withLangPrefix(l, r.path)}`,
       lastModified: now,
       changeFrequency: r.changeFrequency,
       priority: r.priority,
+      alternates: { languages },
     }));
+  });
 }

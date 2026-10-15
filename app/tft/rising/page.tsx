@@ -62,7 +62,7 @@ function Placements({ counts }: { counts: number[] }) {
 }
 
 export default function TftRisingPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const tierName = (tier: string) => t(`tier.${tier.toLowerCase()}` as Parameters<typeof t>[0]);
   const [days, setDays] = useState<Days>(1);
   const [region, setRegion] = useState<string>('all');
@@ -129,11 +129,11 @@ export default function TftRisingPage() {
                   <span className="text-fg-muted text-xs tabular-nums w-6 font-medium">#{idx + 1}</span>
                   <RankEmblem tier={p.after.tier} label={tierName(p.after.tier)} className="w-8 h-8 -my-1" />
                   <a
-                    href={p.gameName
+                    href={withLang(p.gameName
                       ? p.tagLine
                         ? tftProfileHref({ puuid: p.puuid, gameName: p.gameName, tagLine: p.tagLine, region: p.region })
                         : `/tft/player/${encodeURIComponent(p.gameName)}?region=${p.region}&puuid=${encodeURIComponent(p.puuid)}`
-                      : undefined}
+                      : undefined)}
                     className="text-white font-medium hover:text-[#a892ff] truncate min-w-0 flex-1"
                   >
                     {display}{p.tagLine ? <span className="text-fg-muted">#{p.tagLine}</span> : null}

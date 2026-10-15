@@ -77,6 +77,7 @@ export default function ChampionDetailPage({ initial = null, builds = null }: {
   initial?: ChampionDetailStart | null;
   builds?: ChampionBuildsStart | null;
 }) {
+  const { withLang } = useI18n();
   const { id } = useParams();
   const [champion, setChampion] = useState<ChampionData | null>(initial?.champion ?? null);
   const [version, setVersion] = useState(initial?.version ?? '');
@@ -161,7 +162,7 @@ export default function ChampionDetailPage({ initial = null, builds = null }: {
         <div className="max-w-4xl mx-auto px-6 py-20 text-center">
           <div className="text-red-400 text-xl mb-4">{error}</div>
           <a
-            href="/champions"
+            href={withLang("/champions")}
             className="inline-block px-6 py-2 bg-surface-overlay text-fg-secondary rounded hover:text-white transition-colors"
           >
             &larr; {t('champDetail.back')}
@@ -190,7 +191,7 @@ export default function ChampionDetailPage({ initial = null, builds = null }: {
               />
               <div>
                 <a
-                  href="/champions"
+                  href={withLang("/champions")}
                   className="text-fg-secondary text-xs hover:text-white transition-colors mb-2 inline-block"
                 >
                   &larr; {t('champDetail.back')}

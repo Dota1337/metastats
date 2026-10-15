@@ -15,7 +15,7 @@ import { filtersToQueryString, type Filters } from './StatsFilterBar';
 // nicht (gemessen 2026-09-28: Seite KR, Link region=all).
 const noopSubscribe = () => () => {};
 export default function CompsTabs({ active, filters }: { active: 'list' | 'overview'; filters: Filters }) {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const qs = mounted ? `?${filtersToQueryString(filters)}` : '';
   const tabs = [
@@ -35,7 +35,7 @@ export default function CompsTabs({ active, filters }: { active: 'list' | 'overv
         return (
           <Link
             key={tab.key}
-            href={tab.href}
+            href={withLang(tab.href)}
             aria-current={on ? 'page' : undefined}
             className={`inline-flex items-center gap-2 px-5 py-2 rounded-md text-sm font-semibold transition-colors ${
               on ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'

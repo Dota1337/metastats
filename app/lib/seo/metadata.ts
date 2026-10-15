@@ -1,7 +1,7 @@
 import 'server-only';
 import type { Metadata } from 'next';
-import { getServerLang } from '../server-lang';
-import type { Lang } from '../i18n';
+import { getServerLang, getServerPathLang } from '../server-lang';
+import type { Lang } from '../lang-path';
 import { buildMetadata, seoText, type PageKey } from './copy';
 
 // Seitentitel, Beschreibung und canonical in der Sprache des Besuchers.
@@ -25,9 +25,9 @@ export async function pageMetadata(
   name?: string | ((lang: Lang) => Promise<string> | string),
   opts?: { noindex?: boolean },
 ): Promise<Metadata> {
-  const lang = await getServerLang();
+  const [lang, pathLang] = await Promise.all([getServerLang(), getServerPathLang()]);
   const resolved = typeof name === 'function' ? await name(lang) : name;
   const vars = resolved != null ? { name: resolved } : undefined;
-  const meta = buildMetadata(seoText(key, lang, vars), lang, path, key.startsWith('tft.') ? 'tft' : 'lol');
+  const meta = buildMetadata(seoText(key, lang, vars), lang, path, key.startsWith('tft.') ? 'tft' : 'lol', pathLang);
   return opts?.noindex ? { ...meta, robots: { index: false, follow: true } } : meta;
 }

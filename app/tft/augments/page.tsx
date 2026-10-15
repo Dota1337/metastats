@@ -39,7 +39,7 @@ function iconTierFromPath(iconPath: string | null | undefined): number | null {
 }
 
 export default function TftAugmentsReferencePage() {
-  const { t, lang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
   const [stageFilter, setStageFilter] = useState<'all' | AugmentStage>('all');
@@ -227,7 +227,7 @@ export default function TftAugmentsReferencePage() {
               return (
                 <a
                   key={a.apiName}
-                  href={`/tft/augments/${encodeURIComponent(a.apiName)}`}
+                  href={withLang(`/tft/augments/${encodeURIComponent(a.apiName)}`)}
                   className="flex items-start gap-3 p-3 bg-surface-base border border-border-subtle rounded hover:border-accent-a40 transition-colors"
                 >
                   <div className="relative w-12 h-12 rounded border-2 overflow-hidden flex-shrink-0" style={{ borderColor: tierColor }}>

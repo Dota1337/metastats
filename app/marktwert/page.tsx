@@ -33,7 +33,7 @@ interface Player {
 }
 
 export default function MarktwertPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
 
   const REGIONS = [
     { value: 'all', label: t('mv.allRegions') },
@@ -180,7 +180,7 @@ export default function MarktwertPage() {
             <div className="text-fg-secondary text-sm mb-2">{t('mv.noData')}</div>
             <div className="text-fg-muted text-xs">
               {t('mv.noDataDesc')}
-              <br />{t('mv.buildDb')} <a href="/" className="text-accent hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
+              <br />{t('mv.buildDb')} <a href={withLang("/")} className="text-accent hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
             </div>
           </div>
         ) : (
@@ -227,7 +227,7 @@ export default function MarktwertPage() {
               {players.slice(0, 25).map((p, i) => (
                 <a
                   key={p.id}
-                  href={makePlayerLink(p.name, p.region)}
+                  href={withLang(makePlayerLink(p.name, p.region))}
                   className="block md:grid md:grid-cols-[3rem_1fr_5rem_3.5rem_5rem_6rem_6rem] gap-3 px-4 py-2.5 border-b border-border-subtle/30 hover:bg-surface-raised transition-colors items-center"
                 >
                   {/* Mobile */}
@@ -310,7 +310,7 @@ export default function MarktwertPage() {
                       {tierGainers.map((p, i) => (
                         <a
                           key={i}
-                          href={makePlayerLink(p.name, p.region)}
+                          href={withLang(makePlayerLink(p.name, p.region))}
                           className="flex items-center justify-between px-4 py-2 hover:bg-surface-raised transition-colors"
                         >
                           <div>
@@ -351,7 +351,7 @@ export default function MarktwertPage() {
                       {tierLosers.map((p, i) => (
                         <a
                           key={i}
-                          href={makePlayerLink(p.name, p.region)}
+                          href={withLang(makePlayerLink(p.name, p.region))}
                           className="flex items-center justify-between px-4 py-2 hover:bg-surface-raised transition-colors"
                         >
                           <div>

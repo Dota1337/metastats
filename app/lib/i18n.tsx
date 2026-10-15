@@ -1,8 +1,12 @@
 'use client';
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { COMPANION_TRANSLATIONS } from './i18n-companion';
+import { DEFAULT_LANG, LANG_COOKIE, isLang, pathLangOf, switchLangPath, withLangPrefix, type Lang } from './lang-path';
 
-export type Lang = 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr';
+// Sprachcodes stehen in lang-path.ts (Blatt-Modul, auch fuer die Middleware).
+export type { Lang };
+export { LANG_COOKIE };
 
 export const LANGUAGES: { code: Lang; label: string; flag: string; flagUrl: string; country: string }[] = [
   { code: 'de', label: 'Deutsch', flag: '\uD83C\uDDE9\uD83C\uDDEA', flagUrl: 'https://flagcdn.com/w40/de.png', country: 'Deutschland' },
@@ -4224,20 +4228,37 @@ export type TranslationKey = keyof typeof translations;
 
 interface I18nContextType {
   lang: Lang;
-  setLang: (lang: Lang) => void;
+  /** Sprache waehlen. true = die Seite laedt unter der Adresse der Zielsprache
+   *  neu (Sprach-Adresse `/en/…`); der Aufrufer darf dann nichts mehr tun. */
+  setLang: (lang: Lang) => boolean;
   t: (key: TranslationKey) => string;
+  /** Sprache der Adresse: Vorsatz-Sprache, ohne Vorsatz 'de'. */
+  pathLang: Lang;
+  /** Internen Link in der Sprache der Adresse (`/tft/comps` → `/en/tft/comps`). */
+  withLang: WithLang;
 }
+
+type WithLang = {
+  (href: string): string;
+  (href: string | undefined): string | undefined;
+};
 
 const I18nContext = createContext<I18nContextType>({
   lang: 'de',
-  setLang: () => {},
+  setLang: () => false,
   t: (key) => translations[key]?.de || key,
+  pathLang: 'de',
+  withLang: ((href: string | undefined) => href) as WithLang,
 });
 
-export const LANG_COOKIE = 'metastats-lang';
-
 export function I18nProvider({ children, initialLang = 'de' }: { children: ReactNode; initialLang?: Lang }) {
-  const [lang, setLangState] = useState<Lang>(initialLang);
+  // Sprach-Adressen (lang-path.ts): unter `/en/…` gilt die Adresse, nicht
+  // Cookie oder Speicher. Aus usePathname und nicht als Prop vom Layout, weil
+  // das Layout beim Navigieren nicht neu rendert.
+  const pathLang = pathLangOf(usePathname());
+  const prefixed = pathLang !== DEFAULT_LANG;
+  const [chosen, setChosen] = useState<Lang>(initialLang);
+  const lang = prefixed ? pathLang : chosen;
 
   useEffect(() => {
     // Keep <html lang="..."> in sync with current language (SEO + screen readers)
@@ -4247,31 +4268,46 @@ export function I18nProvider({ children, initialLang = 'de' }: { children: React
   }, [lang]);
 
   useEffect(() => {
-    // On first mount, reconcile with localStorage in case cookie was missing/stale
+    // On first mount, reconcile with localStorage in case cookie was missing/stale.
+    // Nicht unter einer Sprach-Adresse: dort entscheidet die Adresse.
+    if (prefixed) return;
     try {
-      const saved = localStorage.getItem(LANG_COOKIE) as Lang | null;
-      if (saved && LANGUAGES.some(l => l.code === saved) && saved !== lang) {
-        setLangState(saved);
+      const saved = localStorage.getItem(LANG_COOKIE);
+      if (isLang(saved) && saved !== chosen) {
+        setChosen(saved);
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setLang = (l: Lang) => {
-    setLangState(l);
+  const setLang = (l: Lang): boolean => {
     try { localStorage.setItem(LANG_COOKIE, l); } catch {}
     // Persist as cookie so SSR can read it on next request
     if (typeof document !== 'undefined') {
       document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
     }
+    // Unter einer Sprach-Adresse fuehrt die Wahl zur Adresse der Zielsprache
+    // (Deutsch = ohne Vorsatz). Volle Ladung: Titel, <html lang> und alle
+    // Server-Teile kommen so in der neuen Sprache.
+    if (prefixed && typeof window !== 'undefined') {
+      if (l === lang) return false;
+      const here = window.location;
+      window.location.assign(switchLangPath(l, here.pathname + here.search + here.hash));
+      return true;
+    }
+    setChosen(l);
+    return false;
   };
 
   const t = (key: TranslationKey): string => {
     return translations[key]?.[lang] || translations[key]?.en || key;
   };
 
+  const withLang = ((href: string | undefined) =>
+    href === undefined ? href : withLangPrefix(pathLang, href)) as WithLang;
+
   return (
-    <I18nContext.Provider value={{ lang, setLang, t }}>
+    <I18nContext.Provider value={{ lang, setLang, t, pathLang, withLang }}>
       {children}
     </I18nContext.Provider>
   );

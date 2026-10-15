@@ -1259,7 +1259,8 @@ async function checkHttpStatus(c, r) {
     const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });
     if (!res.ok) { wrong.push(`${path} → ${res.status} (soll 200)`); continue; }
     const html = await res.text();
-    if (!html.includes(`<html lang="${lang}"`)) wrong.push(`${path}: <html lang> ist nicht ${lang}`);
+    // Vercel setzt live data-dpl-id VOR lang, deshalb nicht auf die Reihenfolge verlassen.
+    if (!new RegExp('<html[^>]*\\slang="' + lang + '"').test(html)) wrong.push(`${path}: <html lang> ist nicht ${lang}`);
     const own = h => h === `/${lang}` || ['/', '?', '#'].some(sep => h.startsWith(`/${lang}${sep}`));
     const bad = [...html.matchAll(/\shref="([^"]*)"/g)].map(m => m[1]).filter(h => {
       if (!h.startsWith('/') || h.startsWith('//')) return false;
@@ -1280,7 +1281,7 @@ async function checkHttpStatus(c, r) {
   }
   const count = want => probes.filter(p => p.want === want).length;
   return wrong.length
-    ? r('broken', `${wrong.length}/${probes.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
+    ? r('broken', `${wrong.length}/${probes.length + langLinks.length} falsch: ${wrong.slice(0, 4).join('; ')}`)
     : r('ok', `${probes.length + langLinks.length} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${langLinks.length}× Sprach-Links)`);
 }
 

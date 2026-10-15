@@ -21,9 +21,9 @@ const runeTrees = [
   { id: 8400, name: 'Resolve', icon: 'r.png', slots: [{ runes: [{ id: 8437, name: 'Grasp', icon: 'g.png' }] }] },
 ];
 const summonerData = {
-  SummonerFlash: { id: 'SummonerFlash', key: '4', image: { full: 'SummonerFlash.png' } },
-  SummonerDot: { id: 'SummonerDot', key: '14', image: { full: 'SummonerDot.png' } },
-  SummonerHeal: { id: 'SummonerHeal', key: '7', image: { full: 'SummonerHeal.png' } },
+  SummonerFlash: { id: 'SummonerFlash', key: '4', name: 'Flash', image: { full: 'SummonerFlash.png' } },
+  SummonerDot: { id: 'SummonerDot', key: '14', name: 'Ignite', image: { full: 'SummonerDot.png' } },
+  SummonerHeal: { id: 'SummonerHeal', key: '7', name: 'Heal', image: { full: 'SummonerHeal.png' } },
 };
 const championData = {
   Ahri: { id: 'Ahri', key: '103', name: 'Ahri', image: { full: 'Ahri.png' } },
@@ -47,6 +47,9 @@ test('nur benutzte Namen, aber alle, die der Block zeigt', () => {
   assert.equal(a.runeIndex[8112].name, 'Electrocute');
   assert.deepEqual(Object.keys(a.summoners).map(Number).sort((x, y) => x - y), [4, 14]);
   assert.equal(a.summoners[4].iconFile, 'SummonerFlash.png');
+  // Anzeigename, nicht die Kennung („SummonerDot“ hiesse sonst im Tooltip so)
+  assert.equal(a.summoners[4].name, 'Flash');
+  assert.equal(a.summoners[14].name, 'Ignite');
   assert.deepEqual(Object.keys(a.championMap), ['157']);
   assert.equal(a.championMap['157'].name, 'Yasuo');
 });
@@ -62,6 +65,15 @@ test('kaputte Eingaben ergeben leere Teile, keinen Fehler', () => {
   assert.deepEqual(buildsAssetsFrom(null, null, null), { runeIndex: {}, summoners: {}, championMap: {} });
   assert.deepEqual(buildsAssetsFrom({}, [], 'x'), { runeIndex: {}, summoners: {}, championMap: {} });
   assert.deepEqual(usedBuildsIds({ roles: undefined }).runes.size, 0);
+});
+
+test('Zauber ohne Anzeigenamen fallen auf die Kennung zurueck', () => {
+  const a = buildsAssetsFrom(null, {
+    X: { id: 'SummonerX', key: '99', name: '  ', image: { full: 'X.png' } },
+    Y: { id: 'SummonerY', key: '98', image: { full: 'Y.png' } },
+  }, null);
+  assert.equal(a.summoners[99].name, 'SummonerX');
+  assert.equal(a.summoners[98].name, 'SummonerY');
 });
 
 test('Item-Kennungen: Builds, Stiefel, Items aller Rollen, ohne leere Plaetze', () => {

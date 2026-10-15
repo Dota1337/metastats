@@ -51,7 +51,8 @@ export interface BuildsResponse {
 }
 
 export interface RuneInfo { name: string; icon: string }
-export interface SummonerInfo { id: number; key: string; iconFile: string }
+/** `name` = Anzeigename („Flash“); die Data-Dragon-Kennung („SummonerFlash“) steckt nur noch im Bild. */
+export interface SummonerInfo { id: number; name: string; iconFile: string }
 export interface ChampionInfo { key: string; id: string; name: string; image: string }
 export interface BuildsAssets {
   /** Baum- und Runen-Kennung → Name + Bild */
@@ -132,7 +133,8 @@ export function buildsAssetsFrom(
   for (const s of Object.values((summonerData || {}) as Record<string, any>)) {
     const id = Number(s?.key);
     if (Number.isFinite(id) && s?.image?.full && (!only || only.summoners.has(id))) {
-      summoners[id] = { id, key: s.id, iconFile: s.image.full };
+      const name = typeof s.name === 'string' && s.name.trim() ? s.name.trim() : String(s.id ?? id);
+      summoners[id] = { id, name, iconFile: s.image.full };
     }
   }
   const championMap: Record<string, ChampionInfo> = {};

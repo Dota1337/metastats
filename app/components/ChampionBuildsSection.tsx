@@ -229,8 +229,8 @@ export default function ChampionBuildsSection({ championKey, initial = null }: P
                       <img
                         key={spId}
                         src={ddImg(`spell/${summoners[spId].iconFile}`)}
-                        alt={summoners[spId].key}
-                        title={summoners[spId].key}
+                        alt={summoners[spId].name}
+                        title={summoners[spId].name}
                         className="w-8 h-8 rounded"
                       />
                     ) : (

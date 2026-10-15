@@ -3,8 +3,8 @@ import 'server-only';
 // Name, Zahlen und interne Links stehen gleich im ersten HTML, statt erst nach
 // mehreren Abrufen im Browser.
 //
-// Gleiche Regeln wie initial-data.ts: nur vorgerechnete Staende (lookupSnapshot)
-// und die Wochendateien von der Platte, nie die Datenbank; Filter ueber
+// Gleiche Regeln wie initial-data.ts: nur vorgerechnete Staende (lookupSnapshot,
+// Item-Bloecke aus dem Vorrat detail-builds), nie die Datenbank; Filter ueber
 // resolveFilters wie die Routen; hoechstens 1,5 s; Notschalter SEO_START_DATA=0.
 // Jeder Block (Hauptdatensatz, Comps, …) ist einzeln „bekannt“ oder null —
 // null heisst: der Browser fragt diesen Block wie bisher selbst ab. Ein Block
@@ -16,6 +16,7 @@ import { resolveFilters } from '../tft-supabase-reader';
 import { normalizeBucket } from '../tft-stats-loader';
 import { isExcludedItem, isExcludedUnit } from '../tft-excluded';
 import { coreFromListRow, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
+import { lookupDetailBuildsStock } from '../tft-detail-builds';
 import {
   compsOfTrait, compsWithItem, compsWithUnit, detailFiltersFrom, detailKey, sharedComponentItems,
   traitFiltersFrom, traitIdsForParam,
@@ -113,20 +114,22 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
   const left = deadline();
   const r = await resolveFor({ region: f.region, bucket: f.bucket, days: String(f.days) }, left);
   if (!r) return null;
-  const [unitsSnap, compsSnap] = await Promise.all([
+  const [unitsSnap, compsSnap, stock] = await Promise.all([
     withTimeout(snapshotPayload('units', r), left()),
     withTimeout(snapshotPayload('comps', r), left()),
+    withTimeout(lookupDetailBuildsStock(r), left()),
   ]);
 
   let detail: UnitDetailInitial['detail'] = null;
   const unitRows = listRows(unitsSnap, 'units');
   if (unitRows) {
-    const res = unitDetailBody({
+    // Item-Bloecke nur aus dem Vorrat der Standardansicht; ohne ihn laedt der
+    // Browser sie nach (itemsPending).
+    detail = unitDetailBody({
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
       core: coreFromListRow(unitRows.find(x => x.characterId === id)), coreKnown: true,
       filterSet: r.setNumber, filterPatch: r.patch,
-    });
-    if (res.statsLoaded) detail = res.body;
+    }, stock ? (stock.units[id] ?? null) : 'pending').body;
   }
   const compRows = listRows(compsSnap, 'comps');
   const comps = compRows ? compsWithUnit(compRows, id).map(compRef) : null;
@@ -141,8 +144,8 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
     for (const s of unit.topItemSets || []) for (const it of s.items || []) items.add(it);
     for (const arr of Object.values(unit.topItemsByTier || {}) as any[]) for (const it of arr || []) items.add(it.item);
     for (const arr of Object.values(unit.topItemSetsByTier || {}) as any[]) for (const s of arr || []) for (const it of s.items || []) items.add(it);
-    for (const slots of Object.values(unit.itemSlotOrderByTier || {}) as any[]) {
-      for (const entries of Object.values(slots || {}) as any[]) for (const e of entries || []) items.add(e.item);
+    for (const slots of Object.values(unit.itemSlotsByTier || {}) as any[]) {
+      for (const slot of Object.values(slots || {}) as any[]) for (const e of slot?.entries || []) items.add(e.item);
     }
   }
   for (const c of comps || []) {
@@ -184,20 +187,20 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
   const left = deadline();
   const r = await resolveFor({ region: f.region, bucket: f.bucket, days: String(f.days) }, left);
   if (!r) return null;
-  const [itemsSnap, compsSnap] = await Promise.all([
+  const [itemsSnap, compsSnap, stock] = await Promise.all([
     withTimeout(snapshotPayload('items', r), left()),
     withTimeout(snapshotPayload('comps', r), left()),
+    withTimeout(lookupDetailBuildsStock(r), left()),
   ]);
 
   let detail: ItemDetailInitial['detail'] = null;
   const itemRows = listRows(itemsSnap, 'items');
   if (itemRows) {
-    const res = itemDetailBody({
+    detail = itemDetailBody({
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
       core: coreFromListRow(itemRows.find(x => x.apiName === id)), coreKnown: true,
       filterSet: r.setNumber, filterPatch: r.patch,
-    });
-    if (res.statsLoaded) detail = res.body;
+    }, stock ? (stock.items[id] ?? null) : 'pending').body;
   }
   const compRows = listRows(compsSnap, 'comps');
   const comps = compRows

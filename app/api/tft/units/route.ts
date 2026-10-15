@@ -3,7 +3,8 @@ import { parseVelocity } from '../../../lib/query-params';
 import { normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
 import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
-import { coreFromListRow, unitDetailBody, type DetailCore } from '../../../lib/tft-detail-payload';
+import { coreFromListRow, unitDetailBody, type Blocks, type DetailCore, type UnitBuildsRaw } from '../../../lib/tft-detail-payload';
+import { unitBuildsFor } from '../../../lib/tft-detail-builds';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
@@ -80,16 +81,21 @@ export async function GET(request: NextRequest) {
     // Kernwerte (Spiele, Schnitt, Top 4, Sieg) aus derselben Quelle wie die
     // Liste — gleiche Region, gleicher Zeitraum, gleicher Rang. Vorher kamen
     // sie aus der EUW-Wochendatei, und Liste und Detail zeigten andere Zahlen.
-    // Die Item-Bloecke gibt es nur in den Wochendateien; die bleiben die Quelle
-    // (bei „alle Regionen" EUW, die groesste Stichprobe).
+    // Die Item-Bloecke (0096) aus der Datenbank: Vorrat der Standardansicht,
+    // sonst live (app/lib/tft-detail-builds.ts).
     let core: DetailCore | null = null;
     let coreKnown = false;
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
+    let builds: Blocks<UnitBuildsRaw> = 'failed';
     try {
       const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
       filterPatch = filters.patch;
+      const buildsP = unitBuildsFor(filters, id).catch((e: Error) => {
+        console.error('[units detail] builds', e.message);
+        return 'failed' as const;
+      });
       // Wie die Liste unten: der Snapshot enthaelt patchuebergreifende Zahlen,
       // bei einem konkret gewaehlten Patch also direkt aus der DB lesen.
       const hit = filters.patchFilter != null ? null : await lookupSnapshot('units', {
@@ -124,10 +130,11 @@ export async function GET(request: NextRequest) {
           : null;
       }
       coreKnown = true;
+      builds = await buildsP;
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const { body, cacheable } = unitDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch });
+    const { body, cacheable } = unitDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, builds);
     return cacheable ? cachedJson(body) : NextResponse.json(body);
   }
 

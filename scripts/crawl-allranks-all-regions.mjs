@@ -489,6 +489,7 @@ async function main() {
       'daily-crawl/crawl-meta',
       'daily-crawl/unit-stats',
       'daily-crawl/unit-top-items',
+      'daily-crawl/unit-builds',
       'daily-crawl/item-stats',
       'daily-crawl/trait-stats',
       'daily-crawl/comp-matchups',

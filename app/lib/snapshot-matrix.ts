@@ -10,7 +10,7 @@
 // theoretisch mögliche. Was nicht abgedeckt ist, fällt graceful auf den
 // existierenden Live-Calc-Pfad zurück.
 
-export type SnapshotEndpoint = 'comps' | 'units' | 'items' | 'traits' | 'comps-detail';
+export type SnapshotEndpoint = 'comps' | 'units' | 'items' | 'traits' | 'comps-detail' | 'detail-builds';
 
 export interface SnapshotPermutation {
   patch: 'current' | 'previous';   // alias-Form, der Publisher resolved
@@ -174,6 +174,16 @@ export const SNAPSHOT_MATRIX: Record<SnapshotEndpoint, SnapshotEndpointSpec> = {
   'comps-detail': {
     apiPath: '/api/tft/comps',
     permutations: [],
+  },
+  // Item-Bloecke der Unit- und Item-Detailseiten (0096, User 15.10.2026
+  // „Standardansicht sofort"): EIN Stand mit allen Units und Items, nur fuer
+  // die Standardansicht der Detailseiten (detailFiltersFrom: alle Regionen,
+  // 3 Tage, Master+). Andere Filter rechnen live je id
+  // (app/lib/tft-detail-builds.ts). optional: ein Fehlschlag traegt den
+  // Vorlauf weiter und kippt den Nachtlauf nicht.
+  'detail-builds': {
+    apiPath: '/api/tft/detail-builds',
+    permutations: [{ patch: 'current', region: 'all', days: 3, bucket: 'master_plus', minGames: 0, optional: true }],
   },
 };
 

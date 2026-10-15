@@ -26,6 +26,8 @@ interface ItemDetail {
     top4Rate?: number | null;
     top1Rate?: number | null;
   }[];
+  /** Startdaten ohne Traeger: der Browser laedt sie nach. */
+  itemsPending?: boolean;
 }
 
 // `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
@@ -45,14 +47,17 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
   // ALL comps that contain this item — we slice top-6 for the "comps with item"
   // display, but use the full list to aggregate item-combo stats below.
   const [compsWithItem, setCompsWithItem] = useState<any[]>(() => initial?.comps ?? []);
+  // Startdaten ohne Traeger (kein Vorrat fuer diese Filter): Kernwerte gleich
+  // zeigen, die Antwort der API trotzdem holen.
+  const initialPending = !!(initial?.detail?.item as ItemDetail | undefined)?.itemsPending;
   // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
-  const shownDetail = useRef<string | null>(initial?.detail ? initial.key : null);
+  const shownDetail = useRef<string | null>(initial?.detail && !initialPending ? initial.key : null);
   const shownComps = useRef<string | null>(initial?.comps ? initial.key : null);
   // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
   // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
   // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
   const loadedDetail = useRef(new Map<string, { hasData: boolean; item: ItemDetail | null }>(
-    initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
+    initial?.detail && !initialPending ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
   const loadedComps = useRef(new Map<string, any[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
   // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
   // Rest fragt der Effekt unten.
@@ -86,7 +91,13 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
           setHasData(v.hasData);
           setData(v.item);
         })
-        .catch(() => { if (cancelled) return; shownDetail.current = null; setHasData(false); setData(null); });
+        .catch(() => {
+          if (cancelled) return;
+          shownDetail.current = null;
+          // Nachladen der Traeger gescheitert: Kernwerte der Startdaten bleiben.
+          if (initialPending && key === initial?.key) { setData(d => (d ? { ...d, itemsPending: false } : d)); return; }
+          setHasData(false); setData(null);
+        });
     }
     // Cross-query: comps that frequently build this item on their lead carry.
     // Uses the existing carryItems jsonb (top-3-item triples per comp) so no

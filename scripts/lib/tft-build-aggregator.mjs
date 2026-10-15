@@ -284,9 +284,13 @@ function newUnitBucket() {
     // to replace the player-HP "damage atlas" (Match-V1 has no per-unit/in-combat
     // damage). tier -> itemCount ('0'..'3') -> { games, sumPlacement, top4, top1 }.
     carryPerf: new Map(),
-    // Item-Slot-Build-Order: tier -> slotIdx ('0'/'1'/'2') -> Map<item, count>.
-    // Match-V1 itemNames preserves build order — index 0 = first slot built.
+    // Item-Plaetze: tier -> slotIdx ('0'/'1'/'2') -> Map<item, count>. Der
+    // Platz ist die Stelle in itemNames am Spielende — ob das die
+    // Bau-Reihenfolge ist, ist nicht belegt (F2-D, 15.10.2026). Kopien mit
+    // Thief's Gloves zaehlen nicht (ihre Items sind zufaellig).
     itemSlotOrderByTier: new Map(),
+    // Kopien je Stern (tier -> Anzahl) — Standard-Stern der Item-Plaetze (0096).
+    starGames: new Map(),
   };
 }
 function newItemBucket() {
@@ -485,6 +489,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
 
         const items = Array.isArray(u.itemNames) ? u.itemNames : [];
         const starTier = String(u.tier ?? 1);
+        ub.starGames.set(starTier, (ub.starGames.get(starTier) || 0) + 1);
         let starItems = null;
         const seenItem = new Set();
         for (const it of items) {
@@ -538,9 +543,8 @@ export function aggregateMatch(rawMatch, agg, opts) {
           if (!pe) { pe = { games: 0, sumPlacement: 0, top4: 0, top1: 0 }; perfTier.set(carryItemCount, pe); }
           pe.games++; pe.sumPlacement += placement; if (top4) pe.top4++; if (top1) pe.top1++;
         }
-        // Item-Slot-Build-Order (Sprint 2.4): build slot index in itemNames
-        // is the order Riot reports them — slot 0 was built first.
-        if (items.length > 0) {
+        // Item-Plaetze: Stelle in itemNames am Spielende (siehe newUnitBucket).
+        if (items.length > 0 && !items.some(it => THIEFS_GLOVES_RE.test(it || ''))) {
           let slotMap = ub.itemSlotOrderByTier.get(starTier);
           if (!slotMap) { slotMap = new Map(); ub.itemSlotOrderByTier.set(starTier, slotMap); }
           for (let si = 0; si < Math.min(3, items.length); si++) {
@@ -953,6 +957,67 @@ function percentile(sortedAsc, p) {
   return sortedAsc[idx];
 }
 
+// Item-Bloecke der Detailseite fuer die DB (0096, tft_daily_unit_builds).
+// Je Liste: die ersten BUILD_KEEP_TOP immer, danach nur Eintraege ab
+// max(2, 1 % der Spiele) — sonst verzerrt eine feste Kappe je Tag die Summen
+// ueber mehrere Tage (data-skeptic 15.10.). Arrays statt Objekte (~20 % kleiner).
+const BUILD_KEEP_TOP = 5;
+const BUILD_CAPS = { sets: 15, tierItems: 12, tierSets: 8, slotItems: 6 };
+
+const byGamesThenKey = (a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+
+function keepEntries(rows, games, cap) {
+  const min = Math.max(2, Math.ceil(games * 0.01));
+  return rows.sort(byGamesThenKey).filter((r, i) => i < BUILD_KEEP_TOP || r[1] >= min).slice(0, cap);
+}
+
+const setRows = setMap => [...setMap.entries()].map(([key, s]) => [key, s.games, s.top4, s.sumPlacement]);
+
+export function persistBuilds(b) {
+  const stars = {};
+  if (b.starGames instanceof Map) for (const [tier, n] of b.starGames) stars[tier] = n;
+  const tierGames = tier => stars[tier] ?? b.games;
+  const itemsByTier = {};
+  if (b.itemsByTier instanceof Map) {
+    for (const [tier, itemMap] of b.itemsByTier) {
+      if (!(itemMap instanceof Map)) continue;
+      const rows = [...itemMap.entries()]
+        .filter(([item]) => isPersistableFinishedItem(item))
+        .map(([item, e]) => [item, e.games, e.top4, e.sumPlacement]);
+      const kept = keepEntries(rows, tierGames(tier), BUILD_CAPS.tierItems);
+      if (kept.length > 0) itemsByTier[tier] = kept;
+    }
+  }
+  const setsByTier = {};
+  if (b.itemSetsByTier instanceof Map) {
+    for (const [tier, setMap] of b.itemSetsByTier) {
+      if (!(setMap instanceof Map)) continue;
+      const kept = keepEntries(setRows(setMap), tierGames(tier), BUILD_CAPS.tierSets);
+      if (kept.length > 0) setsByTier[tier] = kept;
+    }
+  }
+  const slotsByTier = {};
+  if (b.itemSlotOrderByTier instanceof Map) {
+    for (const [tier, slotMap] of b.itemSlotOrderByTier) {
+      if (!(slotMap instanceof Map)) continue;
+      const perSlot = {};
+      for (const [slotIdx, itemMap] of slotMap) {
+        if (!(itemMap instanceof Map) || itemMap.size === 0) continue;
+        // Summe VOR der Kappung: Nenner der Prozentwerte = alle Kopien.
+        let total = 0;
+        for (const n of itemMap.values()) total += n;
+        perSlot[slotIdx] = [total, keepEntries([...itemMap.entries()], total, BUILD_CAPS.slotItems)];
+      }
+      if (Object.keys(perSlot).length > 0) slotsByTier[tier] = perSlot;
+    }
+  }
+  return {
+    stars,
+    sets: b.itemSets instanceof Map ? keepEntries(setRows(b.itemSets), b.games, BUILD_CAPS.sets) : [],
+    itemsByTier, setsByTier, slotsByTier,
+  };
+}
+
 export function finalize(agg, opts = {}) {
   const minUnitGames = opts.minUnitGames ?? 5;
   const minItemGames = opts.minItemGames ?? 5;
@@ -1096,6 +1161,7 @@ export function finalize(agg, opts = {}) {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1,
         topItems, topItemSets,
         persistTopItems, // nur fuer den DB-Writer; collect-tft-allranks laesst es aus der JSON
+        persistBuilds: persistBuilds(b), // dto. (0096)
         topItemsByTier, topItemSetsByTier,
         damageByTier,
         carryPlacementByTier,
@@ -1107,9 +1173,9 @@ export function finalize(agg, opts = {}) {
     out.byItem[item] = {};
     for (const [bucket, b] of buckets) {
       if (b.games < minItemGames) continue;
-      // Store top 10 in the daily snapshot so the API has headroom to show
-      // 8 after applying the exclusion list — the items-list column has
-      // space for 8 cost-bordered tiles.
+      // Top 25 je Tag (vorher 10): die Liste zeigt 8, die Item-Detailseite
+      // summiert die Traeger ueber mehrere Tage (get_tft_item_carriers, 0096) —
+      // mit 10 waren dort ab Rang ~3 Summen unsicher (data-skeptic 15.10.).
       const topUsers = [...b.users.entries()]
         .map(([cid, e]) => ({
           characterId: cid,
@@ -1118,8 +1184,8 @@ export function finalize(agg, opts = {}) {
           top4: e.top4 || 0,
           top1: e.top1 || 0,
         }))
-        .sort((a, b) => b.games - a.games)
-        .slice(0, 10);
+        .sort((a, b) => b.games - a.games || (a.characterId < b.characterId ? -1 : a.characterId > b.characterId ? 1 : 0))
+        .slice(0, 25);
       out.byItem[item][bucket] = {
         games: b.games, sumPlacement: b.sumPlacement, top4: b.top4, top1: b.top1, topUsers,
       };

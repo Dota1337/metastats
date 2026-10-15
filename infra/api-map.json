@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 89,
+    "routes": 90,
     "groups": 30,
-    "tables": 40,
-    "rpcs": 32,
+    "tables": 41,
+    "rpcs": 34,
     "files": 14,
-    "edges": 610,
+    "edges": 627,
     "unused": 7,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 25
+      "count": 26
     },
     {
       "name": "tft/comps",
@@ -1002,6 +1002,26 @@
       ]
     },
     {
+      "id": "api:/api/tft/detail-builds",
+      "kind": "route",
+      "label": "/api/tft/detail-builds",
+      "group": "tft",
+      "file": "app/api/tft/detail-builds/route.ts",
+      "via": [
+        "app/lib/api-cache.ts",
+        "app/lib/current-set.ts",
+        "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-detail-builds.ts",
+        "app/lib/tft-stats-loader.ts",
+        "app/lib/tft-supabase-reader.ts",
+        "public/tft-set.json"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/lib/snapshot-matrix.ts"
+      ]
+    },
+    {
       "id": "api:/api/tft/econ-score",
       "kind": "route",
       "label": "/api/tft/econ-score",
@@ -1046,6 +1066,7 @@
         "app/lib/current-set.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-detail-builds.ts",
         "app/lib/tft-stats-loader.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1678,6 +1699,7 @@
         "app/lib/current-set.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-detail-builds.ts",
         "app/lib/tft-stats-loader.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1903,6 +1925,12 @@
       "id": "db:tft_daily_trait_unitcount_stats",
       "kind": "table",
       "label": "tft_daily_trait_unitcount_stats",
+      "declared": true
+    },
+    {
+      "id": "db:tft_daily_unit_builds",
+      "kind": "table",
+      "label": "tft_daily_unit_builds",
       "declared": true
     },
     {
@@ -2230,6 +2258,12 @@
       "declared": true
     },
     {
+      "id": "fn:get_tft_item_carriers",
+      "kind": "rpc",
+      "label": "get_tft_item_carriers",
+      "declared": true
+    },
+    {
       "id": "fn:get_tft_item_stats_list",
       "kind": "rpc",
       "label": "get_tft_item_stats_list",
@@ -2317,6 +2351,12 @@
       "id": "fn:get_tft_trait_velocity",
       "kind": "rpc",
       "label": "get_tft_trait_velocity",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_unit_builds",
+      "kind": "rpc",
+      "label": "get_tft_unit_builds",
       "declared": true
     },
     {
@@ -3732,6 +3772,56 @@
       "kind": "calls"
     },
     {
+      "from": "api:/api/tft/detail-builds",
+      "to": "blob:manifest",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "ext:riot-web",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "file:tft-assets.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "file:tft-graph-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "file:tft-set.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "file:tft-stats-*.json",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "fn:get_tft_item_carriers",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
+      "to": "fn:get_tft_unit_builds",
+      "kind": "calls"
+    },
+    {
       "from": "api:/api/tft/econ-score",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -3838,12 +3928,22 @@
     },
     {
       "from": "api:/api/tft/items",
+      "to": "fn:get_tft_item_carriers",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
       "to": "fn:get_tft_item_stats_list",
       "kind": "calls"
     },
     {
       "from": "api:/api/tft/items",
       "to": "fn:get_tft_item_velocity",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "fn:get_tft_unit_builds",
       "kind": "calls"
     },
     {
@@ -4953,6 +5053,16 @@
     },
     {
       "from": "api:/api/tft/units",
+      "to": "fn:get_tft_item_carriers",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "fn:get_tft_unit_builds",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
       "to": "fn:get_tft_unit_stats",
       "kind": "calls"
     },
@@ -5267,6 +5377,11 @@
       "kind": "reads"
     },
     {
+      "from": "fn:get_tft_item_carriers",
+      "to": "db:tft_daily_item_stats",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_item_stats_list",
       "to": "db:tft_daily_item_stats",
       "kind": "reads"
@@ -5369,6 +5484,16 @@
     {
       "from": "fn:get_tft_trait_velocity",
       "to": "db:tft_daily_trait_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_builds",
+      "to": "db:tft_daily_unit_builds",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_builds",
+      "to": "db:tft_daily_unit_top_items",
       "kind": "reads"
     },
     {

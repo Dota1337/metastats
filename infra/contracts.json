@@ -111,6 +111,16 @@
       "note": "Gleiche Zeilenzahl wie unit_stats (eine Item-Liste je Unit x Bucket). Speist die Item-Reihe auf /tft/units. Der Writer-Block faengt Fehler ab — dieser Vertrag ist der einzige Alarm."
     },
     {
+      "id": "daily-crawl/unit-builds",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_unit_builds",
+      "dateColumn": "day",
+      "maxLagDays": 2,
+      "minRows": 5000,
+      "note": "Item-Bloecke der Unit-Detailseite (0096): eine Zeile je Unit x Bucket wie unit_stats. Writer-Block 8b faengt Fehler ab — dieser Vertrag ist der einzige Alarm. Aufbewahrung 9 Tage."
+    },
+    {
       "id": "daily-crawl/item-stats",
       "owner": "metastats-daily-crawl.service",
       "backend": "supabase",

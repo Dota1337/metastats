@@ -32,6 +32,7 @@ export const DAILY_TABLES = [
   'tft_daily_comp_stats',
   'tft_daily_unit_stats',
   'tft_daily_unit_top_items',
+  'tft_daily_unit_builds',
   'tft_daily_item_stats',
   'tft_daily_trait_stats',
   'tft_daily_comp_pairs',
@@ -53,6 +54,10 @@ export const DAILY_TABLES = [
 // Patch reichen weiter zurueck und sehen dann weniger Tage.
 const MATCHUP_BATCH = 1000;
 const MATCHUP_KEEP_DAYS = 8;
+// tft_daily_unit_builds (0096): gleiche Aufbewahrung, gleiche Begruendung.
+// Zeilen 1-6 KB (Arrays je Stern und Platz) → kleinere Pakete als 200.
+const UNIT_BUILDS_KEEP_DAYS = 8;
+const UNIT_BUILDS_BATCH = 100;
 
 /** Erster Tag, der fuer `day` (YYYY-MM-DD) noch aufbewahrt wird. */
 export function matchupKeepFrom(day, keepDays = MATCHUP_KEEP_DAYS) {
@@ -346,6 +351,33 @@ export async function writeTftStatsToSupabase(opts) {
       'region,bucket,patch,set_number,day,character_id', log);
   } catch (e) {
     log(`  [supabase] unit_top_items FAILED (non-fatal): ${e.message}`);
+  }
+
+  // 8b) Unit-Builds (migration 0096) — Item-Bloecke der Unit-Detailseite
+  // (Builds, Items je Stern, Item-Plaetze). Abgefangen wie Block 8, der
+  // Vertrag daily-crawl/unit-builds meldet einen Ausfall. Tage vor der
+  // Aufbewahrung raeumt derselbe Block ab, nur fuer diese Region.
+  try {
+    const buildRows = [];
+    for (const [cid, buckets] of Object.entries(payload.byUnit || {})) {
+      for (const bucket of PERSIST_BUCKETS) {
+        const b = buckets[bucket];
+        const pb = b?.persistBuilds;
+        if (!b || !b.games || !pb) continue;
+        buildRows.push({
+          ...baseRow, bucket, character_id: cid,
+          stars: pb.stars, sets: pb.sets,
+          items_by_tier: pb.itemsByTier, sets_by_tier: pb.setsByTier, slots_by_tier: pb.slotsByTier,
+        });
+      }
+    }
+    await deleteRows('tft_daily_unit_builds',
+      { region: `eq.${region}`, day: `lt.${matchupKeepFrom(day, UNIT_BUILDS_KEEP_DAYS)}` }, log);
+    log(`  [supabase] unit_builds: ${buildRows.length} rows`);
+    await upsertRows('tft_daily_unit_builds', buildRows,
+      'region,bucket,patch,set_number,day,character_id', log, UNIT_BUILDS_BATCH);
+  } catch (e) {
+    log(`  [supabase] unit_builds FAILED (non-fatal): ${e.message}`);
   }
 
   // 9) Comp-Ergebnisse je Unit und Item (migration 0078) — eine Zeile je

@@ -259,7 +259,7 @@ const translations = {
   'tft.comp.even': t6('Ausgeglichen', 'Even', '\uB300\uB4F1', '\u52BF\u5747\u529B\u654C', 'Igualado', '\u00C9quilibr\u00E9'),
   'tft.comp.losesTo': t6('Verliert gegen', 'Loses to', '\uC5F4\uC138', '\u88AB\u514B\u5236', 'Pierde contra', 'Perd contre'),
   'tft.comp.noMatchupData': t6('Noch keine Matchup-Daten', 'No matchup data yet', '\uC544\uC9C1 \uB9E4\uCE58\uC5C5 \uB370\uC774\uD130 \uC5C6\uC74C', '\u6682\u65E0\u5BF9\u4F4D\u6570\u636E', 'Sin datos de enfrentamiento', 'Pas encore de donn\u00E9es'),
-  'tft.itemSlotOrder': t6('Item-Build-Reihenfolge', 'Item build order', '\uC544\uC774\uD15C \uBE4C\uB4DC \uC21C\uC11C', '\u88C5\u5907\u51FA\u88C5\u987A\u5E8F', 'Orden de construcci\u00F3n', 'Ordre de construction'),
+  'tft.itemSlotOrder': t6('Item-Pl\u00E4tze', 'Item slots', '\uC544\uC774\uD15C \uC2AC\uB86F', '\u88C5\u5907\u680F\u4F4D', 'Slots de objetos', 'Emplacements d\u2019objets'),
   'tft.unitTimeline': t6('Patch-Verlauf', 'Patch timeline', '\uD328\uCE58 \uCD94\uC774', '\u7248\u672C\u8D70\u52BF', 'Cronolog\u00EDa de parches', '\u00C9volution par patch'),
   'tft.builderPublish': t6('Ver\u00F6ffentlichen', 'Publish', '\uAC8C\uC2DC', '\u53D1\u5E03', 'Publicar', 'Publier'),
   'tft.builderPublishHint': t6(

@@ -401,8 +401,8 @@ async function main() {
 
     if (!SKIP_JSON) {
       const file = `public/tft-stats-${REGION}.json`;
-      // persistTopItems (0069), outcome (0078) und compMatchups (0092) sind nur fuer die DB — die JSON bleibt wie sie war.
-      writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'outcome' || k === 'compMatchups' ? undefined : v)));
+      // persistTopItems (0069), persistBuilds (0096), outcome (0078) und compMatchups (0092) sind nur fuer die DB — die JSON bleibt wie sie war.
+      writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'persistBuilds' || k === 'outcome' || k === 'compMatchups' ? undefined : v)));
       console.log(`\n  -> ${file} (patch=${PATCH}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
     }
 

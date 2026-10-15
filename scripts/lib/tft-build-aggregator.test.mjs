@@ -11,7 +11,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem, isOutcomeEmblem, addFamilyPairs, familyPairRows } from './tft-build-aggregator.mjs';
+import { aggregateMatch, emptyAggregate, finalize, isPersistableFinishedItem, isOutcomeFinishedItem, isOutcomeEmblem, addFamilyPairs, familyPairRows, persistBuilds } from './tft-build-aggregator.mjs';
 import { chunkByBytes, matchupKeepFrom } from './tft-supabase-writer.mjs';
 
 // Comp-Duelle (0092): je Spielerpaar, Familie statt Variante, gleiche Familie
@@ -108,6 +108,52 @@ test('Kappung auf 15, Sortierung Spiele absteigend, Gleichstand nach Name', () =
     assert.ok(b.persistTopItems[i - 1].games >= b.persistTopItems[i].games);
   }
   assert.deepEqual(Object.keys(b.persistTopItems[0]).sort(), ['games', 'item', 'sumPlacement', 'top4']);
+});
+
+// persistBuilds (0096, tft_daily_unit_builds): Item-Bloecke der Detailseite.
+test('persistBuilds: Sterne, Plaetze ohne Thief\'s Gloves, Summe aller Kopien, fertige Items je Stern', () => {
+  const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', BT = 'TFT_Item_Bloodthirster';
+  const TG = 'TFT_Item_ThiefsGloves', BF = 'DA_Component_BFSword';
+  const agg = emptyAggregate();
+  const p = (i, tier, itemNames) => ({
+    puuid: `p${i}`, placement: i + 1, level: 8, last_round: 30, augments: [],
+    traits: [{ name: 'TFT17_Stargazer', num_units: 6, style: 3, tier_current: 3, tier_total: 4 }],
+    units: [{ character_id: 'TFT17_Lulu', tier, itemNames }],
+  });
+  aggregateMatch({
+    metadata: { match_id: 'EUW1_9' },
+    info: { queue_id: 1100, tft_set_number: 17, participants: [
+      p(0, 2, [IE, GR, BT]), p(1, 2, [GR, IE, BT]), p(2, 2, [IE, BF]), p(3, 3, [TG, IE, GR]), p(4, 1, []),
+    ] },
+  }, agg, { tierBucket: 'diamond', currentSet: 17 });
+  const b = finalize(agg, { minUnitGames: 1 }).byUnit.TFT17_Lulu.diamond.persistBuilds;
+  assert.deepEqual(b.stars, { 1: 1, 2: 3, 3: 1 });
+  // Platz-Summe = alle Kopien mit Item auf dem Platz; Gleichstand nach Name.
+  assert.deepEqual(b.slotsByTier['2'], {
+    0: [3, [[IE, 2], [GR, 1]]],
+    1: [3, [[BF, 1], [GR, 1], [IE, 1]]],
+    2: [2, [[BT, 2]]],
+  });
+  assert.equal(b.slotsByTier['3'], undefined, 'Kopie mit Thief\'s Gloves zaehlt nicht');
+  // Je Stern nur fertige Items (Bauteil raus), [item, games, top4, sumPlacement].
+  assert.deepEqual(b.itemsByTier['2'], [[IE, 3, 3, 6], [BT, 2, 2, 3], [GR, 2, 2, 3]]);
+  assert.deepEqual(b.sets, [[`${BT}|${GR}|${IE}`, 2, 2, 3], [`${GR}|${IE}|${TG}`, 1, 1, 4]]);
+  assert.deepEqual(b.setsByTier['2'], [[`${BT}|${GR}|${IE}`, 2, 2, 3]]);
+  // Die JSON-Felder bleiben da (Companion, Datei), persistBuilds faellt dort raus.
+  assert.ok(finalize(agg, { minUnitGames: 1 }).byUnit.TFT17_Lulu.diamond.itemSlotOrderByTier);
+});
+
+test('persistBuilds: erste 5 immer, danach ab max(2, 1 % der Spiele), Kappe 15', () => {
+  const sets = n => new Map(Array.from({ length: 20 }, (_, i) => [`S${String(i).padStart(2, '0')}`, { games: n[i], top4: 0, sumPlacement: 0 }]));
+  const games = [50, 40, 30, 20, 10, 9, 9, 8, 7, 6, 5, 4, 3, 3, 2, 2, 2, 1, 1, 1];
+  // 1000 Spiele → Schwelle 10: nur die ersten 5.
+  assert.deepEqual(persistBuilds({ games: 1000, itemSets: sets(games) }).sets.map(r => r[0]), ['S00', 'S01', 'S02', 'S03', 'S04']);
+  // 100 Spiele → Schwelle 2: alles ab 2 Spielen, gekappt auf 15.
+  const kept = persistBuilds({ games: 100, itemSets: sets(games) }).sets;
+  assert.equal(kept.length, 15);
+  assert.ok(kept.every(r => r[1] >= 2));
+  // Ohne Maps (alte Eimer) kein Fehler.
+  assert.deepEqual(persistBuilds({ games: 5 }), { stars: {}, sets: [], itemsByTier: {}, setsByTier: {}, slotsByTier: {} });
 });
 
 test('isPersistableFinishedItem', () => {

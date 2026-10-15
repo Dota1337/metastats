@@ -5,10 +5,10 @@
 //
 // Kernwerte (Spiele, Schnitt, Top 4, Sieg) kommen aus derselben Quelle wie die
 // Liste — gleiche Region, gleicher Zeitraum, gleicher Rang. Die Item-Bloecke
-// gibt es nur in den Wochendateien (bei „alle Regionen" EUW, die groesste
-// Stichprobe). Set-Rueckfall (2026-08-27): der Loader haelt JSONs aus einem
-// alten Set zurueck (siehe tft-stats-loader.ts) — dann bleiben die Item-Bloecke
-// leer statt erfunden.
+// (Builds, Items je Stern, Item-Plaetze, Traeger) kommen seit 0096 aus der
+// Datenbank (app/lib/tft-detail-builds.ts) und werden hier nur umgeformt. Die
+// Wochendatei liest nur noch der Notfall-Pfad: Kernwerte, wenn die Datenbank
+// nicht erreichbar war.
 import { loadTftStats, pickBucketEntry } from './tft-stats-loader';
 import { isExcludedItem, setContainsExcludedItem } from './tft-excluded';
 
@@ -33,6 +33,102 @@ export function coreFromListRow(row: CoreRow | undefined): DetailCore | null {
     : null;
 }
 
+// ---------- Item-Bloecke (0096) ----------
+
+/** [item oder Set-Schluessel „a|b|c", Spiele, Top 4, Platz-Summe] */
+export type BuildRow = [string, number, number, number];
+/** [characterId, Spiele, Platz-Summe, Top 4, Siege] */
+export type CarrierRow = [string, number, number, number, number];
+
+/** Antwort von get_tft_unit_builds je Unit (Summen ueber das Fenster). */
+export interface UnitBuildsRaw {
+  stars: Record<string, number>;
+  sets: BuildRow[];
+  itemsByTier: Record<string, BuildRow[]>;
+  setsByTier: Record<string, BuildRow[]>;
+  /** Stern → Platz → [Summe aller Kopien, [[item, Anzahl], …]] */
+  slotsByTier: Record<string, Record<string, [number, [string, number][]]>>;
+  topItems: BuildRow[];
+}
+
+/**
+ * Zustand der Item-Bloecke: Daten (null = keine), `pending` = noch nicht
+ * geladen (Startdaten ohne Vorrat — der Browser laedt nach), `failed` =
+ * Datenbank-Fehler (Abschnitte fehlen, Antwort nicht lange zwischenspeichern).
+ */
+export type Blocks<T> = T | null | 'pending' | 'failed';
+
+/** Eintraege mit weniger Spielen zeigen wir nicht (Stichprobe zu klein). */
+export const MIN_SHOWN_GAMES = 30;
+
+const rate = (n: number, games: number) => (games > 0 ? n / games : null);
+
+const itemEntry = ([item, games, top4, sp]: BuildRow) =>
+  ({ item, games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
+
+const setEntry = ([key, games, top4, sp]: BuildRow) =>
+  ({ items: key.split('|'), games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
+
+function itemList(rows: BuildRow[] | undefined) {
+  return (rows || []).filter(r => r[1] >= MIN_SHOWN_GAMES && !isExcludedItem(r[0])).map(itemEntry);
+}
+
+function setList(rows: BuildRow[] | undefined) {
+  return (rows || []).filter(r => r[1] >= MIN_SHOWN_GAMES).map(setEntry).filter(s => !setContainsExcludedItem(s.items));
+}
+
+function byTier<T>(m: Record<string, BuildRow[]> | undefined, f: (rows: BuildRow[]) => T[]): Record<string, T[]> | null {
+  const out: Record<string, T[]> = {};
+  for (const [tier, rows] of Object.entries(m || {})) {
+    const v = f(rows);
+    if (v.length > 0) out[tier] = v;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/** Item-Bloecke der Unit-Detailseite aus den Summen der Datenbank. */
+export function unitItemBlocks(raw: UnitBuildsRaw | null) {
+  // Item-Plaetze: Prozent = Anzahl / Summe ALLER Kopien auf dem Platz (User
+  // 15.10.2026), deshalb geht die Summe mit. Thief's Gloves faellt aus den
+  // Eintraegen, bleibt aber im Nenner.
+  let itemSlotsByTier: Record<string, Record<string, { total: number; entries: { item: string; count: number }[] }>> | null = null;
+  for (const [tier, slots] of Object.entries(raw?.slotsByTier || {})) {
+    for (const [slot, [total, entries]] of Object.entries(slots || {})) {
+      if (!(total >= MIN_SHOWN_GAMES)) continue;
+      itemSlotsByTier ??= {};
+      (itemSlotsByTier[tier] ??= {})[slot] = {
+        total,
+        entries: (entries || []).filter(([item]) => !isExcludedItem(item)).map(([item, count]) => ({ item, count })),
+      };
+    }
+  }
+  return {
+    topItems: itemList(raw?.topItems),
+    topItemSets: setList(raw?.sets),
+    topItemsByTier: byTier(raw?.itemsByTier, itemList),
+    topItemSetsByTier: byTier(raw?.setsByTier, setList),
+    itemSlotsByTier,
+    /** Kopien je Stern — Standard-Stern der Item-Plaetze = meiste Spiele. */
+    starGames: raw && Object.keys(raw.stars || {}).length > 0 ? raw.stars : null,
+  };
+}
+
+/** Traeger eines Items, meistgespielte zuerst, hoechstens 10. */
+export function itemCarriers(rows: CarrierRow[] | null) {
+  return (rows || [])
+    .filter(r => r[1] >= MIN_SHOWN_GAMES)
+    .slice(0, 10)
+    .map(([characterId, games, sp, top4, top1]) => ({
+      characterId,
+      games,
+      avgPlacement: rate(sp, games),
+      top4Rate: rate(top4, games),
+      top1Rate: rate(top1, games),
+    }));
+}
+
+// ---------- Antworten ----------
+
 export interface DetailInput {
   id: string;
   /** Kleingeschrieben, `all` = alle Regionen. */
@@ -48,35 +144,34 @@ export interface DetailInput {
 
 export interface DetailResult<Body> {
   body: Body;
-  /** Mit Datensatz: die Route darf die Antwort lange zwischenspeichern. */
+  /** Mit Datensatz und geladenen Item-Bloecken: die Route darf die Antwort
+   *  lange zwischenspeichern. */
   cacheable: boolean;
-  /** Wochendatei gelesen — ohne sie keine Startdaten (die Seite koennte sie in
-   *  ihrer Funktion nicht finden, die API schon). */
-  statsLoaded: boolean;
 }
 
-export function unitDetailBody(p: DetailInput): DetailResult<Record<string, unknown>> {
+/** Notfall: Kernwerte aus der Wochendatei, wenn die Datenbank nicht antwortete. */
+function fileCore(p: DetailInput, field: 'byUnit' | 'byItem', top1: boolean) {
+  const stats = loadTftStats(p.region === 'all' ? 'euw1' : p.region);
+  const buckets = stats?.[field]?.[p.id];
+  // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
+  const e = buckets ? pickBucketEntry(buckets, p.bucket) : null;
+  const core: DetailCore | null = e && e.games > 0
+    ? { games: e.games, avgPlacement: e.sumPlacement / e.games, top4Rate: e.top4 / e.games, top1Rate: top1 ? e.top1 / e.games : null }
+    : null;
+  return { core, stats };
+}
+
+export function unitDetailBody(p: DetailInput, builds: Blocks<UnitBuildsRaw>): DetailResult<Record<string, unknown>> {
   const { id, region, bucket } = p;
   let core = p.core;
-  const stats = loadTftStats(region === 'all' ? 'euw1' : region);
-  const buckets = stats?.byUnit?.[id];
-  // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
-  const jsonEntry = buckets ? pickBucketEntry(buckets, bucket) : null;
-  if (!p.coreKnown && jsonEntry && jsonEntry.games > 0) {
-    core = {
-      games: jsonEntry.games,
-      avgPlacement: jsonEntry.sumPlacement / jsonEntry.games,
-      top4Rate: jsonEntry.top4 / jsonEntry.games,
-      top1Rate: jsonEntry.top1 / jsonEntry.games,
-    };
-  }
+  let stats: ReturnType<typeof loadTftStats> | null = null;
+  if (!p.coreKnown) ({ core, stats } = fileCore(p, 'byUnit', true));
   if (!core) {
-    return { body: { region, bucket, hasData: p.coreKnown ? false : !!stats, unit: null }, cacheable: false, statsLoaded: !!stats };
+    return { body: { region, bucket, hasData: p.coreKnown ? false : !!stats, unit: null }, cacheable: false };
   }
-  const data: any = jsonEntry ?? {};
+  const raw = builds === 'pending' || builds === 'failed' ? null : builds;
   return {
-    cacheable: true,
-    statsLoaded: !!stats,
+    cacheable: builds !== 'failed' && builds !== 'pending',
     body: {
       region, bucket,
       set: p.filterSet ?? stats?.set ?? null, patch: p.filterPatch ?? stats?.patch ?? null,
@@ -87,121 +182,24 @@ export function unitDetailBody(p: DetailInput): DetailResult<Record<string, unkn
         avgPlacement: core.avgPlacement,
         top4Rate: core.top4Rate,
         top1Rate: core.top1Rate,
-        // Thief's Gloves & Co. raus — singulär aus den Item-Listen, als
-        // ganzes Set aus den Item-Set-Listen. "Top Item-Builds" sollen die
-        // bewussten Carry-Builds zeigen, nicht Random-Pulls.
-        topItems: (data.topItems || [])
-          .filter((it: any) => !isExcludedItem(it.item))
-          .map((it: any) => ({
-            item: it.item,
-            games: it.games,
-            avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-            top4Rate: it.games > 0 ? it.top4 / it.games : null,
-          })),
-        topItemSets: (data.topItemSets || [])
-          .filter((s: any) => !setContainsExcludedItem(s.items))
-          .map((s: any) => ({
-            items: s.items,
-            games: s.games,
-            avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-            top4Rate: s.games > 0 ? s.top4 / s.games : null,
-          })),
-        topItemsByTier: data.topItemsByTier
-          ? Object.fromEntries(
-              Object.entries(data.topItemsByTier).map(([tier, arr]: [string, any]) => [
-                tier,
-                (arr || [])
-                  .filter((it: any) => !isExcludedItem(it.item))
-                  .map((it: any) => ({
-                    item: it.item,
-                    games: it.games,
-                    avgPlacement: it.games > 0 ? it.sumPlacement / it.games : null,
-                    top4Rate: it.games > 0 ? it.top4 / it.games : null,
-                  })),
-              ])
-            )
-          : null,
-        topItemSetsByTier: data.topItemSetsByTier
-          ? Object.fromEntries(
-              Object.entries(data.topItemSetsByTier).map(([tier, arr]: [string, any]) => [
-                tier,
-                (arr || [])
-                  .filter((s: any) => !setContainsExcludedItem(s.items))
-                  .map((s: any) => ({
-                    items: s.items,
-                    games: s.games,
-                    avgPlacement: s.games > 0 ? s.sumPlacement / s.games : null,
-                    top4Rate: s.games > 0 ? s.top4 / s.games : null,
-                  })),
-              ])
-            )
-          : null,
-        // Damage-Atlas: { tier: { itemCount: { games, p50, p75, p95, p99, max } } }
-        damageByTier: data.damageByTier || null,
-        // Carry-Performance: { tier: { itemCount: { games, avgPlacement, top4Rate, top1Rate } } }
-        // — avg placement + top4 when THIS unit was the carry (replaces the
-        // player-HP damage atlas with a real carry-strength signal).
-        carryPlacementByTier: data.carryPlacementByTier
-          ? Object.fromEntries(
-              Object.entries(data.carryPlacementByTier).map(([tier, m]: [string, any]) => [
-                tier,
-                Object.fromEntries(
-                  Object.entries(m || {}).map(([ic, e]: [string, any]) => [
-                    ic,
-                    {
-                      games: e.games,
-                      avgPlacement: e.games > 0 ? e.sumPlacement / e.games : null,
-                      top4Rate: e.games > 0 ? e.top4 / e.games : null,
-                      top1Rate: e.games > 0 ? e.top1 / e.games : null,
-                    },
-                  ])
-                ),
-              ])
-            )
-          : null,
-        // Item-Slot-Build-Order: { tier: { slotIdx: [{item, count}, ...] } }
-        // Auch hier ThG raus — wenn ein Slot häufig Thief's Gloves zeigt, ist
-        // das eine Augment-Wahl, kein Build-Pfad.
-        itemSlotOrderByTier: data.itemSlotOrderByTier
-          ? Object.fromEntries(
-              Object.entries(data.itemSlotOrderByTier).map(([tier, slots]: [string, any]) => [
-                tier,
-                Object.fromEntries(
-                  Object.entries(slots || {}).map(([slotIdx, entries]: [string, any]) => [
-                    slotIdx,
-                    (entries || []).filter((e: any) => !isExcludedItem(e.item)),
-                  ])
-                ),
-              ])
-            )
-          : null,
+        ...unitItemBlocks(raw),
+        ...(builds === 'pending' ? { itemsPending: true } : {}),
       },
     },
   };
 }
 
-export function itemDetailBody(p: DetailInput): DetailResult<Record<string, unknown>> {
+export function itemDetailBody(p: DetailInput, carriers: Blocks<CarrierRow[]>): DetailResult<Record<string, unknown>> {
   const { id, region, bucket } = p;
   let core = p.core;
-  const stats = loadTftStats(region === 'all' ? 'euw1' : region);
-  const buckets = stats?.byItem?.[id];
-  // grandmaster_plus: Grandmaster- und Challenger-Eintrag zusammengezaehlt.
-  const jsonEntry = buckets ? pickBucketEntry(buckets, bucket) : null;
-  if (!p.coreKnown && jsonEntry && jsonEntry.games > 0) {
-    core = {
-      games: jsonEntry.games,
-      avgPlacement: jsonEntry.sumPlacement / jsonEntry.games,
-      top4Rate: jsonEntry.top4 / jsonEntry.games,
-      top1Rate: null,
-    };
-  }
+  let stats: ReturnType<typeof loadTftStats> | null = null;
+  if (!p.coreKnown) ({ core, stats } = fileCore(p, 'byItem', false));
   if (!core) {
-    return { body: { region, bucket, hasData: p.coreKnown ? false : !!stats, item: null }, cacheable: false, statsLoaded: !!stats };
+    return { body: { region, bucket, hasData: p.coreKnown ? false : !!stats, item: null }, cacheable: false };
   }
-  const data: any = jsonEntry ?? {};
+  const rows = carriers === 'pending' || carriers === 'failed' ? null : carriers;
   return {
-    cacheable: true,
-    statsLoaded: !!stats,
+    cacheable: carriers !== 'failed' && carriers !== 'pending',
     body: {
       region, bucket,
       set: p.filterSet ?? stats?.set ?? null, patch: p.filterPatch ?? stats?.patch ?? null,
@@ -212,17 +210,8 @@ export function itemDetailBody(p: DetailInput): DetailResult<Record<string, unkn
         avgPlacement: core.avgPlacement,
         top4Rate: core.top4Rate,
         top1Rate: core.top1Rate,
-        // Per-carrier top4Rate + top1Rate land in the snapshot from the
-        // aggregator-patch (2026-06-19). Older JSON snapshots without
-        // u.top4 / u.top1 surface as null so the UI shows "—" instead of
-        // a fake zero — gets filled in on the next daily-crawl cycle.
-        topUsers: (data.topUsers || []).map((u: any) => ({
-          characterId: u.characterId,
-          games: u.games,
-          avgPlacement: u.games > 0 ? u.sumPlacement / u.games : null,
-          top4Rate: u.games > 0 && u.top4 != null ? u.top4 / u.games : null,
-          top1Rate: u.games > 0 && u.top1 != null ? u.top1 / u.games : null,
-        })),
+        topUsers: itemCarriers(rows),
+        ...(carriers === 'pending' ? { itemsPending: true } : {}),
       },
     },
   };

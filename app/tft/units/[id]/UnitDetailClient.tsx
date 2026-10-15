@@ -23,6 +23,8 @@ type ItemSetEntry = { items: string[]; games: number; avgPlacement: number | nul
 type DamageBin = { games: number; p50: number | null; p75: number | null; p95: number | null; p99: number | null; max: number | null };
 type CarryPerfBin = { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null };
 type SlotEntry = { item: string; count: number };
+// Item-Platz: total = alle Kopien mit einem Item auf diesem Platz (Prozent-Nenner).
+type SlotData = { total: number; entries: SlotEntry[] };
 
 interface UnitDetail {
   characterId: string;
@@ -34,9 +36,18 @@ interface UnitDetail {
   topItemSets: ItemSetEntry[];
   topItemsByTier: Record<string, ItemEntry[]> | null;
   topItemSetsByTier: Record<string, ItemSetEntry[]> | null;
-  damageByTier: Record<string, Record<string, DamageBin>> | null;
-  carryPlacementByTier: Record<string, Record<string, CarryPerfBin>> | null;
-  itemSlotOrderByTier: Record<string, Record<string, SlotEntry[]>> | null;
+  damageByTier?: Record<string, Record<string, DamageBin>> | null;
+  carryPlacementByTier?: Record<string, Record<string, CarryPerfBin>> | null;
+  itemSlotsByTier: Record<string, Record<string, SlotData>> | null;
+  /** Kopien je Stern — Standard-Stern der Item-Plaetze. */
+  starGames: Record<string, number> | null;
+  /** Startdaten ohne Item-Bloecke: der Browser laedt sie nach. */
+  itemsPending?: boolean;
+}
+
+/** Stern mit Daten in irgendeinem Item-Block. */
+function hasStarData(d: UnitDetail, k: string): boolean {
+  return !!(d.topItemsByTier?.[k]?.length || d.topItemSetsByTier?.[k]?.length || d.itemSlotsByTier?.[k]);
 }
 
 type StarTier = 'all' | '1' | '2' | '3';
@@ -71,14 +82,17 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
   const [comps, setComps] = useState<CompWithUnit[]>(() => initial?.comps ?? []);
   const [timeline, setTimeline] = useState<Array<{ patch: string; avgPlacement: number; top4Rate: number; pickRate: number | null; games: number }>>([]);
+  // Startdaten ohne Item-Bloecke (kein Vorrat fuer diese Filter): Kernwerte
+  // gleich zeigen, die Antwort der API trotzdem holen.
+  const initialPending = !!(initial?.detail?.unit as UnitDetail | undefined)?.itemsPending;
   // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
-  const shownDetail = useRef<string | null>(initial?.detail ? initial.key : null);
+  const shownDetail = useRef<string | null>(initial?.detail && !initialPending ? initial.key : null);
   const shownComps = useRef<string | null>(initial?.comps ? initial.key : null);
   // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
   // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
   // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
   const loadedDetail = useRef(new Map<string, { hasData: boolean; unit: UnitDetail | null }>(
-    initial?.detail ? [[initial.key, { hasData: !!initial.detail.hasData, unit: (initial.detail.unit as UnitDetail | undefined) || null }]] : []));
+    initial?.detail && !initialPending ? [[initial.key, { hasData: !!initial.detail.hasData, unit: (initial.detail.unit as UnitDetail | undefined) || null }]] : []));
   const loadedComps = useRef(new Map<string, CompWithUnit[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
   // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
   // Rest fragt der Effekt unten.
@@ -105,9 +119,7 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
   // doesn't have per-tier data for the currently-selected tier.
   useEffect(() => {
     if (!data) return;
-    const tierKeys = data.topItemsByTier ? Object.keys(data.topItemsByTier) : [];
-    if (tierKeys.length === 0 && star !== 'all') setStar('all');
-    else if (star !== 'all' && !data.topItemsByTier?.[star]?.length) setStar('all');
+    if (star !== 'all' && !hasStarData(data, star)) setStar('all');
   }, [data, star]);
   useEffect(() => {
     // Alte Antworten nach einem Rangwechsel verwerfen, sonst ueberschreibt
@@ -128,7 +140,13 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
           setHasData(v.hasData);
           setData(v.unit);
         })
-        .catch(() => { if (cancelled) return; shownDetail.current = null; setHasData(false); setData(null); });
+        .catch(() => {
+          if (cancelled) return;
+          shownDetail.current = null;
+          // Nachladen der Item-Bloecke gescheitert: Kernwerte der Startdaten bleiben.
+          if (initialPending && key === initial?.key) { setData(d => (d ? { ...d, itemsPending: false } : d)); return; }
+          setHasData(false); setData(null);
+        });
     }
     // Pull comps and filter client-side for ones containing this champion as
     // a typical unit. Pro-Frage „in welchen Comps spielt der Champion?" auf
@@ -223,14 +241,14 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
 
             {/* Star-tier selector (BiS by star level). Hidden if the snapshot
                 doesn't carry per-tier data yet (pre-rollout JSONs). */}
-            {data.topItemsByTier && Object.keys(data.topItemsByTier).length > 0 && (
+            {(['1', '2', '3'] as const).some(k => hasStarData(data, k)) && (
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.byStarLevel')}</span>
                 <div className="flex gap-1">
                   {(['all','1','2','3'] as StarTier[]).map(k => {
                     const active = star === k;
                     const label = k === 'all' ? t('tft.starTierAll') : `${k}★`;
-                    const disabled = k !== 'all' && !data.topItemsByTier?.[k]?.length;
+                    const disabled = k !== 'all' && !hasStarData(data, k);
                     return (
                       <button
                         key={k}
@@ -302,16 +320,14 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
               })()}
 
               {(() => {
-                const slotData = data.itemSlotOrderByTier;
+                const slotData = data.itemSlotsByTier;
                 if (!slotData) return null;
-                // Pick the active tier — fall back to the one with most data.
+                // Gewaehlter Stern, sonst der Stern mit den meisten Spielen
+                // (User 15.10.2026) — nicht der erste bei Gleichstand.
+                const games = (k: string) => data.starGames?.[k] ?? 0;
                 const activeTier = star !== 'all' && slotData[star]
                   ? star
-                  : (Object.keys(slotData).sort((a, b) => {
-                      const an = Object.keys(slotData[a] || {}).length;
-                      const bn = Object.keys(slotData[b] || {}).length;
-                      return bn - an;
-                    })[0] || null);
+                  : (Object.keys(slotData).sort((a, b) => games(b) - games(a) || a.localeCompare(b))[0] || null);
                 if (!activeTier || !slotData[activeTier]) return null;
                 const slots = slotData[activeTier];
                 const slotIdxs = Object.keys(slots).sort();
@@ -320,8 +336,9 @@ export default function TftUnitDetailPage({ initial }: { initial: UnitDetailInit
                   <Section title={`${t('tft.itemSlotOrder')} · ${activeTier}★`}>
                     <div className="space-y-2">
                       {slotIdxs.map(si => {
-                        const entries = slots[si] || [];
-                        const total = entries.reduce((s, e) => s + e.count, 0) || 1;
+                        const entries = slots[si]?.entries || [];
+                        // Nenner: alle Kopien mit einem Item auf diesem Platz.
+                        const total = slots[si]?.total || 1;
                         const label = si === '0' ? t('tft.slotFirst')
                           : si === '1' ? t('tft.slotSecond')
                           : t('tft.slotThird');

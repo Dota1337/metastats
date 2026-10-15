@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseVelocity } from '../../../lib/query-params';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
-import { coreFromListRow, itemDetailBody, type DetailCore } from '../../../lib/tft-detail-payload';
+import { coreFromListRow, itemDetailBody, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
+import { itemCarriersFor } from '../../../lib/tft-detail-builds';
 import {
   resolveFilters,
   callRpc,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
-  // Detail view → legacy JSON loader (per-bucket users only available there).
+  // Detail view: Kernwerte wie die Liste, Traeger aus der Datenbank (0096).
   if (id) {
     if (isExcludedItem(id)) {
       return NextResponse.json({ region: 'euw1', bucket: 'all', hasData: true, item: null });
@@ -41,16 +42,21 @@ export async function GET(request: NextRequest) {
     const region = (searchParams.get('region') || 'all').toLowerCase();
     const bucket = normalizeBucket(searchParams.get('bucket'));
     // Kernwerte aus derselben Quelle wie die Liste (Region, Zeitraum, Rang) —
-    // Begruendung in /api/tft/units. Die Traeger-Liste (topUsers) steckt nur
-    // in den Wochendateien und kommt weiter von dort.
+    // Begruendung in /api/tft/units. Die Traeger (topUsers) seit 0096 aus der
+    // Datenbank: Vorrat der Standardansicht, sonst live (tft-detail-builds.ts).
     let core: DetailCore | null = null;
     let coreKnown = false;
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
+    let carriers: Blocks<CarrierRow[]> = 'failed';
     try {
       const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
       filterPatch = filters.patch;
+      const carriersP = itemCarriersFor(filters, id).catch((e: Error) => {
+        console.error('[items detail] carriers', e.message);
+        return 'failed' as const;
+      });
       const hit = await lookupSnapshot('items', {
         patch: filters.patch,
         region: filters.regionLabel,
@@ -85,10 +91,11 @@ export async function GET(request: NextRequest) {
           : null;
       }
       coreKnown = true;
+      carriers = await carriersP;
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch });
+    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, carriers);
     return cacheable ? cachedJson(body) : NextResponse.json(body);
   }
 

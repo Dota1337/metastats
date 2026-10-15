@@ -2,7 +2,8 @@
 // aus Data Dragon (Runen, Zauber, Champions). Eine Regel fuer Browser
 // (ChampionBuildsSection: volle Listen) und Server (seo/lol-detail-data.ts:
 // nur die Eintraege, die die Startdaten wirklich zeigen — das spart im ersten
-// HTML gut 20 KB). Rein, ohne Abrufe.
+// HTML gut 20 KB). Rein, ohne Abrufe. Die Zauber-Regel gilt auch fuer die
+// Spieldetails der Spielerseite (dd-assets.ts → MatchDetail.tsx).
 //
 // Item-Namen gehen einen anderen Weg: sie reisen als `itemNames` in der
 // Antwort selbst (Route, app/lib/lol-item-names.ts) und damit auch in der

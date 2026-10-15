@@ -218,10 +218,10 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
                             <div className="flex items-center gap-0.5">
                               <div className="flex flex-col gap-0.5">
                                 {sum1 ? (
-                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum1.iconFile}`} alt={sum1.key} title={sum1.key} className="w-[14px] h-[14px] rounded-sm" />
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum1.iconFile}`} alt={sum1.name} title={sum1.name} className="w-[14px] h-[14px] rounded-sm" />
                                 ) : <div className="w-[14px] h-[14px] rounded-sm bg-surface-overlay" />}
                                 {sum2 ? (
-                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum2.iconFile}`} alt={sum2.key} title={sum2.key} className="w-[14px] h-[14px] rounded-sm" />
+                                  <img src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/spell/${sum2.iconFile}`} alt={sum2.name} title={sum2.name} className="w-[14px] h-[14px] rounded-sm" />
                                 ) : <div className="w-[14px] h-[14px] rounded-sm bg-surface-overlay" />}
                               </div>
                               <div className="flex flex-col items-center gap-0.5">

@@ -1,8 +1,10 @@
 // Cached Data Dragon asset lookups (rune trees + summoner spells).
 // Each fetch returns the same Promise across components for a given version.
+import { buildsAssetsFrom, type SummonerInfo } from './lol-builds-view';
 
 export interface RuneInfo { name: string; icon: string }
-export interface SummonerInfo { id: number; key: string; iconFile: string }
+// Zaubernamen nach derselben Regel wie der Builds-Block („Flash“, nicht „SummonerFlash“).
+export type { SummonerInfo };
 
 const runeCache: Record<string, Promise<Record<number, RuneInfo>>> = {};
 const summonerCache: Record<string, Promise<Record<number, SummonerInfo>>> = {};
@@ -34,15 +36,8 @@ export function loadSummonerIndex(version: string): Promise<Record<number, Summo
   if (!summonerCache[version]) {
     summonerCache[version] = fetch(`https://ddragon.leagueoflegends.com/cdn/${version}/data/en_US/summoner.json`)
       .then(r => r.ok ? r.json() : null)
-      .then((data: any) => {
-        const map: Record<number, SummonerInfo> = {};
-        if (data?.data) {
-          for (const s of Object.values(data.data) as any[]) {
-            map[Number(s.key)] = { id: Number(s.key), key: s.id, iconFile: s.image.full };
-          }
-        }
-        return map;
-      })
+      // `data`, nicht die ganze Antwort — sonst bleibt die Liste still leer.
+      .then((json: { data?: unknown } | null) => buildsAssetsFrom(null, json?.data, null).summoners)
       .catch(() => ({}));
   }
   return summonerCache[version];

@@ -35,8 +35,7 @@ function SkinImage({ championId, skinNum, alt, className }: {
 }) {
   const [stage, setStage] = useState<0 | 1 | 2 | 3>(0);
   const imgRef = useRef<HTMLImageElement>(null);
-  // Reset cascade when the source changes
-  useEffect(() => { setStage(0); }, [championId, skinNum]);
+  // Neue Quelle = neuer `key` beim Aufrufer: die Stufe beginnt dann von vorn.
   // Eine Stufe weiter nur, wenn die gescheiterte noch die aktuelle ist —
   // Mount-Pruefung und onError koennen denselben Fehler beide melden.
   const next = (failed: 0 | 1 | 2 | 3) => setStage(s => (s === failed && s < 3 ? (s + 1) as 0 | 1 | 2 | 3 : s));
@@ -343,6 +342,7 @@ export default function ChampionDetailPage({ initial = null }: { initial?: Champ
                   {/* Selected skin splash */}
                   <div className="relative aspect-[16/7] overflow-hidden">
                     <SkinImage
+                      key={`${champion.id}_${champion.skins[selectedSkin]?.num || 0}`}
                       championId={champion.id}
                       skinNum={champion.skins[selectedSkin]?.num || 0}
                       alt={champion.skins[selectedSkin]?.name || champion.name}

@@ -100,6 +100,10 @@ export function isUnknownDetailPath(
     return false;
   }
   if (l.statics.get(route)?.has(segment)) return false;
+  // Einzige feste Ausnahme: die Uebersicht ist die TFT-Startseite (TFT_HOME,
+  // app/lib/games.ts, `/` leitet dorthin). Fehlt sie in der erzeugten Liste,
+  // waere sonst die Startseite in allen Sprachen eine 404.
+  if (route === 'tft/comps' && segment === 'atlas') return false;
 
   const id = decode(segment);
   if (id == null) return true;

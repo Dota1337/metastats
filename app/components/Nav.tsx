@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
-import { detectGameFromPath } from '../lib/games';
+import { detectGameFromPath, lolHome, TFT_HOME } from '../lib/games';
 import { stripLangPrefix } from '../lib/lang-path';
 import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
@@ -34,7 +34,9 @@ interface SearchResult {
 // ein Klappmenue). Eine Liste fuer Desktop-Zeile und Handy-Menue.
 const TFT_META_LINKS = [
   { href: '/tft/meta-pulse', label: 'nav.metaPulse', pulse: true },
-  { href: '/tft/comps', label: 'nav.comps' },
+  // Uebersicht ist der Standard-Reiter; markiert bleibt Comps auf Liste und
+  // Detailseiten ueber `base`.
+  { href: TFT_HOME, label: 'nav.comps', base: '/tft/comps' },
   { href: '/tft/units', label: 'nav.units' },
   { href: '/tft/items', label: 'nav.items' },
   { href: '/tft/augments', label: 'nav.augments' },
@@ -223,7 +225,7 @@ export default function Nav({ active }: NavProps) {
     }
   };
 
-  const homeHref = game === 'tft' ? '/tft/comps' : '/';
+  const homeHref = game === 'tft' ? TFT_HOME : lolHome();
 
   return (
     // Kein data-game mehr: der Accent-Anker ist app/tft/layout.tsx, der den
@@ -262,7 +264,7 @@ export default function Nav({ active }: NavProps) {
             </>
           ) : (
             <>
-              <a href={withLang("/")} className={linkClass('search')}>{t('nav.search')}</a>
+              <a href={withLang(lolHome())} className={linkClass('search')}>{t('nav.search')}</a>
               <a href={withLang("/leaderboard")} className={linkClass('leaderboard')}>{t('nav.leaderboard')}</a>
               <a href={withLang("/champions")} className={linkClass('champions')}>{t('nav.champions')}</a>
               <a href={withLang("/marktwert")} className={linkClass('marktwert')}>{t('nav.marketvalue')}</a>
@@ -530,7 +532,7 @@ export default function Nav({ active }: NavProps) {
             </>
           ) : (
             <>
-              <a href={withLang("/")} className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
+              <a href={withLang(lolHome())} className={linkClass('search')} onClick={() => setMenuOpen(false)}>{t('nav.search')}</a>
               <a href={withLang("/leaderboard")} className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href={withLang("/champions")} className={linkClass('champions')} onClick={() => setMenuOpen(false)}>{t('nav.champions')}</a>
               <a href={withLang("/marktwert")} className={linkClass('marktwert')} onClick={() => setMenuOpen(false)}>{t('nav.marketvalue')}</a>

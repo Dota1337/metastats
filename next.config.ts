@@ -4,6 +4,8 @@ import { closeSync, openSync, readdirSync, readFileSync, readSync } from "fs";
 import { withSentryConfig } from "@sentry/nextjs";
 import { SECURITY_HEADERS } from "./app/lib/security-headers";
 import { PREFIX_LANGS } from "./app/lib/lang-path";
+import { TFT_IS_HOME } from "./app/lib/feature-flags";
+import { TFT_HOME } from "./app/lib/games";
 
 // Wochendateien, deren Kopf ein anderes Set als public/tft-set.json nennt
 // (die Dateien beginnen mit {"set":N, collect-tft-allranks.mjs). Kann der Kopf
@@ -64,10 +66,18 @@ const nextConfig: NextConfig = {
   async redirects() {
     const langSource = `/:lang(${PREFIX_LANGS.join('|')})`;
     const base = [
+      // Hauptseite (Schalter TFT_IS_HOME, feature-flags.ts): an → `/` auf die
+      // TFT-Uebersicht, aus → `/lol` zurueck auf `/`. Beide nur 307 — eine
+      // gemerkte 308 liesse sich beim Umlegen nicht mehr zuruecknehmen.
+      TFT_IS_HOME
+        ? { source: '/', destination: TFT_HOME, permanent: false }
+        : { source: '/lol', destination: '/', permanent: false },
+      // Bis 2026-10-15 eine 308 auf /tft/comps; Browser, die sie sich gemerkt
+      // haben, landen weiter auf der Liste (gueltige Seite, harmlos).
       {
         source: '/tft',
-        destination: '/tft/comps',
-        permanent: true,
+        destination: TFT_HOME,
+        permanent: false,
       },
       // /tft/gods war die Set-17-Goetter-Seite. Set 18 hat keine Gods, die
       // Route ist entfernt — alte Links landen auf dem Augment-Katalog.
@@ -98,7 +108,10 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
     ];
-    return base.flatMap(r => [r, { ...r, source: langSource + r.source, destination: '/:lang' + r.destination }]);
+    // `/` ohne Schraegstrich anhaengen (/en, nicht /en/) — so macht es Next
+    // selbst bei i18n (node_modules/next/dist/lib/load-custom-routes.js).
+    const tail = (p: string) => (p === '/' ? '' : p);
+    return base.flatMap(r => [r, { ...r, source: langSource + tail(r.source), destination: '/:lang' + tail(r.destination) }]);
   },
 };
 

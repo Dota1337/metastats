@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { useI18n } from '../../lib/i18n';
 import { filtersToQueryString, type Filters } from './StatsFilterBar';
 
-// Umschalter der Comp-Seiten: Liste (/tft/comps) und Uebersicht nach
-// Unit-Kosten (/tft/comps/atlas). Sitzt links in der Filterleiste
+// Umschalter der Comp-Seiten: Uebersicht nach Unit-Kosten (/tft/comps/atlas,
+// Standard seit 2026-10-15) und Liste (/tft/comps). Sitzt links in der Filterleiste
 // (StatsFilterBar `lead`), damit der Ansichtswechsel sofort auffaellt. Die Filter wandern
 // im Link mit, damit beim Wechsel dieselben Comps stehen.
 //
@@ -20,12 +20,12 @@ export default function CompsTabs({ active, filters }: { active: 'list' | 'overv
   const qs = mounted ? `?${filtersToQueryString(filters)}` : '';
   const tabs = [
     {
-      key: 'list' as const, href: `/tft/comps${qs}`, label: t('tft.comps.tab.list'),
-      icon: <path d="M3 5h14M3 10h14M3 15h14" />,
-    },
-    {
       key: 'overview' as const, href: `/tft/comps/atlas${qs}`, label: t('tft.comps.tab.overview'),
       icon: <path d="M3 3h5.5v5.5H3zM11.5 3H17v5.5h-5.5zM3 11.5h5.5V17H3zM11.5 11.5H17V17h-5.5z" />,
+    },
+    {
+      key: 'list' as const, href: `/tft/comps${qs}`, label: t('tft.comps.tab.list'),
+      icon: <path d="M3 5h14M3 10h14M3 15h14" />,
     },
   ];
   return (

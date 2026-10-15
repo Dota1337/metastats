@@ -61,6 +61,7 @@ import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, augmentRowsBy
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
 import { compPath } from '../../../lib/tft-comp-path';
+import { TFT_HOME } from '../../../lib/games';
 
 // Sample-Validity-Gate: Cards unter dieser Games-Schwelle werden dezent
 // grayed-out + Low-Sample-Badge bekommen (data-skeptic-Befund 2026-06-21:
@@ -544,7 +545,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
           Spalten bleiben (Unit-Wirkung ≥ 460, Items ≥ 580). Prozent statt vw,
           damit die Scrollleiste nicht mitzaehlt. */}
       <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px] min-[100rem]:px-[clamp(1.5rem,calc((100%_-_1552px)_/_2),108px)]' : ''} mx-auto px-4 sm:px-6 py-6`}>
-        <a href={withLang("/tft/comps")} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href={withLang(TFT_HOME)} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
           <a

@@ -100,7 +100,12 @@ test('leere Liste (fehlt oder kaputt) laesst alles durch', () => {
 test('feste Unterseiten kommen aus der Liste, nicht aus dem Code', () => {
   const l = buildLookup({ ...known, staticSegments: { 'tft/units': ['compare'] } });
   assert.equal(isUnknownDetailPath('/tft/units/compare', l), false, 'neue Unterseite neben [id]');
-  assert.equal(isUnknownDetailPath('/tft/comps/atlas', l), true, 'ohne Eintrag kein Freipass');
+  assert.equal(isUnknownDetailPath('/tft/comps/community', l), true, 'ohne Eintrag kein Freipass');
+});
+
+test('die Uebersicht (TFT-Startseite) ist nie 404, auch ohne Eintrag in der Liste', () => {
+  const l = buildLookup({ ...known, staticSegments: {} });
+  assert.equal(isUnknownDetailPath('/tft/comps/atlas', l, () => false), false);
 });
 
 test('Kennung mit der Set-Nummer im Namen gilt als plausibel, auch mit neuem Praefix', () => {

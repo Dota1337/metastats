@@ -9,6 +9,7 @@ import { compPath } from './lib/tft-comp-path';
 import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
 import { LANGS, langAlternates, langPathsEnabled, withLangPrefix } from './lib/lang-path';
+import { lolHome, TFT_HOME } from './lib/games';
 
 // Die Route ist dynamisch (das Snapshot-Manifest wird mit cache: 'no-store'
 // gelesen, snapshot-lookup.ts), ein `revalidate` griffe nicht. Deshalb merkt
@@ -27,8 +28,10 @@ const MIN_UNIT_GAMES = 100;
 type Freq = NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>;
 interface Entry { path: string; priority: number; changeFrequency: Freq }
 
+// Keine Weiterleitungen in die Sitemap: ist TFT die Hauptseite, leitet `/` um
+// und die LoL-Startseite steht unter `/lol` (lolHome, app/lib/games.ts).
 const STATIC_ROUTES: Entry[] = [
-  { path: '/', priority: 1.0, changeFrequency: 'daily' },
+  { path: lolHome(), priority: 1.0, changeFrequency: 'daily' },
   // LoL
   { path: '/leaderboard', priority: 0.9, changeFrequency: 'hourly' },
   { path: '/champions', priority: 0.8, changeFrequency: 'daily' },
@@ -36,7 +39,9 @@ const STATIC_ROUTES: Entry[] = [
   { path: '/teams', priority: 0.7, changeFrequency: 'daily' },
   { path: '/ligen', priority: 0.7, changeFrequency: 'daily' },
   { path: '/compare', priority: 0.6, changeFrequency: 'weekly' },
-  // TFT hub
+  // TFT hub. Die Uebersicht ist die TFT-Startseite; als erster /tft/comps/-
+  // Eintrag ist sie zugleich eine 200er-Probe des Vertrags seo/detail-404.
+  { path: TFT_HOME, priority: 0.9, changeFrequency: 'daily' },
   { path: '/tft/comps', priority: 0.9, changeFrequency: 'daily' },
   { path: '/tft/leaderboard', priority: 0.9, changeFrequency: 'hourly' },
   { path: '/tft/marktwert', priority: 0.8, changeFrequency: 'hourly' },

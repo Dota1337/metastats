@@ -31,7 +31,7 @@ const TARGET_LABELS: { match: RegExp; key: TKey }[] = [
   { match: /^\/ligen/,               key: 'nav.leagues' },
   { match: /^\/tft\/tournaments/,    key: 'drawer.tournaments' },
   { match: /^\/(tft\/)?player\//,    key: 'nav.searchPlayer' },
-  { match: /^\/$/,                   key: 'gamestrip.home' },
+  { match: /^\/(lol)?$/,             key: 'gamestrip.home' },
 ];
 
 export default function GameStrip() {

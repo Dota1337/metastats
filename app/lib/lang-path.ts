@@ -35,7 +35,7 @@ export const HREFLANG: Record<Lang, string> = {
 // die Liste gegen app/.
 export const PAGE_ROOTS: ReadonlySet<string> = new Set([
   'champions', 'compare', 'datenschutz', 'impressum', 'leaderboard', 'ligen',
-  'marktwert', 'player', 'search', 'teams', 'tft',
+  'lol', 'marktwert', 'player', 'search', 'teams', 'tft',
 ]);
 
 export function isLang(v: unknown): v is Lang {

@@ -9,6 +9,7 @@ import { useI18n } from '../lib/i18n';
 import { regionLabel } from '../lib/regions';
 import { formatTier } from '../lib/rank-format';
 import { isLolRankGroup, lolTiersTopDown } from '../lib/rank-groups';
+import { lolHome } from '../lib/games';
 
 const TIER_COLORS: Record<string, string> = {
   CHALLENGER: '#f0c040',
@@ -180,7 +181,7 @@ export default function MarktwertPage() {
             <div className="text-fg-secondary text-sm mb-2">{t('mv.noData')}</div>
             <div className="text-fg-muted text-xs">
               {t('mv.noDataDesc')}
-              <br />{t('mv.buildDb')} <a href={withLang("/")} className="text-accent hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
+              <br />{t('mv.buildDb')} <a href={withLang(lolHome())} className="text-accent hover:text-white">{t('mv.searchOnHome')}</a>{t('mv.buildDbEnd')}
             </div>
           </div>
         ) : (

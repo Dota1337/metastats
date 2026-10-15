@@ -57,3 +57,22 @@ export const TFT_COACH_ENABLED = false;
  * brechen also nicht.
  */
 export const TFT_PROS_ENABLED = false;
+
+/**
+ * TFT ist die Hauptseite, LoL die Zweitseite (seit 2026-10-15).
+ *
+ * User-Wort: "Setze TFT als Hauptseite und League of Legends als Zweitseite,
+ * bis wir den Key für LoL erhalten." Der LoL-Riot-Key ist ein 24-h-
+ * Entwicklerschluessel; ein dauerhafter ist beantragt.
+ *
+ * An: `/` leitet per 307 auf die TFT-Comps-Uebersicht (next.config.ts), die
+ * LoL-Startseite steht unter `/lol`, im Spiel-Streifen steht TFT links.
+ * Alle Leser holen die Ziele aus app/lib/games.ts (TFT_HOME, lolHome()).
+ *
+ * Zum Zuruecknehmen, sobald der dauerhafte LoL-Key da ist: auf `false` setzen
+ * und deployen. Dann leitet `/lol` per 307 auf `/`. Von Hand zurueck:
+ * infra/contracts.json Vertrag seo/detail-404 — Probe `/` und `/en` aus
+ * expectRedirect entfernen, expectLangLinks `/fr/lol` wieder auf `/fr`.
+ * Nur 307, nie 308: eine gemerkte 308 liesse sich nicht mehr zuruecknehmen.
+ */
+export const TFT_IS_HOME = true;

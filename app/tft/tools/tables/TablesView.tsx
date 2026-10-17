@@ -455,16 +455,6 @@ function WispList({ entries, bands, t }: { entries: WispEntry[]; bands?: WispBan
   }, [entries, bands, tier, mode, cat, parsed, searchText]);
   return (
     <div>
-      <div className="mb-3">
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder={t('tft.tables.searchPlaceholder')}
-          aria-label={t('tft.tables.search')}
-          className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
-        />
-      </div>
       <div className="flex flex-wrap gap-x-5 gap-y-3 mb-4">
         <div>
           <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tables.tier')}</div>
@@ -480,6 +470,17 @@ function WispList({ entries, bands, t }: { entries: WispEntry[]; bands?: WispBan
             value={cat}
             onChange={setCat}
             options={[['all', t('tft.tables.all')], ...WISP_CATS.map(c => [c, t(`tft.tables.cat.${c}` as Parameters<T>[0])] as [WispCat, string])]}
+          />
+        </div>
+        {/* Suche rechts neben den Art-Knoepfen, auf Hoehe der Knoepfe; passt sie nicht, rutscht sie in die naechste Zeile. */}
+        <div className="self-end w-full sm:w-auto">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={t('tft.tables.searchPlaceholder')}
+            aria-label={t('tft.tables.search')}
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
           />
         </div>
       </div>

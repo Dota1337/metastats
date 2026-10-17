@@ -302,9 +302,15 @@ export default function UnitsClient({ initialFilters, initial }: {
 
 function noopSubscribe() { return () => {}; }
 
-// Item-Reihe einer Unit: links die meistgebauten Items, rechts (durch eine Linie
-// getrennt) Artefakte und Embleme. Reicht der Platz nicht, rutscht der rechte
-// Block als Ganzes in die naechste Zeile.
+// Item-Reihe einer Unit: links die meistgebauten Items, rechts davon zwei eigene
+// Bloecke mit je einer Linie — zuerst Artefakte, dann Embleme. Der Artefakt-Block
+// haelt immer Platz fuer drei Bilder frei, damit die Embleme in jeder Zeile an
+// derselben Stelle stehen. Reicht der Platz nicht, rutschen beide Bloecke
+// gemeinsam in die naechste Zeile.
+const EXTRA_BLOCK = 'flex gap-0.5 border-l border-border-subtle pl-3';
+// 3 Bilder x 28 px + 2 Abstaende x 2 px + 12 px Innenabstand + 1 px Linie.
+const ARTIFACT_SLOT_WIDTH = 'min-w-[101px]';
+
 function UnitItemRow({ u, assets, t }: { u: UnitRow; assets: TftAssetsBundle | null; t: (k: any) => string }) {
   const items = u.topItems || [];
   const extraOk = (it: UnitItem) => it.games >= ITEM_VALUE_MIN && it.games >= u.games * EXTRA_MIN_SHARE;
@@ -334,12 +340,19 @@ function UnitItemRow({ u, assets, t }: { u: UnitRow; assets: TftAssetsBundle | n
         </div>
       )}
       {(artifacts.length > 0 || emblems.length > 0) && (
-        <div className="flex gap-2 flex-shrink-0 border-l border-border-subtle pl-3">
-          {[artifacts, emblems].filter(g => g.length > 0).map((g, i) => (
-            <div key={i} className="flex gap-0.5">
-              {g.map(it => <ItemWithValue key={it.item} it={it} unitGames={u.games} assets={assets} t={t} />)}
+        <div className="flex gap-3 flex-shrink-0">
+          {artifacts.length > 0 ? (
+            <div className={`${EXTRA_BLOCK} ${ARTIFACT_SLOT_WIDTH}`}>
+              {artifacts.map(it => <ItemWithValue key={it.item} it={it} unitGames={u.games} assets={assets} t={t} />)}
             </div>
-          ))}
+          ) : (
+            <div className={ARTIFACT_SLOT_WIDTH} aria-hidden />
+          )}
+          {emblems.length > 0 && (
+            <div className={EXTRA_BLOCK}>
+              {emblems.map(it => <ItemWithValue key={it.item} it={it} unitGames={u.games} assets={assets} t={t} />)}
+            </div>
+          )}
         </div>
       )}
     </div>

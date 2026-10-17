@@ -53,8 +53,10 @@
 //         (--until = obere Grenze fuer fetched_at). Ein Testlauf zwingt den
 //         naechsten echten Lauf zum Vollaufbau.
 // Exit: 0 fertig oder anderer Lauf aktiv, 1 Fehler, 2 Vollaufbau noetig, aber
-// mit diesem Code-Stand schon gescheitert (mit --full erzwingen).
+// mit diesem Code-Stand schon gescheitert (mit --full erzwingen), 3 zu wenig
+// Platz auf dem Volume (diskGate; Postgres liegt auf derselben Platte).
 // Env: EXPLORER_BUILD_MEM (DuckDB-Speichergrenze, Vorgabe 900MB),
+//      EXPLORER_DISK_CHECK=0 (Platz-Sperre aus), EXPLORER_DISK_RESERVE_GB,
 //      AGG_BUDGET_S, AGG_MASKS, AGG_PART_CAP (scripts/lib/explorer-agg.mjs).
 
 import fs from 'node:fs';
@@ -102,6 +104,21 @@ const SCAN_ALARM_S = 600;          // nur Teil-Aufbau (Tabellen-Scan ~130 s); Vo
 const TOTAL_ALARM_S = 6000;        // Unit-Zeitlimit 9000 s
 const TOTAL_ALARM_FULL_S = 8400;   // Vollaufbau im Abendfenster: Kern ~4400–5300 s, danach Summen + Masken
 const BUILD_MEM_DEFAULT = '900MB';
+// Platz-Sperre (17.10.: Vollaufbau lief bei 27 GB frei in „No space left on
+// device"; Postgres und die Sicherungen liegen auf demselben Volume). Bedarf als
+// Vielfaches der vorigen Datei: .work war beim Abbruch 22,4 GB bei 4,35 GB Datei
+// (×5,2, nur Untergrenze — danach kamen noch Sortier-Auslagerung, traits,
+// Teilsummen, Masken). Gemessene Spitze je Lauf in status.json `disk`; Faktor
+// danach nachziehen. Teil-Aufbau: Kopie der alten Datei + Block-Kopien.
+export const DISK_FULL_FACTOR = 10;
+export const DISK_DELTA_FACTOR = 2;
+export const DISK_FIRST_BYTES = 40 * 2 ** 30;  // Vollaufbau ohne vorige Datei
+export const DISK_SPILL_MIN_BYTES = 5 * 2 ** 30;
+const GIB = 2 ** 30;
+const DISK_RESERVE_BYTES = (Number(process.env.EXPLORER_DISK_RESERVE_GB) > 0
+  ? Number(process.env.EXPLORER_DISK_RESERVE_GB) : 10) * GIB;  // bleibt Postgres immer
+const DISK_CHECK = process.env.EXPLORER_DISK_CHECK !== '0';
+const DISK_WATCH_MS = 20_000;
 const DAY_MS = 86_400_000;
 const OPEN_END = '2999-12-31';
 
@@ -207,9 +224,48 @@ export function decideMode({ full = false, marker = false, prev, cur, patchChang
     if (!inFullWindow(hourUtc)) {
       return { mode: 'delta', reasons: [`Wochen-Vollaufbau faellig, Start ausserhalb ${FULL_WINDOW_UTC[0]}–${FULL_WINDOW_UTC[1]} Uhr UTC`] };
     }
-    return { mode: 'full', reasons: ['Wochen-Vollaufbau'] };
+    return { mode: 'full', reasons: [CYCLE_REASON] };
   }
   return { mode: 'delta', reasons: [] };
+}
+export const CYCLE_REASON = 'Wochen-Vollaufbau';
+
+const gb = (b) => `${(b / GIB).toFixed(1)} GB`;
+// Platz-Pruefung nach decideMode und VOR dem Versuchs-Stempel: wird der Stempel
+// trotz Rueckstufung geschrieben, sperrt die Pruefung den eigenen Code-Stand
+// (decideMode, blocked). Zu wenig Platz fuer den Vollaufbau → Wochen-Turnus
+// wird Teil-Aufbau, Pflichtgrund → skip; zu wenig fuer den Teil-Aufbau → skip,
+// die alte Datei bleibt. Ohne vorige Datei gilt DISK_FIRST_BYTES. Bekannte
+// Grenze: nach einem Set-Wechsel misst die Schaetzung die Datei des alten Sets
+// (zu hoch — skip statt Bau nur bei knapper Platte).
+export function diskGate({ decision, freeBytes, prevBytes, reserveBytes }) {
+  if (decision.mode === 'skip' || !Number.isFinite(freeBytes)) return { ...decision, disk: null };
+  const need = (mode) => reserveBytes + (prevBytes > 0
+    ? Math.ceil(prevBytes * (mode === 'full' ? DISK_FULL_FACTOR : DISK_DELTA_FACTOR))
+    : (mode === 'full' ? DISK_FIRST_BYTES : 0));
+  const disk = (mode) => ({ freeBytes, needBytes: need(mode) });
+  if (freeBytes >= need(decision.mode)) return { ...decision, disk: disk(decision.mode) };
+  const alarm = `zu wenig Platz fuer ${decision.mode === 'full' ? 'Vollaufbau' : 'Teil-Aufbau'}:`
+    + ` frei ${gb(freeBytes)}, noetig ${gb(need(decision.mode))}`;
+  const cycle = decision.mode === 'full' && decision.reasons.length === 1 && decision.reasons[0] === CYCLE_REASON;
+  if (cycle && freeBytes >= need('delta')) {
+    return { mode: 'delta', reasons: [`${CYCLE_REASON} faellig, aber ${alarm}`], disk: disk('delta'), diskAlarm: alarm };
+  }
+  return { mode: 'skip', reasons: [...decision.reasons, alarm], disk: disk(decision.mode), diskAlarm: alarm, diskSkip: true };
+}
+
+// Grenze fuer DuckDBs Auslagerungs-Ordner: was nach Reserve und Arbeitsdatei
+// (Vollaufbau ~7 × alte Datei fuer .work + .tmp, Teil-Aufbau ~2 ×) uebrig ist,
+// mindestens DISK_SPILL_MIN_BYTES. Ohne Grenze darf DuckDB 90 % des freien
+// Platzes belegen und frisst die Postgres-Reserve.
+export function spillCapBytes({ mode, freeBytes, prevBytes, reserveBytes }) {
+  const work = (prevBytes > 0 ? prevBytes : DISK_FIRST_BYTES / DISK_FULL_FACTOR) * (mode === 'full' ? 7 : 2);
+  return Math.max(DISK_SPILL_MIN_BYTES, Math.floor(freeBytes - reserveBytes - work));
+}
+
+// Fuer Nutzer frei (bavail): Postgres laeuft nicht als root und sieht nur diesen Wert.
+function freeBytesOf(dir) {
+  try { const s = fs.statfsSync(dir); return Number(s.bavail) * Number(s.bsize); } catch { return null; }
 }
 
 // Lese-Alarm nur im Teil-Aufbau: der Vollaufbau liest alle Boards des Sets und
@@ -422,6 +478,34 @@ function writeJsonAtomic(p, obj) {
   fs.renameSync(`${p}.tmp`, p);
 }
 
+// Arbeitsdateien eines Laufs. Nie Stempel, aggtry, masktry oder force-full —
+// das sind absichtliche Absturzspuren. Nur aufrufen, solange die Sperre gehalten
+// wird (sonst trifft es die Dateien eines parallelen Hand-Laufs).
+function cleanupFiles(files) {
+  for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`, files.aggwork, `${files.aggwork}.wal`,
+    files.maskwork, `${files.maskwork}.wal`]) {
+    fs.rmSync(f, { force: true });
+  }
+  fs.rmSync(files.spill, { recursive: true, force: true });
+}
+
+function scratchSizes(files) {
+  const size = (f) => { try { return fs.statSync(f).size; } catch { return 0; } };
+  let spill = 0;
+  try { for (const n of fs.readdirSync(files.spill)) spill += size(path.join(files.spill, n)); } catch { /* kein Ordner */ }
+  return `work ${gb(size(files.work))}, tmp ${gb(size(files.tmp))}, Auslagerung ${gb(spill)}`;
+}
+
+// Lauf ohne neue Datei (skip, Fehler): Alarm in status.json, Datenstand
+// (builtAt, lastFullAt, bytes) aus dem vorigen Eintrag — sonst wird
+// explorer/datei-frische faelschlich gruen oder vollaufbau-frische zurueckgesetzt.
+function writeStatusAlarm(files, { mode, reasons, alarms }) {
+  const prev = readJson(files.status) || { builtAt: null, lastFullAt: null };
+  writeJsonAtomic(files.status, {
+    ...prev, alarms, lastRun: { at: new Date().toISOString(), mode, reasons, newFile: false },
+  });
+}
+
 const procEnv = {
   bootId: (() => { try { return fs.readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim(); } catch { return null; } })(),
   isAlive: (pid) => {
@@ -543,6 +627,17 @@ async function main() {
   if (!acquireLock(files.lock)) { log('anderer Lauf aktiv — Ende ohne Bau'); return 0; }
   try {
     return await build({ t0, win, testRun, untilMs, files });
+  } catch (e) {
+    // Innerhalb der Sperre und nach close() (finally in build): Arbeitsdateien
+    // weg — am 17.10. blieben 22 GB .work liegen und hielten die Platte voll.
+    // Ein harter Abbruch (Speichergrenze, Zeitlimit) erreicht das nicht; dann
+    // raeumt der naechste Start auf.
+    try { log(`Aufraeumen nach Fehler: ${scratchSizes(files)}`); cleanupFiles(files); } catch (ce) { log(`Aufraeumen gescheitert: ${ce.message}`); }
+    try {
+      const msg = String(e?.message || e).replace(/\s+/g, ' ').slice(0, 200);
+      writeStatusAlarm(files, { mode: 'error', reasons: [], alarms: [`Aufbau gescheitert: ${msg}`] });
+    } catch (se) { log(`status.json nicht geschrieben: ${se.message}`); }
+    throw e;
   } finally {
     releaseLock(files.lock);
   }
@@ -564,47 +659,65 @@ async function build({ t0, win, testRun, untilMs, files }) {
     + ` (${patches.ranges.length} Bereiche), Ziel ${OUT}${testRun ? ', TESTLAUF' : ''}`);
 
   const { DuckDBInstance } = await import(DUCKDB_MODULE);
-  const cleanup = () => {
-    for (const f of [files.tmp, `${files.tmp}.wal`, files.work, `${files.work}.wal`, files.aggwork, `${files.aggwork}.wal`,
-      files.maskwork, `${files.maskwork}.wal`]) {
-      fs.rmSync(f, { force: true });
-    }
-    fs.rmSync(files.spill, { recursive: true, force: true });
-  };
+  const cleanup = () => cleanupFiles(files);
   cleanup();
 
   // Arbeitsdatei fuer Rohdaten + Zwischenschritte (5 GB Text passen nicht in
   // den RAM). Sie wird am Ende geloescht.
+  const diskStart = freeBytesOf(files.dir);
   const db = await DuckDBInstance.create(files.work);
   const c = await db.connect();
+  // Zweite Linie hinter diskGate: faellt der freie Platz unter die halbe
+  // Reserve, wird die laufende Anweisung abgebrochen und jede weitere wirft.
+  // Dauerhaft, weil Teilsummen und Masken Fehler abfangen und weiterlaufen.
+  // diskMin = gemessene Spitze (status.json `disk`), Grundlage fuer die Faktoren.
+  let diskAbort = null;
+  let diskMin = diskStart;
+  const watch = diskStart == null ? null : setInterval(() => {
+    const f = freeBytesOf(files.dir);
+    if (f == null) return;
+    if (f < diskMin) diskMin = f;
+    if (DISK_CHECK && !diskAbort && f < DISK_RESERVE_BYTES / 2) {
+      diskAbort = `Platte fast voll (frei ${gb(f)}) — Aufbau abgebrochen, Reserve fuer Postgres`;
+      log(diskAbort);
+      try { c.interrupt(); } catch { /* nichts laeuft */ }
+    }
+  }, DISK_WATCH_MS);
+  watch?.unref?.();
+  const halt = (e) => (diskAbort ? new Error(diskAbort) : e);
   let tStep = Date.now();
   const head = (s) => String(s).replace(/\s+/g, ' ').trim().slice(0, 110);
   const run = async (s) => {
     let r;
     try {
+      if (diskAbort) throw halt();
       r = await c.run(s);
     } catch (e) {
       log(`  FEHLER nach ${((Date.now() - tStep) / 1000).toFixed(1)} s: ${head(s)}`);
-      throw e;
+      throw halt(e);
     }
     const m = /^\s*(CREATE (?:TEMP )?TABLE [\w.]+|INSERT INTO [\w.]+|UPDATE [\w.]+|DELETE FROM [\w.]+)/.exec(s);
     if (m) log(`  ${m[1]} ${((Date.now() - tStep) / 1000).toFixed(1)} s`);
     tStep = Date.now();
     return r;
   };
-  const all = async (s) => (await c.runAndReadAll(s)).getRowObjects();
+  const all = async (s) => {
+    if (diskAbort) throw halt();
+    try { return (await c.runAndReadAll(s)).getRowObjects(); } catch (e) { throw halt(e); }
+  };
   // Schritt-Log fuer Teilsummen und Masken: Anweisungen ab 2 s mit Dauer, bei
   // Fehler die Anweisung selbst (Speicher-Abbrueche 14.10. waren ohne das
   // keiner Stelle zuzuordnen).
   const logged = (fn) => async (s) => {
     const t = Date.now();
     try {
+      if (diskAbort) throw halt();
       const r = await fn(s);
       if (Date.now() - t >= 2000) log(`  ${head(s)} — ${((Date.now() - t) / 1000).toFixed(1)} s`);
       return r;
     } catch (e) {
       log(`  FEHLER nach ${((Date.now() - t) / 1000).toFixed(1)} s: ${head(s)}`);
-      throw e;
+      throw halt(e);
     }
   };
   const stepExec = logged((s) => c.run(s));
@@ -679,28 +792,42 @@ async function build({ t0, win, testRun, untilMs, files }) {
     const todayUtc = new Date().toISOString().slice(0, 10);
     const hourUtc = new Date(t0).getUTCHours();
     const code = buildCodeHash();
-    const decision = decideMode({
+    const modeDecision = decideMode({
       full: FULL, marker: markerMtime != null, prev,
       cur: { scriptVersion: SCRIPT_VERSION, duckdbVersion, hashes, nTupUpd, testRun, n: win.n, code },
       patchChanged, f: win.f, stamp, hourUtc,
     });
+    const prevBytes = (() => { try { return fs.statSync(OUT).size; } catch { return 0; } })();
+    const decision = DISK_CHECK
+      ? diskGate({ decision: modeDecision, freeBytes: diskStart, prevBytes, reserveBytes: DISK_RESERVE_BYTES })
+      : { ...modeDecision, disk: null };
     const mode = decision.mode;
-    log(`Art: ${mode}${decision.reasons.length ? ` — ${decision.reasons.join('; ')}` : ''} (Code ${code}, Speicher ${mem})`);
+    log(`Art: ${mode}${decision.reasons.length ? ` — ${decision.reasons.join('; ')}` : ''} (Code ${code}, Speicher ${mem}`
+      + `${decision.disk ? `, Platte frei ${gb(decision.disk.freeBytes)} / noetig ${gb(decision.disk.needBytes)}` : ''})`);
     // Vollaufbau im Abendfenster darf laenger (Summen + Masken nach dem Kern);
     // nachts (nur Pflichtgruende) gilt die alte Grenze.
     const totalAlarmS = mode === 'full' && inFullWindow(hourUtc) ? TOTAL_ALARM_FULL_S : TOTAL_ALARM_S;
     const alarms = [];
-    if (decision.blocked) alarms.push(`Vollaufbau gesperrt: mit Code ${code} schon gescheitert — Code aendern oder --full`);
+    if (modeDecision.blocked) alarms.push(`Vollaufbau gesperrt: mit Code ${code} schon gescheitert — Code aendern oder --full`);
+    if (decision.diskAlarm) alarms.push(decision.diskAlarm);
     if (prev.kind === 'unreadable') {
       log(`ACHTUNG: vorige Datei unlesbar (${prev.error}) — Raenge vor ${win.f} werden aus den heutigen Quellen neu bestimmt`);
       alarms.push('vorige Datei unlesbar, eingefrorene Raenge verloren');
     }
     if (mode === 'skip') {
-      log('kein Bau: Vollaufbau noetig, aber mit diesem Code-Stand schon gescheitert — mit --full erzwingen');
+      log(decision.diskSkip
+        ? `kein Bau: ${decision.diskAlarm} — alte Datei bleibt`
+        : 'kein Bau: Vollaufbau noetig, aber mit diesem Code-Stand schon gescheitert — mit --full erzwingen');
       if (prevAttached) await run('DETACH prev');
       close();
       cleanup();
-      return 2;
+      writeStatusAlarm(files, { mode, reasons: decision.reasons, alarms });
+      return decision.diskSkip ? 3 : 2;
+    }
+    if (diskStart != null && DISK_CHECK) {
+      const cap = spillCapBytes({ mode, freeBytes: diskStart, prevBytes, reserveBytes: DISK_RESERVE_BYTES });
+      await run(`SET max_temp_directory_size=${sqlStr(`${Math.floor(cap / GIB)}GiB`)}`);
+      log(`Auslagerung hoechstens ${Math.floor(cap / GIB)} GiB`);
     }
     if (mode === 'full') writeJsonAtomic(files.stamp, { day: todayUtc, startedMs: Date.now(), code });
 
@@ -995,6 +1122,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
     await run(`CHECKPOINT ${outdb}`);
     await run(`DETACH ${outdb}`);
     close();
+    const freeEnd = freeBytesOf(files.dir);  // .work + .tmp voll: meist die Spitze
+    if (freeEnd != null && diskMin != null && freeEnd < diskMin) diskMin = freeEnd;
 
     fs.renameSync(files.tmp, OUT);
     cleanup();
@@ -1017,6 +1146,13 @@ async function build({ t0, win, testRun, untilMs, files }) {
       maskDays: { covered: mask.covered, total: mask.total }, maskNew: mask.newDays, maskCarried: mask.carried,
       maskPartCapped: mask.partCapped,
       maskFailed: mask.failed, maskSig: mask.token ? MASK_SIG : null,
+      // Platz: Spitze = frei beim Start − kleinster gemessener Wert (alle 20 s);
+      // Grundlage fuer DISK_FULL_FACTOR / DISK_DELTA_FACTOR.
+      disk: diskStart == null ? null : {
+        freeStartGb: +(diskStart / GIB).toFixed(1), minFreeGb: +(diskMin / GIB).toFixed(1),
+        peakUsedGb: +((diskStart - diskMin) / GIB).toFixed(1), prevBytes,
+        needGb: decision.disk ? +(decision.disk.needBytes / GIB).toFixed(1) : null,
+      },
       alarms,
     });
     log(`fertig (${mode}) in ${totalS.toFixed(1)} s: ${boards} Boards / ${matches} Partien, Rang bekannt ${stats.ranked},`
@@ -1026,7 +1162,10 @@ async function build({ t0, win, testRun, untilMs, files }) {
       + ` ${(size / 1e6).toFixed(0)} MB${alarms.length ? `, ALARM: ${alarms.join('; ')}` : ''}`);
     return 0;
   } finally {
-    close();
+    if (watch) clearInterval(watch);
+    // Nach „Platte voll" kann schon das Schliessen werfen — der eigentliche
+    // Fehler soll nicht verdeckt werden (main raeumt danach auf).
+    try { close(); } catch (e) { log(`Schliessen gescheitert: ${e.message}`); }
   }
 }
 

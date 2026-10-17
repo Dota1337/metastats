@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, scanAlarm, lockIsStale, rawSql, filesFor,
   SCRIPT_VERSION, inFullWindow, buildCodeHash, CODE_FILES,
+  diskGate, spillCapBytes, CYCLE_REASON, DISK_FULL_FACTOR, DISK_DELTA_FACTOR, DISK_FIRST_BYTES, DISK_SPILL_MIN_BYTES,
 } from './build-explorer-store.mjs';
 
 // Ausschnitt aus public/tft-set.json (Stand 2026-10-05), fest eingefroren,
@@ -267,4 +268,49 @@ test('filesFor: Live-Datei behaelt status.json, Testdatei bekommt eigene', () =>
   assert.equal(live.lock, '/x/explorer/explorer.duckdb.lock');
   assert.equal(live.marker.replace(/\\/g, '/'), '/x/explorer/force-full');
   assert.equal(filesFor('/x/eq/f2.duckdb').status.replace(/\\/g, '/'), '/x/eq/f2.status.json');
+});
+
+test('diskGate: genug Platz → Entscheidung bleibt, mit Bedarf', () => {
+  const G = 2 ** 30;
+  const r = diskGate({ decision: { mode: 'full', reasons: [CYCLE_REASON] }, freeBytes: 117 * G, prevBytes: 4.33 * G, reserveBytes: 10 * G });
+  assert.equal(r.mode, 'full');
+  assert.equal(r.disk.needBytes, 10 * G + Math.ceil(4.33 * G * DISK_FULL_FACTOR));
+  assert.equal(r.diskAlarm, undefined);
+  const d = diskGate({ decision: { mode: 'delta', reasons: [] }, freeBytes: 27 * G, prevBytes: 4.33 * G, reserveBytes: 10 * G });
+  assert.deepEqual([d.mode, d.disk.needBytes], ['delta', 10 * G + Math.ceil(4.33 * G * DISK_DELTA_FACTOR)]);
+});
+
+test('diskGate: 17.10. (27 GB frei) — Wochen-Turnus wird Teil-Aufbau, Pflicht wird skip, ohne Stempel-Folgen', () => {
+  const G = 2 ** 30;
+  const base = { freeBytes: 27 * G, prevBytes: 4.33 * G, reserveBytes: 10 * G };
+  const cyc = diskGate({ ...base, decision: { mode: 'full', reasons: [CYCLE_REASON] } });
+  assert.equal(cyc.mode, 'delta');
+  assert.ok(cyc.diskAlarm.includes('zu wenig Platz fuer Vollaufbau'));
+  assert.ok(cyc.reasons[0].startsWith(`${CYCLE_REASON} faellig, aber zu wenig Platz`));
+  assert.equal(cyc.diskSkip, undefined);
+  const must = diskGate({ ...base, decision: { mode: 'full', reasons: ['--full'] } });
+  assert.deepEqual([must.mode, must.diskSkip], ['skip', true]);
+  // Turnus, aber auch fuer den Teil-Aufbau zu wenig → skip
+  const tight = diskGate({ ...base, freeBytes: 15 * G, decision: { mode: 'full', reasons: [CYCLE_REASON] } });
+  assert.deepEqual([tight.mode, tight.diskSkip], ['skip', true]);
+  const delta = diskGate({ ...base, freeBytes: 15 * G, decision: { mode: 'delta', reasons: [] } });
+  assert.deepEqual([delta.mode, delta.diskSkip], ['skip', true]);
+  assert.ok(delta.diskAlarm.includes('Teil-Aufbau'));
+});
+
+test('diskGate: skip bleibt skip, unbekannter Platz prueft nicht, ohne vorige Datei gilt DISK_FIRST_BYTES', () => {
+  const G = 2 ** 30;
+  const skip = { mode: 'skip', reasons: ['x'], blocked: true };
+  assert.deepEqual(diskGate({ decision: skip, freeBytes: 1, prevBytes: 0, reserveBytes: G }), { ...skip, disk: null });
+  assert.equal(diskGate({ decision: { mode: 'full', reasons: ['--full'] }, freeBytes: null, prevBytes: 0, reserveBytes: G }).mode, 'full');
+  const first = diskGate({ decision: { mode: 'full', reasons: ['keine vorige Datei'] }, freeBytes: 45 * G, prevBytes: 0, reserveBytes: 10 * G });
+  assert.deepEqual([first.mode, first.disk.needBytes], ['skip', 10 * G + DISK_FIRST_BYTES]);
+  assert.equal(diskGate({ decision: { mode: 'full', reasons: ['keine vorige Datei'] }, freeBytes: 60 * G, prevBytes: 0, reserveBytes: 10 * G }).mode, 'full');
+});
+
+test('spillCapBytes: Rest nach Reserve und Arbeitsdatei, nie unter dem Mindestwert', () => {
+  const G = 2 ** 30;
+  assert.equal(spillCapBytes({ mode: 'full', freeBytes: 117 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), 79 * G);
+  assert.equal(spillCapBytes({ mode: 'delta', freeBytes: 117 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), 99 * G);
+  assert.equal(spillCapBytes({ mode: 'full', freeBytes: 30 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), DISK_SPILL_MIN_BYTES);
 });

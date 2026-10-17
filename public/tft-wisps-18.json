@@ -5,6 +5,32 @@
   "url": "https://www.littlebuddybot.com/tft-wisps"
  },
  "fetchedAt": "2026-09-27T16:27:58.474Z",
+ "bands": {
+  "Early": {
+   "from": "2-1",
+   "to": "2-7"
+  },
+  "EarlyMid": {
+   "from": "3-1",
+   "to": "3-4"
+  },
+  "Mid": {
+   "from": "3-5",
+   "to": "4-1"
+  },
+  "MidLate": {
+   "from": "4-2",
+   "to": "4-7"
+  },
+  "Late": {
+   "from": "5-1",
+   "to": "5-7"
+  },
+  "VeryLate": {
+   "from": "6-1",
+   "to": "10-1"
+  }
+ },
  "wisps": [
   {
    "api": "DA_18_AllFours",
@@ -2904,7 +2930,8 @@
      "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 4,
      "rounds": [
-      "Early"
+      "EarlyMid",
+      "Mid"
      ],
      "doubles": true,
      "tockers": true,
@@ -3112,9 +3139,9 @@
      "icon": "/tft-extra/wisps/18/Item_Tier2.webp",
      "cost": 0,
      "rounds": [
+      "EarlyMid",
       "Mid",
-      "MidLate",
-      "Late"
+      "MidLate"
      ],
      "doubles": true,
      "tockers": true,
@@ -3562,9 +3589,8 @@
      "icon": "/tft-extra/wisps/18/Misc_Tier2.webp",
      "cost": 2,
      "rounds": [
-      "Mid",
-      "MidLate",
-      "Late"
+      "Early",
+      "EarlyMid"
      ],
      "doubles": false,
      "tockers": false,
@@ -4408,8 +4434,9 @@
      "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
      "cost": 2,
      "rounds": [
-      "EarlyMid",
-      "MidLate"
+      "MidLate",
+      "Late",
+      "VeryLate"
      ],
      "doubles": true,
      "tockers": true,
@@ -6602,7 +6629,6 @@
      "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
      "cost": 3,
      "rounds": [
-      "MidLate",
       "Late",
       "VeryLate"
      ],

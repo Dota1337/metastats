@@ -11,7 +11,13 @@
  * die Gewichte in map22 (BoosterPack{1,2,3}Distribution) und sind neuer als
  * das 18.1-Bild — deshalb gelten dort Riots Werte (User-Entscheid 2026-09-27).
  *
- * Aufruf:  node scripts/import-tft-tables.mjs [--set 18] [--csv datei.csv]
+ * Aufruf:  node scripts/import-tft-tables.mjs [--set 18] [--csv datei.csv] [--page datei.html] [--bands-only]
+ *
+ * Die Runden je Rundenband (Early = 2-1 bis 2-7 …) liest das Skript aus der
+ * LBB-Wisps-Seite (Konstante APPEARANCE_BANDS; `--page` fuer eine lokale Kopie)
+ * und schreibt sie als `bands` in die Wisp-JSON. `--bands-only` laesst CSV, Loot
+ * und Bilder aus und ergaenzt nur die bestehende Wisp-JSON um `bands` und die
+ * Upgrade-Regel (z. B. wenn die LBB-Tabelle schon auf einem kommenden Patch steht).
  *
  * Jeder apiName muss im Asset-Bundle des Sets stehen (oder in ICON_OVERRIDES);
  * sonst Exit 1, damit kein Eintrag still ohne Bild und Namen live geht.
@@ -267,6 +273,66 @@ const coven = {
 };
 
 // ---------- Wisps ----------
+const ROUND_ORDER = ['Early', 'EarlyMid', 'Mid', 'MidLate', 'Late', 'VeryLate']; // = WISP_ROUNDS in app/lib/tft-wisp-search.ts
+const WISPS_PAGE_URL = 'https://www.littlebuddybot.com/tft-wisps';
+
+// Runden je Band aus der LBB-Seite. Die Konstante steht doppelt maskiert in einer
+// Astro-Komponente (&quot; plus \" und \n); Keys dort mit Leerzeichen („Early Mid").
+// Jede Abweichung von 6 Baendern in unserer Reihenfolge mit aufsteigenden Runden → Exit 1.
+function readAppearanceBands(html) {
+  const text = html
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  const block = /APPEARANCE_BANDS\s*=\s*\[([\s\S]*?)\];/.exec(text)?.[1];
+  if (!block) throw new Error('LBB-Seite: APPEARANCE_BANDS nicht gefunden — Aufbau geaendert?');
+  const rows = [...block.matchAll(/key:\s*"([^"]+)",\s*label:\s*"(\d+-\d+) to (\d+-\d+)"/g)];
+  const keys = rows.map(m => m[1].replace(/\s+/g, ''));
+  if (keys.join() !== ROUND_ORDER.join()) throw new Error(`LBB-Seite: Baender ${keys.join(', ')} ≠ ${ROUND_ORDER.join(', ')}`);
+  const num = r => { const [s, n] = r.split('-').map(Number); return s * 100 + n; };
+  const bands = {};
+  let prev = 0;
+  for (const [, , from, to] of rows) {
+    if (!(num(from) <= num(to) && num(from) > prev)) throw new Error(`LBB-Seite: Runden ${from}–${to} nicht aufsteigend`);
+    prev = num(to);
+    bands[keys[Object.keys(bands).length]] = { from, to };
+  }
+  return bands;
+}
+const pagePath = arg('--page');
+let pageHtml;
+if (pagePath) pageHtml = readFileSync(pagePath, 'utf8');
+else {
+  const res = await fetch(WISPS_PAGE_URL);
+  if (!res.ok) throw new Error(`LBB-Wisps-Seite: HTTP ${res.status}`);
+  pageHtml = await res.text();
+}
+const bands = readAppearanceBands(pageHtml);
+
+// Upgrades kommen in denselben Runden wie ihr Grund-Wisp (LBB: „Blossom upgrades always
+// inherit the base Wisp's appearance bands"); Prismatisch behaelt die eigene Angabe.
+// Gibt zurueck, bei wie vielen Upgrades sich die Baender dadurch aendern.
+function inheritBaseRounds(list) {
+  let changed = 0;
+  for (const w of list) {
+    for (const v of w.variants) {
+      if (v.kind !== 'upgrade') continue;
+      if (v.rounds.join() !== w.rounds.join()) changed++;
+      v.rounds = [...w.rounds];
+    }
+  }
+  return changed;
+}
+
+const wispFile = `public/tft-wisps-${SET}.json`;
+if (process.argv.includes('--bands-only')) {
+  const cur = JSON.parse(readFileSync(wispFile, 'utf8'));
+  if (cur.set !== SET) throw new Error(`${wispFile}: Set ${cur.set} ≠ ${SET}`);
+  const changed = inheritBaseRounds(cur.wisps);
+  writeFileSync(wispFile, JSON.stringify({ set: cur.set, source: cur.source, fetchedAt: cur.fetchedAt, bands, wisps: cur.wisps }, null, 1) + '\n');
+  console.log(`✓ ${wispFile}: Baender ${ROUND_ORDER.map(r => `${r} ${bands[r].from}–${bands[r].to}`).join(', ')}; ${changed} Upgrade(s) auf Basis-Baender gesetzt`);
+  process.exit(0);
+}
+
 function parseCsv(t) {
   const rows = []; let r = [], f = '', q = false;
   for (let i = 0; i < t.length; i++) {
@@ -295,21 +361,26 @@ for (const h of need) if (!head.includes(h)) throw new Error(`Wisps-Tabelle: Spa
 const W = body.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i].trim()])));
 if (W.length < 100) throw new Error(`Wisps-Tabelle: nur ${W.length} Zeilen`);
 
-// Varianten tragen vier Upgrade-Schreibweisen plus _Prismatic (gezaehlt 2026-09-27:
-// 149 _Upgrade, 24 andere Upgrade-Muster, 19 _Prismatic).
-// Die drei Traenke heissen DA_*Potion18_Upgrade_Charm zu DA_*Potion18_Charm — deshalb
-// mehrere Kandidaten, der erste vorhandene gewinnt.
-function baseCandidates(m) {
-  return [
-    m.replace(/_Upgrade_Charm$/, '_Charm'),
-    m.replace(/_Upgrade_Charm$/, '').replace(/_Upgrade$/, '').replace(/_Prismatic$/, '')
-      .replace(/Upgrade18$/, '18').replace(/^(DA_18_\w+?)Upgrade$/, '$1'),
-  ].filter(b => b !== m);
+// Varianten wie bei LBB (getWispVariant/getWispBaseKey auf der Wisps-Seite, 17.10.2026):
+// „Upgrade"/„Prismatic" stehen als _Teil, am Ende oder vor der Set-Zahl —
+// DA_GiantsAura18_Upgrade, DA_GoldenGooseUpgrade18, DA_18_HealingPoolUpgrade,
+// DA_BlastPotion18_Upgrade_Charm, DA_RoomForAShroomUpgrade.
+function variantRank(m) {
+  if (/(?:^|_)Prismatic(?:_|$)/i.test(m) || /Prismatic(?=\d|_|$)/i.test(m)) return 2;
+  if (/(?:^|_)Upgrade(?:_|$)/i.test(m) || /Upgrade(?=\d|_|$)/i.test(m)) return 1;
+  return 0;
+}
+function baseKey(m) {
+  return m.replace(/(?:^|_)Prismatic(?=_|$)/gi, '_').replace(/(?:^|_)Upgrade(?=_|$)/gi, '_')
+    .replace(/Prismatic(?=\d|_|$)/gi, '').replace(/Upgrade(?=\d|_|$)/gi, '')
+    .replace(/__+/g, '_').replace(/^_+|_+$/g, '').toLowerCase();
 }
 
 // Bild je Wisp: die LBB-Tabelle nennt pro Zeile ein Art-Bild (Art × Stufe, 19 Dateien
 // in Set 18). User-Entscheid 2026-09-27: einmalig kopieren und selbst ausliefern.
-const WISP_ICON_RE = /^https:\/\/images\.littlebuddybot\.workers\.dev\/tft\/set\d+\/wisps\/T_ShopCardsIcon\d+_(Champion|Combat|GoldXP|Item|Misc|Risky|Shop)_Tier([123])\.webp$/;
+// Set fest im Muster: steht die LBB-Tabelle schon auf dem naechsten Set, bricht der Lauf ab,
+// statt dessen Wisps in die Datei dieses Sets zu schreiben.
+const WISP_ICON_RE = new RegExp(`^https://images\\.littlebuddybot\\.workers\\.dev/tft/set${SET}/wisps/T_ShopCardsIcon\\d+_(Champion|Combat|GoldXP|Item|Misc|Risky|Shop)_Tier([123])\\.webp$`);
 const WISP_ICON_DIR = `public/tft-extra/wisps/${SET}`;
 const wispIcons = new Map(); // lokale Datei → Quell-URL
 function wispIcon(d) {
@@ -320,7 +391,6 @@ function wispIcon(d) {
   wispIcons.set(file, d['Icon URL']);
   return { cat: m[1], icon: `/tft-extra/wisps/${SET}/${file}` };
 }
-const ROUND_ORDER = ['Early', 'EarlyMid', 'Mid', 'MidLate', 'Late', 'VeryLate'];
 function rounds(v) {
   if (/^All bands/i.test(v)) return [...ROUND_ORDER];
   const parts = v.split(';').map(s => s.trim()).filter(s => ROUND_ORDER.includes(s));
@@ -347,18 +417,31 @@ function toWisp(d) {
     ...(excl.length ? { excl: [...new Set(excl)] } : {}),
   };
 }
-const byApi = new Map(W.map(d => [d.mName, d]));
-const bases = new Map();
-const variants = [];
+// Je Grundname genau eine Basis-Zeile; eine Variante ohne Basis oder zwei Basen → Exit 1,
+// damit kein Upgrade still als eigener Wisp in der Liste landet.
+const groups = new Map();
 for (const d of W) {
-  const b = baseCandidates(d.mName).find(c => byApi.has(c));
-  if (b) variants.push([b, d]);
-  else bases.set(d.mName, { ...toWisp(d), variants: [] });
+  const k = baseKey(d.mName);
+  const g = groups.get(k) ?? { base: null, vars: [] };
+  groups.set(k, g);
+  if (variantRank(d.mName) === 0) {
+    if (g.base) throw new Error(`Wisps: zwei Basis-Zeilen fuer ${k} (${g.base.mName}, ${d.mName})`);
+    g.base = d;
+  } else g.vars.push(d);
 }
-for (const [b, d] of variants) {
-  bases.get(b).variants.push({ ...toWisp(d), kind: /_Prismatic$/.test(d.mName) ? 'prismatic' : 'upgrade' });
+const variants = [];
+const wisps = [];
+for (const g of groups.values()) {
+  if (!g.base) throw new Error(`Wisps: Variante(n) ohne Basis-Zeile: ${g.vars.map(d => d.mName).join(', ')}`);
+  const w = { ...toWisp(g.base), variants: [] };
+  for (const d of g.vars) {
+    w.variants.push({ ...toWisp(d), kind: variantRank(d.mName) === 2 ? 'prismatic' : 'upgrade' });
+    variants.push(d);
+  }
+  wisps.push(w);
 }
-const wisps = [...bases.values()].sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+wisps.sort((a, b) => a.tier - b.tier || a.name.localeCompare(b.name));
+const inherited = inheritBaseRounds(wisps);
 
 if (missing.length) {
   console.error(`✗ ${missing.length} apiName(s) nicht im Bundle tft-assets-${SET}.json: ${[...new Set(missing)].join(', ')}`);
@@ -430,8 +513,8 @@ if (badIcons.length) {
 const now = new Date().toISOString();
 const source = { name: 'Little Buddy Bot', url: 'https://www.littlebuddybot.com' };
 writeFileSync(`public/tft-loot-tables-${SET}.json`, JSON.stringify({ set: SET, source, fetchedAt: now, tables, coven }, null, 1) + '\n');
-writeFileSync(`public/tft-wisps-${SET}.json`, JSON.stringify({ set: SET, source: { ...source, url: 'https://www.littlebuddybot.com/tft-wisps' }, fetchedAt: now, wisps }, null, 1) + '\n');
+writeFileSync(wispFile, JSON.stringify({ set: SET, source: { ...source, url: WISPS_PAGE_URL }, fetchedAt: now, bands, wisps }, null, 1) + '\n');
 
 const sums = tables.flatMap(t => t.subs.map(s => `${t.key}${s.label ? '/' + (s.label.name ?? s.label.n) : ''}=${Math.round(s.rows.reduce((a, r) => a + (r.chance ?? 0), 0) * 10) / 10}`));
-console.log(`✓ Set ${SET}: ${tables.length} Loot-Tabellen + Coven (${coven.subs.length} Schwellen), ${wisps.length} Wisps mit ${variants.length} Varianten (${W.length} Zeilen)`);
+console.log(`✓ Set ${SET}: ${tables.length} Loot-Tabellen + Coven (${coven.subs.length} Schwellen), ${wisps.length} Wisps mit ${variants.length} Varianten (${W.length} Zeilen), ${inherited} Upgrade(s) auf Basis-Baender gesetzt`);
 console.log('  Summen:', sums.join(' '));

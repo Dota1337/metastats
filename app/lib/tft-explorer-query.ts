@@ -6,15 +6,23 @@
 //   r=euw1                      Region (fehlt = alle)
 //   k=challenger,emerald        Raenge (fehlt = alle, inkl. Boards ohne Rang)
 //   p=18.3,18.2                 Patches (fehlt = neuester Patch, p=all = alle im Speicher)
-//   u=!ID:s2e:n2:iITEM:xITEM    Units; ! = ohne, s2 = mind. 2 Sterne (e = genau),
-//                               n2 = mind. 2 Items, iX = mit Item X, xX = ohne Item X
-//   i=ITEM,!ITEM                Items irgendwo auf dem Board
+//   lv=8,9                      Spieler-Level am Ende (fehlt = alle)
+//   pl=1-4                      Endplatz von–bis (fehlt = 1-8)
+//   u=!ID:s2e:n2:iITEM:xITEM    Units; ! = ohne, s2 = mind. 2 Sterne (e = genau,
+//                               s1-2 = 1 bis 2), n2 = mind. 2 Items (n0e = genau 0,
+//                               n0-1 = hoechstens 1), c2 = mind. 2 Kopien auf dem Brett,
+//                               iX = mit Item X (zweimal = zweimal an der Kopie),
+//                               xX = ohne Item X, kemblem2 = mind. 2 Embleme an der Kopie
+//   i=ITEM:n2,!ITEM             Items irgendwo auf dem Board; n2 = mind. zweimal
 //   t=ID:l2e,!ID                Traits; l2 = mind. Stufe 2 (e = genau)
+//   g1=any,u.ID:s2,i.X,t.T:l2   Kaesten: any = eins davon, none = keins davon (g1-g3)
 //   tab, f (Traeger im Item-Reiter), split=over (Traits), c (1-3 Items je Kombi)
 //   st=2,3                      Units-Reiter: Sternstufen vergleichen (API: split=star)
 //
+// Die Bedeutung der Felder steht im Kopf von scripts/lib/explorer-normalize.mjs;
+// der Dienst bringt die Anfrage in dieselbe kanonische Form wie hier.
 // Alte Links (?units=&items=&traits=&bucket=&region=) von den Unit-, Item-
-// und Trait-Seiten werden beim Lesen uebernommen (legacyToQuery).
+// und Trait-Seiten werden beim Lesen uebernommen.
 
 export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'] as const;
 export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
@@ -22,17 +30,35 @@ export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
 export const EXPLORER_TABS = ['units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'] as const;
 export type ExplorerTab = (typeof EXPLORER_TABS)[number];
 
-export interface UnitFilter { id: string; x?: boolean; s?: number; se?: boolean; n?: number; it?: string[]; nit?: string[] }
-export interface ItemFilter { id: string; x?: boolean }
+export const ITEM_KINDS = ['artifact', 'emblem', 'radiant'] as const;
+export type ItemKind = (typeof ITEM_KINDS)[number];
+
+export interface UnitFilter {
+  id: string; x?: boolean;
+  /** Sterne von s bis sx (je Kopie); s ohne sx = mind., sx ohne s = hoechstens. */
+  s?: number; sx?: number;
+  /** Itemzahl von n bis nx (je Kopie). */
+  n?: number; nx?: number;
+  /** Mindestens so viele Kopien der Unit auf dem Brett. */
+  c?: number;
+  it?: string[]; nit?: string[];
+  /** Mindestens n Items der Sorte b an der Kopie. */
+  k?: { b: ItemKind; n: number }[];
+}
+export interface ItemFilter { id: string; x?: boolean; n?: number }
 export interface TraitFilter { id: string; x?: boolean; l?: number; le?: boolean }
+export interface FilterGroup { m: 'any' | 'none'; units: UnitFilter[]; items: ItemFilter[]; traits: TraitFilter[] }
 
 export interface ExplorerQuery {
   region: string;
   ranks: ExplorerRank[];
   patches: string[];
+  levels: number[];
+  place: [number, number] | null;
   units: UnitFilter[];
   items: ItemFilter[];
   traits: TraitFilter[];
+  groups: FilterGroup[];
   tab: ExplorerTab;
   focus: string | null;
   split: 'star' | 'over' | null;
@@ -40,6 +66,9 @@ export interface ExplorerQuery {
   stars: number[];
   combo: 1 | 2 | 3;
 }
+
+// Grenzen wie im Dienst (LIMITS in explorer-normalize.mjs).
+export const EXPLORER_LIMITS = { units: 9, items: 6, traits: 6, groups: 3, groupMembers: 6, total: 15 } as const;
 
 const ID_RE = /^[A-Za-z0-9_]{1,64}$/;
 const REGION_RE = /^[a-z0-9]{2,5}$/;
@@ -49,13 +78,79 @@ const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
 export const LATEST_PATCH = 'latest';
 
 export const EMPTY_QUERY: ExplorerQuery = {
-  region: 'all', ranks: [], patches: [LATEST_PATCH], units: [], items: [], traits: [],
+  region: 'all', ranks: [], patches: [LATEST_PATCH], levels: [], place: null, units: [], items: [], traits: [], groups: [],
   tab: 'units', focus: null, split: null, stars: [], combo: 1,
 };
 
 type Params = { get(name: string): string | null };
 
 const list = (v: string | null) => (v ? v.split(',').map(s => s.trim()).filter(Boolean) : []);
+const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
+
+/** Anzahl aller Bedingungen (Units, Items, Traits, Kasten-Glieder). */
+export const filterCount = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' | 'groups'>) =>
+  q.units.length + q.items.length + q.traits.length + q.groups.reduce((a, g) => a + groupSize(g), 0);
+
+/** Brett-Filter vorhanden? (Level/Platz gehoeren wie der Rang zur Grundmenge.) */
+export const hasBoardFilters = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' | 'groups'>) => filterCount(q) > 0;
+
+// Spanne lo..hi gueltig? Verkehrte Spanne oder Werte ausserhalb fallen ganz weg.
+// Grenzen ohne Wirkung (mind. 1★) bleiben stehen: alte Links bleiben
+// zeichengleich und ein Klick auf „1★" springt nicht zurueck auf „egal".
+// Der Dienst kuerzt sie selbst (span() in explorer-normalize.mjs).
+const okSpan = (lo: number | undefined, hi: number | undefined, min: number, max: number) =>
+  (lo == null || (Number.isInteger(lo) && lo >= min && lo <= max))
+  && (hi == null || (Number.isInteger(hi) && hi >= min && hi <= max))
+  && !(lo != null && hi != null && lo > hi);
+
+/** Kanonische Form einer Unit-Bedingung (gleiche Auswahl = gleiche URL). */
+export function canonUnit(u: UnitFilter): UnitFilter {
+  const out: UnitFilter = { id: u.id };
+  if (u.x) out.x = true;
+  if (okSpan(u.s, u.sx, 1, 4)) {
+    if (u.s != null) out.s = u.s;
+    if (u.sx != null) out.sx = u.sx;
+  }
+  // „mind. 0 Items" schrieb schon der alte Stand nicht in die Adresse.
+  if (okSpan(u.n, u.nx, 0, 3)) {
+    if (u.n != null && (u.n > 0 || u.nx != null)) out.n = u.n;
+    if (u.nx != null) out.nx = u.nx;
+  }
+  if (u.c === 2 || u.c === 3) out.c = u.c;
+  // Items in Klick-Reihenfolge wie bisher (alte Links bleiben zeichengleich).
+  const it = (u.it ?? []).slice(0, 3);
+  if (it.length) out.it = it;
+  const nit = (u.nit ?? []).slice(0, 3);
+  if (nit.length) out.nit = nit;
+  const k = ITEM_KINDS.flatMap(b => {
+    const e = (u.k ?? []).find(x => x.b === b);
+    return e && e.n >= 1 && e.n <= 3 ? [{ b, n: e.n }] : [];
+  });
+  if (k.length) out.k = k;
+  return out;
+}
+
+export function canonItem(i: ItemFilter): ItemFilter {
+  const out: ItemFilter = { id: i.id };
+  if (i.x) out.x = true;
+  if (i.n != null && i.n >= 2 && i.n <= 3) out.n = i.n;
+  return out;
+}
+
+export function canonTrait(t: TraitFilter): TraitFilter {
+  const out: TraitFilter = { id: t.id };
+  if (t.x) out.x = true;
+  if (t.l != null && t.l >= 1 && t.l <= 6) { out.l = t.l; if (t.le) out.le = true; }
+  return out;
+}
+
+// "2" | "2e" | "1-3" → [lo, hi]
+function parseSpan(rest: string): [number, number | undefined] | null {
+  const m = /^(\d)(?:(e)|-(\d))?$/.exec(rest);
+  if (!m) return null;
+  const lo = Number(m[1]);
+  return [lo, m[2] ? lo : m[3] != null ? Number(m[3]) : undefined];
+}
 
 function parseUnit(tok: string): UnitFilter | null {
   const x = tok.startsWith('!');
@@ -67,19 +162,37 @@ function parseUnit(tok: string): UnitFilter | null {
     const head = m[0];
     const rest = m.slice(1);
     if (head === 's') {
-      const exact = rest.endsWith('e');
-      const n = Number(exact ? rest.slice(0, -1) : rest);
-      if (Number.isInteger(n) && n >= 1 && n <= 4) { u.s = n; if (exact) u.se = true; }
+      const sp = parseSpan(rest);
+      if (sp) { u.s = sp[0]; u.sx = sp[1]; }
     } else if (head === 'n') {
-      const n = Number(rest);
-      if (Number.isInteger(n) && n >= 0 && n <= 3) u.n = n;
+      const sp = parseSpan(rest);
+      if (sp) { u.n = sp[0]; u.nx = sp[1]; }
+    } else if (head === 'c') {
+      const c = Number(rest);
+      if (c === 2 || c === 3) u.c = c;
+    } else if (head === 'k') {
+      const km = /^(artifact|emblem|radiant)([1-3])$/.exec(rest);
+      if (km && !(u.k ?? []).some(e => e.b === km[1])) u.k = [...(u.k ?? []), { b: km[1] as ItemKind, n: Number(km[2]) }];
     } else if (head === 'i' && ID_RE.test(rest)) {
       u.it = [...(u.it ?? []), rest].slice(0, 3);
     } else if (head === 'x' && ID_RE.test(rest)) {
       u.nit = [...(u.nit ?? []), rest].slice(0, 3);
     }
   }
-  return u;
+  return canonUnit(u);
+}
+
+function parseItem(tok: string): ItemFilter | null {
+  const x = tok.startsWith('!');
+  const [id, ...mods] = (x ? tok.slice(1) : tok).split(':');
+  if (!ID_RE.test(id)) return null;
+  const i: ItemFilter = { id };
+  if (x) i.x = true;
+  for (const m of mods) {
+    const nm = /^n([23])$/.exec(m);
+    if (nm) i.n = Number(nm[1]);
+  }
+  return canonItem(i);
 }
 
 function parseTrait(tok: string): TraitFilter | null {
@@ -94,6 +207,26 @@ function parseTrait(tok: string): TraitFilter | null {
     if (Number.isInteger(n) && n >= 1 && n <= 6) { t.l = n; if (exact) t.le = true; }
   }
   return t;
+}
+
+// Kasten: erstes Glied any|none, dann u.<Unit>, i.<Item>, t.<Trait> ohne „!".
+function parseGroup(raw: string | null): FilterGroup | null {
+  const [m, ...members] = list(raw);
+  if (m !== 'any' && m !== 'none') return null;
+  const g: FilterGroup = { m, units: [], items: [], traits: [] };
+  // Je Art jede ID nur einmal (die Oberflaeche aendert Glieder ueber die ID).
+  const seen = new Set<string>();
+  const once = (kind: string, id: string) => !seen.has(`${kind}${id}`) && (seen.add(`${kind}${id}`), true);
+  for (const tok of members) {
+    if (groupSize(g) >= EXPLORER_LIMITS.groupMembers) break;
+    const kind = tok.slice(0, 2);
+    const body = tok.slice(2);
+    if (body.startsWith('!')) continue;
+    if (kind === 'u.') { const u = parseUnit(body); if (u && once(kind, u.id)) g.units.push(u); }
+    else if (kind === 'i.') { const i = parseItem(body); if (i && once(kind, i.id)) g.items.push(i); }
+    else if (kind === 't.') { const t = parseTrait(body); if (t && once(kind, t.id)) g.traits.push(t); }
+  }
+  return groupSize(g) ? g : null;
 }
 
 const uniqBy = <T extends { id: string }>(arr: (T | null)[]) => {
@@ -133,13 +266,32 @@ export function parseExplorerParams(sp: Params): ExplorerQuery {
     q.patches = ps.length ? ps : [LATEST_PATCH];
   }
 
-  q.units = uniqBy([...list(sp.get('u')), ...list(sp.get('units'))].map(parseUnit)).slice(0, 9);
-  q.items = uniqBy([...list(sp.get('i')), ...list(sp.get('items'))].map(tok => {
-    const x = tok.startsWith('!');
-    const id = x ? tok.slice(1) : tok;
-    return ID_RE.test(id) ? (x ? { id, x: true } : { id }) : null;
-  })).slice(0, 6);
-  q.traits = uniqBy([...list(sp.get('t')), ...list(sp.get('traits'))].map(parseTrait)).slice(0, 6);
+  // Alle zehn Level = keine Einschraenkung (wie im Dienst).
+  const lv = [...new Set(list(sp.get('lv')).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 10))].sort((a, b) => a - b);
+  q.levels = lv.length === 10 ? [] : lv;
+  const pl = /^([1-8])(?:-([1-8]))?$/.exec(sp.get('pl') ?? '');
+  if (pl) {
+    const lo = Number(pl[1]);
+    const hi = pl[2] ? Number(pl[2]) : lo;
+    q.place = lo <= hi && !(lo === 1 && hi === 8) ? [lo, hi] : null;
+  }
+
+  q.units = uniqBy([...list(sp.get('u')), ...list(sp.get('units'))].map(parseUnit)).slice(0, EXPLORER_LIMITS.units);
+  q.items = uniqBy([...list(sp.get('i')), ...list(sp.get('items'))].map(parseItem)).slice(0, EXPLORER_LIMITS.items);
+  q.traits = uniqBy([...list(sp.get('t')), ...list(sp.get('traits'))].map(parseTrait)).slice(0, EXPLORER_LIMITS.traits);
+
+  // Kaesten nur, soweit die Gesamtgrenze reicht.
+  let left = EXPLORER_LIMITS.total - filterCount({ ...q, groups: [] });
+  q.groups = [];
+  for (let n = 1; n <= EXPLORER_LIMITS.groups; n++) {
+    const g = parseGroup(sp.get(`g${n}`));
+    if (!g || left <= 0) continue;
+    while (groupSize(g) > left) {
+      if (g.traits.length) g.traits.pop(); else if (g.items.length) g.items.pop(); else g.units.pop();
+    }
+    left -= groupSize(g);
+    q.groups.push(g);
+  }
 
   const tab = sp.get('tab');
   if (tab && (EXPLORER_TABS as readonly string[]).includes(tab)) q.tab = tab as ExplorerTab;
@@ -158,17 +310,42 @@ export function parseExplorerParams(sp: Params): ExplorerQuery {
   return q;
 }
 
-function unitToken(u: UnitFilter): string {
+function spanToken(head: string, lo: number | undefined, hi: number | undefined, min: number): string {
+  if (lo == null && hi == null) return '';
+  if (hi == null) return `:${head}${lo}`;
+  if (lo === hi) return `:${head}${lo}e`;
+  return `:${head}${lo ?? min}-${hi}`;
+}
+
+function unitToken(raw: UnitFilter): string {
+  const u = canonUnit(raw);
   let s = `${u.x ? '!' : ''}${u.id}`;
-  if (u.s) s += `:s${u.s}${u.se ? 'e' : ''}`;
-  if (u.n) s += `:n${u.n}`;
+  s += spanToken('s', u.s, u.sx, 1);
+  s += spanToken('n', u.n, u.nx, 0);
+  if (u.c) s += `:c${u.c}`;
   for (const it of u.it ?? []) s += `:i${it}`;
   for (const it of u.nit ?? []) s += `:x${it}`;
+  for (const e of u.k ?? []) s += `:k${e.b}${e.n}`;
   return s;
 }
 
-function traitToken(t: TraitFilter): string {
+function itemToken(raw: ItemFilter): string {
+  const i = canonItem(raw);
+  return `${i.x ? '!' : ''}${i.id}${i.n ? `:n${i.n}` : ''}`;
+}
+
+function traitToken(raw: TraitFilter): string {
+  const t = canonTrait(raw);
   return `${t.x ? '!' : ''}${t.id}${t.l ? `:l${t.l}${t.le ? 'e' : ''}` : ''}`;
+}
+
+function groupToken(g: FilterGroup): string {
+  const members = [
+    ...g.units.map(u => `u.${unitToken({ ...u, x: false })}`),
+    ...g.items.map(i => `i.${itemToken({ ...i, x: false })}`),
+    ...g.traits.map(t => `t.${traitToken({ ...t, x: false })}`),
+  ];
+  return [g.m, ...[...new Set(members)].sort()].join(',');
 }
 
 // Feste Reihenfolge und Sortierung → gleiche Auswahl, gleiche URL, gleicher
@@ -179,9 +356,17 @@ export function serializeExplorerQuery(q: ExplorerQuery, { forApi = false } = {}
   if (q.ranks.length) sp.set('k', [...q.ranks].sort().map(r => r.toLowerCase()).join(','));
   if (q.patches.length === 0) sp.set('p', 'all');
   else if (q.patches[0] !== LATEST_PATCH) sp.set('p', [...q.patches].sort().join(','));
+  const lv = [...new Set(q.levels)].sort((a, b) => a - b);
+  if (lv.length && lv.length < 10) sp.set('lv', lv.join(','));
+  if (q.place && !(q.place[0] === 1 && q.place[1] === 8)) {
+    sp.set('pl', q.place[0] === q.place[1] ? String(q.place[0]) : `${q.place[0]}-${q.place[1]}`);
+  }
   if (q.units.length) sp.set('u', q.units.map(unitToken).sort().join(','));
-  if (q.items.length) sp.set('i', q.items.map(i => `${i.x ? '!' : ''}${i.id}`).sort().join(','));
+  if (q.items.length) sp.set('i', q.items.map(itemToken).sort().join(','));
   if (q.traits.length) sp.set('t', q.traits.map(traitToken).sort().join(','));
+  // Kaesten in Anlege-Reihenfolge (die Oberflaeche merkt sich den Kasten ueber
+  // seine Nummer); Glieder darin sortiert.
+  q.groups.filter(g => groupSize(g) > 0).map(groupToken).forEach((g, n) => sp.set(`g${n + 1}`, g));
   if (forApi || q.tab !== 'units') sp.set('tab', q.tab);
   // Traeger und Kombi-Groesse wirken nur im Item-Reiter, Aufteilung nur bei
   // Units/Traits — sonst weglassen, damit sie den Cache nicht zersplittern.
@@ -197,15 +382,31 @@ export function serializeExplorerQuery(q: ExplorerQuery, { forApi = false } = {}
   return sp.toString();
 }
 
+// Nur die Felder, die der Dienst kennt (unbekannte beantwortet er mit 400).
+const unitBody = (u: UnitFilter) => {
+  const c = canonUnit(u);
+  return { id: c.id, x: !!c.x, s: c.s ?? null, sx: c.sx ?? null, n: c.n ?? null, nx: c.nx ?? null, c: c.c ?? null, it: c.it ?? [], nit: c.nit ?? [], k: c.k ?? [] };
+};
+const itemBody = (i: ItemFilter) => { const c = canonItem(i); return { id: c.id, x: !!c.x, n: c.n ?? null }; };
+const traitBody = (t: TraitFilter) => { const c = canonTrait(t); return { id: c.id, x: !!c.x, l: c.l ?? null, le: !!c.le }; };
+
 // Anfrage-Koerper fuer den Abfrage-Dienst.
 export function toServiceBody(q: ExplorerQuery) {
   return {
     region: q.region,
     ranks: q.ranks,
     patches: q.patches,
-    units: q.units,
-    items: q.items,
-    traits: q.traits,
+    levels: q.levels,
+    place: q.place,
+    units: q.units.map(unitBody),
+    items: q.items.map(itemBody),
+    traits: q.traits.map(traitBody),
+    groups: q.groups.map(g => ({
+      m: g.m,
+      units: g.units.map(u => ({ ...unitBody(u), x: false })),
+      items: g.items.map(i => ({ ...itemBody(i), x: false })),
+      traits: g.traits.map(t => ({ ...traitBody(t), x: false })),
+    })),
     tab: q.tab,
     focus: q.tab === 'items' ? q.focus : null,
     split: q.tab === 'units' && q.stars.length ? 'star' : q.tab === 'traits' && q.split === 'over' ? 'over' : null,
@@ -258,6 +459,10 @@ export const MAX_HALF_SOLID = 0.25;
 export const isWeakRow = (r: { matches: number; half: number | null }, deltaHalf?: number | null) =>
   r.matches < MIN_MATCHES_SOLID || r.half == null || r.half > MAX_HALF_SOLID
   || (deltaHalf != null && deltaHalf > MAX_HALF_SOLID);
+
+/** Top 4 / Sieg sind nur aussagekraeftig, wenn die Platzspanne beide Seiten enthaelt. */
+export const showTop4 = (place: [number, number] | null) => !place || (place[0] <= 4 && place[1] >= 5);
+export const showTop1 = (place: [number, number] | null) => !place || (place[0] === 1 && place[1] >= 2);
 
 // Letzte Runde (1..N) → "Stufe-Runde" wie im Spiel: Stufe 1 hat 4 Runden,
 // danach 7 je Stufe.

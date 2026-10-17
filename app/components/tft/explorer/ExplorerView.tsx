@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { useTftExplorer } from '../../../lib/useTftExplorer';
+import { hasBoardFilters } from '../../../lib/tft-explorer-query';
 import { buildExplorerOptions } from './explorer-options';
 import ExplorerScope from './ExplorerScope';
 import ExplorerFilters from './ExplorerFilters';
@@ -21,7 +22,7 @@ export default function ExplorerView() {
   const { query, setQuery, backToUnits, data, dataQuery, loading, error, reload } = useTftExplorer();
   const [deltaMode, setDeltaMode] = useState<DeltaMode>('base');
 
-  const hasFilters = query.units.length + query.items.length + query.traits.length > 0;
+  const hasFilters = hasBoardFilters(query);
   const resolvedPatch = data?.query?.patches?.length === 1 ? data.query.patches[0] : null;
   const builtAt = data?.meta?.builtAt ? new Date(data.meta.builtAt) : null;
 
@@ -56,7 +57,8 @@ export default function ExplorerView() {
         </div>
       ) : (
         <div className="flex flex-col gap-4" aria-busy={loading}>
-          <ExplorerSummary data={data} deltaMode={deltaMode} setDeltaMode={setDeltaMode} hasFilters={hasFilters} />
+          <ExplorerSummary data={data} deltaMode={deltaMode} setDeltaMode={setDeltaMode} hasFilters={hasFilters}
+            place={(dataQuery ?? query).place} />
           <ExplorerResults query={query} setQuery={setQuery} backToUnits={backToUnits} data={data} dataQuery={dataQuery} options={options} assets={assets}
             deltaMode={deltaMode} setDeltaMode={setDeltaMode} />
         </div>

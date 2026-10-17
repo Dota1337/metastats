@@ -158,7 +158,7 @@ const CASES = [
     groups: [{ m: 'none', items: [{ id: 'DA_GargoyleStoneplate', n: 2 }, { id: 'DA_NichtVorhanden' }] }] }],
   ['zwei-kaesten+oben', { units: [{ id: 'DA_Amumu18' }], items: [{ id: 'DA_GargoyleStoneplate', n: 2 }],
     groups: [{ m: 'any', units: [{ id: 'DA_18_Diana', it: ['DA_SpearOfShojin'] }], items: [{ id: 'DA_ThiefsGloves' }] },
-      { m: 'none', traits: [{ id: 'DA_Juggernaut18' }], items: [{ id: 'DA_GargoyleStoneplate' }] }] }],
+      { m: 'none', traits: [{ id: 'DA_Juggernaut18' }], items: [{ id: 'DA_WarmogsArmor' }] }] }],
 ];
 const TABS = [
   ['Uebersicht', { tab: 'summary' }],

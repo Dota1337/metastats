@@ -5,7 +5,7 @@ import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { regionShortLabel } from '../StatsFilterBar';
 import {
-  EXPLORER_RANKS, EXPLORER_TABS, isWeakRow, roundLabel,
+  EXPLORER_LIMITS, EXPLORER_RANKS, EXPLORER_TABS, filterCount, isWeakRow, roundLabel, showTop1, showTop4,
   type ExplorerQuery, type ExplorerRank, type ExplorerResponse, type ExplorerRow, type ExplorerTab,
 } from '../../../lib/tft-explorer-query';
 import {
@@ -40,7 +40,8 @@ function orderKey(tab: ExplorerTab, r: ExplorerRow): number {
 const NUMERIC_TABS: ExplorerTab[] = ['level', 'round', 'gold', 'rank'];
 // Runde: wann man ausscheidet, bestimmt den Platz — ein Delta sagt nichts.
 // Region: die Abweichung misst, wie viele Spieler je Lobby wir erfassen.
-const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region'];
+// Level: Ergebnis-Groesse wie die Runde (hoeheres Level = laenger ueberlebt).
+const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region', 'level'];
 
 export default function ExplorerResults({
   query, setQuery, backToUnits, data, dataQuery, options, assets, deltaMode, setDeltaMode,
@@ -105,6 +106,10 @@ export default function ExplorerResults({
 
   const showDelta = !NO_DELTA_TABS.includes(tab);
   const showStar3 = tab === 'units' && query.stars.length === 0;
+  // Platzspanne 1-4 o. ae.: Top 4 / Sieg sind dann fest und sagen nichts.
+  const place = (dataQuery ?? query).place;
+  const t4 = showTop4(place);
+  const t1 = showTop1(place);
 
   const rows = useMemo(() => {
     if (!rowsFit) return [];
@@ -112,7 +117,8 @@ export default function ExplorerResults({
     // Stern-Daten: sub = Stufe, sub=null = Unit gesamt.
     const list = (stars.length ? all.filter(r => r.sub != null && stars.includes(r.sub)) : all)
       .filter(r => r.games >= minGames);
-    const s = sort ?? (NUMERIC_TABS.includes(tab) ? { key: 'key' as SortKey, dir: 1 as const } : { key: 'games' as SortKey, dir: -1 as const });
+    const shown = sort && !((sort.key === 'top4' && !t4) || (sort.key === 'top1' && !t1)) ? sort : null;
+    const s = shown ?? (NUMERIC_TABS.includes(tab) ? { key: 'key' as SortKey, dir: 1 as const } : { key: 'games' as SortKey, dir: -1 as const });
     // Namens-Reiter alphabetisch nach Anzeigename, bei gleichem Namen nach Stufe.
     if (s.key === 'key' && !NUMERIC_TABS.includes(tab)) {
       const coll = new Intl.Collator(lang);
@@ -141,7 +147,7 @@ export default function ExplorerResults({
     return heads.flatMap(h => [h, ...members.get(h.key)!.sort((a, b) => a.sub! - b.sub!)]);
     // dOf haengt nur an deltaMode, labelOf an options/assets/lang
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, rowsFit, stars.join(), minGames, sort, tab, deltaMode, options, assets, lang]);
+  }, [data, rowsFit, stars.join(), minGames, sort, tab, deltaMode, options, assets, lang, t4, t1]);
 
   const setTab = (next: ExplorerTab) => setQuery({ ...query, tab: next });
 
@@ -150,12 +156,13 @@ export default function ExplorerResults({
     ? (query.combo === 2 ? 'tft.explorer.x.combo.2' : 'tft.explorer.x.combo.3')
     : TAB_LABEL[tab];
 
-  // Klick auf eine Zeile nimmt sie als Filter auf.
+  // Klick auf eine Zeile nimmt sie als Filter auf (Gesamtgrenze beachten).
+  const left = EXPLORER_LIMITS.total - filterCount(query);
   const rowAction = (r: ExplorerRow): (() => void) | null => {
     switch (tab) {
       case 'units':
-        if (query.units.some(u => u.id === r.key) || query.units.length >= 9) return null;
-        return () => setQuery({ ...query, units: [...query.units, r.sub ? { id: r.key, s: r.sub, se: true } : { id: r.key }] });
+        if (query.units.some(u => u.id === r.key) || query.units.length >= 9 || left < 1) return null;
+        return () => setQuery({ ...query, units: [...query.units, r.sub ? { id: r.key, s: r.sub, sx: r.sub } : { id: r.key }] });
       case 'items': {
         const ids = r.key.split('|');
         if (query.focus) {
@@ -164,21 +171,22 @@ export default function ExplorerResults({
           const it = [...new Set([...(cur?.it ?? []), ...ids])].slice(0, 3);
           const units = cur ? query.units.map(u => (u.id === f ? { ...u, it } : u)) : [...query.units, { id: f, it }];
           // Im Items-Reiter bleiben: die Liste zeigt dann, was zu diesem Item passt.
-          if (units.length > 9 || it.length === (cur?.it ?? []).length) return null;
+          if (units.length > 9 || (!cur && left < 1) || it.length === (cur?.it ?? []).length) return null;
           return () => setQuery({ ...query, units, combo: 1 });
         }
-        if (query.items.some(i => i.id === r.key) || query.items.length >= 6) return null;
+        if (query.items.some(i => i.id === r.key) || query.items.length >= 6 || left < 1) return null;
         return () => setQuery({ ...query, items: [...query.items, { id: r.key }] });
       }
       case 'traits':
-        if (query.traits.some(x => x.id === r.key) || query.traits.length >= 6) return null;
+        if (query.traits.some(x => x.id === r.key) || query.traits.length >= 6 || left < 1) return null;
         return () => setQuery({ ...query, traits: [...query.traits, r.sub ? { id: r.key, l: r.sub, le: true } : { id: r.key }] });
       case 'comps': {
         // Comp = Trait + Carry → beides als Filter.
         const [trait, carry] = r.key.split('__');
         const addT = !!trait && !query.traits.some(x => x.id === trait);
         const addU = !!carry && !query.units.some(u => u.id === carry);
-        if ((!addT && !addU) || query.traits.length + (addT ? 1 : 0) > 6 || query.units.length + (addU ? 1 : 0) > 9) return null;
+        if ((!addT && !addU) || query.traits.length + (addT ? 1 : 0) > 6 || query.units.length + (addU ? 1 : 0) > 9
+          || (addT ? 1 : 0) + (addU ? 1 : 0) > left) return null;
         return () => setQuery({
           ...query,
           traits: addT ? [...query.traits, { id: trait }] : query.traits,
@@ -328,8 +336,8 @@ export default function ExplorerResults({
               {th('share', t('tft.explorer.x.share'), 'hidden sm:table-cell')}
               {th('avg', t('tft.explorer.sort.avg'))}
               {showDelta && th('delta', t('tft.explorer.x.delta'))}
-              {th('top4', t('tft.explorer.sort.top4'), 'hidden sm:table-cell')}
-              {th('top1', t('tft.explorer.sort.top1'), 'hidden md:table-cell')}
+              {t4 && th('top4', t('tft.explorer.sort.top4'), 'hidden sm:table-cell')}
+              {t1 && th('top1', t('tft.explorer.sort.top1'), 'hidden md:table-cell')}
               {showStar3 && th('star3', '3★', 'hidden md:table-cell')}
               {tab === 'units' && <th className="px-2 py-2 w-8" />}
             </tr>
@@ -363,8 +371,8 @@ export default function ExplorerResults({
                       {dh != null && <span className="text-fg-faint text-[10px] ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
                     </td>
                   )}
-                  <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>
-                  <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{fmtPct(r.top1)}</td>
+                  {t4 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
+                  {t1 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{fmtPct(r.top1)}</td>}
                   {showStar3 && (
                     <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
                   )}

@@ -1,6 +1,6 @@
 'use client';
 import { useI18n } from '../../../lib/i18n';
-import type { ExplorerResponse } from '../../../lib/tft-explorer-query';
+import { showTop1, showTop4, type ExplorerResponse } from '../../../lib/tft-explorer-query';
 import { fmtAvg, fmtDelta, fmtPct } from './explorer-options';
 
 export type DeltaMode = 'base' | 'out';
@@ -14,12 +14,14 @@ export function deltaClass(d: number | null, half: number | null): string {
 }
 
 export default function ExplorerSummary({
-  data, deltaMode, setDeltaMode, hasFilters,
+  data, deltaMode, setDeltaMode, hasFilters, place,
 }: {
   data: ExplorerResponse;
   deltaMode: DeltaMode;
   setDeltaMode: (m: DeltaMode) => void;
   hasFilters: boolean;
+  /** Platzspanne der geladenen Daten; macht Top 4 / Sieg ggf. bedeutungslos. */
+  place: [number, number] | null;
 }) {
   const { t, lang } = useI18n();
   const s = data.summary;
@@ -43,8 +45,8 @@ export default function ExplorerSummary({
         {stat(t('tft.explorer.sort.games'), num(s.games), hasFilters && data.base.games ? fmtPct(s.games / data.base.games) : undefined)}
         {stat(t('tft.explorer.x.matches'), num(s.matches))}
         {stat(t('tft.explorer.sort.avg'), fmtAvg(s.avg), s.half != null ? `±${s.half.toFixed(2)}` : undefined)}
-        {stat(t('tft.explorer.sort.top4'), fmtPct(s.top4))}
-        {stat(t('tft.explorer.sort.top1'), fmtPct(s.top1))}
+        {showTop4(place) && stat(t('tft.explorer.sort.top4'), fmtPct(s.top4))}
+        {showTop1(place) && stat(t('tft.explorer.sort.top1'), fmtPct(s.top1))}
         {hasFilters && (
           <div className="col-span-3 sm:col-span-5 flex flex-wrap items-center gap-x-4 gap-y-2 pt-3 border-t border-border-subtle">
             <div>

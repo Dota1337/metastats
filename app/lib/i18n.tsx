@@ -3277,6 +3277,16 @@ const translations = {
   'tft.explorer.x.err.timeout': t6('Abfrage zu aufwendig', 'Query too heavy', '\uCFFC\uB9AC\uAC00 \uB108\uBB34 \uBB34\uAC70\uC6C0', '\u67E5\u8BE2\u8FC7\u4E8E\u590D\u6742', 'Consulta demasiado pesada', 'Requ\u00EAte trop lourde'),
   'tft.explorer.x.err.unavailable': t6('Explorer gerade nicht erreichbar', 'Explorer currently unavailable', '\uD0D0\uC0C9\uAE30\uB97C \uD604\uC7AC \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C', '\u63A2\u7D22\u5668\u6682\u65F6\u4E0D\u53EF\u7528', 'Explorador no disponible ahora', 'Explorateur indisponible pour le moment'),
   'tft.explorer.x.retry': t6('Erneut versuchen', 'Try again', '\uB2E4\uC2DC \uC2DC\uB3C4', '\u91CD\u8BD5', 'Reintentar', 'R\u00E9essayer'),
+  'tft.explorer.x.atMost': t6('h\u00F6chstens', 'at most', '\uC774\uD558', '\u81F3\u591A', 'm\u00E1x.', 'max.'),
+  'tft.explorer.x.copies': t6('Kopien auf dem Brett', 'Copies on board', '\uBCF4\uB4DC \uC704 \uAC1C\uC218', '\u573A\u4E0A\u6570\u91CF', 'Copias en el tablero', 'Exemplaires sur le plateau'),
+  'tft.explorer.x.itemKind': t6('Itemsorte', 'Item type', '\uC544\uC774\uD15C \uC885\uB958', '\u88C5\u5907\u7C7B\u578B', 'Tipo de \u00EDtem', 'Type d\'objet'),
+  'tft.explorer.x.onBoard': t6('Anzahl auf dem Brett', 'Count on board', '\uBCF4\uB4DC \uB0B4 \uAC1C\uC218', '\u573A\u4E0A\u6570\u91CF', 'Cantidad en el tablero', 'Nombre sur le plateau'),
+  'tft.explorer.x.playerLevel': t6('Level', 'Level', '\uB808\uBCA8', '\u7B49\u7EA7', 'Nivel', 'Niveau'),
+  'tft.explorer.x.place': t6('Platz', 'Placement', '\uC21C\uC704', '\u540D\u6B21', 'Posici\u00F3n', 'Place'),
+  'tft.explorer.x.from': t6('von', 'from', '\uBD80\uD130', '\u4ECE', 'desde', 'de'),
+  'tft.explorer.x.to': t6('bis', 'to', '\uAE4C\uC9C0', '\u5230', 'hasta', '\u00E0'),
+  'tft.explorer.x.anyOf': t6('eins davon', 'any of', '\uD558\uB098 \uC774\uC0C1', '\u4EFB\u4E00', 'alguno de', 'l\'un de'),
+  'tft.explorer.x.noneOf': t6('keins davon', 'none of', '\uBAA8\uB450 \uC5C6\uC74C', '\u5747\u4E0D\u542B', 'ninguno de', 'aucun de'),
 
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
   'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),

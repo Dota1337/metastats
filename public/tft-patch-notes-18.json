@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-10-10T06:19:56.594Z",
+  "fetchedAt": "2026-10-17T06:18:13.419Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-10-10T06:19:56.732Z",
+      "scrapedAt": "2026-10-17T06:18:13.736Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -403,7 +403,7 @@
       }
     },
     "18.2": {
-      "scrapedAt": "2026-10-10T06:19:58.800Z",
+      "scrapedAt": "2026-10-17T06:18:16.011Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -897,7 +897,7 @@
       }
     },
     "18.3": {
-      "scrapedAt": "2026-10-10T06:20:00.860Z",
+      "scrapedAt": "2026-10-17T06:18:18.047Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -1276,7 +1276,7 @@
       }
     },
     "18.4": {
-      "scrapedAt": "2026-10-10T06:20:03.056Z",
+      "scrapedAt": "2026-10-17T06:18:20.310Z",
       "sections": [
         {
           "category": "LARGE CHANGES",

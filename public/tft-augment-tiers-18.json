@@ -1,12 +1,12 @@
 {
   "set": 18,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-10-10T06:19:56.347Z",
+  "fetchedAt": "2026-10-17T06:18:13.172Z",
   "counts": {
     "silver": 69,
     "gold": 112,
     "prismatic": 68,
-    "pinned": 431
+    "pinned": 429
   },
   "tiers": {
     "DA_AugmentedPower": 1,
@@ -393,8 +393,6 @@
     "TFT_Augment_MoneyMonsoon": 3,
     "DA_NestingAnvils": 3,
     "DA_NestingAnvilsPlus": 3,
-    "DA_NestingDollsPlus": 3,
-    "DA_NestingDollsPlusPlus": 3,
     "DA_OneBuffTwoBuff": 3,
     "DA_PandorasItemsIII": 3,
     "TFT9_Augment_PandorasRadiantBox": 3,

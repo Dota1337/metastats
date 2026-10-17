@@ -215,7 +215,8 @@
       "description": "metastats TFT Data Explorer: Analyse-Speicher taeglich nachfuehren",
       "scripts": [],
       "onCalendar": [
-        "*-*-* 01:35:00 UTC"
+        "*-*-* 01:35:00 UTC",
+        "Sun *-*-* 19:30:00 UTC"
       ],
       "interval": [],
       "activates": "metastats-explorer-build.service",
@@ -634,7 +635,8 @@
       "timer": "metastats-explorer-build.timer",
       "activates": "metastats-explorer-build.service",
       "onCalendar": [
-        "*-*-* 01:35:00 UTC"
+        "*-*-* 01:35:00 UTC",
+        "Sun *-*-* 19:30:00 UTC"
       ]
     },
     {

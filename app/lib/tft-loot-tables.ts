@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { CURRENT_SET } from './current-set';
+import type { WispRound, WispBands } from './tft-wisp-search';
 
 export type LootRewardKind =
   | 'gold' | 'xp' | 'reroll' | 'randomUnit' | 'champion' | 'item'
@@ -82,7 +83,8 @@ export interface LootTablesFile {
   coven: CovenTable;
 }
 
-export type WispRound = 'Early' | 'EarlyMid' | 'Mid' | 'MidLate' | 'Late' | 'VeryLate';
+// Reihenfolge und Runden der Baender stehen in tft-wisp-search.ts (auch im Browser nutzbar).
+export type { WispRound, WispBands };
 
 export type WispCat = 'Champion' | 'Combat' | 'GoldXP' | 'Item' | 'Misc' | 'Risky' | 'Shop';
 
@@ -112,6 +114,8 @@ export interface WispsFile {
   set: number;
   source: { name: string; url: string };
   fetchedAt: string;
+  // Runden je Band (LBB). Optional: fehlt es, zeigt die Seite nur das Band.
+  bands?: WispBands;
   wisps: WispEntry[];
 }
 

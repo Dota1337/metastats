@@ -6,8 +6,11 @@ import { useI18n } from '../../../lib/i18n';
 import { withAlpha } from '../../../lib/color';
 import { tftGameAssetUrl } from '../../../lib/tft-cdragon';
 import type {
-  LootTablesFile, LootTable, CovenTable, LootSub, LootRow, LootReward, LootCond, WispsFile, WispEntry, WispRound, Wisp, WispCat,
+  LootTablesFile, LootTable, CovenTable, LootSub, LootRow, LootReward, LootCond, WispsFile, WispEntry, WispRound, WispBands, Wisp, WispCat,
 } from '../../../lib/tft-loot-tables';
+import {
+  WISP_ROUNDS, bandRuns, roundRanges, roundInBands, normalizeSearch, parseWispQuery, matchWispQuery,
+} from '../../../lib/tft-wisp-search';
 
 // Loot-Tabellen, Coven-Auszahlung und Wisps. Daten und Herkunft:
 // app/lib/tft-loot-tables.ts und scripts/import-tft-tables.mjs.
@@ -16,7 +19,6 @@ const COST_COLORS: Record<number, string> = {
   1: 'var(--fg-secondary)', 2: '#3ecf8e', 3: '#3a8ddc', 4: '#c39bff', 5: '#e0c75a',
 };
 const GOLD = '#e0c75a';
-const ROUNDS: WispRound[] = ['Early', 'EarlyMid', 'Mid', 'MidLate', 'Late', 'VeryLate'];
 
 type View = 'loot' | 'coven' | 'wisps';
 type Mode = 'all' | 'doubles' | 'tockers';
@@ -50,7 +52,7 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
           </div>
         )}
         {view === 'coven' && loot && <CovenCard coven={loot.coven} t={t} />}
-        {view === 'wisps' && wisps && <WispList entries={wisps.wisps} t={t} />}
+        {view === 'wisps' && wisps && <WispList entries={wisps.wisps} bands={wisps.bands} t={t} />}
 
         {source && (
           <div className="mt-5 text-fg-faint text-[11px]">
@@ -404,31 +406,65 @@ type WispVariant = WispEntry['variants'][number];
 
 // Runden als Bereiche („Früh – Mitte"); die wenigen Luecken werden als zweiter Bereich gezeigt.
 function roundText(rounds: WispRound[], t: T): string {
-  const runs: [number, number][] = [];
-  for (const i of rounds.map(r => ROUNDS.indexOf(r)).sort((a, b) => a - b)) {
-    const last = runs[runs.length - 1];
-    if (last && i === last[1] + 1) last[1] = i;
-    else runs.push([i, i]);
-  }
-  const name = (i: number) => t(`tft.tables.round.${ROUNDS[i]}` as Parameters<T>[0]);
-  return runs.map(([a, b]) => (a === b ? name(a) : `${name(a)} – ${name(b)}`)).join(', ');
+  const name = (i: number) => t(`tft.tables.round.${WISP_ROUNDS[i]}` as Parameters<T>[0]);
+  return bandRuns(rounds).map(([a, b]) => (a === b ? name(a) : `${name(a)} – ${name(b)}`)).join(', ');
+}
+
+// Dieselben Bereiche in Runden („2-1 – 4-1"); reicht ein Bereich bis ins letzte Band: „ab 6-1".
+function stageText(rounds: WispRound[], bands: WispBands, t: T): string {
+  return roundRanges(rounds, bands)
+    .map(r => (r.open ? fill(t('tft.tables.fromRound'), { r: r.from }) : r.from === r.to ? r.from : `${r.from} – ${r.to}`))
+    .join(', ');
 }
 
 // Eine Zeile je Wisp mit ihren Bedingungen; Upgrade/Prismatisch klappen darunter auf.
-// Stufen- und Art-Filter treffen auch ueber eine Variante (Prismatisch springt auf Stufe 3).
-function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
+// Filter und Suche pruefen Basis und Varianten einzeln (Prismatisch springt auf Stufe 3);
+// trifft nur eine Variante, klappt die Zeile auf. Runden-Suche und Band-Text gelten fuer
+// die ganze Zeile nach den Baendern der Basis — sonst treffen die prismatischen Varianten
+// (kommen in jedem Band) bei jeder Runde.
+function WispList({ entries, bands, t }: { entries: WispEntry[]; bands?: WispBands; t: T }) {
   const [tier, setTier] = useState<'all' | '1' | '2' | '3'>('all');
   const [mode, setMode] = useState<Mode>('all');
   const [cat, setCat] = useState<'all' | WispCat>('all');
-  const inMode = (w: Wisp) => mode === 'all' || (mode === 'doubles' ? w.doubles : w.tockers);
-  const hit = (x: Wisp) => (tier === 'all' || String(x.tier) === tier) && (cat === 'all' || x.cat === cat);
-  const shown = useMemo(
-    () => entries.filter(w => inMode(w) && [w, ...w.variants.filter(inMode)].some(hit)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entries, tier, mode, cat],
-  );
+  const [query, setQuery] = useState('');
+  const parsed = useMemo(() => parseWispQuery(query), [query]);
+  const searchText = useMemo(() => {
+    const m = new Map<Wisp, string>();
+    for (const w of entries) {
+      const band = roundText(w.rounds, t);
+      for (const x of [w, ...w.variants]) {
+        const catText = x.cat ? `${x.cat} ${t(`tft.tables.cat.${x.cat}` as Parameters<T>[0])}` : '';
+        m.set(x, normalizeSearch([x.name, x.desc, x.req ?? '', catText, band].join('\n')));
+      }
+    }
+    return m;
+  }, [entries, t]);
+  const shown = useMemo(() => {
+    const inMode = (w: Wisp) => mode === 'all' || (mode === 'doubles' ? w.doubles : w.tockers);
+    const hit = (x: Wisp, base: WispEntry) =>
+      (tier === 'all' || String(x.tier) === tier) && (cat === 'all' || x.cat === cat)
+      && (!parsed || matchWispQuery(parsed, searchText.get(x) ?? '', bands ? k => roundInBands(k, base.rounds, bands) : null));
+    const out: { w: WispEntry; variants: WispVariant[]; autoOpen: boolean }[] = [];
+    for (const w of entries) {
+      if (!inMode(w)) continue;
+      const variants = w.variants.filter(inMode);
+      const baseHit = hit(w, w);
+      if (baseHit || variants.some(v => hit(v, w))) out.push({ w, variants, autoOpen: !baseHit });
+    }
+    return out;
+  }, [entries, bands, tier, mode, cat, parsed, searchText]);
   return (
     <div>
+      <div className="mb-3">
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder={t('tft.tables.searchPlaceholder')}
+          aria-label={t('tft.tables.search')}
+          className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
+        />
+      </div>
       <div className="flex flex-wrap gap-x-5 gap-y-3 mb-4">
         <div>
           <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.tables.tier')}</div>
@@ -447,19 +483,33 @@ function WispList({ entries, t }: { entries: WispEntry[]; t: T }) {
           />
         </div>
       </div>
-      <div className="bg-surface-base border border-border-subtle rounded-lg divide-y divide-border-subtle/60">
-        {shown.map(w => (
-          <WispRow key={`${w.api}-${tier}-${cat}`} w={w} variants={w.variants.filter(inMode)} openInit={!hit(w)} t={t} />
-        ))}
-      </div>
+      {shown.length > 0 && (
+        <div className="bg-surface-base border border-border-subtle rounded-lg divide-y divide-border-subtle/60">
+          {shown.map(({ w, variants, autoOpen }) => (
+            <WispRow key={w.api} w={w} variants={variants} autoOpen={autoOpen} bands={bands} t={t} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVariant[]; openInit: boolean; t: T }) {
-  const [open, setOpen] = useState(openInit);
+// Aufgeklappt ist eine Zeile, wenn nur eine Variante trifft (autoOpen) — bis man selbst
+// klickt. Aendert sich autoOpen durch Filter oder Suche, gilt wieder die Vorgabe; ein
+// Tastendruck, der autoOpen nicht aendert, laesst von Hand geoeffnete Zeilen offen.
+function WispRow({ w, variants, autoOpen, bands, t }: {
+  w: WispEntry; variants: WispVariant[]; autoOpen: boolean; bands?: WispBands; t: T;
+}) {
+  const [manual, setManual] = useState<boolean | null>(null);
+  const [prevAuto, setPrevAuto] = useState(autoOpen);
+  if (prevAuto !== autoOpen) {
+    setPrevAuto(autoOpen);
+    setManual(null);
+  }
+  const open = manual ?? autoOpen;
+  const setOpen = (f: (o: boolean) => boolean) => setManual(f(open));
   const more = variants.length > 0;
-  const line = <WispLine w={w} t={t} />;
+  const line = <WispLine w={w} bands={bands} t={t} />;
   return (
     <div>
       {more ? (
@@ -489,7 +539,7 @@ function WispRow({ w, variants, openInit, t }: { w: WispEntry; variants: WispVar
           {variants.map(v => (
             <div key={v.api} className="border-l-2 border-l-accent/40 pl-3">
               <div className="text-accent text-[10px] uppercase tracking-widest mb-1">{t(v.kind === 'prismatic' ? 'tft.tables.prismatic' : 'tft.tables.upgrade')}</div>
-              <div className="flex items-start gap-3"><WispLine w={v} t={t} /></div>
+              <div className="flex items-start gap-3"><WispLine w={v} bands={bands} t={t} /></div>
             </div>
           ))}
         </div>
@@ -503,7 +553,7 @@ function hasExtra(w: Wisp): boolean {
 }
 
 // Bild · Name mit Art · Kosten · Text · Runden; ab lg als eine Tabellenzeile, am Handy gestapelt.
-function WispLine({ w, t }: { w: Wisp; t: T }) {
+function WispLine({ w, bands, t }: { w: Wisp; bands?: WispBands; t: T }) {
   const solo = !w.doubles && !w.tockers;
   return (
     <>
@@ -521,7 +571,10 @@ function WispLine({ w, t }: { w: Wisp; t: T }) {
         </div>
         <span className="text-[12px] tabular-nums whitespace-nowrap text-right lg:text-left lg:pt-px" style={{ color: GOLD }}>{w.cost} {t('tft.tables.gold')}</span>
         <p className="col-span-2 lg:col-span-1 text-fg-secondary text-[12px] leading-relaxed">{w.desc}</p>
-        <span className="col-span-2 lg:col-span-1 text-fg-muted text-[11px] lg:pt-px">{roundText(w.rounds, t)}</span>
+        <span className="col-span-2 lg:col-span-1 text-fg-muted text-[11px] lg:pt-px">
+          {roundText(w.rounds, t)}
+          {bands && w.rounds.length > 0 && <span className="block text-fg-secondary tabular-nums">{stageText(w.rounds, bands, t)}</span>}
+        </span>
         <WispExtra w={w} t={t} />
       </div>
     </>

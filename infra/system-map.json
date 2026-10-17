@@ -1239,6 +1239,7 @@
       "daily-crawl/unit-stats",
       "daily-crawl/unit-top-items",
       "daily-crawl/unit-builds",
+      "daily-crawl/unit-extras",
       "daily-crawl/item-stats",
       "daily-crawl/trait-stats",
       "daily-crawl/player-names",

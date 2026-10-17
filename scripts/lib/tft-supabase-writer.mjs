@@ -33,6 +33,7 @@ export const DAILY_TABLES = [
   'tft_daily_unit_stats',
   'tft_daily_unit_top_items',
   'tft_daily_unit_builds',
+  'tft_daily_unit_extras',
   'tft_daily_item_stats',
   'tft_daily_trait_stats',
   'tft_daily_comp_pairs',
@@ -378,6 +379,33 @@ export async function writeTftStatsToSupabase(opts) {
       'region,bucket,patch,set_number,day,character_id', log, UNIT_BUILDS_BATCH);
   } catch (e) {
     log(`  [supabase] unit_builds FAILED (non-fatal): ${e.message}`);
+  }
+
+  // 8c) Artefakte + Embleme je Unit (migration 0097) — rechter Block der
+  // Item-Reihe auf /tft/units. Erst die ganze Region x Tag loeschen: dort
+  // koennen nachgefuellte Zeilen (source='carriers', aus den Traeger-Listen
+  // der Item-Statistik) liegen, die sonst neben den genauen Zahlen
+  // stehenblieben. Abgefangen wie Block 8, Alarm ueber den Vertrag
+  // daily-crawl/unit-extras.
+  try {
+    const extraRows = [];
+    for (const [cid, buckets] of Object.entries(payload.byUnit || {})) {
+      for (const bucket of PERSIST_BUCKETS) {
+        const b = buckets[bucket];
+        if (!b || !b.games || !Array.isArray(b.persistExtras) || b.persistExtras.length === 0) continue;
+        extraRows.push({ ...baseRow, bucket, character_id: cid, items: b.persistExtras, source: 'collector' });
+      }
+    }
+    // Ohne Zeilen nichts loeschen: import-tft-json-to-supabase.mjs liest die
+    // JSON, die persistExtras nicht enthaelt — er wuerde sonst den Tag leeren.
+    if (extraRows.length > 0) {
+      await deleteRows('tft_daily_unit_extras', { region: `eq.${region}`, day: `eq.${day}` }, log);
+    }
+    log(`  [supabase] unit_extras: ${extraRows.length} rows`);
+    await upsertRows('tft_daily_unit_extras', extraRows,
+      'region,bucket,patch,set_number,day,character_id', log);
+  } catch (e) {
+    log(`  [supabase] unit_extras FAILED (non-fatal): ${e.message}`);
   }
 
   // 9) Comp-Ergebnisse je Unit und Item (migration 0078) — eine Zeile je

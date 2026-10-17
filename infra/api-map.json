@@ -8,10 +8,10 @@
   "counts": {
     "routes": 90,
     "groups": 30,
-    "tables": 41,
-    "rpcs": 34,
+    "tables": 42,
+    "rpcs": 35,
     "files": 14,
-    "edges": 627,
+    "edges": 629,
     "unused": 7,
     "unresolved": 1
   },
@@ -1934,6 +1934,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_daily_unit_extras",
+      "kind": "table",
+      "label": "tft_daily_unit_extras",
+      "declared": true
+    },
+    {
       "id": "db:tft_daily_unit_stats",
       "kind": "table",
       "label": "tft_daily_unit_stats",
@@ -2360,15 +2366,21 @@
       "declared": true
     },
     {
-      "id": "fn:get_tft_unit_stats",
+      "id": "fn:get_tft_unit_extras",
       "kind": "rpc",
-      "label": "get_tft_unit_stats",
+      "label": "get_tft_unit_extras",
       "declared": true
     },
     {
-      "id": "fn:get_tft_unit_top_items",
+      "id": "fn:get_tft_unit_item_stats",
       "kind": "rpc",
-      "label": "get_tft_unit_top_items",
+      "label": "get_tft_unit_item_stats",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_unit_stats",
+      "kind": "rpc",
+      "label": "get_tft_unit_stats",
       "declared": true
     },
     {
@@ -5063,12 +5075,17 @@
     },
     {
       "from": "api:/api/tft/units",
-      "to": "fn:get_tft_unit_stats",
+      "to": "fn:get_tft_unit_extras",
       "kind": "calls"
     },
     {
       "from": "api:/api/tft/units",
-      "to": "fn:get_tft_unit_top_items",
+      "to": "fn:get_tft_unit_item_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
+      "to": "fn:get_tft_unit_stats",
       "kind": "calls"
     },
     {
@@ -5497,6 +5514,16 @@
       "kind": "reads"
     },
     {
+      "from": "fn:get_tft_unit_extras",
+      "to": "db:tft_daily_unit_extras",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_unit_item_stats",
+      "to": "db:tft_daily_unit_top_items",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_unit_stats",
       "to": "db:tft_daily_comp_stats",
       "kind": "reads"
@@ -5504,11 +5531,6 @@
     {
       "from": "fn:get_tft_unit_stats",
       "to": "db:tft_daily_unit_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_unit_top_items",
-      "to": "db:tft_daily_unit_top_items",
       "kind": "reads"
     },
     {

@@ -217,6 +217,9 @@ export interface UnitListRow {
   avgPlacement: number | null;
   pickRate: number | null;
   topItems?: { item: string; games: number }[];
+  // Seit 0097; aeltere gespeicherte Staende haben sie nicht.
+  artifacts?: { item: string }[];
+  emblems?: { item: string }[];
 }
 
 export function unitsStart<Row extends UnitListRow>(sp: URLSearchParams): Promise<StatsStart<Row>> {
@@ -227,7 +230,7 @@ export function unitsStart<Row extends UnitListRow>(sp: URLSearchParams): Promis
     prepare: rows => { sortUnitsRareLast(rows); return rows; },
     assets: (bundle, rows) => subsetBundle(bundle, {
       champions: rows.map(r => r.characterId),
-      items: rows.flatMap(r => (r.topItems || []).map(i => i.item)),
+      items: rows.flatMap(r => [...(r.topItems || []), ...(r.artifacts || []), ...(r.emblems || [])].map(i => i.item)),
       withAbility: false,
     }),
   }, sp);

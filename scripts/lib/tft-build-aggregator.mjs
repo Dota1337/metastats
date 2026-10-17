@@ -84,6 +84,20 @@ export function isOutcomeFinishedItem(apiName) {
   return true;
 }
 
+// Artefakte und Embleme je Unit (0097, tft_daily_unit_extras, rechter Block auf
+// /tft/units). Artefakt-Muster wie app/lib/tft-item-bucket.ts (der Unterstrich
+// am Ende haelt die Set-18-Mechanik DA_Artifactinate18 draussen), Embleme wie
+// isOutcomeEmblem (ohne Augment-/Phantom-Embleme — waere eine Augment-Statistik).
+// get_tft_unit_extras in 0097 filtert mit denselben Mustern; ein Test haelt
+// beide gleich (tft-unit-extras.test.mjs).
+export const EXTRA_ARTIFACT_RE = /_Artifact_/i;
+export function extraKindOf(apiName) {
+  const s = String(apiName || '');
+  if (EXTRA_ARTIFACT_RE.test(s)) return 'artifact';
+  if (isOutcomeEmblem(s)) return 'emblem';
+  return null;
+}
+
 // Liest einen Spieler einmal aus; addOutcome() verteilt das Ergebnis dann auf
 // jeden Bucket. units: cid -> Liste der Kopien mit genau 3 fertigen Items
 // (jede Kopie sortiert). Eine Unit ohne solche Kopie steht mit leerer Liste
@@ -291,6 +305,9 @@ function newUnitBucket() {
     itemSlotOrderByTier: new Map(),
     // Kopien je Stern (tier -> Anzahl) — Standard-Stern der Item-Plaetze (0096).
     starGames: new Map(),
+    // Artefakte + Embleme (0097): apiName -> { games, top4, sumPlacement }, je
+    // Kopie gezaehlt wie items, ohne Kopien mit Thief's Gloves.
+    extras: new Map(),
   };
 }
 function newItemBucket() {
@@ -510,6 +527,16 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ie2.sumPlacement += placement;
           if (top4) ie2.top4++;
         }
+        const thiefsCopy = items.some(it => THIEFS_GLOVES_RE.test(it || ''));
+        if (!thiefsCopy) {
+          for (const it of seenItem) {
+            if (!extraKindOf(it)) continue;
+            const xe = getOrCreate(ub.extras, it, () => ({ games: 0, top4: 0, sumPlacement: 0 }));
+            xe.games++;
+            xe.sumPlacement += placement;
+            if (top4) xe.top4++;
+          }
+        }
         if (items.length >= 3) {
           const sorted = [...items].sort();
           const key = sorted.join('|');
@@ -544,7 +571,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
           pe.games++; pe.sumPlacement += placement; if (top4) pe.top4++; if (top1) pe.top1++;
         }
         // Item-Plaetze: Stelle in itemNames am Spielende (siehe newUnitBucket).
-        if (items.length > 0 && !items.some(it => THIEFS_GLOVES_RE.test(it || ''))) {
+        if (items.length > 0 && !thiefsCopy) {
           let slotMap = ub.itemSlotOrderByTier.get(starTier);
           if (!slotMap) { slotMap = new Map(); ub.itemSlotOrderByTier.set(starTier, slotMap); }
           for (let si = 0; si < Math.min(3, items.length); si++) {
@@ -1018,6 +1045,16 @@ export function persistBuilds(b) {
   };
 }
 
+// Artefakte + Embleme fuer die DB (0097, tft_daily_unit_extras):
+// [[item, games, top4, sumPlacement], …]. Ohne Kappe und ohne Mindestwert —
+// Set 18 hat ~50 solche Items, und die Lesefunktion summiert ueber Tage.
+export function persistExtras(b) {
+  if (!(b.extras instanceof Map)) return [];
+  return [...b.extras.entries()]
+    .map(([item, e]) => [item, e.games, e.top4, e.sumPlacement])
+    .sort(byGamesThenKey);
+}
+
 export function finalize(agg, opts = {}) {
   const minUnitGames = opts.minUnitGames ?? 5;
   const minItemGames = opts.minItemGames ?? 5;
@@ -1162,6 +1199,7 @@ export function finalize(agg, opts = {}) {
         topItems, topItemSets,
         persistTopItems, // nur fuer den DB-Writer; collect-tft-allranks laesst es aus der JSON
         persistBuilds: persistBuilds(b), // dto. (0096)
+        persistExtras: persistExtras(b), // dto. (0097)
         topItemsByTier, topItemSetsByTier,
         damageByTier,
         carryPlacementByTier,

@@ -121,6 +121,16 @@
       "note": "Item-Bloecke der Unit-Detailseite (0096): eine Zeile je Unit x Bucket wie unit_stats. Writer-Block 8b faengt Fehler ab — dieser Vertrag ist der einzige Alarm. Aufbewahrung 9 Tage."
     },
     {
+      "id": "daily-crawl/unit-extras",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_unit_extras",
+      "dateColumn": "day",
+      "maxLagDays": 2,
+      "minRows": 3000,
+      "note": "Artefakte + Embleme je Unit x Bucket (0097), rechter Block der Item-Reihe auf /tft/units. Writer-Block 8c faengt Fehler ab — dieser Vertrag ist der einzige Alarm. Tage vor dem 17.10.2026 einmal nachgefuellt (source='carriers')."
+    },
+    {
       "id": "daily-crawl/item-stats",
       "owner": "metastats-daily-crawl.service",
       "backend": "supabase",

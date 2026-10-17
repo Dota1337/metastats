@@ -10,7 +10,7 @@ import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftStatsList } from '../../lib/useTftStatsList';
 import { useI18n } from '../../lib/i18n';
-import { tftChampionTileUrl, tftTraitDisplayName } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 import TftItemIcon from '../../components/tft/TftItemIcon';
@@ -24,6 +24,15 @@ interface UnitVelocity {
   isNew: boolean;
 }
 
+// Ein Item der Reihe; games = Kopien der Unit mit dem Item. Werte fehlen in
+// gespeicherten Staenden von vor 0097.
+export interface UnitItem {
+  item: string;
+  games: number;
+  avgPlacement?: number | null;
+  top4Rate?: number | null;
+}
+
 export interface UnitRow {
   characterId: string;
   games: number;
@@ -34,8 +43,24 @@ export interface UnitRow {
   winShare?: number | null;
   top4Share?: number | null;
   velocity?: UnitVelocity | null;
-  topItems?: { item: string; games: number }[];
+  topItems?: UnitItem[];
+  artifacts?: UnitItem[];
+  emblems?: UnitItem[];
 }
+
+// Ø-Platz unter einem Item erst ab 30 Kopien, Farbe erst ab 100 Kopien und
+// 0,15 Abstand zum Schnitt der gezeigten Items — darunter ist der Unterschied
+// Rauschen (data-skeptic 17.10.: Unsicherheit ~0,23 bei 100 Kopien). Verglichen
+// wird mit den gezeigten Items, nicht mit der Unit: deren Schnitt enthaelt
+// Kopien ohne Items, dann waere fast jedes Item gruen.
+const ITEM_VALUE_MIN = 30;
+const ITEM_COLOR_MIN = 100;
+const ITEM_COLOR_DELTA = 0.15;
+// Artefakte/Embleme rechts: ab 30 Kopien und 2 % der Kopien der Unit, ohne Farbe
+// (Artefakte kommen aus Augments/Beute und stuenden immer gut da).
+const EXTRA_MIN_SHARE = 0.02;
+const BETTER_COLOR = '#3ecf8e';
+const WORSE_COLOR = '#e44040';
 
 export default function UnitsClient({ initialFilters, initial }: {
   // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
@@ -251,13 +276,7 @@ export default function UnitsClient({ initialFilters, initial }: {
                           <div key={n} aria-hidden className="[grid-area:1/1] hidden lg:block invisible font-medium whitespace-nowrap">{n}</div>
                         ))}
                       </div>
-                      {u.topItems && u.topItems.length > 0 && (
-                        <div className="flex gap-0.5 flex-shrink-0">
-                          {u.topItems.map(it => (
-                            <TftItemIcon key={it.item} apiName={it.item} assets={assets} />
-                          ))}
-                        </div>
-                      )}
+                      <UnitItemRow u={u} assets={assets} t={t} />
                     </div>
                   </div>
                   <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
@@ -282,6 +301,75 @@ export default function UnitsClient({ initialFilters, initial }: {
 }
 
 function noopSubscribe() { return () => {}; }
+
+// Item-Reihe einer Unit: links die meistgebauten Items, rechts (durch eine Linie
+// getrennt) Artefakte und Embleme. Reicht der Platz nicht, rutscht der rechte
+// Block als Ganzes in die naechste Zeile.
+function UnitItemRow({ u, assets, t }: { u: UnitRow; assets: TftAssetsBundle | null; t: (k: any) => string }) {
+  const items = u.topItems || [];
+  const extraOk = (it: UnitItem) => it.games >= ITEM_VALUE_MIN && it.games >= u.games * EXTRA_MIN_SHARE;
+  const artifacts = (u.artifacts || []).filter(extraOk);
+  const emblems = (u.emblems || []).filter(extraOk);
+  if (items.length === 0 && artifacts.length === 0 && emblems.length === 0) return null;
+  // Vergleichswert der Farbe: Ø-Platz aller gezeigten Items mit Wert, nach Kopien gewichtet.
+  let sum = 0;
+  let n = 0;
+  for (const it of items) {
+    if (it.avgPlacement == null || it.games < ITEM_VALUE_MIN) continue;
+    sum += it.avgPlacement * it.games;
+    n += it.games;
+  }
+  const base = n > 0 ? sum / n : null;
+  const colorOf = (it: UnitItem) => {
+    if (base == null || it.avgPlacement == null || it.games < ITEM_COLOR_MIN) return undefined;
+    const d = it.avgPlacement - base;
+    if (Math.abs(d) < ITEM_COLOR_DELTA) return undefined;
+    return d < 0 ? BETTER_COLOR : WORSE_COLOR;
+  };
+  return (
+    <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
+      {items.length > 0 && (
+        <div className="flex gap-0.5 flex-shrink-0">
+          {items.map(it => <ItemWithValue key={it.item} it={it} unitGames={u.games} color={colorOf(it)} assets={assets} t={t} />)}
+        </div>
+      )}
+      {(artifacts.length > 0 || emblems.length > 0) && (
+        <div className="flex gap-2 flex-shrink-0 border-l border-border-subtle pl-3">
+          {[artifacts, emblems].filter(g => g.length > 0).map((g, i) => (
+            <div key={i} className="flex gap-0.5">
+              {g.map(it => <ItemWithValue key={it.item} it={it} unitGames={u.games} assets={assets} t={t} />)}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ItemWithValue({ it, unitGames, color, assets, t }: {
+  it: UnitItem; unitGames: number; color?: string; assets: TftAssetsBundle | null; t: (k: any) => string;
+}) {
+  const showValue = it.avgPlacement != null && it.games >= ITEM_VALUE_MIN;
+  const name = assets?.items[it.item]?.name || it.item;
+  const parts = [name];
+  if (showValue) {
+    parts.push(`${t('tft.avgPlacement')}: ${it.avgPlacement!.toFixed(2)}`);
+    if (it.top4Rate != null) parts.push(`${t('tft.top4')}: ${(it.top4Rate * 100).toFixed(1)}%`);
+    if (unitGames > 0) parts.push(`${t('tft.pickRate')}: ${((it.games / unitGames) * 100).toFixed(1)}%`);
+    parts.push(`${t('tft.gamesShort')}: ${it.games}`);
+  }
+  return (
+    <div className="flex flex-col items-center w-7">
+      <TftItemIcon apiName={it.item} assets={assets} className="w-7 h-7" title={parts.join('\n')} />
+      <span
+        className={`h-3 mt-0.5 text-[10px] leading-3 tabular-nums ${color ? '' : 'text-fg-secondary'}`}
+        style={color ? { color } : undefined}
+      >
+        {showValue ? it.avgPlacement!.toFixed(2) : ''}
+      </span>
+    </div>
+  );
+}
 
 function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';

@@ -28,8 +28,9 @@ export const maxDuration = 60;
 //   view, which depends on byUnit[*].topItems/topItemSets — fields the
 //   per-day Supabase rows don't carry. The list view gets its item row from
 //   tft_daily_unit_top_items (migration 0069: top-15 finished items per day,
-//   merged by get_tft_unit_top_items); the detail page still shows the
-//   most-recent crawl.
+//   merged with Ø-Platz/Top 4 by get_tft_unit_item_stats, 0097) and the
+//   artifacts/emblems block from tft_daily_unit_extras (get_tft_unit_extras,
+//   0097); the detail page still shows the most-recent crawl.
 
 interface UnitListRow {
   character_id: string;
@@ -40,14 +41,42 @@ interface UnitListRow {
   participants: number;
 }
 
-interface UnitTopItemRow {
+interface UnitItemStatRow {
   character_id: string;
   item: string;
   games: number;
+  top4: number;
+  sum_placement: number;
 }
 
-// Item-Reihe neben dem Namen auf /tft/units.
+interface UnitExtraRow extends UnitItemStatRow {
+  kind: 'artifact' | 'emblem';
+}
+
+// Ein Item in der Reihe: Kopien mit dem Item, Ø-Platz und Top-4-Quote dieser
+// Kopien. Gleiche Form in UnitsClient.tsx (UnitItem) und seo/initial-data.ts.
+interface UnitListItem {
+  item: string;
+  games: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
+}
+
+// Item-Reihe neben dem Namen auf /tft/units (ohne Artefakte — die stehen rechts).
 const LIST_TOP_ITEMS = 6;
+// Rechter Block: je Art so viele Artefakte bzw. Embleme (0097).
+const LIST_TOP_EXTRAS = 3;
+
+const round = (x: number, digits: number) => Math.round(x * 10 ** digits) / 10 ** digits;
+function listItem(r: UnitItemStatRow): UnitListItem {
+  const g = Number(r.games);
+  return {
+    item: r.item,
+    games: g,
+    avgPlacement: g > 0 ? round(Number(r.sum_placement) / g, 3) : null,
+    top4Rate: g > 0 ? round(Number(r.top4) / g, 4) : null,
+  };
+}
 
 interface UnitVelocityRow {
   character_id: string;
@@ -191,22 +220,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Item-Reihe: fuer Besucher optional (Fehler → Liste ohne Items). Der
-    // Snapshot-Publisher bekommt mehr Zeit und laesst Fehler durchschlagen,
-    // damit nie ein Bundle ohne Items gespeichert wird.
+    // Item-Reihe + Artefakte/Embleme: fuer Besucher optional (Fehler → Liste
+    // ohne diesen Teil). Der Snapshot-Publisher bekommt mehr Zeit und laesst
+    // Fehler durchschlagen, damit nie ein Bundle ohne Items gespeichert wird.
+    // Zwei getrennte Aufrufe: ein Zeitlimit beim einen kostet nicht den anderen.
     const publisher = isSnapshotPublisher(request);
-    const topItemsCall = callRpc<UnitTopItemRow[]>('get_tft_unit_top_items', {
+    const itemArgs = {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
       ...rpcWindowArgs(filters),
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
-      p_top: LIST_TOP_ITEMS,
-    }, publisher ? 25_000 : undefined);
+    };
+    const topItemsCall = callRpc<UnitItemStatRow[]>('get_tft_unit_item_stats',
+      { ...itemArgs, p_top: LIST_TOP_ITEMS }, publisher ? 25_000 : undefined);
+    const extrasCall = callRpc<UnitExtraRow[]>('get_tft_unit_extras',
+      { ...itemArgs, p_top: LIST_TOP_EXTRAS }, publisher ? 25_000 : undefined);
 
     // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
     let trendAnchorDegraded = false;
-    const [rows, velocityRows, topItemRows] = await Promise.all([
+    const [rows, velocityRows, topItemRows, extraRows] = await Promise.all([
       callRpc<UnitListRow[]>('get_tft_unit_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -226,15 +259,23 @@ export async function GET(request: NextRequest) {
             p_min_games: 30,
           }); }).catch(() => [] as UnitVelocityRow[])
         : Promise.resolve([] as UnitVelocityRow[]),
-      publisher ? topItemsCall : topItemsCall.catch(() => [] as UnitTopItemRow[]),
+      publisher ? topItemsCall : topItemsCall.catch(() => [] as UnitItemStatRow[]),
+      publisher ? extrasCall : extrasCall.catch(() => [] as UnitExtraRow[]),
     ]);
 
-    // RPC liefert pro Champion schon sortiert (Spiele absteigend) und gekappt.
-    const topItemsByCid = new Map<string, { item: string; games: number }[]>();
+    // RPCs liefern pro Champion schon sortiert (Spiele absteigend) und gekappt.
+    const topItemsByCid = new Map<string, UnitListItem[]>();
     for (const t of topItemRows) {
       const list = topItemsByCid.get(t.character_id) ?? [];
-      if (list.length < LIST_TOP_ITEMS) list.push({ item: t.item, games: Number(t.games) });
+      if (list.length < LIST_TOP_ITEMS) list.push(listItem(t));
       topItemsByCid.set(t.character_id, list);
+    }
+    const extrasByCid = new Map<string, { artifacts: UnitListItem[]; emblems: UnitListItem[] }>();
+    for (const x of extraRows) {
+      const e = extrasByCid.get(x.character_id) ?? { artifacts: [], emblems: [] };
+      const list = x.kind === 'artifact' ? e.artifacts : x.kind === 'emblem' ? e.emblems : null;
+      if (list && list.length < LIST_TOP_EXTRAS) list.push(listItem(x));
+      extrasByCid.set(x.character_id, e);
     }
 
     const participants = rows[0]?.participants || 0;
@@ -263,6 +304,8 @@ export async function GET(request: NextRequest) {
           winShare: shares.winShare,
           top4Share: shares.top4Share,
           topItems: topItemsByCid.get(r.character_id) ?? [],
+          artifacts: extrasByCid.get(r.character_id)?.artifacts ?? [],
+          emblems: extrasByCid.get(r.character_id)?.emblems ?? [],
         };
         if (!wantVelocity) return base;
         const v = velocityByCid.get(r.character_id);

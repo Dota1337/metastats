@@ -3,19 +3,21 @@ import { tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
 // Reines Item-Bild ohne eigenen Link — fuer Stellen, die schon in einem Link
 // stecken (z. B. die Zeilen der Champion-Liste, die komplett auf die
 // Detailseite verlinken; ein <a> im <a> waere ungueltiges HTML).
-// Hover-Titel = Item-Name aus dem Bundle.
+// Hover-Titel = Item-Name aus dem Bundle, ausser der Aufrufer gibt einen eigenen.
 export default function TftItemIcon({
   apiName,
   assets,
   className = 'w-6 h-6',
+  title: titleOverride,
 }: {
   apiName: string;
   assets: TftAssetsBundle | null;
   className?: string;
+  title?: string;
 }) {
   const item = assets?.items[apiName];
   const url = tftIconUrl(assets, item?.icon);
-  const title = item?.name || apiName;
+  const title = titleOverride || item?.name || apiName;
   if (!url) {
     return (
       <span

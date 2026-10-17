@@ -113,9 +113,22 @@ export async function maskStep({
   const deadlineMs = maskDeadlineMs({ aggStartMs, t0Ms, budgetS, capMs });
   const hardMs = maskHardMs({ t0Ms, capMs });
   const covered = new Set();
+  // Tage aus vielen Tabellen loeschen: erst die Deckung entziehen (mask_days,
+  // ggf. mask_fail), dann jede Daten-Tabelle in eigener Transaktion mit
+  // CHECKPOINT danach. Alle DELETEs in EINER Transaktion halten die
+  // Loesch-Vermerke bis zum Ende fest — 17.10.2026 Out of Memory bei mask_ut
+  // (858/858 MiB) nach mask_um und mask_ui. Scheitert es dazwischen, leert der
+  // Fehlerpfad bzw. der Versuchs-Stempel ohnehin alle Masken.
+  const dropDays = async (list, { fail = false } = {}) => {
+    await tx([...(fail ? ['mask_fail'] : []), 'mask_days'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(list)})`));
+    for (const t of MASK_DATA_TABLES) {
+      await tx([`DELETE FROM ${o}.${t} WHERE day IN (${inList(list)})`]);
+      await exec(`CHECKPOINT ${o}`);
+    }
+  };
   const uncover = async (list) => {
     if (!list.length) return;
-    await tx(DAY_TABLES.map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(list)})`));
+    await dropDays(list);
     for (const d of list) covered.delete(d);
   };
   const recordFail = async (d, fp, why) => {
@@ -176,7 +189,7 @@ export async function maskStep({
     const stale = await col(`SELECT DISTINCT day::VARCHAR AS v FROM (SELECT day FROM ${o}.mask_days UNION ALL SELECT day FROM ${o}.mask_fail)
       WHERE day NOT IN (SELECT day FROM mk_fd) ORDER BY 1`);
     if (stale.length) {
-      await tx([...DAY_TABLES, 'mask_fail'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(stale)})`));
+      await dropDays(stale, { fail: true });
       res.dropped = stale.length;
     }
     for (const d of await col(`SELECT day::VARCHAR AS v FROM ${o}.mask_days`)) covered.add(d);

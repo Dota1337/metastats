@@ -18,16 +18,19 @@ import { lit, qi } from './explorer-agg-build.mjs';
 // ─── Tabellen und Spalten ──────────────────────────────────────────────────
 
 // um: Units je Sternstufe (hoechster Stern des Boards), ui: Items ohne
-// Komponenten, ut: Traits je Stufe und Uebercap, uk: Items mit Komponenten.
+// Komponenten, ut: Traits je Stufe und Uebercap, uk: Items mit Komponenten;
+// uk.m2/m3 = Boards, auf denen das Item mindestens 2/3 Mal liegt (Slots aller
+// Units zusammen, wie itemCond mit n in explorer-query.mjs).
 export const MASK_DATA_TABLES = ['mask_um', 'mask_ui', 'mask_ut', 'mask_uk'];
 export const MASK_TABLES = [...MASK_DATA_TABLES, 'mask_days', 'mask_fail', 'mask_meta'];
 export const STAR_VALUES = [1, 2, 3, 4];
 export const OVER_VALUES = [0, 1, 2, 3, 4];
+export const ITEM_COUNTS = [2, 3];
 export const MASK_COLS = {
   mask_um: ['day', 'mid', 'unit', ...STAR_VALUES.map((s) => `m${s}`)],
   mask_ui: ['day', 'mid', 'item', 'm'],
   mask_ut: ['day', 'mid', 'trait', 'lvl', ...OVER_VALUES.map((v) => `o${v}`), 'onull'],
-  mask_uk: ['day', 'mid', 'item', 'm'],
+  mask_uk: ['day', 'mid', 'item', 'm', ...ITEM_COUNTS.map((n) => `m${n}`)],
 };
 // Bit-Spalten je Tabelle (alle, deren ODER = "Board hat den Schluessel").
 export const MASK_BIT_COLS = {
@@ -46,7 +49,7 @@ export const maskTablesDdl = (o) => [
   `CREATE TABLE ${o}.mask_ui(day DATE, mid UBIGINT, item VARCHAR, m UTINYINT)`,
   `CREATE TABLE ${o}.mask_ut(day DATE, mid UBIGINT, trait VARCHAR, lvl UTINYINT, `
     + `${OVER_VALUES.map((v) => `o${v} UTINYINT`).join(', ')}, onull UTINYINT)`,
-  `CREATE TABLE ${o}.mask_uk(day DATE, mid UBIGINT, item VARCHAR, m UTINYINT)`,
+  `CREATE TABLE ${o}.mask_uk(day DATE, mid UBIGINT, item VARCHAR, m UTINYINT, ${ITEM_COUNTS.map((n) => `m${n} UTINYINT`).join(', ')})`,
   `CREATE TABLE ${o}.mask_days(day DATE, fp VARCHAR, comp_hash VARCHAR)`,
   `CREATE TABLE ${o}.mask_fail(day DATE, fp VARCHAR, why VARCHAR)`,
   `CREATE TABLE ${o}.mask_meta(sig VARCHAR, token VARCHAR)`,
@@ -91,9 +94,15 @@ export function maskSql(table, { b, u, t, uk, compList } = {}) {
     FROM (${keySelect('units_star', { b, u })}) k ${dayJoin(b)}
     GROUP BY d.day, k.mid, k.key ORDER BY 1, 3, 2`;
     case 'mask_uk':
-      return `SELECT d.day, k.mid, k.key AS item, bit_or(${maskBitSql('k.placement')}) AS m
-    FROM (${keySelect('items', { b, u, compList: '[]::VARCHAR[]' })}) k ${dayJoin(b)}
-    GROUP BY d.day, k.mid, k.key ORDER BY 1, 3, 2`;
+      // Anzahl je (Board, Item) ueber alle Slots, ohne DISTINCT; Komponenten
+      // zaehlen mit. m = mindestens einmal (dieselbe Menge wie keySelect('items')
+      // ohne Komponenten-Liste), m2/m3 = mindestens 2/3 Mal.
+      return `SELECT d.day, k.mid, k.item, bit_or(${maskBitSql('k.placement')}) AS m, ${ITEM_COUNTS.map((n) => orIf(`k.cnt >= ${n}`, `m${n}`)).join(', ')}
+    FROM (SELECT ${b}.mid, ${b}.placement, x.item, count(*) AS cnt
+          FROM (SELECT x.bid, unnest([x.i1, x.i2, x.i3]) AS item FROM ${u} x WHERE x.bid IN (SELECT bid FROM ${b})) x
+          JOIN ${b} USING (bid) WHERE x.item IS NOT NULL
+          GROUP BY ${b}.bid, ${b}.mid, ${b}.placement, x.item) k ${dayJoin(b)}
+    GROUP BY d.day, k.mid, k.item ORDER BY 1, 3, 2`;
     case 'mask_ut':
       return `SELECT d.day, k.mid, k.key AS trait, k.sub::UTINYINT AS lvl,
       ${OVER_VALUES.map((v) => orIf(`k.sub2 = ${v}`, `o${v}`)).join(', ')}, ${orIf('k.sub2 IS NULL', 'onull')}
@@ -188,10 +197,18 @@ export function maskCheckHSql({ o, D, b, u, t, compList, mids = null }) {
   const items = (extra) => `(SELECT count(*)::DOUBLE FROM (SELECT DISTINCT bid, item FROM (
       SELECT x.bid, unnest([x.i1, x.i2, x.i3]) AS item FROM ${u} x WHERE x.bid IN (SELECT bid FROM ${b}))
       WHERE item IS NOT NULL${extra}))`;
+  // m2/m3: Paare (Board, Item) mit mindestens n Treffern; Teilmengen m3 ⊆ m2 ⊆ m.
+  const counted = (n) => `(SELECT count(*)::DOUBLE FROM (SELECT bid, item FROM (
+      SELECT x.bid, unnest([x.i1, x.i2, x.i3]) AS item FROM ${u} x WHERE x.bid IN (SELECT bid FROM ${b}))
+      WHERE item IS NOT NULL GROUP BY bid, item HAVING count(*) >= ${n}))`;
+  const countBits = ITEM_COUNTS.map((n) => `(SELECT coalesce(sum(bit_count(m${n})), 0)::DOUBLE FROM ${o}.mask_uk WHERE ${scope}) AS uk${n}_bits, ${counted(n)} AS uk${n}_n`);
+  const chain = ['m', ...ITEM_COUNTS.map((n) => `m${n}`)];
+  const notSubset = chain.slice(1).map((c, i) => `(${c} & ~${chain[i]}) <> 0`).join(' OR ');
   return `SELECT
     ${bits('mask_um')} AS um_bits,
     (SELECT count(*)::DOUBLE FROM (SELECT DISTINCT x.bid, x.unit FROM ${u} x WHERE x.bid IN (SELECT bid FROM ${b}))) AS um_n,
-    ${bits('mask_uk')} AS uk_bits, ${items('')} AS uk_n,
+    ${bits('mask_uk')} AS uk_bits, ${items('')} AS uk_n, ${countBits.join(', ')},
+    (SELECT count(*)::DOUBLE FROM ${o}.mask_uk WHERE ${scope} AND (${notSubset})) AS uk_sub,
     ${bits('mask_ui')} AS ui_bits, ${items(` AND NOT list_contains(${compList}, item)`)} AS ui_n,
     ${bits('mask_ut')} AS ut_bits,
     (SELECT count(*)::DOUBLE FROM (SELECT DISTINCT x.bid, x.trait, x.lvl, x.overcap FROM ${t} x WHERE x.bid IN (SELECT bid FROM ${b}))) AS ut_n`;
@@ -201,19 +218,27 @@ export function maskCheckHSql({ o, D, b, u, t, compList, mids = null }) {
 export async function maskCheckH(all, args) {
   const r = (await all(maskCheckHSql(args)))[0];
   const out = [];
-  for (const k of ['um', 'uk', 'ui', 'ut']) {
+  for (const k of ['um', 'uk', ...ITEM_COUNTS.map((n) => `uk${n}`), 'ui', 'ut']) {
     const bitsN = Number(r[`${k}_bits`]);
     const n = Number(r[`${k}_n`]);
     if (bitsN !== n) out.push(`(h) mask_${k} ${bitsN} Bits ≠ ${n} Zeilen`);
   }
+  if (Number(r.uk_sub)) out.push(`(h) mask_uk ${Number(r.uk_sub)} Zeilen mit m3 ⊄ m2 ⊄ m`);
   return out;
 }
 
 // ─── Bindung ───────────────────────────────────────────────────────────────
 
+// Vorige Rechenwege, die der Dienst (nicht der Bau) noch liest: Masken ohne
+// uk.m2/m3 (Paket A2, 17.10.2026). Bis zum ersten Bau mit dem neuen Rechenweg
+// bleiben so alle heute schnellen Ansichten schnell; Item-Anzahl und Kaesten
+// mit Item-Anzahl laufen dann ueber units wie vorher. Der Bau verwirft sie.
+export const MASK_SIG_COMPAT = new Map([['be2f39c243be9a1e', { counts: false }]]);
+
 // Passen die Masken in Datei db zu ihr? Alle Tabellen da, Rechenweg, Kennung
-// (mask_meta = meta.mask_token). null = ja, sonst der Grund.
-export async function maskBindingReason({ all, db }) {
+// (mask_meta = meta.mask_token). null = ja, sonst der Grund. compat = auch
+// MASK_SIG_COMPAT annehmen (nur der Dienst).
+export async function maskBindingReason({ all, db, compat = false }) {
   const tables = (await all(`SELECT table_name AS v FROM duckdb_tables() WHERE database_name = ${lit(db)}`)).map((r) => r.v);
   const missing = MASK_TABLES.filter((t) => !tables.includes(t));
   if (missing.length === MASK_TABLES.length) return 'keine Masken in der vorigen Datei';
@@ -223,7 +248,7 @@ export async function maskBindingReason({ all, db }) {
     .map((r) => r.v);
   const prevToken = metaCols.includes('mask_token') ? ((await all(`SELECT mask_token AS v FROM ${qi(db)}.meta`))[0]?.v ?? null) : null;
   if (mm.length !== 1) return `mask_meta mit ${mm.length} Zeilen`;
-  if (mm[0].sig !== MASK_SIG) return `Rechenweg geaendert (${mm[0].sig} → ${MASK_SIG})`;
+  if (mm[0].sig !== MASK_SIG && !(compat && MASK_SIG_COMPAT.has(mm[0].sig))) return `Rechenweg geaendert (${mm[0].sig} → ${MASK_SIG})`;
   if (!mm[0].token || mm[0].token !== prevToken) return 'Kennung passt nicht zur Datei';
   return null;
 }

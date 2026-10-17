@@ -22,11 +22,13 @@
 // ::INTEGER, sonst laeuft die Multiplikation ueber.
 
 import {
-  MASK_BIT_COLS, MASK_TOP1, MASK_TOP4, OVER_VALUES, STAR_VALUES, maskBindingReason, maskBitSql, maskPlaceSumSql,
+  ITEM_COUNTS, MASK_BIT_COLS, MASK_SIG_COMPAT, MASK_TOP1, MASK_TOP4, OVER_VALUES, STAR_VALUES, maskBindingReason, maskBitSql,
+  maskPlaceSumSql,
 } from './explorer-mask.mjs';
 import { aggDaysFor } from './explorer-agg.mjs';
 import {
-  QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, filterWhere, finishRows, headOut, liveRows, runQuery, scopeWhere,
+  QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, filterWhere, finishRows, headOut, itemCond, liveRows, runQuery,
+  scopeWhere, traitCond, unitCond,
 } from './explorer-query.mjs';
 import { hasBoardFilters, needsLive } from './explorer-normalize.mjs';
 
@@ -39,13 +41,17 @@ import { hasBoardFilters, needsLive } from './explorer-normalize.mjs';
 export async function loadMask({ all, log }) {
   try {
     const db = (await all('SELECT current_database() AS v'))[0].v;
-    const why = await maskBindingReason({ all, db });
+    const why = await maskBindingReason({ all, db, compat: true });
     if (why) { log(`Masken unbenutzt (${why}), rechne wie bisher`); return null; }
+    const sig = (await all('SELECT sig FROM mask_meta'))[0].sig;
+    const counts = MASK_SIG_COMPAT.get(sig)?.counts ?? true;
+    if (!counts) log(`Masken mit vorigem Rechenweg ${sig}: Item-Anzahl ueber units`);
     const md = await all('SELECT CAST(day AS VARCHAR) AS day, comp_hash FROM mask_days');
     const dayPatches = await all('SELECT DISTINCT CAST(day AS VARCHAR) AS day, patch FROM boards');
     const covered = new Set(md.map(r => r.day));
     const days = new Set(dayPatches.map(r => r.day));
     return {
+      counts,
       covered,
       compHashByDay: new Map(md.map(r => [r.day, r.comp_hash])),
       dayPatches,
@@ -71,7 +77,7 @@ export function maskPlan(mask, q, compHash) {
   const days = aggDaysFor(q.patches, mask.dayPatches, mask.covered);
   if (!days) return null;
   const itemsLive = q.tab === 'items' && !q.focus && days.some(d => mask.compHashByDay.get(d) !== compHash);
-  return { days, itemsLive };
+  return { days, itemsLive, counts: mask.counts !== false };
 }
 
 // Frist der Live-Spur ab Eingang (Paket 6, Option 2). „Alle Patches + Filter"
@@ -170,41 +176,76 @@ function dayRange(days, col) {
 // hoechste ihn erreicht. Stern-Obergrenze (genau/hoechstens) bleibt auf units
 // — `star <= ?` trifft JEDE Kopie (Board mit 2★- und 3★-Kopie), m_s nur die
 // hoechste; ebenso Itemzahl, Items, Itemsorte und Kopien-Zahl.
-// Item-Filter mit Anzahl auf dem Brett (n) laufen ueber units, mask_uk kennt
-// nur „mindestens einmal". EXPLORER_MASK_G=units schaltet zurueck auf die units-Tabelle.
+// Item-Filter mit Anzahl auf dem Brett (n = 2/3) lesen mask_uk.m2/m3 (Paket
+// A2); Masken mit vorigem Rechenweg haben die Spalten nicht (plan.counts
+// falsch) → ueber units. EXPLORER_MASK_G=units schaltet Units zurueck auf die
+// units-Tabelle, EXPLORER_MASK_ITEMN=0 Item-Anzahl und Kaesten auf den
+// alten hit-Weg (units/traits je Board).
 const MASK_G_ON = process.env.EXPLORER_MASK_G !== 'units';
+const MASK_ITEMN_ON = process.env.EXPLORER_MASK_ITEMN !== '0';
 export const unitViaMask = (u, on = MASK_G_ON) =>
   on && u.sx == null && u.n == null && u.nx == null && u.c == null
   && u.it.length === 0 && u.nit.length === 0 && !(u.k?.length);
-export const itemViaMask = (i) => i.n == null;
+export const itemViaMask = (i, counts = true, on = MASK_ITEMN_ON) =>
+  i.n == null || (on && counts && ITEM_COUNTS.includes(i.n));
+export const itemMaskCol = (i) => (i.n == null ? 'm' : `m${i.n}`);
 export const unitMaskSql = (u) => `(${STAR_VALUES.filter(s => s >= (u.s ?? 1)).map(s => `m${s}`).join(' | ')})`;
 
-// g: je Partie der Grundmenge a = alle Boards, f = gefilterte. Parameter in
-// der Reihenfolge des SQL-Texts: Unit-/Item-/Trait-Filter und Kaesten ueber
-// units/traits, Grundmenge, Items aus mask_uk, Units aus mask_um.
-async function makeG(conn, q, days) {
+// SQL fuer g: je Partie der Grundmenge a = alle Boards, f = gefilterte.
+// Kaesten (groupsOn): je Glied eine Partie-Maske — Item aus mask_uk, Unit aus
+// mask_um (unitViaMask) oder wie Traits und uebrige Units je Board in s
+// (Spalte cK, in g0 verodert); Kasten = ODER der Glieder, „keins davon" =
+// & ~(…). Bitgleich zu groupCond, weil der Platz je Partie eindeutig ist
+// (Pruefung g) und f schon auf die Grundmenge beschnitten ist.
+// Parameter in der Reihenfolge des SQL-Texts: Filter in s (units/traits),
+// Glied-Spalten, Grundmenge, dann die Masken-Joins.
+export function gSql(q, days, { counts = true, unitsOn = MASK_G_ON, itemnOn = MASK_ITEMN_ON } = {}) {
+  const viaItem = (i) => itemViaMask(i, counts, itemnOn);
+  const viaUnit = (u) => unitViaMask(u, unitsOn);
   const p = [];
-  const fw = filterWhere({ ...q, items: q.items.filter(i => !itemViaMask(i)), units: q.units.filter(u => !unitViaMask(u)) }, p);
-  const sw = scopeWhere(q, p);
+  const fw = filterWhere({
+    ...q, groups: itemnOn ? [] : q.groups,
+    items: q.items.filter(i => !viaItem(i)), units: q.units.filter(u => !viaUnit(u)),
+  }, p);
+  const cols = [];
   const joins = [];
-  const and = [];
-  q.items.filter(itemViaMask).forEach((it, i) => {
-    joins.push(`LEFT JOIN (SELECT mid, m FROM mask_uk WHERE item = ? AND ${dayRange(days, 'day')}) k${i} ON k${i}.mid = g0.mid`);
-    p.push(it.id);
-    and.push(`${it.x ? '~' : ''}coalesce(k${i}.m, 0::UTINYINT)`);
-  });
-  q.units.filter(u => unitViaMask(u)).forEach((u, i) => {
-    joins.push(`LEFT JOIN (SELECT mid, ${unitMaskSql(u)} AS m FROM mask_um WHERE unit = ? AND ${dayRange(days, 'day')}) u${i} ON u${i}.mid = g0.mid`);
-    p.push(u.id);
-    and.push(`${u.x ? '~' : ''}coalesce(u${i}.m, 0::UTINYINT)`);
-  });
-  await conn.run(`
+  const jp = [];
+  const maskJoin = (from, sel, keyCol, id) => {
+    const a = `j${joins.length}`;
+    joins.push(`LEFT JOIN (SELECT mid, ${sel} AS m FROM ${from} WHERE ${keyCol} = ? AND ${dayRange(days, 'day')}) ${a} ON ${a}.mid = g0.mid`);
+    jp.push(id);
+    return `coalesce(${a}.m, 0::UTINYINT)`;
+  };
+  const boardCol = (cond) => { cols.push(cond); return `g0.c${cols.length - 1}`; };
+  const terms = [];
+  for (const it of q.items.filter(viaItem)) terms.push(`${it.x ? '~' : ''}${maskJoin('mask_uk', itemMaskCol(it), 'item', it.id)}`);
+  for (const u of q.units.filter(viaUnit)) terms.push(`${u.x ? '~' : ''}${maskJoin('mask_um', unitMaskSql(u), 'unit', u.id)}`);
+  if (itemnOn) {
+    for (const g of q.groups ?? []) {
+      const parts = [
+        ...g.units.map(u => (viaUnit(u) ? maskJoin('mask_um', unitMaskSql(u), 'unit', u.id) : boardCol(`b.bid IN (${unitCond(u, p)})`))),
+        ...g.items.map(i => (viaItem(i) ? maskJoin('mask_uk', itemMaskCol(i), 'item', i.id) : boardCol(`b.bid IN (${itemCond(i, p)})`))),
+        ...g.traits.map(t => boardCol(`b.bid IN (${traitCond(t, p)})`)),
+      ];
+      terms.push(`${g.m === 'none' ? '~' : ''}(${parts.join(' | ')})`);
+    }
+  }
+  const sw = scopeWhere(q, p);
+  const bit = maskBitSql('b.placement');
+  const sql = `
     CREATE TEMP TABLE g AS
-    WITH s AS (SELECT b.mid, ${maskBitSql('b.placement')} AS bit, ${fw.length ? fw.join(' AND ') : 'TRUE'} AS hit
+    WITH s AS (SELECT b.mid, ${bit} AS bit, ${fw.length ? fw.join(' AND ') : 'TRUE'} AS hit${cols.map((c, k) => `, ${c} AS c${k}`).join('')}
                FROM boards b${sw.length ? ` WHERE ${sw.join(' AND ')}` : ''}),
-    g0 AS (SELECT mid, bit_or(bit) AS a, bit_or(CASE WHEN hit THEN bit ELSE 0::UTINYINT END) AS f FROM s GROUP BY mid)
-    SELECT g0.mid, g0.a::UTINYINT AS a, (g0.f${and.map(x => ` & ${x}`).join('')})::UTINYINT AS f
-    FROM g0 ${joins.join(' ')}`, p);
+    g0 AS (SELECT mid, bit_or(bit) AS a, bit_or(CASE WHEN hit THEN bit ELSE 0::UTINYINT END) AS f${
+      cols.map((_, k) => `, bit_or(CASE WHEN c${k} THEN bit ELSE 0::UTINYINT END) AS c${k}`).join('')} FROM s GROUP BY mid)
+    SELECT g0.mid, g0.a::UTINYINT AS a, (g0.f${terms.map(x => ` & ${x}`).join('')})::UTINYINT AS f
+    FROM g0 ${joins.join(' ')}`;
+  return { sql, params: [...p, ...jp] };
+}
+
+async function makeG(conn, q, days, counts) {
+  const { sql, params } = gSql(q, days, { counts });
+  await conn.run(sql, params);
 }
 
 // Kopfzahlen aus g, dieselben Summen wie setStats (gefiltert und Grundmenge)
@@ -331,7 +372,7 @@ export async function runMaskQuery(holder, q, plan, { timeoutMs = QUERY_TIMEOUT_
   try {
     if (warm && holder.retired) throw new Error('swapped');
     const hasFilters = hasBoardFilters(q);
-    await makeG(conn, q, plan.days);
+    await makeG(conn, q, plan.days, plan.counts !== false);
     const { filtered, base, cross } = await headFromG(conn);
     const out = headOut(filtered, hasFilters ? base : filtered, hasFilters && filtered.n > 0 ? cross : null);
     const keys = q.tab === 'items' && (q.focus || plan.itemsLive) ? null : maskKeys(q);

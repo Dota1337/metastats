@@ -85,11 +85,15 @@ export function unitCond(u, params) {
   return `SELECT bid FROM units WHERE ${['unit = ?', ...c].join(' AND ')}`;
 }
 
-// Item irgendwo auf dem Brett; n = mindestens so oft.
+// Item irgendwo auf dem Brett; n = mindestens so oft. Drei Vergleiche statt
+// list_contains: units ist nach Unit sortiert, hier wird die ganze Tabelle
+// gelesen, und die Liste je Zeile kostet doppelt (17.10.: 29 → 17 s). Nur in
+// dieser positiven Lage gleich — ein leerer Slot macht den Vergleich NULL.
 export function itemCond(i, params) {
-  if (i.n == null) { params.push(i.id); return 'SELECT bid FROM units WHERE list_contains([i1, i2, i3], ?)'; }
-  params.push(i.id, i.id, i.id, i.id, i.n);
-  return `SELECT bid FROM units WHERE list_contains([i1, i2, i3], ?) GROUP BY bid HAVING sum(${slotSum(x => `${x} = ?`)}) >= ?`;
+  const any = '(i1 = ? OR i2 = ? OR i3 = ?)';
+  if (i.n == null) { params.push(i.id, i.id, i.id); return `SELECT bid FROM units WHERE ${any}`; }
+  params.push(i.id, i.id, i.id, i.id, i.id, i.id, i.n);
+  return `SELECT bid FROM units WHERE ${any} GROUP BY bid HAVING sum(${slotSum(x => `${x} = ?`)}) >= ?`;
 }
 
 export function traitCond(t, params) {

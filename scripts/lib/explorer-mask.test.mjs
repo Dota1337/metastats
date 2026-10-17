@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MASK_SIG, MASK_REV, MASK_TABLES, MASK_DATA_TABLES, MASK_COLS, MASK_BIT_COLS, MASK_ORDER, MASK_FP_EMPTY, MASK_TOP4, MASK_TOP1,
   maskTablesDdl, maskSql, maskFpSql, maskCheckHSql, maskBit, maskBitSql, maskPlaceSum, maskPlaceSumSql, maskFpAdd,
-  maskEnabled, maskCarryDays, maskQueue, maskDeadlineMs, maskHardMs,
+  maskEnabled, maskCarryDays, maskQueue, maskDeadlineMs, maskHardMs, ITEM_COUNTS, MASK_SIG_COMPAT, maskBindingReason,
 } from './explorer-mask.mjs';
 import { AGG_HARD_S } from './explorer-agg.mjs';
 
@@ -13,7 +13,10 @@ import { AGG_HARD_S } from './explorer-agg.mjs';
 // Rest-Budget ueber mehrere Laeufe neu — dieser Test macht das sichtbar.
 // Aendert sich etwas am Bau ausserhalb dieser SQL, das gespeicherte Masken
 // betrifft (explorer-mask-build.mjs), MASK_REV erhoehen und Pin nachziehen.
-const PINS = { 0: 'be2f39c243be9a1e' };
+// Paket A2 (17.10.2026): uk.m2/m3 → neuer Pin; der vorige lebt im Dienst als
+// MASK_SIG_COMPAT weiter (Test „Bindung").
+const PINS = { 0: '9bde48349a3368c8' };
+const PIN_BEFORE_A2 = 'be2f39c243be9a1e';
 
 test('MASK_SIG unveraendert (sonst werden alle Masken neu gerechnet — bewusst? Pin nachziehen)', () => {
   assert.equal(MASK_SIG, PINS[MASK_REV],
@@ -56,8 +59,61 @@ test('maskSql: ui braucht uk und compList, unbekannte Tabelle wirft', () => {
   assert.throws(() => maskSql('mask_ui', { b: 'B' }), /uk und compList/);
   assert.throws(() => maskSql('mask_xx', {}), /unbekannte/);
   assert.match(maskSql('mask_ui', { uk: 'K', compList: 'C' }), /NOT list_contains\(C, item\)/);
-  // uk enthaelt Komponenten (leere Liste), ui filtert danach.
-  assert.match(maskSql('mask_uk', { b: 'B', u: 'U' }), /list_contains\(\[\]::VARCHAR\[\], item\)/);
+  // uk enthaelt Komponenten (kein Listen-Filter) und zaehlt je (Board, Item)
+  // ohne DISTINCT — sonst gingen die Anzahlen fuer m2/m3 verloren; ui filtert danach.
+  const uk = maskSql('mask_uk', { b: 'B', u: 'U' });
+  assert.doesNotMatch(uk, /list_contains|DISTINCT bid, item/);
+  assert.match(uk, /count\(\*\) AS cnt/);
+  assert.match(uk, /GROUP BY B\.bid, B\.mid, B\.placement, x\.item/);
+  assert.match(uk, /WHEN k\.cnt >= 2 THEN .* AS m2, .*WHEN k\.cnt >= 3 THEN .* AS m3/s);
+});
+
+// Spalten der aeussersten SELECT-Liste (Alias nach AS, sonst Name nach dem Punkt).
+function selectCols(sql) {
+  const s = sql.slice(sql.indexOf('SELECT') + 6);
+  const cols = [];
+  let depth = 0;
+  let cur = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (depth === 0 && /^\s+FROM\s/.test(s.slice(i, i + 7))) { cols.push(cur); break; }
+    if (depth === 0 && ch === ',') { cols.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  return cols.map((c) => { const t = c.trim(); const as = /\sAS\s+(\w+)$/.exec(t); return as ? as[1] : t.split('.').pop(); });
+}
+
+test('maskSql liefert genau MASK_COLS (INSERT … BY NAME liesse fehlende Spalten still leer)', () => {
+  const names = { b: 'B', u: 'U', t: 'T', uk: 'K', compList: 'C' };
+  for (const t of MASK_DATA_TABLES) assert.deepEqual(selectCols(maskSql(t, names)), MASK_COLS[t], t);
+});
+
+test('Pruefung h zaehlt m2/m3 gegen die Anzahl je (Board, Item) und prueft m3 ⊆ m2 ⊆ m', () => {
+  const h = maskCheckHSql({ o: 'O', D: 'X', b: 'B', u: 'U', t: 'T', compList: 'C' });
+  for (const n of ITEM_COUNTS) {
+    assert.match(h, new RegExp(`sum\\(bit_count\\(m${n}\\)\\).* AS uk${n}_bits`));
+    assert.match(h, new RegExp(`HAVING count\\(\\*\\) >= ${n}\\)\\) AS uk${n}_n`));
+  }
+  assert.match(h, /\(m2 & ~m\) <> 0 OR \(m3 & ~m2\) <> 0\)\) AS uk_sub/);
+});
+
+test('Bindung: Dienst nimmt den vorigen Rechenweg (ohne m2/m3), der Bau nicht', async () => {
+  const fake = (sig) => async (sql) => {
+    if (/duckdb_tables/.test(sql)) return MASK_TABLES.map((v) => ({ v }));
+    if (/FROM .*mask_meta/.test(sql)) return [{ sig, token: 'T1' }];
+    if (/duckdb_columns/.test(sql)) return [{ v: 'mask_token' }];
+    if (/mask_token AS v/.test(sql)) return [{ v: 'T1' }];
+    throw new Error(`unerwartet: ${sql}`);
+  };
+  const [old] = [...MASK_SIG_COMPAT.keys()];
+  assert.equal(old, PIN_BEFORE_A2);
+  assert.equal(MASK_SIG_COMPAT.get(old).counts, false);
+  assert.equal(await maskBindingReason({ all: fake(MASK_SIG), db: 'x' }), null);
+  assert.equal(await maskBindingReason({ all: fake(old), db: 'x', compat: true }), null);
+  assert.match(await maskBindingReason({ all: fake(old), db: 'x' }), /Rechenweg geaendert/);
+  assert.match(await maskBindingReason({ all: fake('0000000000000000'), db: 'x', compat: true }), /Rechenweg geaendert/);
 });
 
 test('Fingerabdruck und Pruefung h lesen alle Masken-Eingaben', () => {

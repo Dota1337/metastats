@@ -147,6 +147,18 @@ const CASES = [
   ['platz', { place: [1, 4] }],
   ['kasten-eins-davon', { groups: [{ m: 'any', units: [{ id: 'DA_18_Diana', s: 2 }], items: [{ id: 'DA_ThiefsGloves' }] }] }],
   ['kasten-keins-davon', { units: [{ id: 'DA_Amumu18' }], groups: [{ m: 'none', traits: [{ id: 'DA_Juggernaut18' }] }] }],
+  // Paket A2: Item-Anzahl ueber mask_uk.m2/m3, Kaesten als ODER der Glied-Masken. Gargoyle liegt oft
+  // 2× an DERSELBEN Unit (17.10., 7 Tage: 539.503 Unit-Slots), Diebeshandschuhe nur an verschiedenen.
+  ['item-2x-gargoyle', { items: [{ id: 'DA_GargoyleStoneplate', n: 2 }] }],
+  ['item-3x-gargoyle', { items: [{ id: 'DA_GargoyleStoneplate', n: 3 }] }],
+  ['item-ohne-2x', { units: [{ id: 'DA_18_Diana' }], items: [{ id: 'DA_ThiefsGloves', n: 2, x: true }] }],
+  ['kasten-mischung', { groups: [{ m: 'any', units: [{ id: 'DA_18_Diana', s: 2 }, { id: 'DA_Amumu18', s: 2, sx: 2 }],
+    items: [{ id: 'DA_ThiefsGloves', n: 2 }], traits: [{ id: 'DA_18_Invoker', l: 2 }] }] }],
+  ['kasten-keins-fehlend+platz', { ranks: ['MASTER'], levels: [8, 9], place: [1, 4],
+    groups: [{ m: 'none', items: [{ id: 'DA_GargoyleStoneplate', n: 2 }, { id: 'DA_NichtVorhanden' }] }] }],
+  ['zwei-kaesten+oben', { units: [{ id: 'DA_Amumu18' }], items: [{ id: 'DA_GargoyleStoneplate', n: 2 }],
+    groups: [{ m: 'any', units: [{ id: 'DA_18_Diana', it: ['DA_SpearOfShojin'] }], items: [{ id: 'DA_ThiefsGloves' }] },
+      { m: 'none', traits: [{ id: 'DA_Juggernaut18' }], items: [{ id: 'DA_GargoyleStoneplate' }] }] }],
 ];
 const TABS = [
   ['Uebersicht', { tab: 'summary' }],

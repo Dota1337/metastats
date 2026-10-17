@@ -90,7 +90,8 @@ function unit(u, { inGroup = false } = {}) {
 function item(i, { inGroup = false } = {}) {
   onlyKeys(i, ITEM_KEYS, 'item');
   if (inGroup && i.x === true) throw bad('invalid_group_item');
-  const n = int(i.n, 1, 9, 'item_count');
+  // 2–3: so weit reichen die Masken (mask_uk.m2/m3) und die Oberflaeche.
+  const n = int(i.n, 1, 3, 'item_count');
   return { id: id(i.id, 'item'), x: inGroup ? false : bool(i.x), n: n != null && n >= 2 ? n : null };
 }
 

@@ -183,7 +183,10 @@ try {
     mask_ut: `SELECT b.day, b.mid, x.trait, x.lvl, ${OVER_VALUES.map((v) => `${z(`x.overcap = ${v}`)} AS o${v}`).join(', ')},
       ${z('x.overcap IS NULL')} AS onull
       FROM (SELECT DISTINCT bid, trait, lvl, overcap FROM outdb.traits) x JOIN outdb.boards b USING (bid) GROUP BY ALL`,
-    mask_uk: items(''),
+    // m2/m3 (Paket A2): Anzahl je (Board, Item) ueber alle Slots, per FILTER statt CASE.
+    mask_uk: `SELECT b.day, b.mid, x.it AS item, bit_or(${BIT}) AS m, ${z('x.n >= 2')} AS m2, ${z('x.n >= 3')} AS m3
+      FROM (SELECT bid, it, count(*) AS n FROM (SELECT bid, unnest([i1, i2, i3]) AS it FROM outdb.units) WHERE it IS NOT NULL GROUP BY ALL) x
+      JOIN outdb.boards b USING (bid) GROUP BY ALL`,
   };
   for (const t of MASK_DATA_TABLES) {
     const d = await one(`SELECT

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   JOIN_GRACE_MS, LIVE_MIN_LEFT_MS, LIVE_TOTAL_MS, LONG_MIN_LEFT_MS, LONG_QUERY_TIMEOUT_MS, MAX_TOTAL_MS,
-  REFRESH_API_TIMEOUT_MS, joinWaitMs, liveBudget, maskPlan, slotTimeout, unitMaskSql, unitViaMask, itemViaMask,
+  REFRESH_API_TIMEOUT_MS, gSql, itemMaskCol, joinWaitMs, liveBudget, maskPlan, slotTimeout, unitMaskSql, unitViaMask, itemViaMask,
 } from './explorer-mask-query.mjs';
 import { QUERY_TIMEOUT_MS } from './explorer-query.mjs';
 
@@ -89,7 +89,67 @@ test('unitViaMask: nur „Stern ab", ohne Obergrenze, Itemzahl, Items, Sorte, Ko
   assert.equal(unitViaMask(unit({ k: [{ b: 'emblem', n: 1 }] }), true), false);
   assert.equal(unitViaMask(unit(), false), false);
   assert.equal(itemViaMask({ id: 'DA_X', x: false, n: null }), true);
-  assert.equal(itemViaMask({ id: 'DA_X', x: false, n: 2 }), false);
+});
+
+test('itemViaMask: Anzahl 2/3 ueber m2/m3, nicht bei vorigem Rechenweg oder Schalter aus', () => {
+  const it = (n) => ({ id: 'DA_X', x: false, n });
+  assert.equal(itemViaMask(it(null), false, false), true);
+  assert.equal(itemViaMask(it(2), true, true), true);
+  assert.equal(itemViaMask(it(3), true, true), true);
+  assert.equal(itemViaMask(it(4), true, true), false);
+  assert.equal(itemViaMask(it(2), false, true), false);
+  assert.equal(itemViaMask(it(2), true, false), false);
+  assert.equal(itemMaskCol(it(null)), 'm');
+  assert.equal(itemMaskCol(it(3)), 'm3');
+});
+
+const DAYS = ['2026-10-01', '2026-10-08'];
+const marks = (sql) => (sql.match(/\?/g) ?? []).length;
+const item = (o = {}) => ({ id: 'DA_X', x: false, n: null, ...o });
+const trait = (o = {}) => ({ id: 'DA_T', x: false, l: null, le: false, ...o });
+const group = (o = {}) => ({ m: 'any', units: [], items: [], traits: [], ...o });
+
+test('gSql: Parameter passen in Zahl und Reihenfolge zum SQL-Text', () => {
+  const q = query({
+    ranks: ['DIAMOND'], levels: [8, 9], place: [1, 4],
+    units: [unit(), unit({ id: 'DA_B', c: 2 })], items: [item({ n: 2 }), item({ id: 'DA_Y', x: true })], traits: [trait()],
+    groups: [
+      group({ units: [unit({ id: 'DA_C', s: 2 }), unit({ id: 'DA_D', it: ['DA_Z'] })], items: [item({ n: 3 })], traits: [trait({ l: 2 })] }),
+      group({ m: 'none', items: [item({ id: 'DA_W' })], traits: [trait({ id: 'DA_U' })] }),
+    ],
+  });
+  for (const opts of [{}, { counts: false }, { itemnOn: false }, { unitsOn: false }]) {
+    const { sql, params } = gSql(q, DAYS, opts);
+    assert.equal(marks(sql), params.length, JSON.stringify(opts));
+  }
+  const { sql, params } = gSql(q, DAYS);
+  // Masken-Joins in Text-Reihenfolge: Items oben, Units oben, dann Kasten 1 (Unit C, Item X n3), Kasten 2 (Item W).
+  assert.deepEqual(params.slice(-6), ['DA_X', 'DA_Y', 'DA_Amumu18', 'DA_C', 'DA_X', 'DA_W']);
+  assert.match(sql, /SELECT mid, m2 AS m FROM mask_uk/);
+  assert.match(sql, /SELECT mid, m3 AS m FROM mask_uk/);
+  assert.match(sql, /~coalesce\(j1\.m, 0::UTINYINT\)/);
+  // Kasten 1: Unit C ueber Maske, Unit D (mit Item) und Trait je Board; Kasten 2 = keins davon.
+  assert.match(sql, /& \(coalesce\(j3\.m, 0::UTINYINT\) \| g0\.c0 \| coalesce\(j4\.m, 0::UTINYINT\) \| g0\.c1\)/);
+  assert.match(sql, /& ~\(coalesce\(j5\.m, 0::UTINYINT\) \| g0\.c2\)/);
+  assert.doesNotMatch(sql.split('g0 AS')[0], /OR b\.bid IN/);
+});
+
+test('gSql: vorige Masken / Schalter aus → Item-Anzahl und Kaesten wie bisher in hit', () => {
+  const q = query({ units: [], items: [item({ n: 2 })], groups: [group({ items: [item({ id: 'DA_Y' })] })] });
+  const old = gSql(q, DAYS, { counts: false });
+  assert.doesNotMatch(old.sql, /m2 AS m/);
+  assert.match(old.sql, /b\.bid IN \(SELECT bid FROM units WHERE \(i1 = \? OR i2 = \? OR i3 = \?\) GROUP BY bid/);
+  assert.match(old.sql, /SELECT mid, m AS m FROM mask_uk/);
+  const off = gSql(q, DAYS, { itemnOn: false });
+  assert.doesNotMatch(off.sql, /mask_uk/);
+  assert.match(off.sql, /\(b\.bid IN \(SELECT bid FROM units WHERE \(i1 = \? OR i2 = \? OR i3 = \?\)\)\)/);
+  assert.equal(marks(off.sql), off.params.length);
+});
+
+test('maskPlan: traegt den Rechenweg (counts) der Masken weiter', () => {
+  const q = query({ items: [item({ n: 2 })] });
+  assert.equal(maskPlan(mask, q, 'h').counts, true);
+  assert.equal(maskPlan({ ...mask, counts: false }, q, 'h').counts, false);
 });
 
 test('maskPlan: Level, Platz und Kaesten allein nehmen den Masken-Weg, ohne alles nicht', () => {

@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import {
-  AGG_SIG, VARIANTS, variantRowsSql, aggBudgetS, aggCoveredDays, planAgg, aggDue, aggCopyEstS, aggDueForCopy, aggCarryDays,
+  AGG_SIG, VARIANTS, variantRowsSql, aggBudgetS, aggPartCap, aggCoveredDays, planAgg, aggDue, aggCopyEstS, aggDueForCopy, aggCarryDays,
 } from './explorer-agg.mjs';
 
 export const AGG_SUM_COLS = ['m1', 'n1', 's1', 't4', 't1', 'ss11', 'sn11', 'nn11', 's1S', 's1N', 'n1S', 'n1N', 'n3'];
@@ -197,11 +197,13 @@ export async function aggChecks({ all, outdb: o }) {
 // Boards, deren Schluessel k in der vorigen Datei fehlte; alt = der Rest.
 export async function aggStep({
   exec, all, log, outdb: o, mode, win, startBid, nextBid, patchChanged = [], t0Ms, files,
-  compList, compHash, newBoards = 'nb', carry = null, budgetRaw = process.env.AGG_BUDGET_S, now = () => Date.now(),
+  compList, compHash, newBoards = 'nb', carry = null, budgetRaw = process.env.AGG_BUDGET_S,
+  partCapRaw = process.env.AGG_PART_CAP, now = () => Date.now(),
 }) {
   const t1 = now();
   const res = {
     token: null, covered: 0, total: 0, newDays: 0, s: 0, alarms: [], newest: null, newestCovered: false, partMatches: 0, carried: 0,
+    partCapped: 0,
   };
   const n = async (sql) => Number((await all(sql))[0]?.n ?? 0);
   const col = async (sql) => (await all(sql)).map((r) => r.v);
@@ -259,7 +261,7 @@ export async function aggStep({
 
     // 2) Deckung: Tage vor dem Fenster und Tage mit geaendertem Patch raus.
     const covered0 = reason ? [] : await col(`SELECT day::VARCHAR AS v FROM ${o}.agg_days`);
-    const { keep, drop, rankDays } = aggCoveredDays({ covered: covered0, w: win.w, f: win.f, patchChanged });
+    let { keep, drop, rankDays } = aggCoveredDays({ covered: covered0, w: win.w, f: win.f, patchChanged });
     if (drop.length) {
       await tx(['agg_rows', 'agg_head', 'agg_days'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(drop)})`));
     }
@@ -275,7 +277,19 @@ export async function aggStep({
       await exec(`CREATE OR REPLACE TABLE ag_pm AS SELECT DISTINCT mid FROM ${newBoards} WHERE day IN (${inList(keep)})`);
       res.partMatches = await n('SELECT count(*) AS n FROM ag_pm');
     }
-    if (res.partMatches) {
+    // Deckel (aggPartCap): zu viele Partien → ihre Tage entdecken, Schritt 5
+    // rechnet sie in Bloecken neu.
+    const partCap = aggPartCap(partCapRaw);
+    if (res.partMatches > partCap) {
+      const hit = await col(`SELECT DISTINCT day::VARCHAR AS v FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm) ORDER BY 1`);
+      if (hit.length) await tx(['agg_rows', 'agg_head', 'agg_days'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(hit)})`));
+      const h = new Set(hit);
+      keep = keep.filter((d) => !h.has(d));
+      rankDays = rankDays.filter((d) => !h.has(d));
+      res.partCapped = hit.length;
+      log(`Teilsummen: Partie-Delta ${res.partMatches} Partien ueber der Grenze ${partCap} — ${hit.length} Tage entdeckt, die Bloecke rechnen sie neu`);
+    }
+    if (res.partMatches && !res.partCapped) {
       const fLit = dLit(win.f);
       const oldWhere = carry ? `bid NOT IN (SELECT bid FROM ${newBoards})` : `bid < ${startBid}`;
       await exec(`CREATE OR REPLACE TABLE ag_pb AS SELECT ${cols(BOARD_COLS)} FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm)`);

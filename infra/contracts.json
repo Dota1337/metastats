@@ -340,7 +340,7 @@
       "path": "/mnt/HC_Volume_105869432/explorer/status.json",
       "dateField": "lastFullAt",
       "maxAgeDays": 8,
-      "note": "Letzter Vollaufbau des Explorer-Speichers. Planmaessig alle 7 Tage; er raeumt auf, was ein Teil-Aufbau nicht sieht (in Postgres geaenderte oder geloeschte Zeilen). Rot heisst: der Vollaufbau scheitert seit ueber einer Woche, die Datei wird nur noch per Teil-Aufbau fortgeschrieben. Pruefen: journalctl -u metastats-explorer-build; erzwingen mit node scripts/build-explorer-store.mjs --full (unter systemd-run --scope -p MemoryMax=2G)."
+      "note": "Letzter Vollaufbau des Explorer-Speichers. Planmaessig alle 7 Tage; er raeumt auf, was ein Teil-Aufbau nicht sieht (in Postgres geaenderte oder geloeschte Zeilen). Rot heisst: der Vollaufbau scheitert seit ueber einer Woche, die Datei wird nur noch per Teil-Aufbau fortgeschrieben. Pruefen: journalctl -u metastats-explorer-build; Planmaessig So 19:30 UTC (nur Start 17–24 Uhr UTC). Erzwingen: systemd-run --unit=explorer-full -p MemoryMax=2G -p WorkingDirectory=/opt/metastats-crawler -p EnvironmentFile=/etc/metastats-crawler/env /usr/bin/node scripts/build-explorer-store.mjs --full (nicht --scope: der Lauf haengt sonst an der SSH-Sitzung)."
     },
 
     {

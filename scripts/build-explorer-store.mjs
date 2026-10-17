@@ -53,7 +53,9 @@
 //         (--until = obere Grenze fuer fetched_at). Ein Testlauf zwingt den
 //         naechsten echten Lauf zum Vollaufbau.
 // Exit: 0 fertig oder anderer Lauf aktiv, 1 Fehler, 2 Vollaufbau noetig, aber
-// heute schon gescheitert (mit --full erzwingen).
+// mit diesem Code-Stand schon gescheitert (mit --full erzwingen).
+// Env: EXPLORER_BUILD_MEM (DuckDB-Speichergrenze, Vorgabe 900MB),
+//      AGG_BUDGET_S, AGG_MASKS, AGG_PART_CAP (scripts/lib/explorer-agg.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -92,11 +94,20 @@ const QUEUE_RANKED = 1100;
 export const SCRIPT_VERSION = 2;
 export const FREEZE_DAYS = 7;      // Rang ab Stichtag − 7 wird neu bestimmt, davor eingefroren
 export const FULL_EVERY_DAYS = 7;  // spaetestens so oft alles neu (raeumt auch geloeschte Zeilen der Datei auf)
+// Wochen-Vollaufbau nur bei Start in diesem Fenster (Stunde UTC, Timer So
+// 19:30): nachts endet er nach 02:55 und laesst Teilsummen und Masken leer.
+export const FULL_WINDOW_UTC = [17, 24];
 const MARGIN_MS = 3 * 3_600_000;   // Teil-Aufbau liest ab Wasserstand − 3 h (spaet bestaetigte Schreibvorgaenge)
 const SCAN_ALARM_S = 600;          // nur Teil-Aufbau (Tabellen-Scan ~130 s); Vollaufbau ueber TOTAL_ALARM_S
 const TOTAL_ALARM_S = 6000;        // Unit-Zeitlimit 9000 s
+const TOTAL_ALARM_FULL_S = 8400;   // Vollaufbau im Abendfenster: Kern ~4400–5300 s, danach Summen + Masken
+const BUILD_MEM_DEFAULT = '900MB';
 const DAY_MS = 86_400_000;
 const OPEN_END = '2999-12-31';
+
+// Bau-Skripte, deren Stand die Versuchs-Sperre traegt (decideMode).
+export const CODE_FILES = ['build-explorer-store.mjs', 'lib/explorer-agg-build.mjs', 'lib/explorer-mask-build.mjs',
+  'lib/explorer-agg.mjs', 'lib/explorer-mask.mjs'];
 
 function log(...a) { console.log(`[explorer-build ${new Date().toISOString()}]`, ...a); }
 
@@ -143,12 +154,25 @@ export function diffDayPatch(prevRows, curRows) {
     .map((r) => r.pday);
 }
 
+export const inFullWindow = (hourUtc) => Number.isInteger(hourUtc)
+  && hourUtc >= FULL_WINDOW_UTC[0] && hourUtc < FULL_WINDOW_UTC[1];
+
+// Code-Stand der Bau-Skripte fuer die Versuchs-Sperre.
+export function buildCodeHash(read = (f) => fs.readFileSync(path.join(__dirname, f))) {
+  const h = crypto.createHash('sha1');
+  for (const f of CODE_FILES) h.update(`${f}\0`).update(read(f)).update('\0');
+  return h.digest('hex').slice(0, 12);
+}
+
 // Teil- oder Vollaufbau. prev.kind: none | unreadable | legacy | ok. Ein
 // Pflichtgrund bedeutet: ein Teil-Aufbau koennte vom Vollaufbau abweichen.
-// Ist heute schon ein Vollaufbau angelaufen und nicht fertig geworden
-// (Stempel von heute, aber die Datei ist aelter), wird nicht noch einer
-// gestartet: Pflicht → skip, Wochen-Turnus → Teil-Aufbau.
-export function decideMode({ full = false, marker = false, prev, cur, patchChanged = [], f, stamp = null, todayUtc }) {
+// Ist mit demselben Code-Stand schon ein Vollaufbau angelaufen und nicht
+// fertig geworden (Stempel mit gleichem cur.code, aber die Datei ist aelter),
+// wird nicht noch einer gestartet: Pflicht → skip, Wochen-Turnus →
+// Teil-Aufbau. Neuer Code → neuer Versuch. (Bis 17.10. galt die Sperre nur am
+// selben Tag — beim Tages-Timer lief so jede Nacht ein Vollaufbau in den
+// Speicher.) Der Wochen-Turnus laeuft nur im Abendfenster (hourUtc).
+export function decideMode({ full = false, marker = false, prev, cur, patchChanged = [], f, stamp = null, hourUtc }) {
   const must = [];
   if (full) must.push('--full');
   if (marker) must.push('Markierung force-full');
@@ -175,10 +199,16 @@ export function decideMode({ full = false, marker = false, prev, cur, patchChang
   const lastFullDay = kind === 'ok' ? prev.meta.lastFullDay : null;
   const cycle = !must.length && (!lastFullDay || daysBetween(lastFullDay, cur.n) >= FULL_EVERY_DAYS);
   const lastFullMs = kind === 'ok' ? Number(prev.meta.lastFullMs) : NaN;
-  const blocked = !full && stamp?.day === todayUtc && !(lastFullMs >= Number(stamp.startedMs));
-  const failedToday = 'Vollaufbau heute schon angelaufen und nicht fertig geworden';
-  if (must.length) return blocked ? { mode: 'skip', reasons: [...must, failedToday] } : { mode: 'full', reasons: must };
-  if (cycle) return blocked ? { mode: 'delta', reasons: [`Wochen-Vollaufbau faellig, aber ${failedToday}`] } : { mode: 'full', reasons: ['Wochen-Vollaufbau'] };
+  const blocked = !full && stamp?.code != null && stamp.code === cur.code && !(lastFullMs >= Number(stamp.startedMs));
+  const failed = 'Vollaufbau mit diesem Code-Stand schon angelaufen und nicht fertig geworden';
+  if (must.length) return blocked ? { mode: 'skip', reasons: [...must, failed], blocked } : { mode: 'full', reasons: must };
+  if (cycle) {
+    if (blocked) return { mode: 'delta', reasons: [`Wochen-Vollaufbau faellig, aber ${failed}`], blocked };
+    if (!inFullWindow(hourUtc)) {
+      return { mode: 'delta', reasons: [`Wochen-Vollaufbau faellig, Start ausserhalb ${FULL_WINDOW_UTC[0]}–${FULL_WINDOW_UTC[1]} Uhr UTC`] };
+    }
+    return { mode: 'full', reasons: ['Wochen-Vollaufbau'] };
+  }
   return { mode: 'delta', reasons: [] };
 }
 
@@ -548,21 +578,46 @@ async function build({ t0, win, testRun, untilMs, files }) {
   const db = await DuckDBInstance.create(files.work);
   const c = await db.connect();
   let tStep = Date.now();
+  const head = (s) => String(s).replace(/\s+/g, ' ').trim().slice(0, 110);
   const run = async (s) => {
-    const r = await c.run(s);
+    let r;
+    try {
+      r = await c.run(s);
+    } catch (e) {
+      log(`  FEHLER nach ${((Date.now() - tStep) / 1000).toFixed(1)} s: ${head(s)}`);
+      throw e;
+    }
     const m = /^\s*(CREATE (?:TEMP )?TABLE [\w.]+|INSERT INTO [\w.]+|UPDATE [\w.]+|DELETE FROM [\w.]+)/.exec(s);
     if (m) log(`  ${m[1]} ${((Date.now() - tStep) / 1000).toFixed(1)} s`);
     tStep = Date.now();
     return r;
   };
   const all = async (s) => (await c.runAndReadAll(s)).getRowObjects();
+  // Schritt-Log fuer Teilsummen und Masken: Anweisungen ab 2 s mit Dauer, bei
+  // Fehler die Anweisung selbst (Speicher-Abbrueche 14.10. waren ohne das
+  // keiner Stelle zuzuordnen).
+  const logged = (fn) => async (s) => {
+    const t = Date.now();
+    try {
+      const r = await fn(s);
+      if (Date.now() - t >= 2000) log(`  ${head(s)} — ${((Date.now() - t) / 1000).toFixed(1)} s`);
+      return r;
+    } catch (e) {
+      log(`  FEHLER nach ${((Date.now() - t) / 1000).toFixed(1)} s: ${head(s)}`);
+      throw e;
+    }
+  };
+  const stepExec = logged((s) => c.run(s));
+  const stepAll = logged(all);
   const one = async (s) => (await all(s))[0];
   const num = (v) => (v == null ? null : Number(v));
   let closed = false;
   const close = () => { if (!closed) { closed = true; c.closeSync?.(); db.closeSync?.(); } };
 
   try {
-    await run(`SET memory_limit='900MB'`);
+    const mem = /^\d+(\.\d+)?\s*(MB|GB|MiB|GiB)$/i.test(process.env.EXPLORER_BUILD_MEM || '')
+      ? process.env.EXPLORER_BUILD_MEM : BUILD_MEM_DEFAULT;
+    await run(`SET memory_limit=${sqlStr(mem)}`);
     await run(`SET threads=1`);
     await run(`SET preserve_insertion_order=false`);
     await run(`SET temp_directory=${sqlStr(files.spill)}`);
@@ -622,26 +677,32 @@ async function build({ t0, win, testRun, untilMs, files }) {
     let markerMtime = null;
     try { markerMtime = fs.statSync(files.marker).mtimeMs; } catch { /* keine Markierung */ }
     const todayUtc = new Date().toISOString().slice(0, 10);
+    const hourUtc = new Date(t0).getUTCHours();
+    const code = buildCodeHash();
     const decision = decideMode({
       full: FULL, marker: markerMtime != null, prev,
-      cur: { scriptVersion: SCRIPT_VERSION, duckdbVersion, hashes, nTupUpd, testRun, n: win.n },
-      patchChanged, f: win.f, stamp, todayUtc,
+      cur: { scriptVersion: SCRIPT_VERSION, duckdbVersion, hashes, nTupUpd, testRun, n: win.n, code },
+      patchChanged, f: win.f, stamp, hourUtc,
     });
     const mode = decision.mode;
-    log(`Art: ${mode}${decision.reasons.length ? ` — ${decision.reasons.join('; ')}` : ''}`);
+    log(`Art: ${mode}${decision.reasons.length ? ` — ${decision.reasons.join('; ')}` : ''} (Code ${code}, Speicher ${mem})`);
+    // Vollaufbau im Abendfenster darf laenger (Summen + Masken nach dem Kern);
+    // nachts (nur Pflichtgruende) gilt die alte Grenze.
+    const totalAlarmS = mode === 'full' && inFullWindow(hourUtc) ? TOTAL_ALARM_FULL_S : TOTAL_ALARM_S;
     const alarms = [];
+    if (decision.blocked) alarms.push(`Vollaufbau gesperrt: mit Code ${code} schon gescheitert — Code aendern oder --full`);
     if (prev.kind === 'unreadable') {
       log(`ACHTUNG: vorige Datei unlesbar (${prev.error}) — Raenge vor ${win.f} werden aus den heutigen Quellen neu bestimmt`);
       alarms.push('vorige Datei unlesbar, eingefrorene Raenge verloren');
     }
     if (mode === 'skip') {
-      log('kein Bau: Vollaufbau noetig, aber heute schon gescheitert — mit --full erzwingen');
+      log('kein Bau: Vollaufbau noetig, aber mit diesem Code-Stand schon gescheitert — mit --full erzwingen');
       if (prevAttached) await run('DETACH prev');
       close();
       cleanup();
       return 2;
     }
-    if (mode === 'full') writeJsonAtomic(files.stamp, { day: todayUtc, startedMs: Date.now() });
+    if (mode === 'full') writeJsonAtomic(files.stamp, { day: todayUtc, startedMs: Date.now(), code });
 
     // Hilfstabellen: Patch je Sammeltag (in JS bestimmt), Trait-Schwellen.
     await run(`CREATE TABLE day_patch(pday DATE, patch VARCHAR, patch_edge BOOLEAN)`);
@@ -668,7 +729,11 @@ async function build({ t0, win, testRun, untilMs, files }) {
     };
     if (mode === 'full') {
       if (prev.hasRank) {
-        await run(`CREATE TABLE prev_rank AS SELECT DISTINCT ON (k) k, rank FROM prev.board_rank ORDER BY k, rank NULLS LAST`);
+        // GROUP BY statt DISTINCT ON … ORDER BY: gleiche Bedeutung (kleinster
+        // Rang je k, NULL nur ohne Rang), aber ohne Sortierung von 14,9 Mio
+        // Zeilen — die lief ab 15.10. in die Speichergrenze (Messung 17.10.:
+        // DISTINCT ON Abbruch nach 33 s, GROUP BY 27,6 s).
+        await run(`CREATE TABLE prev_rank AS SELECT k, min(rank) AS rank FROM prev.board_rank GROUP BY k`);
       } else {
         await run(`CREATE TABLE prev_rank(k UBIGINT, rank VARCHAR)`);
       }
@@ -787,10 +852,15 @@ async function build({ t0, win, testRun, untilMs, files }) {
       await run(`CREATE TABLE gone AS SELECT bid FROM ${outdb}.boards WHERE day < DATE ${sqlStr(win.w)}`);
       const nGone = Number((await one('SELECT count(*) AS n FROM gone')).n);
       if (nGone) {
-        await run(`DELETE FROM ${outdb}.units WHERE bid IN (SELECT bid FROM gone)`);
-        await run(`DELETE FROM ${outdb}.traits WHERE bid IN (SELECT bid FROM gone)`);
-        await run(`DELETE FROM ${outdb}.board_rank WHERE bid IN (SELECT bid FROM gone)`);
-        await run(`DELETE FROM ${outdb}.boards WHERE bid IN (SELECT bid FROM gone)`);
+        // Nach jeder Tabelle CHECKPOINT: gibt die Loesch-Vermerke der vorigen
+        // Tabelle frei, bevor die naechste beginnt (11.–13.10. lief DELETE
+        // traits direkt nach DELETE units in die Speichergrenze). Gemessen
+        // 17.10. an einer Kopie, 615.705 Boards: DELETE ~70 s gesamt, Datei
+        // schrumpft; Neuschreiben per CREATE … AS SELECT 520 s, Datei +1 GB.
+        for (const t of ['units', 'traits', 'board_rank', 'boards']) {
+          await run(`DELETE FROM ${outdb}.${t} WHERE bid IN (SELECT bid FROM gone)`);
+          await run(`CHECKPOINT ${outdb}`);
+        }
       }
       // Rang der letzten 7 Tage: nur geaenderte Zeilen schreiben.
       await run(`CREATE TABLE chg AS
@@ -890,7 +960,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
     const tAgg = Date.now();
     const agg = await aggStep({
-      exec: (s) => c.run(s), all, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
+      exec: stepExec, all: stepAll, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
       compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry,
     });
     alarms.push(...agg.alarms);
@@ -900,9 +970,9 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // ebenfalls die alte meta. Scheitert er, bleibt die Datei gueltig — ohne
     // Masken, der Dienst rechnet dann wie bisher.
     const mask = await maskStep({
-      exec: (s) => c.run(s), all, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0, aggStartMs: tAgg,
+      exec: stepExec, all: stepAll, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0, aggStartMs: tAgg,
       files, compList, compHash, carry: carry ? maskCarry : null,
-      capMs: mode === 'full' ? t0 + (TOTAL_ALARM_S - 600) * 1000 : null,
+      capMs: mode === 'full' ? t0 + (totalAlarmS - 600) * 1000 : null,
     });
     alarms.push(...mask.alarms);
     await dropCarry();
@@ -931,7 +1001,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
     if (mode === 'full' && markerMtime != null && markerMtime <= scanStart) fs.rmSync(files.marker, { force: true });
     const size = fs.statSync(OUT).size;
     const totalS = (Date.now() - t0) / 1000;
-    if (totalS > TOTAL_ALARM_S) alarms.push(`Laufzeit ${Math.round(totalS)} s (Grenze ${TOTAL_ALARM_S} s)`);
+    if (totalS > totalAlarmS) alarms.push(`Laufzeit ${Math.round(totalS)} s (Grenze ${totalAlarmS} s)`);
     // Datenstand fuer die Vertraege explorer/datei-frische und
     // explorer/vollaufbau-frische (infra/contracts.json).
     writeJsonAtomic(files.status, {
@@ -943,8 +1013,9 @@ async function build({ t0, win, testRun, untilMs, files }) {
         maskS: mask.s, maskCopyS: mask.copyS, maskCalcS: mask.calcS,
       },
       aggDays: { covered: agg.covered, total: agg.total }, aggNew: agg.newDays, aggSig: agg.token ? AGG_SIG : null,
-      aggCarried: agg.carried, aggCarryReason: carryInfo.reason,
+      aggCarried: agg.carried, aggCarryReason: carryInfo.reason, aggPartCapped: agg.partCapped,
       maskDays: { covered: mask.covered, total: mask.total }, maskNew: mask.newDays, maskCarried: mask.carried,
+      maskPartCapped: mask.partCapped,
       maskFailed: mask.failed, maskSig: mask.token ? MASK_SIG : null,
       alarms,
     });

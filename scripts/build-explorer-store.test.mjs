@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, scanAlarm, lockIsStale, rawSql, filesFor,
-  SCRIPT_VERSION,
+  SCRIPT_VERSION, inFullWindow, buildCodeHash, CODE_FILES,
 } from './build-explorer-store.mjs';
 
 // Ausschnitt aus public/tft-set.json (Stand 2026-10-05), fest eingefroren,
@@ -132,9 +132,11 @@ const okPrev = (over = {}) => ({
   },
 });
 const cur = (over = {}) => ({
-  scriptVersion: SCRIPT_VERSION, duckdbVersion: 'v1.5.0', hashes: { ...HASHES }, nTupUpd: 100, testRun: false, n: '2026-10-08', ...over,
+  scriptVersion: SCRIPT_VERSION, duckdbVersion: 'v1.5.0', hashes: { ...HASHES }, nTupUpd: 100, testRun: false, n: '2026-10-08',
+  code: 'c1', ...over,
 });
-const decide = (o = {}) => decideMode({ prev: okPrev(), cur: cur(), f: '2026-10-01', todayUtc: '2026-10-08', ...o });
+// Start 20 Uhr UTC = im Abendfenster.
+const decide = (o = {}) => decideMode({ prev: okPrev(), cur: cur(), f: '2026-10-01', hourUtc: 20, ...o });
 
 test('decideMode: nichts geaendert → Teil-Aufbau', () => {
   assert.deepEqual(decide(), { mode: 'delta', reasons: [] });
@@ -182,19 +184,50 @@ test('decideMode: Wochen-Turnus nach 7 Tagen oder ohne Datum', () => {
   assert.equal(decide({ prev: okPrev({ lastFullDay: null }) }).mode, 'full');
 });
 
-test('decideMode: heute gescheiterter Vollaufbau — Pflicht → skip, Turnus → Teil-Aufbau, --full setzt durch', () => {
-  const stamp = { day: '2026-10-08', startedMs: 9000 };
+test('decideMode: mit diesem Code gescheiterter Vollaufbau — Pflicht → skip, Turnus → Teil-Aufbau, --full setzt durch', () => {
+  // Stempel vom Vortag: die Sperre haengt am Code, nicht am Tag (Tages-Timer → sonst jede Nacht ein Versuch).
+  const stamp = { day: '2026-10-07', startedMs: 9000, code: 'c1' };
   const skip = decide({ stamp, cur: cur({ nTupUpd: 101 }) });
   assert.equal(skip.mode, 'skip');
+  assert.equal(skip.blocked, true);
   assert.ok(skip.reasons.some((r) => r.includes('nicht fertig')));
-  assert.equal(decide({ stamp, prev: okPrev({ lastFullDay: '2026-10-01' }) }).mode, 'delta');
+  const turn = decide({ stamp, prev: okPrev({ lastFullDay: '2026-10-01' }) });
+  assert.equal(turn.mode, 'delta');
+  assert.equal(turn.blocked, true);
   assert.equal(decide({ stamp, full: true }).mode, 'full');
   // Vollaufbau nach dem Stempel fertig geworden → nicht gesperrt
   assert.equal(decide({ stamp, prev: okPrev({ lastFullMs: 9500 }), cur: cur({ nTupUpd: 101 }) }).mode, 'full');
-  // Stempel von gestern sperrt nicht
-  assert.equal(decide({ stamp: { day: '2026-10-07', startedMs: 9000 }, cur: cur({ nTupUpd: 101 }) }).mode, 'full');
-  // ohne vorige Datei: Pflicht + Stempel von heute → skip
+  // neuer Code → neuer Versuch; Stempel ohne Code (alte Form) sperrt nicht
+  assert.equal(decide({ stamp, cur: cur({ nTupUpd: 101, code: 'c2' }) }).mode, 'full');
+  assert.equal(decide({ stamp: { day: '2026-10-08', startedMs: 9000 }, cur: cur({ nTupUpd: 101 }) }).mode, 'full');
+  // ohne vorige Datei: Pflicht + gleicher Code → skip
   assert.equal(decide({ stamp, prev: { kind: 'none' } }).mode, 'skip');
+  // nicht gesperrt → kein blocked-Feld
+  assert.equal(decide().blocked, undefined);
+});
+
+test('decideMode: Wochen-Turnus nur im Abendfenster, Pflichtgruende jederzeit', () => {
+  const due = { prev: okPrev({ lastFullDay: '2026-10-01' }) };
+  for (const h of [17, 19, 23]) assert.deepEqual(decide({ ...due, hourUtc: h }), { mode: 'full', reasons: ['Wochen-Vollaufbau'] }, `h=${h}`);
+  for (const h of [0, 1, 2, 16, undefined]) {
+    const r = decide({ ...due, hourUtc: h });
+    assert.equal(r.mode, 'delta', `h=${h}`);
+    assert.ok(r.reasons[0].includes('ausserhalb'), `h=${h}`);
+  }
+  assert.equal(decide({ cur: cur({ nTupUpd: 101 }), hourUtc: 1 }).mode, 'full');
+  assert.equal(decide({ full: true, hourUtc: 1 }).mode, 'full');
+  assert.equal(inFullWindow(24), false);
+  assert.equal(inFullWindow(17), true);
+});
+
+test('buildCodeHash: haengt an jedem Bau-Skript', () => {
+  const files = Object.fromEntries(CODE_FILES.map((f) => [f, `inhalt ${f}`]));
+  const h = buildCodeHash((f) => files[f]);
+  assert.match(h, /^[0-9a-f]{12}$/);
+  for (const f of CODE_FILES) {
+    assert.notEqual(buildCodeHash((g) => (g === f ? `${files[g]}!` : files[g])), h, f);
+  }
+  assert.match(buildCodeHash(), /^[0-9a-f]{12}$/);
 });
 
 test('scanAlarm: nur im Teil-Aufbau ueber 600 s, nie im Vollaufbau', () => {

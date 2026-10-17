@@ -120,6 +120,19 @@ export const AGG_BUDGET_DEFAULT_S = 1200;
 export const AGG_HARD_S = 8400;              // Unit-Zeitlimit 9000 s minus 600 s fuer Tausch + Pruefungen
 export const AGG_SWAP_UTC = [2, 55];         // Tausch + Vorwaermen vor Ende des Edge-Caches 03:30 UTC
 
+// Partie-Delta (Teilsummen) und Masken-Nachzug rechnen alle betroffenen
+// Partien in einem Zug. Nach Fehlnaechten sind das ein Vielfaches (14.10.:
+// 1.399.540 statt 133.287–143.410 je Nacht), der Teilsummen-Schritt lief da in
+// die Speichergrenze. Ueber der Grenze verlieren die betroffenen Tage ihre
+// Deckung und laufen durch die begrenzten Tages-Bloecke.
+// AGG_PART_CAP: leer/ungueltig → Vorgabe, 0 → jedes Delta entdeckt (Test).
+export const AGG_PART_CAP_DEFAULT = 300_000;
+export function aggPartCap(raw) {
+  if (raw == null || String(raw).trim() === '') return AGG_PART_CAP_DEFAULT;
+  const n = Number(raw);
+  return Number.isInteger(n) && n >= 0 ? n : AGG_PART_CAP_DEFAULT;
+}
+
 // AGG_BUDGET_S: leer/ungueltig → Vorgabe, 0 → Summen aus.
 export function aggBudgetS(raw) {
   if (raw == null || String(raw).trim() === '') return AGG_BUDGET_DEFAULT_S;

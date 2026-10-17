@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   VARIANTS, keySelect, variantRowsSql, variantsForQuery, aggEligible, compListSql, AGG_SIG,
   aggBudgetS, nextUtc, aggCoveredDays, planAgg, aggDue, aggDaysFor, aggCopyEstS, aggDueForCopy,
-  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S,
+  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S, aggPartCap,
 } from './explorer-agg.mjs';
 
 const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
@@ -97,6 +97,16 @@ test('AGG_BUDGET_S: leer/ungueltig → 1200, 0 → aus', () => {
   assert.equal(aggBudgetS('-5'), 1200);
   assert.equal(aggBudgetS('0'), 0);
   assert.equal(aggBudgetS('300'), 300);
+});
+
+test('AGG_PART_CAP: leer/ungueltig → 300.000, 0 erlaubt, keine Bruchzahlen', () => {
+  assert.equal(aggPartCap(undefined), 300_000);
+  assert.equal(aggPartCap(''), 300_000);
+  assert.equal(aggPartCap('abc'), 300_000);
+  assert.equal(aggPartCap('-1'), 300_000);
+  assert.equal(aggPartCap('1.5'), 300_000);
+  assert.equal(aggPartCap('0'), 0);
+  assert.equal(aggPartCap('150000'), 150_000);
 });
 
 test('naechstes 02:55 UTC', () => {

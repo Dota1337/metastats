@@ -16,7 +16,7 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { aggBudgetS, aggCopyEstS } from './explorer-agg.mjs';
+import { aggBudgetS, aggCopyEstS, aggPartCap } from './explorer-agg.mjs';
 import { BLOCK_DAYS, lit, dLit, inList, cols, UNIT_COLS, TRAIT_COLS } from './explorer-agg-build.mjs';
 import {
   MASK_DATA_TABLES, MASK_TABLES, MASK_COLS, MASK_ORDER, MASK_SIG, MASK_FP_EMPTY, maskTablesDdl, maskSql, maskFp, maskFpAdd,
@@ -38,11 +38,12 @@ const DAY_TABLES = [...MASK_DATA_TABLES, 'mask_days'];
 // Teilsummen-Uebernahme (aggCarrySave/aggCarryMatch).
 export async function maskStep({
   exec, all, log, outdb: o, mode, win, newBoards = 'nb', t0Ms, aggStartMs, files, compList, compHash, carry = null,
-  budgetRaw = process.env.AGG_BUDGET_S, masksEnv = process.env.AGG_MASKS, capMs = null, now = () => Date.now(),
+  budgetRaw = process.env.AGG_BUDGET_S, masksEnv = process.env.AGG_MASKS, partCapRaw = process.env.AGG_PART_CAP,
+  capMs = null, now = () => Date.now(),
 }) {
   const t1 = now();
   const res = {
-    token: null, covered: 0, total: 0, newDays: 0, carried: 0, partMatches: 0, partDays: 0, failed: [], uiRedone: 0,
+    token: null, covered: 0, total: 0, newDays: 0, carried: 0, partMatches: 0, partDays: 0, partCapped: 0, failed: [], uiRedone: 0,
     dropped: 0, s: 0, copyS: 0, calcS: 0, alarms: [], reason: null,
   };
   const n = async (sql) => Number((await all(sql))[0]?.n ?? 0);
@@ -193,7 +194,16 @@ export async function maskStep({
       await exec(`CREATE OR REPLACE TABLE mk_pm AS SELECT DISTINCT mid, day FROM ${newBoards} WHERE day IN (${inList(partDays)})`);
       res.partMatches = await n('SELECT count(*) AS n FROM mk_pm');
     }
-    if (res.partMatches) {
+    // Deckel (aggPartCap): zu viele Partien → ihre Tage entdecken, Schritt 6
+    // rechnet sie neu. Nach (g) liegt jede Partie an genau einem Tag.
+    const partCap = aggPartCap(partCapRaw);
+    if (res.partMatches > partCap) {
+      const hit = await col('SELECT DISTINCT day::VARCHAR AS v FROM mk_pm ORDER BY 1');
+      await uncover(hit);
+      res.partCapped = hit.length;
+      log(`Masken: Nachzug ${res.partMatches} Partien ueber der Grenze ${partCap} — ${hit.length} Tage entdeckt, Schritt 6 rechnet sie neu`);
+    }
+    if (res.partMatches && !res.partCapped) {
       await exec(`CREATE OR REPLACE TABLE mk_pb AS SELECT bid, mid, day, placement FROM ${o}.boards WHERE mid IN (SELECT mid FROM mk_pm)`);
       await exec(`CREATE OR REPLACE TABLE mk_pu AS SELECT bid, ${cols(UNIT_COLS)} FROM ${o}.units WHERE bid IN (SELECT bid FROM mk_pb)`);
       await exec(`CREATE OR REPLACE TABLE mk_pt AS SELECT bid, ${cols(TRAIT_COLS)} FROM ${o}.traits WHERE bid IN (SELECT bid FROM mk_pb)`);

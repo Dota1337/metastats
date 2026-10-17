@@ -13,7 +13,8 @@ EnvironmentFile=/etc/metastats-crawler/env
 # Sperre im Skript (explorer.duckdb.lock, pid + boot_id): laeuft schon ein
 # Build, endet dieser Start ohne Fehler. Taeglich Teil-Aufbau (nur neu
 # angekommene Partien), einmal je Woche und bei Bedarf Vollaufbau.
-# Exit 2 = Vollaufbau noetig, aber heute schon gescheitert (alte Datei bleibt).
+# Exit 2 = Vollaufbau noetig, aber mit diesem Code-Stand schon gescheitert
+# (alte Datei bleibt). Speichergrenze von DuckDB: EXPLORER_BUILD_MEM (900MB).
 ExecStart=/usr/bin/node scripts/build-explorer-store.mjs
 # Vollaufbau gemessen 2026-10-08: 3438 s. 9000 s ist Puffer fuer Tage, an
 # denen die Crawls die Platte belegen; ab 6000 s meldet status.json einen Alarm.

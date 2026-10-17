@@ -2,11 +2,15 @@
 Description=metastats TFT Data Explorer: Analyse-Speicher taeglich nachfuehren
 
 [Timer]
-# 01:35 UTC: nach dem Tageswechsel (der Vortag ist komplett). Der woechentliche
-# Vollaufbau (~1 h) ist damit vor marketvalue-peaks (03:17 UTC) und dem
-# Ranglistenlauf (04:30 UTC) fertig; der taegliche Teil-Aufbau braucht Minuten.
+# 01:35 UTC: nach dem Tageswechsel (der Vortag ist komplett), taeglicher
+# Teil-Aufbau (Minuten), fertig vor marketvalue-peaks (03:17 UTC) und dem
+# Ranglistenlauf (04:30 UTC).
+# So 19:30 UTC: Wochen-Vollaufbau. Er laeuft nur bei Start 17–24 Uhr UTC
+# (decideMode, FULL_WINDOW_UTC) — nachts endet er nach 02:55 und laesst
+# Teilsummen und Masken leer (Kern 08.10.: 4356 s bei 12,2 Mio Boards).
 # Persistent: ein verpasster Lauf wird nachgeholt.
 OnCalendar=*-*-* 01:35:00 UTC
+OnCalendar=Sun *-*-* 19:30:00 UTC
 Persistent=true
 
 [Install]

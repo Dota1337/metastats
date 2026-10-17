@@ -59,6 +59,7 @@ import { readComponents as readComponentsFrom, componentsHash } from './lib/expl
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
+import { TABS, normalizeQuery } from './lib/explorer-normalize.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
 
@@ -223,62 +224,8 @@ const liveLane = makeLane(MAX_RUNNING, MAX_QUEUE);
 const aggLane = makeLane(AGG_RUNNING, AGG_QUEUE);
 
 // ─── Eingaben pruefen ──────────────────────────────────────────────────────
-
-const ID_RE = /^[A-Za-z0-9_]{1,64}$/;
-const REGION_RE = /^[a-z0-9]{2,5}$/;
-const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
-// 'unknown' nur noch fuer alte Links; die Oberflaeche bietet es nicht mehr an.
-const RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD', 'unknown'];
-const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
-
-const id = (v, what) => { if (typeof v !== 'string' || !ID_RE.test(v)) throw bad(`invalid_${what}`); return v; };
-const ids = (v, what, max) => {
-  if (v == null) return [];
-  if (!Array.isArray(v) || v.length > max) throw bad(`invalid_${what}`);
-  return [...new Set(v.map(x => id(x, what)))].sort();
-};
-const int = (v, lo, hi, what) => {
-  if (v == null) return null;
-  const n = Number(v);
-  if (!Number.isInteger(n) || n < lo || n > hi) throw bad(`invalid_${what}`);
-  return n;
-};
-
-// Liefert eine kanonische Form: gleiche Anfrage → gleicher Cache-Schluessel.
-export function normalizeQuery(q) {
-  if (!q || typeof q !== 'object') throw bad('invalid_body');
-  const region = q.region == null || q.region === 'all' ? 'all'
-    : (typeof q.region === 'string' && REGION_RE.test(q.region) ? q.region : (() => { throw bad('invalid_region'); })());
-  const ranks = q.ranks == null ? [] : (Array.isArray(q.ranks) && q.ranks.every(r => RANKS.includes(r))
-    ? [...new Set(q.ranks)].sort() : (() => { throw bad('invalid_ranks'); })());
-  // ['latest'] = neuester Patch im Speicher; wird im Handler aufgeloest.
-  const patches = q.patches == null ? [] : Array.isArray(q.patches) && q.patches.length === 1 && q.patches[0] === 'latest' ? ['latest']
-    : (Array.isArray(q.patches) && q.patches.length <= 12 && q.patches.every(p => typeof p === 'string' && PATCH_RE.test(p))
-    ? [...new Set(q.patches)].sort() : (() => { throw bad('invalid_patches'); })());
-  const units = (Array.isArray(q.units) ? q.units : []).slice(0, 9);
-  if (Array.isArray(q.units) && q.units.length > 9) throw bad('too_many_units');
-  const nUnits = units.map(u => ({
-    id: id(u?.id, 'unit'),
-    x: u?.x === true,
-    s: int(u?.s, 1, 4, 'star'),
-    se: u?.se === true,
-    n: int(u?.n, 0, 3, 'item_count'),
-    it: ids(u?.it, 'item', 3),
-    nit: ids(u?.nit, 'item', 3),
-  })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-  if (Array.isArray(q.items) && q.items.length > 6) throw bad('too_many_items');
-  const nItems = (Array.isArray(q.items) ? q.items : []).map(i => ({ id: id(i?.id, 'item'), x: i?.x === true }))
-    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-  if (Array.isArray(q.traits) && q.traits.length > 6) throw bad('too_many_traits');
-  const nTraits = (Array.isArray(q.traits) ? q.traits : []).map(t => ({
-    id: id(t?.id, 'trait'), x: t?.x === true, l: int(t?.l, 1, 6, 'trait_level'), le: t?.le === true,
-  })).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-  const tab = q.tab == null ? 'summary' : (TABS.includes(q.tab) ? q.tab : (() => { throw bad('invalid_tab'); })());
-  const focus = q.focus == null ? null : id(q.focus, 'focus');
-  const split = q.split === 'star' || q.split === 'over' ? q.split : null;
-  const combo = int(q.combo, 1, 3, 'combo') ?? 1;
-  return { region, ranks, patches, units: nUnits, items: nItems, traits: nTraits, tab, focus, split, combo };
-}
+// normalizeQuery: scripts/lib/explorer-normalize.mjs (kanonische Form =
+// Cache-Schluessel, unbekannte Felder → 400).
 
 // Filterlose Ansicht aus den Tages-Teilsummen. days = alle Tage der
 // Patch-Wahl (aggDaysFor), alle gedeckt. Tag, Patch und Region sind je

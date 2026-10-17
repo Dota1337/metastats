@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
   JOIN_GRACE_MS, LIVE_MIN_LEFT_MS, LIVE_TOTAL_MS, LONG_MIN_LEFT_MS, LONG_QUERY_TIMEOUT_MS, MAX_TOTAL_MS,
-  REFRESH_API_TIMEOUT_MS, joinWaitMs, liveBudget, slotTimeout, unitMaskSql, unitViaMask,
+  REFRESH_API_TIMEOUT_MS, joinWaitMs, liveBudget, maskPlan, slotTimeout, unitMaskSql, unitViaMask, itemViaMask,
 } from './explorer-mask-query.mjs';
 import { QUERY_TIMEOUT_MS } from './explorer-query.mjs';
 
-const unit = (o = {}) => ({ id: 'DA_Amumu18', x: false, s: null, se: false, n: null, it: [], nit: [], ...o });
+const unit = (o = {}) => ({ id: 'DA_Amumu18', x: false, s: null, sx: null, n: null, nx: null, c: null, it: [], nit: [], k: [], ...o });
 const query = (o = {}) => ({
-  region: 'all', ranks: [], patches: [], units: [unit()], items: [], traits: [],
+  region: 'all', ranks: [], patches: [], levels: [], place: null, units: [unit()], items: [], traits: [], groups: [],
   tab: 'units', focus: null, split: null, combo: 1, ...o,
 });
 const mask = {
@@ -76,14 +76,28 @@ test('Fristen-Kette: Frist + Mitwarten bleibt unter refresh-api, Env wird gekapp
   assert.equal(Number(m[1].replace(/_/g, '')), REFRESH_API_TIMEOUT_MS);
 });
 
-test('unitViaMask: nur ohne Item-Zusatz und ohne exakten Stern, Schalter wirkt', () => {
+test('unitViaMask: nur „Stern ab", ohne Obergrenze, Itemzahl, Items, Sorte, Kopien; Schalter wirkt', () => {
   assert.equal(unitViaMask(unit(), true), true);
   assert.equal(unitViaMask(unit({ s: 2, x: true }), true), true);
-  assert.equal(unitViaMask(unit({ s: 2, se: true }), true), false);
+  assert.equal(unitViaMask(unit({ s: 2, sx: 2 }), true), false);
+  assert.equal(unitViaMask(unit({ sx: 2 }), true), false);
   assert.equal(unitViaMask(unit({ n: 0 }), true), false);
+  assert.equal(unitViaMask(unit({ nx: 1 }), true), false);
+  assert.equal(unitViaMask(unit({ c: 2 }), true), false);
   assert.equal(unitViaMask(unit({ it: ['DA_X'] }), true), false);
   assert.equal(unitViaMask(unit({ nit: ['DA_X'] }), true), false);
+  assert.equal(unitViaMask(unit({ k: [{ b: 'emblem', n: 1 }] }), true), false);
   assert.equal(unitViaMask(unit(), false), false);
+  assert.equal(itemViaMask({ id: 'DA_X', x: false, n: null }), true);
+  assert.equal(itemViaMask({ id: 'DA_X', x: false, n: 2 }), false);
+});
+
+test('maskPlan: Level, Platz und Kaesten allein nehmen den Masken-Weg, ohne alles nicht', () => {
+  const plain = query({ units: [] });
+  assert.equal(maskPlan(mask, plain, 'h'), null);
+  assert.ok(maskPlan(mask, query({ units: [], levels: [8] }), 'h'));
+  assert.ok(maskPlan(mask, query({ units: [], place: [1, 4] }), 'h'));
+  assert.ok(maskPlan(mask, query({ units: [], groups: [{ m: 'any', units: [unit()], items: [], traits: [] }] }), 'h'));
 });
 
 test('unitMaskSql: Stern ab s = OR der Spalten s..4', () => {

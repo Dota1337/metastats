@@ -3,6 +3,9 @@
 // Weg und den Masken-Weg lokal gegeneinander rechnen kann.
 
 import { compListSql, keySelect, variantsForQuery } from './explorer-agg.mjs';
+import { bad, hasBoardFilters } from './explorer-normalize.mjs';
+
+export { bad };
 
 export const QUERY_TIMEOUT_MS = Number(process.env.EXPLORER_QUERY_TIMEOUT_MS || 15_000);
 export const ROW_LIMIT = 500;
@@ -11,11 +14,10 @@ export const ROW_MIN_BOARDS = 5;
 // der Zufall, welche Zeilen an der 500er-Grenze landen.
 export const ROW_ORDER = 'ORDER BY n1 DESC, key NULLS FIRST, sub NULLS FIRST, sub2 NULLS FIRST';
 
-export function bad(msg) { const e = new Error(msg); e.status = 400; return e; }
-
 // ─── SQL bauen ─────────────────────────────────────────────────────────────
 
-// Grundmenge: nur Region / Rang / Patch.
+// Grundmenge: Region / Rang / Patch, dazu Spieler-Level und Endplatz
+// (Ergebnis-Groessen wie der Rang, keine Brett-Bedingung).
 export function scopeWhere(q, params) {
   const w = [];
   if (q.region !== 'all') { w.push('b.region = ?'); params.push(q.region); }
@@ -27,30 +29,93 @@ export function scopeWhere(q, params) {
     w.push(`(${parts.join(' OR ')})`);
   }
   if (q.patches.length) { w.push(`b.patch IN (${q.patches.map(() => '?').join(',')})`); params.push(...q.patches); }
+  if (q.levels?.length) { w.push(`b.level IN (${q.levels.map(() => '?').join(',')})`); params.push(...q.levels); }
+  if (q.place) { w.push('b.placement BETWEEN ? AND ?'); params.push(q.place[0], q.place[1]); }
   return w;
 }
 
+// Itemsorte an einer Kopie: dieselben Muster wie extraKindOf
+// (scripts/lib/tft-build-aggregator.mjs, Grundlage 0097 — ohne Augment- und
+// Phantom-Embleme) plus Radiant (Endung, wie app/lib/tft-item-bucket.ts).
+// Vorrang Artefakt > Emblem > Radiant. Gleichlauf mit extraKindOf:
+// explorer-normalize.test.mjs gegen das Bundle.
+export const ITEM_KIND_RE = { artifact: /_Artifact_/i, emblem: /Emblem/i, emblemSkip: /Augment|Phantom/i, radiant: /Radiant$/ };
+export function itemKindOf(id) {
+  const s = String(id ?? '');
+  if (ITEM_KIND_RE.artifact.test(s)) return 'artifact';
+  if (ITEM_KIND_RE.emblem.test(s) && !ITEM_KIND_RE.emblemSkip.test(s)) return 'emblem';
+  if (ITEM_KIND_RE.radiant.test(s)) return 'radiant';
+  return null;
+}
+const re = (x, r) => `regexp_matches(${x}, '${r.source}'${r.flags.includes('i') ? ", 'i'" : ''})`;
+const isArtifact = (x) => re(x, ITEM_KIND_RE.artifact);
+const isEmblem = (x) => `(${re(x, ITEM_KIND_RE.emblem)} AND NOT ${re(x, ITEM_KIND_RE.emblemSkip)})`;
+export const ITEM_KIND_SQL = {
+  artifact: isArtifact,
+  emblem: (x) => `(NOT ${isArtifact(x)} AND ${isEmblem(x)})`,
+  radiant: (x) => `(NOT ${isArtifact(x)} AND NOT ${isEmblem(x)} AND ${re(x, ITEM_KIND_RE.radiant)})`,
+};
+// Treffer je Slot, NULL-sicher (leerer Slot zaehlt 0, nie NULL).
+const slotSum = (pred) => `(${['i1', 'i2', 'i3'].map(c => `coalesce(${pred(c)}, false)::INTEGER`).join(' + ')})`;
+
+// Bedingung an EINE Kopie der Unit; c = mindestens so viele Kopien auf dem
+// Brett (unabhaengig davon: eine davon erfuellt die Kopie-Bedingung).
 export function unitCond(u, params) {
-  const c = ['unit = ?']; params.push(u.id);
-  if (u.s != null) { c.push(u.se ? 'star = ?' : 'star >= ?'); params.push(u.s); }
-  if (u.n != null) { c.push('n_items >= ?'); params.push(u.n); }
-  for (const it of u.it) { c.push('list_contains([i1, i2, i3], ?)'); params.push(it); }
-  for (const it of u.nit) { c.push('NOT list_contains([i1, i2, i3], ?)'); params.push(it); }
-  return `SELECT bid FROM units WHERE ${c.join(' AND ')}`;
+  const c = [];
+  const p = [];
+  if (u.s != null && u.sx != null) {
+    if (u.s === u.sx) { c.push('star = ?'); p.push(u.s); } else { c.push('star BETWEEN ? AND ?'); p.push(u.s, u.sx); }
+  } else if (u.s != null) { c.push('star >= ?'); p.push(u.s); } else if (u.sx != null) { c.push('star <= ?'); p.push(u.sx); }
+  if (u.n != null && u.nx != null) {
+    if (u.n === u.nx) { c.push('n_items = ?'); p.push(u.n); } else { c.push('n_items BETWEEN ? AND ?'); p.push(u.n, u.nx); }
+  } else if (u.n != null) { c.push('n_items >= ?'); p.push(u.n); } else if (u.nx != null) { c.push('n_items <= ?'); p.push(u.nx); }
+  // Dasselbe Item mehrfach = so oft an dieser Kopie.
+  const times = new Map();
+  for (const it of u.it) times.set(it, (times.get(it) ?? 0) + 1);
+  for (const [it, k] of times) {
+    if (k === 1) { c.push('list_contains([i1, i2, i3], ?)'); p.push(it); } else { c.push(`${slotSum(x => `${x} = ?`)} >= ?`); p.push(it, it, it, k); }
+  }
+  for (const it of u.nit) { c.push('NOT list_contains([i1, i2, i3], ?)'); p.push(it); }
+  for (const e of u.k ?? []) { c.push(`${slotSum(ITEM_KIND_SQL[e.b])} >= ?`); p.push(e.n); }
+  if (u.c != null) {
+    params.push(u.id, u.c, ...p);
+    return `SELECT bid FROM units WHERE unit = ? GROUP BY bid HAVING count(*) >= ?${c.length ? ` AND bool_or(${c.join(' AND ')})` : ''}`;
+  }
+  params.push(u.id, ...p);
+  return `SELECT bid FROM units WHERE ${['unit = ?', ...c].join(' AND ')}`;
+}
+
+// Item irgendwo auf dem Brett; n = mindestens so oft.
+export function itemCond(i, params) {
+  if (i.n == null) { params.push(i.id); return 'SELECT bid FROM units WHERE list_contains([i1, i2, i3], ?)'; }
+  params.push(i.id, i.id, i.id, i.id, i.n);
+  return `SELECT bid FROM units WHERE list_contains([i1, i2, i3], ?) GROUP BY bid HAVING sum(${slotSum(x => `${x} = ?`)}) >= ?`;
+}
+
+export function traitCond(t, params) {
+  const c = ['trait = ?']; params.push(t.id);
+  if (!t.x && t.l != null) { c.push(t.le ? 'lvl = ?' : 'lvl >= ?'); params.push(t.l); }
+  return `SELECT bid FROM traits WHERE ${c.join(' AND ')}`;
+}
+
+// Kasten: „eins davon" = ODER der Glieder, „keins davon" = keines davon
+// (NULL-sicher; ein IN liefert hier ohnehin nie NULL).
+export function groupCond(g, params) {
+  const parts = [
+    ...g.units.map(u => `b.bid IN (${unitCond(u, params)})`),
+    ...g.items.map(i => `b.bid IN (${itemCond(i, params)})`),
+    ...g.traits.map(t => `b.bid IN (${traitCond(t, params)})`),
+  ];
+  const any = `(${parts.join(' OR ')})`;
+  return g.m === 'none' ? `NOT coalesce(${any}, false)` : any;
 }
 
 export function filterWhere(q, params) {
   const w = [];
   for (const u of q.units) w.push(`b.bid ${u.x ? 'NOT IN' : 'IN'} (${unitCond(u, params)})`);
-  for (const i of q.items) {
-    w.push(`b.bid ${i.x ? 'NOT IN' : 'IN'} (SELECT bid FROM units WHERE list_contains([i1, i2, i3], ?))`);
-    params.push(i.id);
-  }
-  for (const t of q.traits) {
-    const c = ['trait = ?']; params.push(t.id);
-    if (!t.x && t.l != null) { c.push(t.le ? 'lvl = ?' : 'lvl >= ?'); params.push(t.l); }
-    w.push(`b.bid ${t.x ? 'NOT IN' : 'IN'} (SELECT bid FROM traits WHERE ${c.join(' AND ')})`);
-  }
+  for (const i of q.items) w.push(`b.bid ${i.x ? 'NOT IN' : 'IN'} (${itemCond(i, params)})`);
+  for (const t of q.traits) w.push(`b.bid ${t.x ? 'NOT IN' : 'IN'} (${traitCond(t, params)})`);
+  for (const g of q.groups ?? []) w.push(groupCond(g, params));
   return w;
 }
 
@@ -200,7 +265,7 @@ export async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm =
   try {
     // Tausch waehrend des Verbindens: pollSwap hat noch nichts zum Abbrechen gesehen.
     if (warm && holder.retired) throw new Error('swapped');
-    const hasFilters = q.units.length + q.items.length + q.traits.length > 0;
+    const hasFilters = hasBoardFilters(q);
 
     const pF = []; const cteF = fbCte(q, pF);
     const filtered = await setStats(conn, cteF, pF);

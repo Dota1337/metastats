@@ -28,6 +28,7 @@ import { aggDaysFor } from './explorer-agg.mjs';
 import {
   QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, filterWhere, finishRows, headOut, liveRows, runQuery, scopeWhere,
 } from './explorer-query.mjs';
+import { hasBoardFilters, needsLive } from './explorer-normalize.mjs';
 
 // ─── Laden ─────────────────────────────────────────────────────────────────
 
@@ -59,14 +60,14 @@ export async function loadMask({ all, log }) {
 
 // ─── Weg-Wahl ──────────────────────────────────────────────────────────────
 
-// Masken-Weg nur fuer Anfragen mit Filter oder Rang (ohne beides nimmt der
-// Dienst die Teilsummen oder rechnet wie heute) und nur, wenn alle Tage der
+// Masken-Weg nur fuer Anfragen, die nicht aus den Teilsummen kommen
+// (needsLive: Filter, Rang, Level, Platz) und nur, wenn alle Tage der
 // Patch-Wahl gedeckt sind. Items-Zeilen ohne Fokus kommen aus mask_ui, die
 // Komponenten ausschliesst — passt deren Liste an einem Tag nicht zur
 // aktuellen, rechnet liveRows diese Zeilen (itemsLive). [] = Patch ohne Boards.
 export function maskPlan(mask, q, compHash) {
   if (!mask) return null;
-  if (q.units.length + q.items.length + q.traits.length === 0 && q.ranks.length === 0) return null;
+  if (!needsLive(q)) return null;
   const days = aggDaysFor(q.patches, mask.dayPatches, mask.covered);
   if (!days) return null;
   const itemsLive = q.tab === 'items' && !q.focus && days.some(d => mask.compHashByDay.get(d) !== compHash);
@@ -166,24 +167,28 @@ function dayRange(days, col) {
 // statt ueber die units-Tabelle (Amumu, alle Patches: 7,3 → 1,2 s, 0
 // Abweichungen bei 4.163.307 Partien). Maske = Boards mit hoechster Kopie auf
 // Stern s..4: „Stern >= s" trifft irgendeine Kopie genau dann, wenn die
-// hoechste ihn erreicht. Exakter Stern bleibt auf units — `star = ?` trifft
-// JEDE Kopie (Board mit 2★- und 3★-Kopie), m_s nur die hoechste.
-// EXPLORER_MASK_G=units schaltet zurueck auf die units-Tabelle.
+// hoechste ihn erreicht. Stern-Obergrenze (genau/hoechstens) bleibt auf units
+// — `star <= ?` trifft JEDE Kopie (Board mit 2★- und 3★-Kopie), m_s nur die
+// hoechste; ebenso Itemzahl, Items, Itemsorte und Kopien-Zahl.
+// Item-Filter mit Anzahl auf dem Brett (n) laufen ueber units, mask_uk kennt
+// nur „mindestens einmal". EXPLORER_MASK_G=units schaltet zurueck auf die units-Tabelle.
 const MASK_G_ON = process.env.EXPLORER_MASK_G !== 'units';
 export const unitViaMask = (u, on = MASK_G_ON) =>
-  on && u.n == null && !u.se && u.it.length === 0 && u.nit.length === 0;
+  on && u.sx == null && u.n == null && u.nx == null && u.c == null
+  && u.it.length === 0 && u.nit.length === 0 && !(u.k?.length);
+export const itemViaMask = (i) => i.n == null;
 export const unitMaskSql = (u) => `(${STAR_VALUES.filter(s => s >= (u.s ?? 1)).map(s => `m${s}`).join(' | ')})`;
 
 // g: je Partie der Grundmenge a = alle Boards, f = gefilterte. Parameter in
-// der Reihenfolge des SQL-Texts: Unit-/Trait-Filter, Grundmenge, Items,
-// Units aus mask_um.
+// der Reihenfolge des SQL-Texts: Unit-/Item-/Trait-Filter und Kaesten ueber
+// units/traits, Grundmenge, Items aus mask_uk, Units aus mask_um.
 async function makeG(conn, q, days) {
   const p = [];
-  const fw = filterWhere({ ...q, items: [], units: q.units.filter(u => !unitViaMask(u)) }, p);
+  const fw = filterWhere({ ...q, items: q.items.filter(i => !itemViaMask(i)), units: q.units.filter(u => !unitViaMask(u)) }, p);
   const sw = scopeWhere(q, p);
   const joins = [];
   const and = [];
-  q.items.forEach((it, i) => {
+  q.items.filter(itemViaMask).forEach((it, i) => {
     joins.push(`LEFT JOIN (SELECT mid, m FROM mask_uk WHERE item = ? AND ${dayRange(days, 'day')}) k${i} ON k${i}.mid = g0.mid`);
     p.push(it.id);
     and.push(`${it.x ? '~' : ''}coalesce(k${i}.m, 0::UTINYINT)`);
@@ -325,7 +330,7 @@ export async function runMaskQuery(holder, q, plan, { timeoutMs = QUERY_TIMEOUT_
   const timer = setTimeout(() => { try { conn.interrupt(); } catch { /* bereits fertig */ } }, timeoutMs);
   try {
     if (warm && holder.retired) throw new Error('swapped');
-    const hasFilters = q.units.length + q.items.length + q.traits.length > 0;
+    const hasFilters = hasBoardFilters(q);
     await makeG(conn, q, plan.days);
     const { filtered, base, cross } = await headFromG(conn);
     const out = headOut(filtered, hasFilters ? base : filtered, hasFilters && filtered.n > 0 ? cross : null);

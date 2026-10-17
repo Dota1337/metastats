@@ -27,6 +27,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { readComponents, componentsHash } from '../lib/explorer-components.mjs';
+import { normalizeQuery } from '../lib/explorer-normalize.mjs';
 import * as current from '../lib/explorer-query.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -80,8 +81,20 @@ const holder = { instance: inst, components, compHash: componentsHash(components
 const LATEST = (await one(`SELECT patch FROM boards WHERE patch IS NOT NULL GROUP BY patch ORDER BY max(day) DESC, patch DESC LIMIT 1`)).patch;
 log(`Set ${setNumber}, neuester Patch ${LATEST}, ${components.length} Komponenten, Kopie ${COPY}`);
 
+// Der alte Stand kennt nur s + se (Stern ab/genau), Itemzahl ab, Items ohne
+// Wiederholung und keine Level/Platz/Kaesten/Kopien/Itemsorte/Item-Anzahl.
+// Faelle mit mehr laufen ohne ihn (Bezug ist dann der naechste Weg).
+const legacyOk = (q) => q.levels.length === 0 && q.place == null && q.groups.length === 0
+  && q.items.every((i) => i.n == null)
+  && q.units.every((u) => u.c == null && u.nx == null && u.k.length === 0
+    && (u.sx == null || u.sx === u.s) && new Set(u.it).size === u.it.length);
+const toLegacy = (q) => ({
+  ...q,
+  units: q.units.map(({ id, x, s, sx, n, it, nit }) => ({ id, x, s, se: sx != null && sx === s, n, it, nit })),
+  items: q.items.map(({ id, x }) => ({ id, x })),
+});
 const ways = [
-  ...(old ? [{ name: 'alt', run: (q) => old.runQuery(holder, q, { timeoutMs: TIMEOUT_MS }) }] : []),
+  ...(old ? [{ name: 'alt', skip: (q) => !legacyOk(q), run: (q) => old.runQuery(holder, toLegacy(q), { timeoutMs: TIMEOUT_MS }) }] : []),
   { name: 'neu', run: (q) => current.runQuery(holder, q, { timeoutMs: TIMEOUT_MS }) },
 ];
 // ctx fuer weitere Wege: eigene Instanz/Datei duerfen sie selbst oeffnen.
@@ -95,28 +108,13 @@ for (const spec of args('way')) {
   const i = spec.indexOf('=');
   const name = spec.slice(0, i);
   const mod = await import(pathToFileURL(path.resolve(spec.slice(i + 1))).href);
-  ways.push({ name, run: await mod.makeWay(ctx) });
+  // makeWay liefert die Rechnung oder { run, skip } (skip(q) = Fall auslassen).
+  const made = await mod.makeWay(ctx);
+  ways.push(typeof made === 'function' ? { name, run: made } : { name, ...made });
 }
 
-// Kanonische Form wie normalizeQuery im Dienst (der Treiber wird nicht importiert).
-const sortJson = (a) => [...a].sort((x, y) => JSON.stringify(x).localeCompare(JSON.stringify(y)));
-function norm(q) {
-  return {
-    region: q.region ?? 'all',
-    ranks: [...new Set(q.ranks ?? [])].sort(),
-    patches: q.patches ?? [LATEST],
-    units: sortJson((q.units ?? []).map((u) => ({
-      id: u.id, x: u.x === true, s: u.s ?? null, se: u.se === true, n: u.n ?? null,
-      it: [...new Set(u.it ?? [])].sort(), nit: [...new Set(u.nit ?? [])].sort(),
-    }))),
-    items: sortJson((q.items ?? []).map((i) => ({ id: i.id, x: i.x === true }))),
-    traits: sortJson((q.traits ?? []).map((t) => ({ id: t.id, x: t.x === true, l: t.l ?? null, le: t.le === true }))),
-    tab: q.tab ?? 'summary',
-    focus: q.focus ?? null,
-    split: q.split === 'star' || q.split === 'over' ? q.split : null,
-    combo: q.combo ?? 1,
-  };
-}
+// Kanonische Form wie im Dienst (dieselbe Funktion); ohne patches der neueste.
+const norm = (q) => normalizeQuery({ ...q, patches: q.patches ?? [LATEST] });
 
 // Faelle nach Kriterium 2. IDs gegen die lokale Datei geprueft (Set 18).
 // Ohne patches gilt der neueste Patch; "alle Patches" = patches: [].
@@ -138,6 +136,17 @@ const CASES = [
   ['alle-patches', { region: 'oc1', patches: [] }],
   ['alle-patches+unit', { region: 'oc1', patches: [], units: [{ id: 'DA_18_Diana' }] }],
   ['leer', { items: [{ id: 'DA_ThiefsGloves' }, { id: 'DA_ThiefsGloves', x: true }] }],
+  // Paket A (MetaTFT-Filter): ohne alten Stand, Bezug neu gegen Masken-Weg.
+  ['unit-kopien', { units: [{ id: 'DA_Amumu18', c: 2 }] }],
+  ['unit-sternspanne', { units: [{ id: 'DA_18_Diana', s: 1, sx: 2 }] }],
+  ['unit-itemzahl-hoechstens', { units: [{ id: 'DA_18_Diana', nx: 1 }] }],
+  ['unit-item-zweimal', { units: [{ id: 'DA_18_Diana', it: ['DA_SpearOfShojin', 'DA_SpearOfShojin'] }] }],
+  ['unit-itemsorte', { units: [{ id: 'DA_18_Diana', k: [{ b: 'artifact', n: 1 }] }] }],
+  ['item-zweimal-auf-brett', { items: [{ id: 'DA_ThiefsGloves', n: 2 }] }],
+  ['level', { levels: [8, 9] }],
+  ['platz', { place: [1, 4] }],
+  ['kasten-eins-davon', { groups: [{ m: 'any', units: [{ id: 'DA_18_Diana', s: 2 }], items: [{ id: 'DA_ThiefsGloves' }] }] }],
+  ['kasten-keins-davon', { units: [{ id: 'DA_Amumu18' }], groups: [{ m: 'none', traits: [{ id: 'DA_Juggernaut18' }] }] }],
 ];
 const TABS = [
   ['Uebersicht', { tab: 'summary' }],
@@ -171,7 +180,7 @@ function firstDiff(a, b, at = '') {
   return null;
 }
 
-let same = 0, differ = 0, failed = 0, runs = 0;
+let same = 0, differ = 0, failed = 0, single = 0, runs = 0;
 const times = Object.fromEntries(ways.map((w) => [w.name, 0]));
 for (const [cname, cq] of CASES) {
   if (only && !only.includes(cname)) continue;
@@ -181,6 +190,7 @@ for (const [cname, cq] of CASES) {
     runs++;
     const res = [];
     for (const w of ways) {
+      if (w.skip?.(q)) continue;
       const t = Date.now();
       try {
         // Kopie je Weg: runQuery fasst q nicht an, ein eingesteckter Weg vielleicht schon.
@@ -196,6 +206,11 @@ for (const [cname, cq] of CASES) {
     if (res.some((r) => r.err)) {
       failed++;
       log(`FEHLER ${lab} (${tl}): ${res.filter((r) => r.err).map((r) => `${r.w}: ${r.err}`).join(' | ')}`);
+      continue;
+    }
+    if (res.length < 2) {
+      single++;
+      log(`NUR EIN WEG ${lab} (${tl}): nichts verglichen`);
       continue;
     }
     const a = res[0];
@@ -215,7 +230,7 @@ for (const [cname, cq] of CASES) {
   }
 }
 
-log(`${runs} Laeufe je Weg (${ways.map((w) => w.name).join(', ')}): ${same} identisch, ${differ} abweichend, ${failed} Fehler.`
+log(`${runs} Laeufe je Weg (${ways.map((w) => w.name).join(', ')}): ${same} identisch, ${differ} abweichend, ${failed} Fehler, ${single} ohne Vergleich.`
   + ` Rechenzeit ${ways.map((w) => `${w.name} ${Math.round(times[w.name] / 1000)} s`).join(', ')}`);
 for (const f of closers) { try { f(); } catch { /* schon zu */ } }
 inst.closeSync?.();

@@ -6,6 +6,7 @@
 // gerechnet (Plan .claude/plan-current.md, Punkte 1, 2, 8).
 
 import crypto from 'node:crypto';
+import { needsLive } from './explorer-normalize.mjs';
 
 const ID_RE = /^[A-Za-z0-9_]{1,64}$/;
 const NN = 'NULL::INTEGER';
@@ -93,10 +94,10 @@ export function variantsForQuery(q) {
   return null;
 }
 
-// Summen-Weg nur ohne Board-Filter und ohne Fokus.
+// Summen-Weg nur ohne Board-Filter, ohne engere Grundmenge (Rang, Level,
+// Platz — needsLive) und ohne Fokus.
 export function aggEligible(q) {
-  return q.ranks.length === 0 && q.units.length === 0 && q.items.length === 0
-    && q.traits.length === 0 && !q.focus && q.tab !== 'summary' ? variantsForQuery(q) : null;
+  return !needsLive(q) && !q.focus && q.tab !== 'summary' ? variantsForQuery(q) : null;
 }
 
 // Stand der Summen-SQL ausserhalb von variantRowsSql (aggClSql, aggHeadSql,

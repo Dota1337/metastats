@@ -15,7 +15,7 @@ import EmptyData from '../../../components/tft/EmptyData';
 import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, traitTierLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import CompBoardPanel, { type CompBoardParams } from '../../../components/tft/CompBoardPanel';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
@@ -784,6 +784,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                   const bestAvg = Math.min(...rows.map(x => x.avgPlacement));
                   const carryCid = leadCarry;
                   const isComponent = componentCheckFromItems(assets?.items);
+                  // Stufe → Unit-Zahl („7 Riftbeast“ statt „Tier 3“, User 18.10.2026).
+                  const levelTrait = parseClusterKey(comp.clusterKey)?.trait;
                   return (
                     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
                       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.levelOutcome')}</h2>
@@ -811,7 +813,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                             >
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                                 <span className="text-base font-semibold" style={{ color: accentColor }}>
-                                  {(t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
+                                  {traitTierLabel(t('tft.trait.breakpoint') as string, assets, levelTrait, row.level)
+                                    ?? (t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
                                 </span>
                                 <span className="text-fg-secondary text-xs tabular-nums">
                                   {row.typicalUnits.length} {t('tft.comp.levelOutcome.units')}

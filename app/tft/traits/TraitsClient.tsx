@@ -13,7 +13,7 @@ import { usePatchDelta } from '../../lib/usePatchDelta';
 import { patchDeltaOf, traitDeltaKey } from '../../lib/tft-patch-delta';
 import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
-import { tftIconUrl, type TftTraitTier } from '../../lib/tft-cdragon';
+import { tftIconUrl, traitTierMinUnits, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 export interface TraitRow {
@@ -168,6 +168,9 @@ export default function TraitsClient({ initialFilters, initial }: {
               const meta = rootEntry?.[1] || assets?.traits[g.name];
               const url = tftIconUrl(assets, meta?.icon);
               const tiers: TftTraitTier[] = (meta?.tiers || []) as TftTraitTier[];
+              // Stufe → Unit-Zahl wie im Stufen-Streifen daneben (User 18.10.2026).
+              const bestUnits = g.bestName != null && g.bestActivation != null
+                ? traitTierMinUnits(assets, g.bestName, g.bestActivation) : null;
               return (
                 <a
                   key={g.name}
@@ -184,7 +187,7 @@ export default function TraitsClient({ initialFilters, initial }: {
                       <div className="text-white font-medium truncate">{meta?.name || prettyTrait(g.name)}</div>
                       {/* Mobile-only: best-activation hint as small subtitle */}
                       <div className="md:hidden text-accent text-[10px]">
-                        {t('tft.trait.bestAt')} {g.bestActivation ?? '—'}
+                        {t('tft.trait.bestAt')} {bestUnits ?? '—'}
                       </div>
                     </div>
                   </div>
@@ -192,7 +195,7 @@ export default function TraitsClient({ initialFilters, initial }: {
                     <TierStrip tiers={tiers} />
                   </div>
                   <div className="hidden md:block text-right text-accent font-medium">
-                    {g.bestActivation ?? '—'}
+                    {bestUnits ?? '—'}
                   </div>
                   <div className={`grid ${deltaOn ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={g.bestAvg?.toFixed(2) ?? '—'} accent="white" align="center" />

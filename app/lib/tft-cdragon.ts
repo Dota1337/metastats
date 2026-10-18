@@ -177,6 +177,33 @@ export function findTrait(bundle: TftAssetsBundle | null, id: string | null | un
   return getOrBuildLowerMap(bundle, traitByLowerCache, bundle.traits).get(id.toLowerCase()) ?? null;
 }
 
+/** Riots `tier_current` (und der `@n` im Cluster-Key) ist die STUFE, 1-basiert,
+ *  nicht die Unit-Zahl: Riftbeast 3/5/7/10 → Stufe 3 = 7 Riftbeasts. Lookup nach
+ *  Position, gegen echte Bretter geprueft (18.10.2026: 90 von 91 Trait-Stufen,
+ *  Ausnahme Eclipse ohne Stufen). null statt geratener Zahl: Trait fehlt im
+ *  Bundle (anderes Set), keine Stufen, Stufe ausserhalb oder Schwelle nicht
+ *  groesser als die davor (Rival 1/1/2 → Stufe 2). Gleiche Regel ohne den
+ *  Doppel-Check: explorer-options.ts `traitMin`, build-explorer-store.mjs. */
+export function traitTierMinUnits(bundle: TftAssetsBundle | null, traitId: string | null | undefined, tier: number): number | null {
+  if (!Number.isInteger(tier) || tier < 1) return null;
+  const tiers = findTrait(bundle, traitId)?.tiers;
+  const cur = tiers?.[tier - 1]?.minUnits;
+  if (typeof cur !== 'number' || !Number.isFinite(cur)) return null;
+  const prev = tier > 1 ? tiers?.[tier - 2]?.minUnits : undefined;
+  if (typeof prev === 'number' && prev >= cur) return null;
+  return cur;
+}
+
+/** „7 Riftbeast“ aus der Vorlage `{n} {trait}` (i18n `tft.trait.breakpoint`),
+ *  null wenn `traitTierMinUnits` keine Zahl kennt — dann bleibt die alte
+ *  Stufen-Beschriftung. */
+export function traitTierLabel(pattern: string, bundle: TftAssetsBundle | null, traitId: string | null | undefined, tier: number): string | null {
+  const n = traitTierMinUnits(bundle, traitId, tier);
+  const name = findTrait(bundle, traitId)?.name;
+  if (n == null || !name) return null;
+  return pattern.replace('{n}', String(n)).replace('{trait}', name);
+}
+
 // Riots interne apiName-Suffixe weichen für manche Sets vom in-Game Display
 // ab. Beispiel Stargazer-Constellations: TFT17_Stargazer_Wolf zeigt im Spiel
 // als "The Boar", _Shield als "The Altar". Der ECHTE Variant-Name steht im

@@ -2550,6 +2550,12 @@ const translations = {
     'Activaci\u00F3n de rasgo \u2014 rendimiento por nivel',
     'Activation de trait \u2014 performance par palier'
   ),
+  // Unit-Zahl der Trait-Stufe, z. B. „7 Riftbeast“ (Einzahl wie im Spiel).
+  'tft.trait.breakpoint': t6(
+    '{n} {trait}', '{n} {trait}',
+    '{n} {trait}', '{n} {trait}',
+    '{n} {trait}', '{n} {trait}'
+  ),
   'tft.comp.levelOutcome.activation': t6(
     'Aktivierung {n}', 'Tier {n}',
     '{n}\uB2E8\uACC4', '{n} \u7EA7',

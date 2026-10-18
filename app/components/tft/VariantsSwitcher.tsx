@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { findChampion } from '../../lib/tft-cdragon';
+import { findChampion, traitTierLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 import { compPath } from '../../lib/tft-comp-path';
@@ -65,8 +65,10 @@ function variantLabel(
   }
   // Level-Suffix damit Buttons in der C-Konsolidierungs-Sicht differenzierbar
   // sind (architect F7 2026-06-21: ohne Level wären alle 4 Buttons „Base").
+  // Seit 18.10.2026 als Unit-Zahl („7 Riftbeast“), die Stufe nur als Rueckfall.
   if (cluster && cluster.level > 0) {
-    parts.push((t('tft.comp.variant.level') as string).replace('{n}', String(cluster.level)));
+    parts.push(traitTierLabel(t('tft.trait.breakpoint') as string, assets, cluster.trait, cluster.level)
+      ?? (t('tft.comp.variant.level') as string).replace('{n}', String(cluster.level)));
   }
   if (v.carryStar === 3) parts.push(t('tft.comp.variant.reroll3'));
   // ~TwoTanky wurde aus doppelten Einheiten geraten (bis 2026-09-13) — alte

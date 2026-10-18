@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, findTrait, traitTierMinUnits, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { compsOfTrait, detailKey, traitFiltersFrom, traitIdsForParam } from '../../../lib/tft-detail-filters';
 import type { TraitDetailInitial } from '../../../lib/seo/detail-data';
@@ -357,7 +357,8 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
         {!loading && traitStats.length >= 2 && (() => {
           const chartData = traitStats
             .map(s => ({
-              label: String(s.activation),
+              // `activation` ist die Stufe; gezeigt wird die Unit-Zahl (User 18.10.2026).
+              label: String(traitTierMinUnits(assets, s.name, s.activation) ?? '—'),
               avgPlacement: s.avgPlacement,
               top4: s.top4Rate != null ? s.top4Rate * 100 : null,
               games: s.games,
@@ -436,13 +437,14 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
               <div className="text-right">{t('tft.gamesShort')}</div>
             </div>
             {traitStats.map(s => {
-              const tier = traitMeta?.tiers?.find(tier =>
-                s.activation >= tier.minUnits && (tier.maxUnits == null || s.activation <= tier.maxUnits)
-              );
+              // `activation` ist die Stufe (1-basiert): Abzeichen per Position,
+              // vorher verglich der Vergleich die Stufe mit Unit-Zahlen.
+              const units = traitTierMinUnits(assets, s.name, s.activation);
+              const tier = units != null ? findTrait(assets, s.name)?.tiers?.[s.activation - 1] : undefined;
               const styleColor = tier ? STYLE_COLORS[tier.style] : null;
               return (
                 <div key={`${s.name}-${s.activation}`} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
-                  <div className="text-right text-accent font-medium">{s.activation}</div>
+                  <div className="text-right text-accent font-medium">{units ?? '—'}</div>
                   <div>
                     {styleColor && (
                       <span
@@ -511,6 +513,9 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                 })();
                 const carry = assets ? assets.champions[carryId] : null;
                 const carryUrl = tftChampionTileUrl(assets, carry);
+                const traitName = traitMeta?.name || prettyTrait(traitApi);
+                // „7 Riftbeast“ statt „Riftbeast 3“ (Stufe), Rueckfall wie bisher.
+                const units = traitTierMinUnits(assets, traitApi, Number(levelStr));
                 return (
                   <a
                     key={c.slug}
@@ -522,9 +527,11 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-white text-sm font-medium truncate">
-                        {traitMeta?.name || prettyTrait(traitApi)}
+                        {units != null
+                          ? (t('tft.trait.breakpoint') as string).replace('{n}', String(units)).replace('{trait}', traitName)
+                          : traitName}
                         {variant && <span className="text-[#a892ff]"> · {variant}</span>}
-                        {' '}{levelStr} · {carry?.name || prettyChar(carryId)}
+                        {units == null && <>{' '}{levelStr}</>} · {carry?.name || prettyChar(carryId)}
                       </div>
                     </div>
                     <div className="text-right text-xs tabular-nums">

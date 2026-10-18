@@ -11,7 +11,7 @@ import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tf
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 import { HEX_CLIP, starColor as starColorOf } from '../../lib/tft-ui';
 import { loadItemTexts, itemTextFor, type ItemTexts, type ItemTextView } from '../../lib/tft-item-texts';
-import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, emblemTraitOf, itemBlock, itemTeamSize, slotsUsed, teamLimit } from '../../lib/tft-builder-items';
+import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, boardTraitCounts, emblemTraitOf, itemBlock, itemTeamSize, slotsUsed, teamLimit, teamSlotsUsed } from '../../lib/tft-builder-items';
 import type { StarLevel } from '../../lib/tft-public-comps';
 import ItemStatLine from '../../components/tft/ItemStatLine';
 
@@ -37,7 +37,8 @@ import ItemStatLine from '../../components/tft/ItemStatLine';
 
 const ROWS = 4;
 const COLS = 7;
-// Brettgrenze: teamLimit (tft-builder-items.ts) — 10 plus Tactician-Items.
+// Brettgrenze: teamLimit (tft-builder-items.ts) — 10 plus Tactician-Items und
+// Riftbeast 10; belegt werden Plaetze (teamSlotsUsed, Elder Dragon 2).
 const STORAGE_KEY = 'tft.savedComps';
 
 // Miss Fortune (Set 17) has a "Choose Trait" placeholder that resolves to
@@ -75,6 +76,13 @@ interface Placement {
   items: string[];
   stance?: MfStance;
   star?: StarLevel;
+}
+
+// MF "Choose Trait" zaehlt ueber die gewaehlte Haltung, ohne Haltung fuer
+// keine Synergie.
+function resolveMfTrait(p: Placement, rawTrait: string): string | null {
+  if (p.characterId !== MF_CHAR_ID || rawTrait !== MF_CHOOSE_TRAIT) return rawTrait;
+  return p.stance ? MF_STANCE_TRAITS[p.stance] : null;
 }
 
 interface SavedComp {
@@ -386,39 +394,9 @@ export default function TftBuilderPage() {
   // a scenario sketch and irrelevant for own-trait activation.
   const activeTraits = useMemo(() => {
     if (!assets) return [] as { apiName: string; name: string; count: number; tiers: any[]; activeIdx: number | null; icon?: string | null }[];
-    const counts = new Map<string, number>();
-    // Embleme geben ihre Synergie dazu. Wie im Spiel zaehlt jeder Champion je
-    // Synergie nur einmal — auch wenn das Emblem auf der zweiten Kopie liegt
-    // (Riots num_units, Probe tft-domain-expert 18.10.2026).
-    const emblemTraits = new Map<string, Set<string>>();
-    for (const p of ownPlacements) {
-      for (const iid of p.items) {
-        const tr = emblemTraitOf(assets, iid);
-        if (!tr) continue;
-        if (!emblemTraits.has(p.characterId)) emblemTraits.set(p.characterId, new Set());
-        emblemTraits.get(p.characterId)!.add(tr);
-      }
-    }
-    const seen = new Set<string>();
-    for (const p of ownPlacements) {
-      if (seen.has(p.characterId)) continue;
-      seen.add(p.characterId);
-      const champ: any = assets.champions[p.characterId];
-      const names = new Set<string>();
-      for (const rawTrait of champ?.traits || []) {
-        // Resolve MF "Choose Trait" placeholder via the picked stance.
-        // No stance → the slot doesn't count toward any trait.
-        let tr = rawTrait;
-        if (p.characterId === MF_CHAR_ID && rawTrait === MF_CHOOSE_TRAIT) {
-          if (!p.stance) continue;
-          tr = MF_STANCE_TRAITS[p.stance];
-        }
-        const meta: any = assets.traits[tr] || Object.values(assets.traits).find((m: any) => m.name === tr);
-        names.add(meta?.name || tr);
-      }
-      for (const tr of emblemTraits.get(p.characterId) || []) names.add(tr);
-      for (const displayName of names) counts.set(displayName, (counts.get(displayName) || 0) + 1);
-    }
+    // Zaehlung wie im Spiel (Embleme, je Champion einmal, Elder Dragon fuer
+    // Riftbeast als 2): boardTraitCounts in tft-builder-items.ts.
+    const counts = boardTraitCounts(assets, ownPlacements, resolveMfTrait);
     const out: { apiName: string; name: string; count: number; tiers: any[]; activeIdx: number | null; icon?: string | null }[] = [];
     for (const [displayName, count] of counts) {
       const traitEntry = Object.entries(assets.traits).find(([, m]: any) => m.name === displayName);
@@ -458,6 +436,10 @@ export default function TftBuilderPage() {
   }, [oppPlacements]);
   const byCell = (team: Team) => team === 'own' ? ownByCell : oppByCell;
 
+  // Belegte Plaetze ueber der Grenze des Bretts; <= 0 = passt.
+  const overLimit = useCallback((ps: Placement[]) =>
+    teamSlotsUsed(assets, ps) - teamLimit(itemTexts, ps, assets, resolveMfTrait), [assets, itemTexts]);
+
   const placeAt = useCallback((team: Team, cell: number, cid: string) => {
     setPlacementsFor(team, prev => {
       const existing = prev.find(p => p.cell === cell);
@@ -469,14 +451,16 @@ export default function TftBuilderPage() {
         next = next.filter(p => p.characterId !== cid);
         next.push({ ...existingElsewhere, cell });
       } else {
-        // Ersetzen auf besetztem Feld ist immer erlaubt; eine neue Unit nur
-        // unter der Grenze des Bretts, wie es vorher war (prev).
-        if (!existing && next.length >= teamLimit(itemTexts, prev)) return prev;
+        // Neue Unit und Ersetzen: geprueft am Brett danach (Elder Dragon belegt
+        // 2 Plaetze, beim Ersetzen fallen die Items der alten Unit weg,
+        // Riftbeast 10 gibt 2 dazu). Ein Brett, das schon drueber liegt (alter
+        // Link), darf nicht weiter drueber.
         next.push({ cell, characterId: cid, items: [] });
+        if (overLimit(next) > Math.max(0, overLimit(prev))) return prev;
       }
       return next;
     });
-  }, [itemTexts]);
+  }, [overLimit]);
 
   const removeAt = useCallback((team: Team, cell: number) => {
     setPlacementsFor(team, prev => prev.filter(p => p.cell !== cell));
@@ -702,15 +686,18 @@ export default function TftBuilderPage() {
       if (fromTeam === team) {
         if (from !== cell) swapWithinTeam(team, from, cell);
       } else {
-        // Move across teams: erst pruefen, ob das Ziel-Brett Platz hat (die
-        // ankommende Unit kann selbst ein Tactician-Item tragen), dann von der
-        // Quelle loeschen — sonst ginge die Unit bei vollem Ziel verloren.
-        // Items, Sterne und Haltung wandern mit.
+        // Move across teams: erst pruefen, ob das Ziel-Brett danach passt (die
+        // ankommende Unit kann ein Tactician-Item tragen oder 2 Plaetze
+        // belegen), dann von der Quelle loeschen — sonst ginge die Unit bei
+        // vollem Ziel verloren. Items, Sterne und Haltung wandern mit.
         const sourceP = placementsFor(fromTeam).find(p => p.cell === from);
-        const rest = placementsFor(team).filter(p => p.cell !== cell);
-        if (sourceP && rest.length < teamLimit(itemTexts, [...rest, sourceP])) {
-          setPlacementsFor(fromTeam, prev => prev.filter(p => p.cell !== from));
-          setPlacementsFor(team, prev => [...prev.filter(p => p.cell !== cell), { ...sourceP, cell }]);
+        const target = placementsFor(team);
+        if (sourceP) {
+          const after = [...target.filter(p => p.cell !== cell), { ...sourceP, cell }];
+          if (overLimit(after) <= Math.max(0, overLimit(target))) {
+            setPlacementsFor(fromTeam, prev => prev.filter(p => p.cell !== from));
+            setPlacementsFor(team, prev => [...prev.filter(p => p.cell !== cell), { ...sourceP, cell }]);
+          }
         }
       }
     }
@@ -838,7 +825,7 @@ export default function TftBuilderPage() {
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
-            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{teamLimit(itemTexts, placementsFor(team))}
+            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {teamSlotsUsed(assets, placementsFor(team))}/{teamLimit(itemTexts, placementsFor(team), assets, resolveMfTrait)}
           </div>
           {placementsFor(team).length > 0 && (
             <button

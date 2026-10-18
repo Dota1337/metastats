@@ -23,6 +23,7 @@ import { lookup as dnsLookup } from 'node:dns';
 import { fileURLToPath } from 'node:url';
 import { loadCurrentSet } from './lib/current-set.mjs';
 import { applyAugmentIconOverrides, fetchMissingAugmentIcons } from './lib/tft-augment-icons.mjs';
+import { fixItemName } from './lib/tft-item-name-fixes.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
@@ -190,7 +191,8 @@ async function main() {
     if (!it.apiName) continue;
     const rawDesc = stripHtml(it.desc || '');
     items[it.apiName] = {
-      name: it.name || it.apiName,
+      // Apostroph-Korrektur fuer zwei CDragon-Namen (tft-item-name-fixes.mjs)
+      name: fixItemName(it.name || it.apiName),
       icon: normalizeIconPath(it.icon),
       desc: resolveDescPlaceholders(rawDesc, it.effects),
       composition: it.composition || [],

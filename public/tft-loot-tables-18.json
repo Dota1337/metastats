@@ -1633,7 +1633,7 @@
           {
            "k": "item",
            "api": "DA_TacticiansCrown",
-           "name": "Tacticians Crown",
+           "name": "Tactician's Crown",
            "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
           }
          ]
@@ -1715,7 +1715,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         }
        ]
@@ -1892,7 +1892,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         }
        ]
@@ -1908,7 +1908,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -1930,7 +1930,7 @@
          "k": "item",
          "n": 2,
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -1952,7 +1952,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -1980,7 +1980,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -2014,7 +2014,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -2084,7 +2084,7 @@
         {
          "k": "item",
          "api": "DA_TacticiansCrown",
-         "name": "Tacticians Crown",
+         "name": "Tactician's Crown",
          "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
         },
         {
@@ -2890,7 +2890,7 @@
        {
         "k": "item",
         "api": "DA_TacticiansCrown",
-        "name": "Tacticians Crown",
+        "name": "Tactician's Crown",
         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
        },
        {
@@ -3069,7 +3069,7 @@
        {
         "k": "item",
         "api": "DA_TacticiansShield",
-        "name": "Tacticians Shield",
+        "name": "Tactician's Shield",
         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
        },
        {
@@ -3119,7 +3119,7 @@
        {
         "k": "item",
         "api": "DA_TacticiansShield",
-        "name": "Tacticians Shield",
+        "name": "Tactician's Shield",
         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
        },
        {
@@ -3191,7 +3191,7 @@
        {
         "k": "item",
         "api": "DA_TacticiansCrown",
-        "name": "Tacticians Crown",
+        "name": "Tactician's Crown",
         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_forceofnature.png"
        },
        {
@@ -3269,7 +3269,7 @@
        {
         "k": "item",
         "api": "DA_TacticiansShield",
-        "name": "Tacticians Shield",
+        "name": "Tactician's Shield",
         "icon": "assets/maps/tft/icons/items/hexcore/tft_item_tacticiansscepter.png"
        },
        {

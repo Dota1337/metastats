@@ -16,6 +16,13 @@
 //     Rang): sie sind Ergebnis-Groessen, keine Brett-Bedingung.
 //   groups: Kaesten „eins davon" (m = any, ODER) / „keins davon" (m = none),
 //     eine Ebene, Glieder ohne eigenes „ohne".
+//   bc: Brett-Zaehler (Paket B) [{ k, n, nx }], k aus COUNT_KEYS
+//     (scripts/lib/explorer-counts.mjs), n..nx in 0..COUNT_MAX, COUNT_MAX als
+//     Obergrenze heisst „und mehr". „Keine Traits" = { k: 'tr', n: 0, nx: 0 }.
+//   tags: Brett traegt ALLE genannten Tags (Shred/Sunder/Wound).
+//   bc und tags nur auf oberster Ebene, sie zaehlen nicht zur Filtergrenze.
+
+import { COUNT_KEYS, COUNT_MAX, TAGS } from './explorer-counts.mjs';
 
 export function bad(msg) { const e = new Error(msg); e.status = 400; return e; }
 
@@ -24,11 +31,11 @@ const REGION_RE = /^[a-z0-9]{2,5}$/;
 const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
 // 'unknown' nur noch fuer alte Links; die Oberflaeche bietet es nicht mehr an.
 export const RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD', 'unknown'];
-export const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
+export const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank', 'games', 'builds'];
 export const ITEM_KINDS = ['artifact', 'emblem', 'radiant'];
 export const LIMITS = { units: 9, items: 6, traits: 6, groups: 3, groupMembers: 6, total: 15 };
 
-const TOP_KEYS = new Set(['region', 'ranks', 'patches', 'levels', 'place', 'units', 'items', 'traits', 'groups', 'tab', 'focus', 'split', 'combo']);
+const TOP_KEYS = new Set(['region', 'ranks', 'patches', 'levels', 'place', 'units', 'items', 'traits', 'groups', 'bc', 'tags', 'tab', 'focus', 'split', 'combo']);
 const UNIT_KEYS = new Set(['id', 'x', 's', 'se', 'sx', 'n', 'nx', 'c', 'it', 'nit', 'k']);
 const ITEM_KEYS = new Set(['id', 'x', 'n']);
 const TRAIT_KEYS = new Set(['id', 'x', 'l', 'le']);
@@ -111,6 +118,24 @@ function group(g) {
   return { m: g.m, units, items, traits };
 }
 
+// Zaehler ohne Einschraenkung fallen weg; jeder Zaehler hoechstens einmal.
+function boardCounts(v) {
+  const out = arr(v, 'board_count', COUNT_KEYS.length).map(e => {
+    onlyKeys(e, new Set(['k', 'n', 'nx']), 'board_count');
+    if (!COUNT_KEYS.includes(e.k)) throw bad('invalid_board_count');
+    const [n, nx] = span(int(e.n, 0, COUNT_MAX, 'board_count'), int(e.nx, 0, COUNT_MAX, 'board_count'), 0, COUNT_MAX, 'board_count');
+    return { k: e.k, n, nx };
+  });
+  if (new Set(out.map(e => e.k)).size !== out.length) throw bad('invalid_board_count');
+  return out.filter(e => e.n != null || e.nx != null).sort((a, b) => COUNT_KEYS.indexOf(a.k) - COUNT_KEYS.indexOf(b.k));
+}
+
+function tagList(v) {
+  const t = arr(v, 'tags', TAGS.length);
+  if (!t.every(x => TAGS.includes(x))) throw bad('invalid_tags');
+  return [...new Set(t)].sort((a, b) => TAGS.indexOf(a) - TAGS.indexOf(b));
+}
+
 export function normalizeQuery(q) {
   if (!q || typeof q !== 'object' || Array.isArray(q)) throw bad('invalid_body');
   for (const k of Object.keys(q)) if (!TOP_KEYS.has(k)) throw bad('unknown_field');
@@ -145,18 +170,31 @@ export function normalizeQuery(q) {
   const total = units.length + items.length + traits.length
     + groups.reduce((a, g) => a + g.units.length + g.items.length + g.traits.length, 0);
   if (total > LIMITS.total) throw bad('too_many_filters');
+  const bc = boardCounts(q.bc);
+  const tags = tagList(q.tags);
   const tab = q.tab == null ? 'summary' : (TABS.includes(q.tab) ? q.tab : (() => { throw bad('invalid_tab'); })());
   const focus = q.focus == null ? null : id(q.focus, 'focus');
   const split = q.split === 'star' || q.split === 'over' ? q.split : null;
   const combo = int(q.combo, 1, 3, 'combo') ?? 1;
-  return { region, ranks, patches, levels, place, units, items, traits, groups, tab, focus, split, combo };
+  return { region, ranks, patches, levels, place, units, items, traits, groups, bc, tags, tab, focus, split, combo };
 }
 
-// Brett-Filter (Units/Items/Traits/Kaesten): Kopf zeigt die Abweichung zur
-// Grundmenge. Ueberall dieselbe Pruefung — eine vergessene Stelle beantwortet
-// sonst einen Filter still aus den ungefilterten Teilsummen.
+// Brett-Filter (Units/Items/Traits/Kaesten/Zaehler/Tags): Kopf zeigt die
+// Abweichung zur Grundmenge. Ueberall dieselbe Pruefung — eine vergessene
+// Stelle beantwortet sonst einen Filter still aus den ungefilterten Teilsummen.
 export const hasBoardFilters = (q) =>
-  q.units.length + q.items.length + q.traits.length + (q.groups?.length ?? 0) > 0;
+  q.units.length + q.items.length + q.traits.length + (q.groups?.length ?? 0)
+  + (q.bc?.length ?? 0) + (q.tags?.length ?? 0) > 0;
+
+// Spalten der Datei, die eine Anfrage braucht (Paket B/C). Eine Datei vom
+// alten Aufbau hat sie nicht → der Dienst antwortet 409 not_ready statt 500.
+export const neededCaps = (q) => {
+  const caps = [];
+  if (q.bc?.length || q.tags?.length) caps.push('counts');
+  if (q.tab === 'games') caps.push('games');
+  if (q.tab === 'builds') caps.push('builds');
+  return caps;
+};
 
 // Nicht aus den Tages-Teilsummen beantwortbar: Brett-Filter oder eine
 // Grundmenge enger als Region/Patch (Rang, Level, Platz).

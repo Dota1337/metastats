@@ -3,10 +3,12 @@
 //
 // Liest die Set-Partien der letzten N Tage aus der lokalen Postgres der Box
 // (tft_player_match_cache) und legt sie flach in eine DuckDB-Datei:
-//   boards     — eine Zeile je Spieler-Board (Platz, Level, Runde, Gold, Patch, Region, Rang, Comp-Familie)
-//   units      — eine Zeile je Unit auf dem Board (Stern, Items), sortiert nach Unit
+//   boards     — eine Zeile je Spieler-Board (Platz, Level, Runde, Gold, Patch, Region, Rang, Comp-Familie,
+//                Spielzeit ts, Brett-Zaehler c_* und tags aus scripts/lib/explorer-counts.mjs)
+//   units      — eine Zeile je Unit auf dem Board (Stern, Items, Build-Schluessel bk), sortiert nach Unit
 //   traits     — eine Zeile je aktivem Trait (Stufe, Anzahl, Ueberfuellung), sortiert nach Trait
 //   board_rank — je Board: Schluessel (Partie+Spieler), Spieler, Sammeltag, Rang
+//   players    — Spieler-Hash → puuid (fuer den Spiele-Reiter; Namen holt die Next-Route)
 //   day_patch  — Patch je Sammeltag, wie er beim Bau galt
 //   meta       — Datenstand, Wasserstand und Fingerabdruecke fuer den naechsten Lauf
 //
@@ -72,6 +74,9 @@ import { aggStep, aggBindingReason, aggCarrySave, aggCarryMatch } from './lib/ex
 import { MASK_SIG } from './lib/explorer-mask.mjs';
 import { maskStep } from './lib/explorer-mask-build.mjs';
 import { readComponents, componentsHash } from './lib/explorer-components.mjs';
+import {
+  COUNT_COLS, COUNTS_HASH, TRAITS_JSON_TYPE, UNITS_JSON_TYPE, buildKeySql, countsLists, countsSelectSql, unitIdSql,
+} from './lib/explorer-counts.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -93,7 +98,8 @@ const QUEUE_RANKED = 1100;
 
 // Aendert sich, wenn sich das Ergebnis eines Laufs aendern wuerde — erzwingt
 // dann einen Vollaufbau.
-export const SCRIPT_VERSION = 2;
+// 3 (18.10.2026): Brett-Zaehler, Spielzeit, Build-Schluessel, players (Paket B+C).
+export const SCRIPT_VERSION = 3;
 export const FREEZE_DAYS = 7;      // Rang ab Stichtag − 7 wird neu bestimmt, davor eingefroren
 export const FULL_EVERY_DAYS = 7;  // spaetestens so oft alles neu (raeumt auch geloeschte Zeilen der Datei auf)
 // Wochen-Vollaufbau nur bei Start in diesem Fenster (Stunde UTC, Timer So
@@ -124,7 +130,7 @@ const OPEN_END = '2999-12-31';
 
 // Bau-Skripte, deren Stand die Versuchs-Sperre traegt (decideMode).
 export const CODE_FILES = ['build-explorer-store.mjs', 'lib/explorer-agg-build.mjs', 'lib/explorer-mask-build.mjs',
-  'lib/explorer-agg.mjs', 'lib/explorer-mask.mjs'];
+  'lib/explorer-agg.mjs', 'lib/explorer-mask.mjs', 'lib/explorer-counts.mjs'];
 
 function log(...a) { console.log(`[explorer-build ${new Date().toISOString()}]`, ...a); }
 
@@ -351,6 +357,16 @@ function readTraitThresholds(setNumber) {
 // Abweichende Riot-Kennungen (`aliasOf` im Bundle, z. B. TFT18_Akali →
 // DA_18_Akali_AD). Die Auswahlliste zeigt nur die Quelle; ohne Umschreiben
 // waeren die Spiele unter der alten Kennung im Explorer nicht erreichbar.
+// Listen fuer die Brett-Zaehler (Kosten, Eigen-Traits, Formen, Tags).
+function readCountsLists(setNumber) {
+  const p = path.join(ROOT, `public/tft-assets-${setNumber}.json`);
+  const L = countsLists(JSON.parse(fs.readFileSync(p, 'utf8')));
+  if (!Object.keys(L.native).length || [1, 2, 3, 4, 5].some((k) => !L.costIds[k].length)) {
+    throw new Error(`${p}: keine Kosten oder Eigen-Traits fuer die Brett-Zaehler`);
+  }
+  return L;
+}
+
 function readUnitAliases(setNumber) {
   const a = JSON.parse(fs.readFileSync(path.join(ROOT, `public/tft-assets-${setNumber}.json`), 'utf8'));
   return Object.entries(a.champions || {})
@@ -582,13 +598,17 @@ function releaseLock(lockPath) {
 // Boards aus den Rohzeilen. bid fortlaufend ab startBid, mid = Partie (fuer
 // den Vertrauensbereich je Partie, weil ~2,5 unserer Spieler je Lobby sitzen),
 // ph = Spieler, beide als 64-bit-Hash — stabil ueber Laeufe.
-const b0Sql = (src, startBid) => `CREATE TABLE b0 AS
-  SELECT (row_number() OVER () + ${startBid - 1})::UINTEGER AS bid, *,
+// Units und Traits werden hier EINMAL typisiert zerlegt (ul, tl); nu, nt und
+// die Brett-Zaehler lesen daraus (Paket B, Stichprobe 18.10.: nu/nt bitgleich
+// zu json_extract + ->>, Zaehler gleich der JS-Fassung bei 200.000 Brettern).
+const b0Sql = (src, startBid, L) => `CREATE TABLE b0 AS
+  ${countsSelectSql(`(SELECT (row_number() OVER () + ${startBid - 1})::UINTEGER AS bid, * EXCLUDE (units, traits),
+    from_json(units, ${UNITS_JSON_TYPE}) AS ul, from_json(traits, ${TRAITS_JSON_TYPE}) AS tl,
     CAST(to_timestamp(game_datetime / 1000) AT TIME ZONE 'UTC' AS DATE) AS day,
     CAST(to_timestamp(game_datetime / 1000 - 18000) AT TIME ZONE 'UTC' AS DATE) AS pday,
     md5_number_upper(match_id) AS mid,
     md5_number_upper(puuid) AS ph
-  FROM ${src}`;
+  FROM ${src})`, L)}`;
 
 // Naechster Rang-Eintrag binnen ±3 Tagen je Spieler+Tag (erst je Paar, dann an
 // die Boards — spart den Join ueber alle Boards). Reihenfolge: Abstand, frueher
@@ -608,6 +628,8 @@ const boardsSql = `CREATE TABLE nb AS
     b.placement::UTINYINT AS placement, b.level::UTINYINT AS level, b.last_round::USMALLINT AS last_round,
     b.gold_left::SMALLINT AS gold_left, b.total_damage::USMALLINT AS damage,
     b.comp_cluster_key AS comp_key,
+    (b.game_datetime // 1000)::UINTEGER AS ts,
+    ${[...Object.values(COUNT_COLS), 'tags'].map((c) => `b.${c}`).join(', ')},
     CASE WHEN regexp_matches(b.comp_cluster_key, '^(.+)@(\\d+)_([^#*~]+)')
       THEN regexp_extract(b.comp_cluster_key, '^(.+)@(\\d+)_([^#*~]+)', 1) || '__' || regexp_extract(b.comp_cluster_key, '^(.+)@(\\d+)_([^#*~]+)', 3)
       ELSE b.comp_cluster_key END AS family
@@ -615,25 +637,22 @@ const boardsSql = `CREATE TABLE nb AS
   LEFT JOIN day_patch dp USING (pday)
   LEFT JOIN rk USING (bid)`;
 
-// units: characterId, Stern, bis zu 3 Items. Alias-Kennungen werden auf ihre
-// Quelle umgeschrieben (readUnitAliases).
-const unitsSql = (aliases) => {
-  const unitExpr = aliases.length
-    ? `CASE u->>'characterId' ${aliases.map(([id, src]) => `WHEN ${sqlStr(id)} THEN ${sqlStr(src)}`).join(' ')} ELSE u->>'characterId' END`
-    : `u->>'characterId'`;
-  return `CREATE TABLE nu AS
-    SELECT bid, ${unitExpr} AS unit, (u->>'tier')::UTINYINT AS star,
-      json_array_length(u->'items')::UTINYINT AS n_items,
-      u->'items'->>0 AS i1, u->'items'->>1 AS i2, u->'items'->>2 AS i3
-    FROM (SELECT bid, unnest(json_extract(units::JSON, '$[*]')) AS u FROM b0)
-    WHERE u->>'characterId' IS NOT NULL`;
-};
+// units: characterId, Stern, bis zu 3 Items, Build-Schluessel (Items ohne
+// Bauteile, sortiert — Builds-Reiter und „komplette Builds"). Alias-Kennungen
+// werden auf ihre Quelle umgeschrieben (readUnitAliases).
+const unitsSql = (aliases, compList) => `CREATE TABLE nu AS
+    SELECT bid, ${unitIdSql('u.characterId', aliases)} AS unit, u.tier AS star,
+      len(u.items)::UTINYINT AS n_items,
+      u.items[1] AS i1, u.items[2] AS i2, u.items[3] AS i3,
+      ${buildKeySql('u.items[1]', 'u.items[2]', 'u.items[3]', compList)} AS bk
+    FROM (SELECT bid, unnest(ul) AS u FROM b0)
+    WHERE u.characterId IS NOT NULL`;
 
 // traits: nur aktive (tier_current > 0, num_units > 0).
 const traitsSql = `CREATE TABLE nt AS
   WITH t AS (
-    SELECT bid, x->>'name' AS trait, (x->>'tier_current')::UTINYINT AS lvl, (x->>'num_units')::UTINYINT AS num_units
-    FROM (SELECT bid, unnest(json_extract(traits::JSON, '$[*]')) AS x FROM b0)
+    SELECT bid, x.name AS trait, x.tier_current AS lvl, x.num_units AS num_units
+    FROM (SELECT bid, unnest(tl) AS x FROM b0)
   )
   SELECT t.bid, t.trait, t.lvl, t.num_units,
     CASE WHEN tm.tiers > 1 THEN (t.num_units::TINYINT - tm.min_units::TINYINT) END AS overcap
@@ -642,6 +661,9 @@ const traitsSql = `CREATE TABLE nt AS
 
 const boardRankSql = `CREATE TABLE nbr AS
   SELECT b.rk_key AS k, b.bid, b.ph, b.pday, nb.rank FROM b0 b JOIN nb USING (bid)`;
+
+// Spieler der neuen Boards (ph → puuid), fuer den Spiele-Reiter.
+const playersSql = `CREATE TABLE np AS SELECT DISTINCT ph, puuid FROM b0 WHERE puuid IS NOT NULL`;
 
 // ---------------------------------------------------------------------------
 
@@ -684,7 +706,9 @@ async function build({ t0, win, testRun, untilMs, files }) {
     thresholds: sha1(JSON.stringify(thresholds)),
     set: String(setNumber),
     days: String(DAYS),
+    counts: COUNTS_HASH,
   };
+  const countLists = readCountsLists(setNumber);
   log(`Set ${setNumber}, Fenster ${win.w}..${win.n} (${DAYS} Tage), Rang frei ab ${win.f}, Patch-Quelle ${patches.source}`
     + ` (${patches.ranges.length} Bereiche), Ziel ${OUT}${testRun ? ', TESTLAUF' : ''}`);
 
@@ -965,7 +989,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
 
     // 2) Neue Boards.
     const startBid = mode === 'delta' ? prev.meta.nextBid : 1;
-    await run(b0Sql(src, startBid));
+    await run(b0Sql(src, startBid, countLists));
     await run(`DROP TABLE ${src}`);
     const fLit = `DATE ${sqlStr(win.f)}`;
 
@@ -991,9 +1015,10 @@ async function build({ t0, win, testRun, untilMs, files }) {
       await run(`CREATE TABLE rk AS SELECT b.bid, pd.rank FROM b0 b LEFT JOIN pd ON pd.ph = b.ph AND pd.day = b.day`);
     }
     await run(boardsSql);
-    await run(unitsSql(aliases));
+    await run(unitsSql(aliases, compList));
     await run(traitsSql);
     await run(boardRankSql);
+    await run(playersSql);
     await run('DROP TABLE b0');
 
     if (mode === 'full') {
@@ -1003,6 +1028,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
       await run(`CREATE TABLE ${outdb}.units AS SELECT * FROM nu ORDER BY unit, bid`);
       await run(`CREATE TABLE ${outdb}.traits AS SELECT * FROM nt ORDER BY trait, bid`);
       await run(`CREATE TABLE ${outdb}.board_rank AS SELECT * FROM nbr ORDER BY bid`);
+      await run(`CREATE TABLE ${outdb}.players AS SELECT * FROM np ORDER BY ph`);
       await run(`CREATE TABLE ${outdb}.day_patch AS SELECT * FROM day_patch ORDER BY pday`);
     } else {
       // Tage vor dem Fenster raus.
@@ -1049,6 +1075,10 @@ async function build({ t0, win, testRun, untilMs, files }) {
       await run(`INSERT INTO ${outdb}.units BY NAME SELECT * FROM nu ORDER BY unit, bid`);
       await run(`INSERT INTO ${outdb}.traits BY NAME SELECT * FROM nt ORDER BY trait, bid`);
       await run(`INSERT INTO ${outdb}.board_rank BY NAME SELECT * FROM nbr ORDER BY bid`);
+      // Spieler bleiben, auch wenn ihre alten Boards aus dem Fenster fallen
+      // (der Wochen-Vollaufbau raeumt auf); neu nur, wer noch fehlt.
+      await run(`INSERT INTO ${outdb}.players SELECT * FROM np n
+        WHERE NOT EXISTS (SELECT 1 FROM ${outdb}.players p WHERE p.ph = n.ph)`);
       await run(`DELETE FROM ${outdb}.day_patch`);
       await run(`INSERT INTO ${outdb}.day_patch SELECT * FROM day_patch ORDER BY pday`);
     }
@@ -1068,6 +1098,16 @@ async function build({ t0, win, testRun, untilMs, files }) {
     const br = await one(`SELECT count(*) AS n, count(DISTINCT k) AS nk FROM ${outdb}.board_rank`);
     if (Number(br.n) !== Number(br.nk)) throw new Error(`board_rank-Schluessel doppelt (${br.nk} / ${br.n}) — kein Tausch`);
     if (Number(br.n) !== boards) throw new Error(`board_rank ${br.n} Zeilen, boards ${boards} — kein Tausch`);
+    // Paket B+C: neue Spalten nie NULL, jeder Spieler eindeutig und vorhanden.
+    const newCols = [...Object.values(COUNT_COLS), 'tags', 'ts'];
+    const nulls = await one(`SELECT ${newCols.map((col) => `count(*) - count(${col}) AS ${col}`).join(', ')} FROM ${outdb}.boards`);
+    const nullCols = newCols.filter((col) => Number(nulls[col]));
+    if (nullCols.length) throw new Error(`NULL in boards.${nullCols.join('/')} — kein Tausch`);
+    const pl = await one(`SELECT count(*) AS n, count(DISTINCT ph) AS nph,
+      (SELECT count(*) FROM ${outdb}.board_rank br WHERE NOT EXISTS (SELECT 1 FROM ${outdb}.players p WHERE p.ph = br.ph)) AS miss
+      FROM ${outdb}.players`);
+    if (Number(pl.n) !== Number(pl.nph)) throw new Error(`players-Schluessel doppelt (${pl.nph} / ${pl.n}) — kein Tausch`);
+    if (Number(pl.miss)) throw new Error(`${pl.miss} Boards ohne Spieler — kein Tausch`);
     if (mode === 'delta') {
       const orphans = await one(`SELECT
         (SELECT count(*) FROM ${outdb}.board_rank x WHERE NOT EXISTS (SELECT 1 FROM ${outdb}.boards b WHERE b.bid = x.bid)) AS br,
@@ -1155,7 +1195,8 @@ async function build({ t0, win, testRun, untilMs, files }) {
       ${lastFullDay ? sqlStr(lastFullDay) : 'NULL'}::DATE AS last_full_day,
       ${sqlStr(win.n)}::DATE AS n_day, ${nextBid}::BIGINT AS next_bid,
       ${testRun} AS test_run, ${sqlStr(mode)} AS mode, ${agg.token ? sqlStr(agg.token) : 'NULL'}::VARCHAR AS agg_token,
-      ${mask.token ? sqlStr(mask.token) : 'NULL'}::VARCHAR AS mask_token`);
+      ${mask.token ? sqlStr(mask.token) : 'NULL'}::VARCHAR AS mask_token,
+      ${sqlStr(compHash)}::VARCHAR AS bk_comp_hash`);
     await run(`CHECKPOINT ${outdb}`);
     await run(`DETACH ${outdb}`);
     close();

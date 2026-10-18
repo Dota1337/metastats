@@ -47,6 +47,11 @@
 // Zwischenspeicher nicht verdraengt; nach einem Tausch faengt die neue Datei
 // leer an.
 //
+// Brett-Zaehler, Spiele- und Builds-Reiter (Paket B/C): brauchen Spalten des
+// neuen Aufbaus (readCaps). Fehlen sie, antwortet der Dienst 409 not_ready,
+// alles andere laeuft weiter. EXPLORER_BOARD_COUNTS=0 / EXPLORER_GAMES=0
+// schalten Zaehler bzw. Spiele ab, /healthz zeigt caps.
+//
 // Vertrauensbereich: Mehrere unserer Spieler sitzen in derselben Partie (im
 // Schnitt ~2,5 je Lobby), ihre Platzierungen sind also nicht unabhaengig. Die
 // Fehlerrechnung laeuft deshalb ueber Partien als Klumpen (cluster-robust),
@@ -59,7 +64,8 @@ import { readComponents as readComponentsFrom, componentsHash } from './lib/expl
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
-import { TABS, normalizeQuery } from './lib/explorer-normalize.mjs';
+import { TABS, neededCaps, normalizeQuery } from './lib/explorer-normalize.mjs';
+import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
 
@@ -80,6 +86,9 @@ const AGG_RUNNING = 4;
 const AGG_QUEUE = 16;
 const AGG_TIMEOUT_MS = Number(process.env.EXPLORER_AGG_TIMEOUT_MS || 2000);
 const AGG_WARM_TIMEOUT_MS = 30_000;
+// Notschalter Paket B/C: Zaehler-Filter bzw. Spiele-Reiter aus (Antwort 409).
+const COUNTS_ON = process.env.EXPLORER_BOARD_COUNTS !== '0';
+const GAMES_ON = process.env.EXPLORER_GAMES !== '0';
 
 const { DuckDBInstance } = await import(DUCKDB_MODULE);
 
@@ -87,7 +96,24 @@ function log(...a) { console.log(`[explorer-api ${new Date().toISOString()}]`, .
 
 // ─── Instanz + Tausch ──────────────────────────────────────────────────────
 
-let current = null; // { instance, ino, refs, retired, meta, components, compHash, agg, pinned, warmConn }
+let current = null; // { instance, ino, refs, retired, meta, components, compHash, agg, mask, caps, bkOk, pinned, warmConn }
+
+// Was die Datei kann (Paket B/C): Spalten des neuen Aufbaus. Eine Datei vom
+// alten Aufbau hat sie nicht; Anfragen, die sie brauchen, bekommen 409
+// not_ready (neededCaps), alle anderen laufen wie bisher. bk zaehlt nur, wenn
+// der Bau dieselbe Komponenten-Liste nutzte wie der Dienst.
+async function readCaps(conn) {
+  const cols = (await conn.runAndReadAll(
+    `SELECT table_name AS t, column_name AS c FROM duckdb_columns()
+     WHERE database_name = current_database() AND schema_name = 'main'`)).getRowObjectsJS();
+  const has = (t, c) => cols.some(r => r.t === t && r.c === c);
+  const bkHash = has('meta', 'bk_comp_hash')
+    ? (await conn.runAndReadAll('SELECT bk_comp_hash AS h FROM meta')).getRowObjectsJS()[0]?.h ?? null
+    : null;
+  const counts = [...Object.values(COUNT_COLS), 'tags'].every(c => has('boards', c));
+  const games = has('boards', 'ts') && has('board_rank', 'ph') && has('players', 'puuid');
+  return { counts, games, bk: has('units', 'bk') ? bkHash : null };
+}
 
 async function openStore() {
   const st = fs.statSync(DB_PATH);
@@ -99,10 +125,12 @@ async function openStore() {
   });
   const holder = {
     instance, ino: st.ino, refs: 0, retired: false, meta: null, components: [], compHash: null, agg: null, mask: null,
-    pinned: new Map(), warmConn: null,
+    caps: new Set(), bkOk: false, pinned: new Map(), warmConn: null,
   };
   const conn = await instance.connect();
+  let fileCaps;
   try {
+    fileCaps = await readCaps(conn);
     holder.agg = AGG_ON ? await loadAgg(conn) : null;
     holder.mask = MASK_ON ? await loadMask({ all: async s => (await conn.runAndReadAll(s)).getRowObjectsJS(), log }) : null;
     const m = (await conn.runAndReadAll(
@@ -134,6 +162,10 @@ async function openStore() {
   }
   holder.components = readComponents(holder.meta.setNumber);
   holder.compHash = componentsHash(holder.components);
+  holder.bkOk = fileCaps.bk != null && fileCaps.bk === holder.compHash;
+  if (fileCaps.counts && COUNTS_ON) holder.caps.add('counts');
+  if (fileCaps.games && GAMES_ON) holder.caps.add('games');
+  if (holder.bkOk) holder.caps.add('builds');
   return holder;
 }
 
@@ -199,7 +231,8 @@ async function pollSwap() {
     cache.clear();
     log(`Datei geladen: Stand ${next.meta.builtAt}, ${next.meta.boards} Boards, Inode ${next.ino}, `
       + `Teilsummen ${next.agg ? `${next.agg.coveredDays}/${next.agg.total} Tage` : (AGG_ON ? 'keine' : 'aus')}, `
-      + `Masken ${next.mask ? `${next.mask.coveredDays}/${next.mask.total} Tage` : (MASK_ON ? 'keine' : 'aus')}`);
+      + `Masken ${next.mask ? `${next.mask.coveredDays}/${next.mask.total} Tage` : (MASK_ON ? 'keine' : 'aus')}, `
+      + `kann ${[...next.caps].join('+') || 'nur Grundfilter'}`);
     if (prev) {
       prev.retired = true;
       // Laufendes Vorwaermen der alten Datei abbrechen, sonst haelt es bis zu
@@ -394,6 +427,7 @@ const server = http.createServer(async (req, res) => {
       ok: !!current, meta: current?.meta ?? null, running: liveLane.running, queued: liveLane.queue.length,
       agg: a ? { covered: a.coveredDays, total: a.total, running: aggLane.running, queued: aggLane.queue.length } : null,
       masks: { on: MASK_ON, covered: current?.mask?.coveredDays ?? null, total: current?.mask?.total ?? null },
+      caps: current ? [...current.caps] : [],
     });
   }
   if (req.method !== 'POST' || req.url !== '/explore') return send(res, 404, { error: 'not_found' });
@@ -409,6 +443,7 @@ const server = http.createServer(async (req, res) => {
   const holder = current;
   resolveLatest(holder, q);
   const headers = { 'X-Explorer-Built-At': holder.meta.builtAt };
+  if (neededCaps(q).some(c => !holder.caps.has(c))) return send(res, 409, { error: 'not_ready' }, headers);
   const key = cacheKey(holder, q);
   const hit = holder.pinned.get(key) ?? cacheGet(key);
   // X-Explorer-Source bleibt auf der Box: refresh-api reicht nur Built-At und
@@ -471,10 +506,12 @@ async function execute(holder, q, key, warm = false, days = null, timeoutMs = un
 // denselben Schluessel. Nimmt immer nur einen Slot seiner Spur, der Rest
 // bleibt fuer echte Anfragen frei. Mit Teilsummen sind das Millisekunden je
 // Reiter. Was scheitert, kommt nach einer Pause noch einmal dran.
+// Spiele und Builds nicht: Builds braucht einen Traeger, Spiele sind eine
+// kurze Abfrage ohne Teilsummen.
 async function warmUp(holder) {
   const t0 = Date.now();
   let n = 0;
-  let todo = TABS.filter(x => x !== 'summary');
+  let todo = TABS.filter(x => !['summary', 'games', 'builds'].includes(x));
   for (let round = 0; round < 2 && todo.length; round++) {
     if (round > 0) await new Promise(r => setTimeout(r, WARM_RETRY_PAUSE_MS));
     const failed = [];

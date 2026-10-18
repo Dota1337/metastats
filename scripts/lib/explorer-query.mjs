@@ -3,6 +3,7 @@
 // Weg und den Masken-Weg lokal gegeneinander rechnen kann.
 
 import { compListSql, keySelect, variantsForQuery } from './explorer-agg.mjs';
+import { COUNT_COLS, TAG_BITS } from './explorer-counts.mjs';
 import { bad, hasBoardFilters } from './explorer-normalize.mjs';
 
 export { bad };
@@ -120,6 +121,21 @@ export function filterWhere(q, params) {
   for (const i of q.items) w.push(`b.bid ${i.x ? 'NOT IN' : 'IN'} (${itemCond(i, params)})`);
   for (const t of q.traits) w.push(`b.bid ${t.x ? 'NOT IN' : 'IN'} (${traitCond(t, params)})`);
   for (const g of q.groups ?? []) w.push(groupCond(g, params));
+  // Brett-Zaehler und Tags (Paket B): fertige Spalten in boards, gerechnet im
+  // Bau (scripts/lib/explorer-counts.mjs). Die Tag-Maske kommt aus TAG_BITS,
+  // daher als Literal — ein DOUBLE-Parameter passt nicht zu UTINYINT & .
+  for (const e of q.bc ?? []) {
+    if (!COUNT_COLS[e.k]) throw bad('invalid_board_count');
+    const col = `b.${COUNT_COLS[e.k]}`;
+    if (e.n != null && e.nx != null) {
+      if (e.n === e.nx) { w.push(`${col} = ?`); params.push(e.n); } else { w.push(`${col} BETWEEN ? AND ?`); params.push(e.n, e.nx); }
+    } else if (e.n != null) { w.push(`${col} >= ?`); params.push(e.n); } else { w.push(`${col} <= ?`); params.push(e.nx); }
+  }
+  if (q.tags?.length) {
+    const m = q.tags.reduce((a, t) => a | TAG_BITS[t], 0);
+    if (!Number.isInteger(m) || m <= 0) throw bad('invalid_tags');
+    w.push(`(b.tags & ${m}::UTINYINT) = ${m}`);
+  }
   return w;
 }
 
@@ -153,11 +169,31 @@ export async function setStats(conn, cteSql, params, from = 'fb') {
 // dem Board stehen kann; Sterne = hoechste Kopie je Board (zwei 2★-Kopien
 // sind EIN Board mit 2★); Items erst je Board schmal, dann Partie und Platz
 // (die breite Form lief bei der Startansicht ueber das Speicherlimit).
-export function keySql(q, params, components) {
+// Builds-Reiter (Paket C): Schluessel = komplettes Build der Kopie (units.bk,
+// Items ohne Bauteile, sortiert, 1–3 Items). Mit Diebeshandschuhen zaehlt nur
+// der Handschuh — die Items daneben wuerfelt das Spiel jede Runde neu.
+export const BUILD_KEY_SQL = (bk) =>
+  `CASE WHEN contains(${bk}, 'ThiefsGloves') THEN regexp_extract(${bk}, '[A-Za-z0-9_]*ThiefsGloves[A-Za-z0-9_]*') ELSE ${bk} END`;
+
+// opts.bk: units.bk passt zur Komponenten-Liste des Dienstes (holder.bkOk).
+// Dann liest „komplette Builds" (combo 3) den fertigen Schluessel statt die
+// Liste je Zeile zu bauen (17.10.: 504 bei beliebten Units).
+export function keySql(q, params, components, { bk = false } = {}) {
   // Komponenten stammen aus dem Bundle und sind per ID_RE geprueft,
   // deshalb als Literal statt als Listen-Parameter. Sie fallen in beiden
   // Item-Ansichten raus — ein Guertel im Inventar ist kein Build.
   const compList = compListSql(components);
+  if (q.tab === 'builds') {
+    if (!q.focus || !bk) throw bad('invalid_tab');
+    params.push(q.focus);
+    return `SELECT DISTINCT r.bid, r.mid, r.placement, ${BUILD_KEY_SQL('u.bk')} AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
+            FROM ref r JOIN units u USING (bid) WHERE u.unit = ? AND u.bk IS NOT NULL`;
+  }
+  if (q.tab === 'items' && q.focus && q.combo === 3 && bk) {
+    params.push(q.focus);
+    return `SELECT DISTINCT r.bid, r.mid, r.placement, u.bk AS key, NULL::INTEGER AS sub, NULL::INTEGER AS sub2
+            FROM ref r JOIN units u USING (bid) WHERE u.unit = ? AND u.bk LIKE '%|%|%'`;
+  }
   if (q.tab === 'items' && q.focus) {
     const its = `list_sort(list_filter([u.i1, u.i2, u.i3], x -> x IS NOT NULL AND NOT list_contains(${compList}, x)))`;
     const base = `SELECT r.bid, r.mid, r.placement, ${its} AS its FROM ref r JOIN units u USING (bid) WHERE u.unit = ?`;
@@ -310,18 +346,21 @@ export async function runQuery(holder, q, { timeoutMs = QUERY_TIMEOUT_MS, warm =
 // fb-CTE; der Masken-Weg (Paket 6) gibt statt der Filter-WHERE den Join auf
 // seine Partien-Tabelle g mit, Rechnung und Ausgabe bleiben dieselben.
 export async function liveRows(conn, q, holder, out, filtered, mkCte = p => fbCte(q, p)) {
+  if (q.tab === 'games') return gamesRows(conn, out, filtered, mkCte);
+  // Builds nur mit Traeger; der Dienst prueft vorher, ob die Datei bk hat.
+  if (q.tab === 'builds' && !q.focus) { out.rows = []; out.refGames = 0; return; }
   if (q.tab !== 'summary' && filtered.n > 0) {
     const p = [];
     const cte = mkCte(p);
     let refCte = 'ref AS (SELECT * FROM fb)';
     let ref = filtered;
-    if (q.tab === 'items' && q.focus) {
+    if ((q.tab === 'items' || q.tab === 'builds') && q.focus) {
       refCte = 'ref AS (SELECT * FROM fb WHERE bid IN (SELECT bid FROM units WHERE unit = ?))';
       p.push(q.focus);
       const pr = [...p];
       ref = await setStats(conn, `${cte}, ${refCte}`, pr, 'ref');
     }
-    const ks = keySql(q, p, holder.components);
+    const ks = keySql(q, p, holder.components, { bk: !!holder.bkOk });
     // Sterne-Vergleich: je Board genau ein Stern je Unit, also ergibt die
     // Summe ueber die Sterne je Partie exakt die Unit-Gesamtzeile (sub NULL).
     const starTotals = q.tab === 'units' && q.split === 'star';
@@ -364,6 +403,54 @@ export async function liveRows(conn, q, holder, out, filtered, mkCte = p => fbCt
     out.rows = [];
     out.refGames = 0;
   }
+}
+
+// Spiele-Reiter (Paket C): die GAMES_LIMIT neuesten gefilterten Bretter mit
+// Units, Traits und Spieler. Die puuid braucht nur die Route (Namen und
+// Link), sie entfernt sie vor dem Browser; die interne Brett-Nummer bleibt
+// hier. Die Nummern der 20 Bretter stammen aus der eigenen Datei und gehen
+// als Zahl-Literal in die Abfrage — so kann DuckDB board_rank (nach bid
+// sortiert) gezielt lesen.
+export const GAMES_LIMIT = 20;
+export async function gamesRows(conn, out, filtered, mkCte) {
+  out.rows = [];
+  out.refGames = filtered.n;
+  out.games = [];
+  if (!(filtered.n > 0)) return;
+  const p = [];
+  const cte = mkCte(p);
+  p.push(GAMES_LIMIT);
+  const top = (await conn.runAndReadAll(`
+    WITH ${cte}
+    SELECT bid, ts, placement, level, last_round, patch, region, rank FROM fb
+    ORDER BY ts DESC, mid, placement LIMIT ?`, p)).getRowObjectsJS();
+  if (!top.length) return;
+  const bids = top.map(r => Number(r.bid));
+  if (!bids.every(Number.isSafeInteger)) throw new Error('bid ungueltig');
+  const inList = bids.join(', ');
+  const units = (await conn.runAndReadAll(
+    `SELECT bid, unit, star, i1, i2, i3 FROM units WHERE bid IN (${inList}) ORDER BY bid, unit`)).getRowObjectsJS();
+  const traits = (await conn.runAndReadAll(
+    `SELECT bid, trait, lvl, num_units FROM traits WHERE bid IN (${inList}) ORDER BY bid, lvl DESC, num_units DESC, trait`)).getRowObjectsJS();
+  const players = (await conn.runAndReadAll(
+    `SELECT br.bid, p.puuid FROM board_rank br JOIN players p USING (ph) WHERE br.bid IN (${inList})`)).getRowObjectsJS();
+  const by = (rows) => {
+    const m = new Map();
+    for (const r of rows) { const k = Number(r.bid); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }
+    return m;
+  };
+  const ub = by(units);
+  const tb = by(traits);
+  const pb = new Map(players.map(r => [Number(r.bid), r.puuid]));
+  out.games = top.map(r => {
+    const bid = Number(r.bid);
+    return {
+      ts: Number(r.ts), placement: r.placement, level: r.level, round: r.last_round, patch: r.patch, region: r.region, rank: r.rank ?? null,
+      puuid: pb.get(bid) ?? null,
+      units: (ub.get(bid) ?? []).map(u => ({ id: u.unit, s: u.star, it: [u.i1, u.i2, u.i3].filter(x => x != null) })),
+      traits: (tb.get(bid) ?? []).map(t => ({ id: t.trait, l: t.lvl, n: t.num_units })),
+    };
+  });
 }
 
 // Zeilen-Kennzahlen gegen die Referenzmenge; beide Wege enden hier.

@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { normalizeQuery, hasBoardFilters, needsLive, LIMITS } from './explorer-normalize.mjs';
+import { normalizeQuery, hasBoardFilters, needsLive, neededCaps, LIMITS } from './explorer-normalize.mjs';
 import { aggEligible } from './explorer-agg.mjs';
-import { filterWhere, scopeWhere, itemKindOf, unitCond } from './explorer-query.mjs';
+import { filterWhere, scopeWhere, itemKindOf, keySql, unitCond } from './explorer-query.mjs';
+import { gSql } from './explorer-mask-query.mjs';
 import { extraKindOf } from './tft-build-aggregator.mjs';
 
 const rej = (q, msg) => assert.throws(() => normalizeQuery(q), (e) => e.status === 400 && (!msg || e.message === msg), JSON.stringify(q));
@@ -20,7 +21,28 @@ test('alte Anfrage-Form bleibt gueltig, se wird zur Spanne', () => {
   assert.deepEqual(q.levels, []);
   assert.equal(q.place, null);
   assert.deepEqual(q.groups, []);
-  assert.deepEqual(Object.keys(normalizeQuery({})), ['region', 'ranks', 'patches', 'levels', 'place', 'units', 'items', 'traits', 'groups', 'tab', 'focus', 'split', 'combo']);
+  assert.deepEqual(Object.keys(normalizeQuery({})), ['region', 'ranks', 'patches', 'levels', 'place', 'units', 'items', 'traits', 'groups', 'bc', 'tags', 'tab', 'focus', 'split', 'combo']);
+});
+
+test('Brett-Zaehler und Tags: kanonisch, ohne Wirkung weg, Fehler = 400', () => {
+  const q = normalizeQuery({ bc: [{ k: 'k5', n: 2, nx: 3 }, { k: 'emb', n: 2 }, { k: 'rad', n: 0 }, { k: 'tr', n: 0, nx: 0 }, { k: 'dup', nx: 15 }], tags: ['wound', 'shred', 'wound'] });
+  assert.deepEqual(q.bc, [{ k: 'emb', n: 2, nx: null }, { k: 'k5', n: 2, nx: 3 }, { k: 'tr', n: 0, nx: 0 }]);
+  assert.deepEqual(q.tags, ['shred', 'wound']);
+  assert.deepEqual(normalizeQuery({ bc: [{ k: 'norm', nx: 4 }] }).bc, [{ k: 'norm', n: null, nx: 4 }]);
+  assert.deepEqual(normalizeQuery({ bc: [{ k: 's3', n: 15 }] }).bc, [{ k: 's3', n: 15, nx: null }]);
+  rej({ bc: [{ k: 'gold', n: 1 }] }, 'invalid_board_count');
+  rej({ bc: [{ k: 'emb', n: 3, nx: 2 }] }, 'invalid_board_count');
+  rej({ bc: [{ k: 'emb', n: 16 }] }, 'invalid_board_count');
+  rej({ bc: [{ k: 'emb', n: 1 }, { k: 'emb', n: 2 }] }, 'invalid_board_count');
+  rej({ bc: [{ k: 'emb', min: 1 }] }, 'unknown_field_board_count');
+  rej({ tags: ['burn'] }, 'invalid_tags');
+  rej({ groups: [{ m: 'any', bc: [{ k: 'emb', n: 1 }] }] }, 'unknown_field_group');
+  // zaehlen nicht zur Gesamtgrenze
+  const many = (n, p) => Array.from({ length: n }, (_, i) => ({ id: `${p}${i}` }));
+  assert.equal(normalizeQuery({ units: many(9, 'U'), items: many(6, 'I'), bc: [{ k: 'emb', n: 1 }], tags: ['shred'] }).bc.length, 1);
+  assert.deepEqual(neededCaps(normalizeQuery({ tags: ['shred'], tab: 'games' })), ['counts', 'games']);
+  assert.deepEqual(neededCaps(normalizeQuery({ tab: 'builds', focus: 'U' })), ['builds']);
+  assert.deepEqual(neededCaps(normalizeQuery({ tab: 'units' })), []);
 });
 
 test('Spannen: Grenzen ohne Wirkung fallen weg, verkehrte Spanne = 400', () => {
@@ -92,6 +114,7 @@ test('jede neue Filterart nimmt die Teilsummen aus dem Spiel (aggEligible null)'
   for (const extra of [
     { levels: [9] }, { place: [1, 4] }, { units: [{ id: 'U', c: 2 }] }, { items: [{ id: 'I', n: 2 }] },
     { groups: [{ m: 'any', units: [{ id: 'U' }] }] }, { groups: [{ m: 'none', traits: [{ id: 'T' }] }] },
+    { bc: [{ k: 'emb', n: 1 }] }, { bc: [{ k: 'tr', n: 0, nx: 0 }] }, { tags: ['sunder'] },
   ]) {
     const q = normalizeQuery({ ...base, ...extra });
     assert.equal(aggEligible(q), null, JSON.stringify(extra));
@@ -125,6 +148,42 @@ test('SQL: Platzhalter und Parameter passen zusammen, Level/Platz in der Grundme
   assert.equal(unitCond(nu({ id: 'DA_A', s: 2, n: 2, it: ['DA_X'], nit: ['DA_Y'] }), p2),
     'SELECT bid FROM units WHERE unit = ? AND star >= ? AND n_items >= ? AND list_contains([i1, i2, i3], ?) AND NOT list_contains([i1, i2, i3], ?)');
   assert.deepEqual(p2, ['DA_A', 2, 2, 'DA_X', 'DA_Y']);
+});
+
+test('SQL Zaehler/Tags: Spalten aus boards, beide Wege, Parameter passen', () => {
+  const q = normalizeQuery({
+    bc: [{ k: 'emb', n: 2 }, { k: 'k5', n: 2, nx: 3 }, { k: 'tr', n: 0, nx: 0 }, { k: 'norm', nx: 4 }], tags: ['wound', 'shred'],
+    units: [{ id: 'DA_A' }],
+  });
+  const p = [];
+  const sql = filterWhere(q, p).join(' AND ');
+  assert.equal((sql.match(/\?/g) || []).length, p.length);
+  assert.match(sql, /b\.c_emb >= \?/);
+  assert.match(sql, /b\.c_k5 BETWEEN \? AND \?/);
+  assert.match(sql, /b\.c_tr = \?/);
+  assert.match(sql, /b\.c_norm <= \?/);
+  assert.match(sql, /\(b\.tags & 5::UTINYINT\) = 5/);
+  // Reihenfolge der Zaehler = COUNT_KEYS (emb, norm, k5, tr)
+  assert.deepEqual(p.slice(-5), [2, 4, 2, 3, 0]);
+  // Masken-Weg: dieselbe Bedingung in s (Brett-Ebene), Parameter passen
+  const g = gSql(q, ['2026-10-01']);
+  assert.equal((g.sql.match(/\?/g) || []).length, g.params.length);
+  assert.match(g.sql, /b\.c_emb >= \?/);
+  assert.match(g.sql, /b\.tags & 5::UTINYINT/);
+});
+
+test('Builds-Reiter und komplette Builds lesen units.bk', () => {
+  const p = [];
+  const b = keySql(normalizeQuery({ tab: 'builds', focus: 'DA_A' }), p, ['DA_Component_Sword'], { bk: true });
+  assert.match(b, /u\.bk IS NOT NULL/);
+  assert.match(b, /ThiefsGloves/);
+  assert.deepEqual(p, ['DA_A']);
+  assert.throws(() => keySql(normalizeQuery({ tab: 'builds', focus: 'DA_A' }), [], [], { bk: false }), /invalid_tab/);
+  const p3 = [];
+  assert.match(keySql(normalizeQuery({ tab: 'items', focus: 'DA_A', combo: 3 }), p3, [], { bk: true }), /u\.bk LIKE '%\|%\|%'/);
+  assert.deepEqual(p3, ['DA_A']);
+  // ohne bk: alter Weg
+  assert.match(keySql(normalizeQuery({ tab: 'items', focus: 'DA_A', combo: 3 }), [], [], { bk: false }), /len\(its\) = 3/);
 });
 
 test('Itemsorte: gleiche Muster wie extraKindOf (Bundle Set 18), Radiant ueber die Endung', () => {

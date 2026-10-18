@@ -14,6 +14,7 @@
 import type { TftAssetsBundle } from './tft-cdragon';
 import type { ItemTexts } from './tft-item-texts';
 import { BOARD_CELLS, MAX_ITEMS_PER_UNIT } from './tft-board';
+import { isElderwoodPlant } from './tft-elderwood-plants';
 
 export { BOARD_CELLS, MAX_ITEMS_PER_UNIT };
 
@@ -124,8 +125,9 @@ function unitRules(bundle: TftAssetsBundle): Map<string, UnitRule> {
   return m;
 }
 
-// Brettplaetze einer Unit (Standard 1, Elder Dragon 2).
+// Brettplaetze einer Unit (Standard 1, Elder Dragon 2, Elderwood-Pflanzen 0).
 export function unitTeamSlots(bundle: TftAssetsBundle | null, characterId: string): number {
+  if (isElderwoodPlant(characterId)) return 0;
   return (bundle && unitRules(bundle).get(characterId)?.slots) || 1;
 }
 
@@ -210,12 +212,16 @@ export function teamLimit<P extends BoardUnit>(
   return Math.min(BOARD_CELLS, TEAM_SIZE_BASE + bonus);
 }
 
-export type ItemBlock = 'full' | 'unique' | 'emblem' | null;
+export type ItemBlock = 'full' | 'unique' | 'emblem' | 'plant' | null;
 
 // Warum ein Item NICHT auf die Unit darf; null = erlaubt.
 //   full   — Plaetze belegt (Thief's Gloves zaehlt 3, passt also nur auf eine leere Unit)
 //   unique — "nur 1 pro Champion" und schon drauf
 //   emblem — die Unit hat die Synergie schon (eigene oder durch ein Emblem)
+//   plant  — Emblem oder Tactician-Item auf einer Elderwood-Pflanze: die
+//            Pflanze wuerde sonst selbst fuer Elderwood zaehlen bzw. einen
+//            Brettplatz geben. Normale Items gehen (im Spiel bekommen Pflanzen
+//            z. B. die Guertel des Wisps Bunch-o'-Belts).
 export function itemBlock(
   bundle: TftAssetsBundle | null,
   texts: ItemTexts | null,
@@ -224,6 +230,7 @@ export function itemBlock(
 ): ItemBlock {
   if (slotsUsed(texts, unit.items) + itemSlots(texts, itemId) > MAX_ITEMS_PER_UNIT) return 'full';
   if (texts?.items?.[itemId]?.unique && unit.items.includes(itemId)) return 'unique';
+  if (isElderwoodPlant(unit.characterId) && (emblemTraitOf(bundle, itemId) || itemTeamSize(texts, itemId) > 0)) return 'plant';
   const trait = emblemTraitOf(bundle, itemId);
   if (trait) {
     if (championTraitNames(bundle, unit.characterId).includes(trait)) return 'emblem';

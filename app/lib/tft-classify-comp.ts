@@ -18,6 +18,7 @@ import { resolve } from 'node:path';
 import { damageCarryItemsForSet } from './tft-item-classes';
 import { compDefiningAugmentSlug } from './tft-comp-defining-augments';
 import { CURRENT_SET } from './current-set';
+import type { PlantBundle } from './tft-elderwood-plants';
 
 export interface ClassifyTrait {
   name?: string;
@@ -117,6 +118,10 @@ interface BundleDerived {
   costMap: Map<string, number>;
   fragmentTraits: Set<string>;
   championIds: Set<string>;
+  // Nur TS, kein Klassifikations-Teil: Auszug fuer die Elderwood-Pflanzen der
+  // Aufstellungs-Bretter (plantBundleFor). Haengt am selben Lesevorgang, damit
+  // die Routen das 2-MB-Bundle nicht ein weiteres Mal parsen.
+  plants: PlantBundle;
 }
 const _bundleCache = new Map<number, BundleDerived>();
 // Fehlversuche werden NICHT dauerhaft gecacht, sondern nur kurz gedrosselt.
@@ -131,26 +136,31 @@ function loadBundleDerived(setNumber: number): BundleDerived {
   const set = setNumber || CURRENT_SET;
   const cached = _bundleCache.get(set);
   if (cached) return cached;
-  const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set(), championIds: new Set() };
+  const derived: BundleDerived = { costMap: new Map(), fragmentTraits: new Set(), championIds: new Set(), plants: {} };
   const lastFail = _bundleFail.get(set);
   if (lastFail != null && Date.now() - lastFail < BUNDLE_RETRY_MS) return derived;
   try {
     const bundle = JSON.parse(
       readFileSync(resolve(process.cwd(), `public/tft-assets-${set}.json`), 'utf8'),
     ) as {
-      champions?: Record<string, { cost?: number }>;
-      traits?: Record<string, { tiers?: { minUnits?: number }[] }>;
+      champions?: Record<string, { cost?: number; traits?: string[] }>;
+      traits?: Record<string, { name?: string; tiers?: { minUnits?: number }[] }>;
     };
+    const plantChamps: NonNullable<PlantBundle['champions']> = {};
+    const plantTraits: NonNullable<PlantBundle['traits']> = {};
     for (const [cid, ch] of Object.entries(bundle.champions || {})) {
       if (typeof ch?.cost === 'number') derived.costMap.set(cid, ch.cost);
       derived.championIds.add(cid);
+      if (Array.isArray(ch?.traits)) plantChamps[cid] = { traits: ch.traits };
     }
     for (const [name, tr] of Object.entries(bundle.traits || {})) {
       const tiers = tr?.tiers;
       if (Array.isArray(tiers) && tiers.length === 1 && tiers[0]?.minUnits === 1) {
         derived.fragmentTraits.add(name);
       }
+      plantTraits[name] = { name: tr?.name, tiers: Array.isArray(tiers) ? tiers.map(t => ({ minUnits: t?.minUnits })) : [] };
     }
+    derived.plants = { champions: plantChamps, traits: plantTraits };
   } catch (err) {
     if (!_bundleFail.has(set)) {
       console.error(`[classify] public/tft-assets-${set}.json nicht lesbar (${err instanceof Error ? err.message : String(err)}) — Fail-Safe ohne Kosten-Map/Fragment-Traits, neuer Versuch in ${BUNDLE_RETRY_MS / 1000}s.`);
@@ -181,6 +191,13 @@ export function isKnownUnitId(id: string, setNumber: number = CURRENT_SET): bool
   if (typeof id !== 'string' || !UNIT_ID_SHAPE.test(id)) return false;
   const ids = loadBundleDerived(setNumber).championIds;
   return ids.size === 0 || ids.has(id);
+}
+
+// Champion-Synergien und Synergie-Stufen des Sets fuer die Elderwood-Pflanzen
+// der Aufstellungs-Bretter (tft-elderwood-plants.ts). Leer, wenn das Bundle
+// nicht lesbar ist — dann gibt es keine Pflanzen, nichts Erfundenes.
+export function plantBundleFor(setNumber: number = CURRENT_SET): PlantBundle {
+  return loadBundleDerived(setNumber).plants;
 }
 
 // Exportiert, weil derselbe Test an zwei Stellen gebraucht wird: hier beim

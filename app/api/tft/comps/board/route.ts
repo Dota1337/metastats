@@ -17,10 +17,11 @@ import {
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import { guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
-import type { LevelRow } from '../../../../lib/tft-comp-outcome';
+import type { CompEmblems, LevelRow } from '../../../../lib/tft-comp-outcome';
+import { plantBundleFor } from '../../../../lib/tft-classify-comp';
 import {
   BOARD_UNIT_RE, EARLY_MIN_GAMES, POSITIONING_LEVELS, POSITIONING_MIN_GAMES,
-  buildCompBoards, compPositioning, parseGuideParam, type BoardSource, type CellShares,
+  buildCompBoards, compBoardPlants, compPositioning, parseGuideParam, type BoardSource, type CellShares,
 } from '../../../../lib/tft-comp-board';
 import type { CompanionBoardCell, CompanionEarlyBoard, CompanionPositioning } from '../../../../lib/companion-types';
 
@@ -71,9 +72,11 @@ export async function GET(request: NextRequest) {
 
     const origin = request.nextUrl.origin;
     const inner = new URL('/api/tft/comps', origin);
-    // emblems=0: die Emblem-Abfrage der Detailseite braucht das Brett nicht.
+    // Mit Emblemen: der Elderwood-Emblem-Anteil entscheidet ueber die Pflanzen
+    // (compBoardPlants). Kostet nichts extra — der Vorrat enthaelt sie ohnehin,
+    // live laeuft die Abfrage parallel (perf-critic 18.10.2026).
     inner.search = new URLSearchParams({
-      slug, patch, bucket, days, region, minGames: '30', variant: 'family', emblems: '0', ...(end ? { end } : {}),
+      slug, patch, bucket, days, region, minGames: '30', variant: 'family', ...(end ? { end } : {}),
     }).toString();
     const res = await compsGET(new NextRequest(inner));
     if (!res.ok) return degraded('comp_unavailable', 503);
@@ -85,6 +88,7 @@ export async function GET(request: NextRequest) {
         outcome?: {
           levels?: LevelRow[];
           units?: Array<{ characterId: string; levelGames?: Record<string, number> }>;
+          emblems?: CompEmblems;
         } | null;
       } | null;
     } | null;
@@ -92,12 +96,14 @@ export async function GET(request: NextRequest) {
     if (!comp) return degraded('not_found', 404);
 
     // Feld-Anteile je Unit (by-units nimmt hoechstens 12 Units je Anfrage).
-    const fetchShares = async (ids: string[], { families, guide }: { families: string[]; guide: string | null }) => {
+    // metatftOnly: Elderwood-Pflanzen, nur MetaTFT-Felder (by-units ?only=metatft).
+    const fetchShares = async (ids: string[], { families, guide }: { families: string[]; guide: string | null }, metatftOnly = false) => {
       const pos = new URL('/api/tft/positions/by-units', origin);
       pos.search = new URLSearchParams({
         units: ids.join(','),
         ...(families.length ? { cluster: families.join(',') } : {}),
         ...(guide ? { guide } : {}),
+        ...(metatftOnly ? { only: 'metatft' } : {}),
       }).toString();
       const pr = await byUnitsGET(new NextRequest(pos)).catch(() => null);
       const pj = pr && pr.ok ? await pr.json().catch(() => null) as {
@@ -120,6 +126,7 @@ export async function GET(request: NextRequest) {
       guideId: parseGuideParam(sp.get('guide')),
       guideStyle: guideStyleFromUnits(parseClusterKey(comp.clusterKey || slug)?.carry, comp.typicalUnits),
       withEarlyBoards: withEarly,
+      plants: compBoardPlants(plantBundleFor(), comp.outcome?.emblems, (ids, ctx) => fetchShares(ids, ctx, true).then(r => r?.units ?? null)),
     });
 
     const out: CompBoardResponse = {

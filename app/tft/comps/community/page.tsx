@@ -5,8 +5,10 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { starColor } from '../../../lib/tft-ui';
+import { costColor, starColor } from '../../../lib/tft-ui';
 import { toStarLevel, type BoardPlacement } from '../../../lib/tft-public-comps';
+import { boardTraitCounts } from '../../../lib/tft-builder-items';
+import { isElderwoodPlant, plantName, plantRules, plantStar } from '../../../lib/tft-elderwood-plants';
 
 interface CommunityComp {
   id: string;
@@ -24,7 +26,7 @@ interface CommunityComp {
 type Sort = 'top' | 'recent';
 
 export default function TftCommunityGalleryPage() {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const router = useRouter();
   const [sort, setSort] = useState<Sort>('top');
   const [comps, setComps] = useState<CommunityComp[]>([]);
@@ -94,6 +96,9 @@ export default function TftCommunityGalleryPage() {
             const carry = c.carryUnit && assets ? assets.champions[c.carryUnit] : null;
             const carryUrl = tftChampionTileUrl(assets, carry);
             const placements = c.boardConfig?.placements || [];
+            // Elderwood-Pflanzen: Stern aus der Stufe des Bretts, wie im Builder.
+            const rules = plantRules(assets);
+            const plantStarLevel = rules ? plantStar(rules, boardTraitCounts(assets, placements).get(rules.traitName) || 0) : 1;
             return (
               <div key={c.id} className="bg-surface-base border border-border-subtle rounded p-3 hover:border-accent-a30 transition-colors">
                 <div className="flex items-start gap-3 mb-2">
@@ -133,7 +138,9 @@ export default function TftCommunityGalleryPage() {
                     const ch = assets?.champions[p.characterId];
                     const url = tftChampionTileUrl(assets, ch);
                     // Eintraege von vor dem 18.10.2026 haben kein Stern-Level (1★).
-                    const star = toStarLevel(p.star);
+                    const isPlant = isElderwoodPlant(p.characterId);
+                    const star = toStarLevel(isPlant ? plantStarLevel : p.star);
+                    const unitName = (isPlant && plantName(p.characterId, lang)) || ch?.name || p.characterId;
                     // Same nested-<a> fix as CompRow/CompCard: outer was an <a>
                     // for the unit, inner <a>s for items — invalid HTML. Outer
                     // is now a div with link semantics; inner item anchors
@@ -165,10 +172,10 @@ export default function TftCommunityGalleryPage() {
                           }
                         }}
                         className="relative w-9 h-9 rounded overflow-hidden border block hover:scale-110 transition-transform cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
-                        style={{ borderColor: ch ? costColorOf(ch.cost) : 'var(--border-subtle)' }}
-                        title={ch?.name || p.characterId}
+                        style={{ borderColor: ch ? costColor(ch.cost) : 'var(--border-subtle)' }}
+                        title={unitName}
                       >
-                        {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                        {url && <img src={url} alt={unitName} className="w-full h-full object-cover" />}
                         {/* Sterne wie auf dem Builder-Brett: Pille oben mittig. */}
                         {star && (
                           <div
@@ -211,10 +218,6 @@ export default function TftCommunityGalleryPage() {
       <Footer />
     </main>
   );
-}
-
-function costColorOf(cost: number) {
-  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
 
 function timeAgo(iso: string): string {

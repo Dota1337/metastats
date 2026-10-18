@@ -13,7 +13,9 @@ import { GET as byUnitsGET } from '../../../tft/positions/by-units/route';
 import { loadGuidesFromDisk } from '../../../../lib/tft-comp-guides-server';
 import { guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
-import { LOW_DATA_GAMES } from '../../../../lib/tft-comp-outcome';
+import { LOW_DATA_GAMES, type CompEmblems } from '../../../../lib/tft-comp-outcome';
+import { plantBundleFor } from '../../../../lib/tft-classify-comp';
+import { compBoardPlants } from '../../../../lib/tft-comp-board';
 import {
   BOARD_UNIT_RE, COMPANION_API_VERSION, EARLY_MIN_GAMES, POSITIONING_MIN_GAMES,
   buildCompBoards, companionJson, companionPreflight, companionStats, compPositioning, parseGuideParam, pickLevelBoards,
@@ -39,6 +41,9 @@ export async function GET(request: NextRequest) {
   const askedUnits = (sp.get('units') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 12);
   // Ab App 0.6: Carries + Item-Traeger fuer die Early-Game-Zuordnung.
   const askedCarries = (sp.get('carries') || '').split(',').map(u => u.trim()).filter(u => BOARD_UNIT_RE.test(u)).slice(0, 6);
+  // Ab App 0.8.4: Elderwood-Pflanzen auf den Brettern. Aeltere Apps kennen sie
+  // nicht (kein Name, kein Bild) und bekommen weiter Bretter ohne.
+  const withPlants = sp.get('plants') === '1';
 
   const origin = request.nextUrl.origin;
   const inner = new URL('/api/tft/comps', origin);
@@ -60,6 +65,7 @@ export async function GET(request: NextRequest) {
       outcome?: {
         levels?: Array<{ level: number; games: number; share: number; avgPlacement: number; top4Rate: number; top1Rate: number }>;
         units?: Array<{ characterId: string; levelGames?: Record<string, number> }>;
+        emblems?: CompEmblems;
       } | null;
     } | null;
   } | null;
@@ -69,12 +75,14 @@ export async function GET(request: NextRequest) {
   }
 
   // Feld-Anteile je Unit (by-units nimmt hoechstens 12 Units je Anfrage).
-  const fetchShares = async (ids: string[], { families, guide }: { families: string[]; guide: string | null }) => {
+  // metatftOnly: Elderwood-Pflanzen, nur MetaTFT-Felder (by-units ?only=metatft).
+  const fetchShares = async (ids: string[], { families, guide }: { families: string[]; guide: string | null }, metatftOnly = false) => {
     const pos = new URL('/api/tft/positions/by-units', origin);
     pos.search = new URLSearchParams({
       units: ids.join(','),
       ...(families.length ? { cluster: families.join(',') } : {}),
       ...(guide ? { guide } : {}),
+      ...(metatftOnly ? { only: 'metatft' } : {}),
     }).toString();
     const pr = await byUnitsGET(new NextRequest(pos)).catch(() => null);
     const pj = pr && pr.ok ? await pr.json().catch(() => null) as {
@@ -100,6 +108,9 @@ export async function GET(request: NextRequest) {
     extraCarries: askedCarries,
     guideId: parseGuideParam(sp.get('guide')),
     guideStyle: guideStyleFromUnits(parseClusterKey(comp.clusterKey || slug)?.carry, comp.typicalUnits),
+    ...(withPlants ? {
+      plants: compBoardPlants(plantBundleFor(), comp.outcome?.emblems, (ids, ctx) => fetchShares(ids, ctx, true).then(r => r?.units ?? null)),
+    } : {}),
   });
   const legacyBoards = pickLevelBoards(boards.boardsByPlayerLevel, comp.outcome?.levels, [5, 9], LOW_DATA_GAMES);
 

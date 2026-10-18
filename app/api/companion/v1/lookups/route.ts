@@ -20,7 +20,10 @@ export async function GET(request: NextRequest) {
       { status: 503, cdn: 'no-store', browser: 'no-store' },
     );
   }
-  return companionJson(toCompanionLookups(assets), {
+  // ?plants=1 ab App 0.8.4 (eigener Cache-Eintrag; aeltere Apps bekommen die
+  // Antwort unveraendert).
+  const plants = request.nextUrl.searchParams.get('plants') === '1';
+  return companionJson(toCompanionLookups(assets, { plants }), {
     cdn: 'public, s-maxage=21600, stale-while-revalidate=86400',
     browser: 'public, max-age=3600',
   });

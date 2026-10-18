@@ -60,6 +60,8 @@ export interface CompanionLookups {
   traits: Record<string, { name: string; icon: string | null }>;
   shopOdds: Record<number, [number, number, number, number, number]>;
   bagSize: Record<number, number>;
+  /** Elderwood-Pflanzen, nur mit ?plants=1 (ab App 0.8.4). Namen je Sprache. */
+  plants?: Record<string, { names: Record<'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr', string>; icon: string | null }>;
 }
 
 export interface CompanionMatch {

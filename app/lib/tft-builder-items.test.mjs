@@ -79,6 +79,19 @@ test('Tactician-Items: +1 Brettplatz je Item, aus Text und ohne Textdatei', () =
   assert.deepEqual(Object.keys(texts.items).filter(id => texts.items[id].teamSize).sort(), tactician);
 });
 
+test('Elderwood-Pflanzen: kein Brettplatz, normale Items ja, Embleme und Tactician-Items nein', () => {
+  const plant = { characterId: 'DA_Elderwood18_StonebarkTree', items: [] };
+  assert.equal(unitTeamSlots(bundle, plant.characterId), 0);
+  assert.equal(teamSlotsUsed(bundle, [plant, { characterId: withVanguard }]), 1);
+  assert.equal(itemBlock(bundle, texts, plant, 'DA_Deathblade'), null);
+  assert.equal(itemBlock(bundle, texts, plant, 'DA_18_EmblemElderwood'), 'plant');
+  assert.equal(itemBlock(bundle, texts, plant, 'DA_18_EmblemVanguard'), 'plant');
+  assert.equal(itemBlock(bundle, texts, plant, 'DA_TacticiansCrown'), 'plant');
+  assert.equal(itemBlock(bundle, null, plant, 'DA_TacticiansCrown'), 'plant');
+  // Pflanzen zaehlen fuer keine Synergie.
+  assert.equal(boardTraitCounts(bundle, [plant]).size, 0);
+});
+
 test('Brettgrenze: 10, jedes Tactician-Item einzeln, hoechstens 28 Felder', () => {
   const u = (items) => ({ characterId: withoutVanguard, items });
   assert.equal(TEAM_SIZE_BASE, 10);

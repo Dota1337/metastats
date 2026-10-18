@@ -31,7 +31,7 @@ import type { TftAssetsBundle } from './tft-cdragon';
 export interface PlanAheadResult {
   code: string;
   recognised: number;   // Units, fuer die ein Planner-Code vorlag
-  total: number;        // angefragte Units (vor Padding)
+  total: number;        // angefragte Units (vor dem Kuerzen auf 10)
 }
 
 // Baut einen Plan-Ahead-Code aus einer Liste von character_ids.
@@ -50,10 +50,13 @@ export function buildPlanAheadCode(
   const codes = assets?.plannerCodes;
   if (!codes) return null;
 
-  const requested = characterIds.slice(0, SLOT_COUNT);
+  // Erst Units ohne Code (Elderwood-Pflanzen, Monster) und Doppelte
+  // ueberspringen, dann auf 10 kuerzen — sonst draengt eine Pflanze vorne eine
+  // echte Unit hinten aus dem Code.
   const slots: string[] = [];
   const seen = new Set<string>();
-  for (const cid of requested) {
+  for (const cid of characterIds) {
+    if (slots.length >= SLOT_COUNT) break;
     const hex = codes[cid];
     // Der Planner kennt kein Kopien-Konzept: eine Unit belegt genau einen Slot.
     if (!hex || seen.has(hex)) continue;
@@ -73,6 +76,6 @@ export function buildPlanAheadCode(
   return {
     code: PLAN_AHEAD_FORMAT + slots.join('') + `TFTSet${setNumber}`,
     recognised: seen.size,
-    total: requested.length,
+    total: characterIds.length,
   };
 }

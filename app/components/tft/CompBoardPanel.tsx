@@ -4,6 +4,7 @@ import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { costColor, HEX_CLIP } from '../../lib/tft-ui';
 import { boardLayout, defaultLevel } from '../../lib/tft-comp-board';
+import { plantName } from '../../lib/tft-elderwood-plants';
 import { parseLevelling } from '../../lib/tft-comp-guides';
 import { useI18n } from '../../lib/i18n';
 import type { CompBoardResponse } from '../../api/tft/comps/board/route';
@@ -154,6 +155,7 @@ function HexBoard({
   assets: TftAssetsBundle | null;
   pulse?: boolean;
 }) {
+  const { lang } = useI18n();
   return (
     <div
       className={`relative w-full max-w-[380px] mx-auto ${pulse ? 'animate-pulse' : ''}`}
@@ -162,7 +164,8 @@ function HexBoard({
       {ROWS.map((row, r) => row.cells.map((cell, col) => {
         const unit = cells.get(cell);
         const champ = unit ? findChampion(assets, unit) : null;
-        const name = champ?.name || (unit ? prettyChar(unit) : '');
+        // Elderwood-Pflanzen in der Sprache der Seite (Kosten 0 → neutraler Rand).
+        const name = (unit && plantName(unit, lang)) || champ?.name || (unit ? prettyChar(unit) : '');
         const url = unit ? tftChampionTileUrl(assets, champ) : null;
         const style = {
           left: `${((col + (row.shift ? 0.5 : 0) + (1 - HEX_W) / 2) / COLS) * 100}%`,
@@ -217,10 +220,10 @@ function byGames(list: CompanionEarlyBoard[] | undefined): CompanionEarlyBoard[]
 }
 
 function EarlyUnitTile({ apiName, assets }: { apiName: string; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const champ = findChampion(assets, apiName);
   const url = tftChampionTileUrl(assets, champ);
-  const name = champ?.name || prettyChar(apiName);
+  const name = plantName(apiName, lang) || champ?.name || prettyChar(apiName);
   const cost = champ?.cost ?? 1;
   // Kosten 0 = keine Shop-Einheit (z. B. Pflanzen) → kein Kostenrahmen.
   return (

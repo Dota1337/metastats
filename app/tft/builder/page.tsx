@@ -9,7 +9,8 @@ import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
-import { HEX_CLIP, starColor as starColorOf } from '../../lib/tft-ui';
+import { HEX_CLIP, costColor, starColor as starColorOf } from '../../lib/tft-ui';
+import { isElderwoodPlant, plantAllowance, plantName, plantRules, plantStar, trimPlants, type PlantRules } from '../../lib/tft-elderwood-plants';
 import { loadItemTexts, itemTextFor, type ItemTexts, type ItemTextView } from '../../lib/tft-item-texts';
 import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, boardTraitCounts, emblemTraitOf, itemBlock, itemTeamSize, slotsUsed, teamLimit, teamSlotsUsed } from '../../lib/tft-builder-items';
 import type { StarLevel } from '../../lib/tft-public-comps';
@@ -83,6 +84,19 @@ interface Placement {
 function resolveMfTrait(p: Placement, rawTrait: string): string | null {
   if (p.characterId !== MF_CHAR_ID || rawTrait !== MF_CHOOSE_TRAIT) return rawTrait;
   return p.stance ? MF_STANCE_TRAITS[p.stance] : null;
+}
+
+// Elderwood-Pflanzen (tft-elderwood-plants.ts): Zahl und Stern folgen der
+// Elderwood-Stufe des Bretts; Pflanzen selbst tragen keine Synergie.
+function elderwoodOnBoard(bundle: TftAssetsBundle | null, rules: PlantRules, ps: Placement[]): number {
+  return boardTraitCounts(bundle, ps, resolveMfTrait).get(rules.traitName) || 0;
+}
+
+// Sinkt die Stufe, fallen ueberzaehlige Pflanzen weg (wie im Spiel). Ohne
+// Bundle bleibt alles stehen; dasselbe Array, wenn nichts wegfaellt.
+function trimBoard(bundle: TftAssetsBundle | null, ps: Placement[]): Placement[] {
+  const rules = plantRules(bundle);
+  return rules ? trimPlants(ps, rules, elderwoodOnBoard(bundle, rules, ps)) : ps;
 }
 
 interface SavedComp {
@@ -225,8 +239,17 @@ export default function TftBuilderPage() {
   const [infoItem, setInfoItem] = useState<{ id: string; rect: DOMRect; touch: boolean } | null>(null);
   const lastPointerRef = useRef<string>('mouse');
 
-  useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  // assetsRef: Brett-Aenderungen laufen in Updatern mit festen Abhaengigkeiten
+  // und brauchen fuer trimBoard das aktuelle Bundle.
+  const assetsRef = useRef<TftAssetsBundle | null>(null);
+  useEffect(() => { loadTftAssets().then(a => { assetsRef.current = a; setAssets(a); }); }, []);
   useEffect(() => { loadItemTexts().then(setItemTexts); }, []);
+  // Ein Link kann vor dem Bundle geladen sein: Pflanzen danach nachziehen.
+  useEffect(() => {
+    if (!assets) return;
+    setOwnPlacements(ps => trimBoard(assets, ps));
+    setOppPlacements(ps => trimBoard(assets, ps));
+  }, [assets]);
 
   // Ziel-Hervorhebung endet mit jedem Ziehen, auch wenn ausserhalb losgelassen.
   useEffect(() => {
@@ -420,8 +443,10 @@ export default function TftBuilderPage() {
   // ----- Helpers to read/write placements per team -----
   const placementsFor = (team: Team) => team === 'own' ? ownPlacements : oppPlacements;
   const setPlacementsFor = (team: Team, updater: (prev: Placement[]) => Placement[]) => {
-    if (team === 'own') setOwnPlacements(updater);
-    else setOppPlacements(updater);
+    // Jede Brett-Aenderung kann die Elderwood-Stufe senken.
+    const trimmed = (prev: Placement[]) => trimBoard(assetsRef.current, updater(prev));
+    if (team === 'own') setOwnPlacements(trimmed);
+    else setOppPlacements(trimmed);
   };
 
   const ownByCell = useMemo(() => {
@@ -440,10 +465,33 @@ export default function TftBuilderPage() {
   const overLimit = useCallback((ps: Placement[]) =>
     teamSlotsUsed(assets, ps) - teamLimit(itemTexts, ps, assets, resolveMfTrait), [assets, itemTexts]);
 
+  // Pflanze setzen: eine neue Kopie, solange die Stufe noch eine erlaubt, sonst
+  // wandert die zuerst gesetzte (wie eine Unit, die schon steht). Bleibt sie
+  // nach dem Nachziehen nicht stehen (Elderwood nicht aktiv, oder das ersetzte
+  // Feld war eine Elderwood-Unit), passiert nichts.
+  const placePlant = useCallback((prev: Placement[], cell: number, cid: string): Placement[] => {
+    const bundle = assetsRef.current;
+    const rules = plantRules(bundle);
+    if (!rules) return prev;
+    const next = prev.filter(p => p.cell !== cell);
+    const allowed = plantAllowance(rules, elderwoodOnBoard(bundle, rules, next)).get(cid) || 0;
+    const copies = next.filter(p => p.characterId === cid);
+    // Beim Umsetzen behaelt die Kopie ihren Platz im Array — sie bleibt die
+    // zuerst gesetzte und faellt beim Nachziehen zuletzt weg.
+    const out = copies.length > 0 && copies.length >= allowed
+      ? next.map(p => (p === copies[0] ? { ...p, cell } : p))
+      : [...next, { cell, characterId: cid, items: [] }];
+    const trimmed = trimBoard(bundle, out);
+    if (!trimmed.some(p => p.cell === cell && p.characterId === cid)) return prev;
+    if (overLimit(trimmed) > Math.max(0, overLimit(prev))) return prev;
+    return trimmed;
+  }, [overLimit]);
+
   const placeAt = useCallback((team: Team, cell: number, cid: string) => {
     setPlacementsFor(team, prev => {
       const existing = prev.find(p => p.cell === cell);
       if (existing && existing.characterId === cid) return prev;
+      if (isElderwoodPlant(cid)) return placePlant(prev, cell, cid);
       const existingElsewhere = prev.find(p => p.characterId === cid && p.cell !== cell);
       let next = prev.filter(p => p.cell !== cell);
       if (existingElsewhere) {
@@ -460,7 +508,7 @@ export default function TftBuilderPage() {
       }
       return next;
     });
-  }, [overLimit]);
+  }, [overLimit, placePlant]);
 
   const removeAt = useCallback((team: Team, cell: number) => {
     setPlacementsFor(team, prev => prev.filter(p => p.cell !== cell));
@@ -637,8 +685,8 @@ export default function TftBuilderPage() {
     const onBoard = ownPlacements.some(p => p.characterId === cid) || oppPlacements.some(p => p.characterId === cid);
     if (onBoard && !pickerChar) {
       // Remove from whichever team it's on
-      setOwnPlacements(prev => prev.filter(p => p.characterId !== cid));
-      setOppPlacements(prev => prev.filter(p => p.characterId !== cid));
+      setOwnPlacements(prev => trimBoard(assetsRef.current, prev.filter(p => p.characterId !== cid)));
+      setOppPlacements(prev => trimBoard(assetsRef.current, prev.filter(p => p.characterId !== cid)));
       return;
     }
     setPickerChar(prev => prev === cid ? null : cid);
@@ -694,7 +742,10 @@ export default function TftBuilderPage() {
         const target = placementsFor(team);
         if (sourceP) {
           const after = [...target.filter(p => p.cell !== cell), { ...sourceP, cell }];
-          if (overLimit(after) <= Math.max(0, overLimit(target))) {
+          // Eine Pflanze braucht die Elderwood-Stufe des Ziel-Bretts.
+          const plantOk = !isElderwoodPlant(sourceP.characterId)
+            || trimBoard(assets, after).some(p => p.cell === cell && p.characterId === sourceP.characterId);
+          if (plantOk && overLimit(after) <= Math.max(0, overLimit(target))) {
             setPlacementsFor(fromTeam, prev => prev.filter(p => p.cell !== from));
             setPlacementsFor(team, prev => [...prev.filter(p => p.cell !== cell), { ...sourceP, cell }]);
           }
@@ -721,8 +772,8 @@ export default function TftBuilderPage() {
   function loadSaved(id: string) {
     const c = savedComps.find(s => s.id === id);
     if (!c) return;
-    setOwnPlacements(c.placements);
-    setOppPlacements(c.oppPlacements || []);
+    setOwnPlacements(trimBoard(assetsRef.current, c.placements));
+    setOppPlacements(trimBoard(assetsRef.current, c.oppPlacements || []));
     if ((c.oppPlacements || []).length > 0) setShowOpponent(true);
     setSelectedCell(null);
     setPickerChar(null);
@@ -777,7 +828,8 @@ export default function TftBuilderPage() {
     if (!name.trim()) return;
     const handle = window.prompt(t('tft.builderPublishHandle'), '') || '';
     // Derive trait_label + carry_unit from active synergies + most-itemized unit
-    const carry = [...ownPlacements].sort((a, b) =>
+    // (nie eine Elderwood-Pflanze, auch wenn sie Items traegt).
+    const carry = ownPlacements.filter(p => !isElderwoodPlant(p.characterId)).sort((a, b) =>
       (b.items?.length || 0) - (a.items?.length || 0),
     )[0]?.characterId || null;
     setPublishState('sending');
@@ -814,6 +866,12 @@ export default function TftBuilderPage() {
   function renderBoard(team: Team) {
     const isOwn = team === 'own';
     const byCellMap = byCell(team);
+    const ps = placementsFor(team);
+    const rules = plantRules(assets);
+    const elderwood = rules ? elderwoodOnBoard(assets, rules, ps) : 0;
+    const allowance = rules ? plantAllowance(rules, elderwood) : new Map<string, number>();
+    const plantStarLevel = rules ? plantStar(rules, elderwood) : 1;
+    const ewIcon = rules ? tftIconUrl(assets, assets?.traits[rules.traitId]?.icon) : null;
     return (
       <div
         className="bg-surface-base border border-border-subtle rounded-lg p-3"
@@ -823,14 +881,49 @@ export default function TftBuilderPage() {
         onClick={e => onBoardClick(e, team)}
         onContextMenu={e => onBoardContextMenu(e, team)}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-2">
           <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
-            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {teamSlotsUsed(assets, placementsFor(team))}/{teamLimit(itemTexts, placementsFor(team), assets, resolveMfTrait)}
+            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {teamSlotsUsed(assets, ps)}/{teamLimit(itemTexts, ps, assets, resolveMfTrait)}
           </div>
-          {placementsFor(team).length > 0 && (
+          {/* Elderwood-Pflanzen ab der ersten Stufe: Ziehen oder Antippen +
+              Feld. Die Zahl ist, was die Stufe noch erlaubt. */}
+          {rules && allowance.size > 0 && (
+            <div className="flex items-center gap-1.5">
+              {ewIcon && <img src={ewIcon} alt="" className="w-4 h-4" />}
+              <span className="text-fg-secondary text-[10px] uppercase tracking-widest">{rules.traitName}</span>
+              {[...allowance].map(([id, n]) => {
+                const left = Math.max(0, n - ps.filter(p => p.characterId === id).length);
+                const name = plantName(id, lang) || id;
+                const url = tftChampionTileUrl(assets, assets?.champions[id]);
+                const isPicker = pickerChar === id;
+                return (
+                  <button
+                    key={id}
+                    draggable
+                    onDragStart={e => onDragStartChampion(e, id)}
+                    onClick={() => setPickerChar(prev => (prev === id ? null : id))}
+                    aria-label={name}
+                    title={name}
+                    className="relative w-7 h-7 rounded overflow-hidden transition-all"
+                    style={{
+                      border: `2px solid ${isPicker ? '#a892ff' : costColor(0)}`,
+                      boxShadow: isPicker ? '0 0 0 2px rgba(168,146,255,0.4)' : 'none',
+                      opacity: left === 0 && !isPicker ? 0.45 : 1,
+                    }}
+                  >
+                    {url && <img src={url} alt="" className="w-full h-full object-cover pointer-events-none" />}
+                    <span className="absolute bottom-0 right-0 px-0.5 rounded-tl bg-black/75 text-white text-[9px] leading-none font-bold tabular-nums">
+                      {left}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {ps.length > 0 && (
             <button
               onClick={() => clearBoard(team)}
-              className="text-fg-faint hover:text-[#e44040] text-[10px]"
+              className="ml-auto text-fg-faint hover:text-[#e44040] text-[10px]"
             >
               {t('tft.builderClear')}
             </button>
@@ -868,10 +961,14 @@ export default function TftBuilderPage() {
             const champ: any = p && assets?.champions[p.characterId];
             const url = champ ? tftChampionTileUrl(assets, champ) : null;
             const cost = champ?.cost ?? 1;
+            const isPlant = !!p && isElderwoodPlant(p.characterId);
+            const unitName = p ? (isPlant && plantName(p.characterId, lang)) || champ?.name || p.characterId : '';
+            // Pflanzen-Stern folgt der Stufe, nicht der Auswahl.
+            const star = isPlant ? plantStarLevel : (p?.star ?? 1);
             const borderColor = isSelected || isDropTarget
               ? '#a892ff'
               : p
-                ? costColorOf(cost)
+                ? costColor(cost)
                 : pickerChar
                   ? '#7B61FF55'
                   : 'var(--border-subtle)';
@@ -909,10 +1006,10 @@ export default function TftBuilderPage() {
                     clipPath: HEX_CLIP,
                     backgroundColor: 'var(--surface-sunken)',
                   }}
-                  title={p ? `${champ?.name || p.characterId}` : ''}
+                  title={unitName}
                 >
                   {url && (
-                    <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
+                    <img src={url} alt={unitName} className="w-full h-full object-cover pointer-events-none" />
                   )}
                 </button>
                 {/* Sterne und Items AUSSERHALB des Sechseck-Zuschnitts, sonst
@@ -920,12 +1017,12 @@ export default function TftBuilderPage() {
                     Spitze (4 % Hoehe), Items als Reihe auf der Unterkante
                     (74–98 %): so endet die Item-Reihe der Reihe darueber genau
                     an der Zellgrenze und beruehrt die Pille nicht. */}
-                {p && (p.star ?? 1) > 1 && (
+                {p && star > 1 && (
                   <div
                     className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none px-1 py-px rounded-full bg-black/80 text-[8px] sm:text-[9px] leading-none font-bold tracking-tight whitespace-nowrap"
-                    style={{ top: '4%', color: starColorOf(p.star ?? 1) }}
+                    style={{ top: '4%', color: starColorOf(star) }}
                   >
-                    {'★'.repeat(p.star ?? 1)}
+                    {'★'.repeat(star)}
                   </div>
                 )}
                 {p && p.items.length > 0 && (
@@ -1124,7 +1221,7 @@ export default function TftBuilderPage() {
                       key={c}
                       onClick={() => setCostFilter(c)}
                       className={`px-2.5 py-1 rounded text-xs ${costFilter === c ? 'text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
-                      style={costFilter === c ? { backgroundColor: costColorOf(c) } : {}}
+                      style={costFilter === c ? { backgroundColor: costColor(c) } : {}}
                     >
                       {c}
                     </button>
@@ -1160,7 +1257,7 @@ export default function TftBuilderPage() {
                       onDragStart={(e) => onDragStartChampion(e, c.characterId)}
                       className="relative aspect-square rounded overflow-hidden transition-all"
                       style={{
-                        border: `2px solid ${isPicker ? '#a892ff' : costColorOf(c.cost)}`,
+                        border: `2px solid ${isPicker ? '#a892ff' : costColor(c.cost)}`,
                         boxShadow: isPicker ? '0 0 0 2px rgba(168,146,255,0.4)' : 'none',
                         opacity: onBoard && !isPicker ? 0.45 : 1,
                       }}
@@ -1194,13 +1291,14 @@ export default function TftBuilderPage() {
                     const url = tftChampionTileUrl(assets, champ);
                     return (
                       <>
-                        {url && <img src={url} alt={champ?.name || ''} className="w-10 h-10 rounded object-cover" style={{ border: `2px solid ${costColorOf(champ?.cost ?? 1)}` }} />}
-                        <div className="text-white text-sm font-medium">{champ?.name || selectedPlacement.characterId}</div>
+                        {url && <img src={url} alt={champ?.name || ''} className="w-10 h-10 rounded object-cover" style={{ border: `2px solid ${costColor(champ?.cost ?? 1)}` }} />}
+                        <div className="text-white text-sm font-medium">{plantName(selectedPlacement.characterId, lang) || champ?.name || selectedPlacement.characterId}</div>
                       </>
                     );
                   })()}
                 </div>
-                <div className="mb-3">
+                {/* Pflanzen: Stern kommt aus der Elderwood-Stufe, keine Auswahl. */}
+                {!isElderwoodPlant(selectedPlacement.characterId) && <div className="mb-3">
                   <div className="text-fg-secondary text-[10px] uppercase tracking-widest mb-2">
                     {t('tft.builderStarLevel')}
                   </div>
@@ -1224,7 +1322,7 @@ export default function TftBuilderPage() {
                       );
                     })}
                   </div>
-                </div>
+                </div>}
                 <div className="flex gap-1.5">
                   {Array.from({ length: MAX_ITEMS_PER_UNIT }).map((_, slotIdx) => {
                     const iid = selectedPlacement.items[slotIdx];
@@ -1427,8 +1525,4 @@ function ItemInfoCard({ id, anchor, assets, text }: {
       {text?.desc && <div className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1] whitespace-pre-line">{text.desc}</div>}
     </div>
   );
-}
-
-function costColorOf(cost: number) {
-  return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }

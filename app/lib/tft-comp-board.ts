@@ -10,6 +10,9 @@ import { parseLevelling, resolveGuideId, significantLevelSteps, type CompGuidesB
 import type {
   CompanionBoardCell, CompanionCompDetail, CompanionEarlyBoard, CompanionPositioning,
 } from './companion-types';
+import {
+  boardPlantIds, emblemBonus, isElderwoodPlant, plantIds, plantRules, type PlantBundle,
+} from './tft-elderwood-plants';
 
 export type CellShares = Record<string, Array<{ cell: number; share: number }>>;
 export type BoardSource = CompanionCompDetail['boardSource'];
@@ -56,10 +59,18 @@ const SHARES_CHUNK = 12;
  * Anteil hat, waehlt zuerst; ist sein Feld belegt, nimmt er sein naechstes
  * Feld aus der Liste, sonst das naechste freie Feld derselben Reihe. Gleiche
  * Daten ergeben immer dasselbe Board.
+ *
+ * Elderwood-Pflanzen (`plants`, mit Kopien) kommen danach in die freien
+ * Felder — eine Pflanze mit kleiner Stichprobe nimmt so nie einer Unit ihr
+ * Feld (User 18.10.2026: ueberall Units zuerst). Ist ihre Liste belegt, das
+ * naechste freie Feld derselben Reihe, dann der Nachbarreihe derselben Seite:
+ * Steinrinde und Beschuetzer stehen vorn, die Lebensblume hinten.
  */
 export function resolveBoard(
   units: string[],
   shares: Record<string, Array<{ cell: number; share: number }>>,
+  plants: readonly string[] = [],
+  plantShares: CellShares = {},
 ): CompanionBoardCell[] {
   const order = units
     .filter(u => shares[u]?.length)
@@ -82,7 +93,60 @@ export function resolveBoard(
     taken.add(cell);
     out.push({ unit, cell });
   }
+  const plantOrder = plants
+    .map((unit, i) => ({ unit, i }))
+    .filter(p => plantShares[p.unit]?.length)
+    .sort((a, b) => plantShares[b.unit][0].share - plantShares[a.unit][0].share || a.unit.localeCompare(b.unit) || a.i - b.i);
+  for (const { unit } of plantOrder) {
+    const list = plantShares[unit];
+    const cell = list.map(c => c.cell).find(c => c >= 0 && c < 28 && !taken.has(c)) ?? nearestFreeCell(list[0].cell, taken);
+    if (cell == null) continue;
+    taken.add(cell);
+    out.push({ unit, cell });
+  }
   return out;
+}
+
+// Naechstes freies Feld zu `cell`: erst dieselbe Reihe, dann die andere Reihe
+// derselben Seite (0/1 hinten, 2/3 vorn), dann der Rest nach Abstand.
+function nearestFreeCell(cell: number, taken: ReadonlySet<number>): number | null {
+  if (!(cell >= 0 && cell < 28)) return null;
+  const row = Math.floor(cell / 7);
+  const col = cell % 7;
+  const rows = [row, row ^ 1, ...[0, 1, 2, 3].filter(r => r !== row && r !== (row ^ 1)).sort((a, b) => Math.abs(a - row) - Math.abs(b - row))];
+  for (const r of rows) {
+    for (let d = 0; d < 7; d++) {
+      for (const c of d === 0 ? [col] : [col - d, col + d]) {
+        if (c >= 0 && c < 7 && !taken.has(r * 7 + c)) return r * 7 + c;
+      }
+    }
+  }
+  return null;
+}
+
+/** Elderwood-Pflanzen der Comp-Bretter: welche je Units-Liste, und ihre Felder. */
+export interface BoardPlants {
+  ids: string[];
+  forUnits: (units: string[]) => string[];
+  /** Felder der Pflanzen — nur MetaTFT, kein Rueckgriff auf andere Comps. */
+  fetchShares: (ids: string[], ctx: { families: string[]; guide: string | null }) => Promise<CellShares | null>;
+}
+
+/**
+ * Pflanzen-Option fuer buildCompBoards, oder undefined (Trait fehlt, Notschalter).
+ * Zahl je Brett: Elderwood der gezeigten Units, +1 wenn das Emblem in mindestens
+ * der Haelfte der Spiele der Comp steckt (emblemBonus) — sonst fehlt bei
+ * Elderwood·Aphelios auf Stufe 8 der Beschuetzer (Emblem in 54 % der Spiele).
+ */
+export function compBoardPlants(
+  bundle: PlantBundle,
+  emblems: Parameters<typeof emblemBonus>[1],
+  fetchShares: BoardPlants['fetchShares'],
+): BoardPlants | undefined {
+  const rules = plantRules(bundle);
+  if (!rules) return undefined;
+  const bonus = emblemBonus(rules, emblems);
+  return { ids: plantIds(rules), forUnits: units => boardPlantIds(rules, bundle, units, bonus), fetchShares };
 }
 
 /**
@@ -182,6 +246,11 @@ export interface CompBoardsOptions {
    * 4-7). Nur die Detailseite fragt danach; Liste und App bleiben unveraendert.
    */
   withEarlyBoards?: boolean;
+  /**
+   * Elderwood-Pflanzen auf Gesamt-, Stufen- und fruehen Brettern (compBoardPlants).
+   * Fehlt sie, gibt es keine Pflanzen — die App bis 0.8.3 kennt sie nicht.
+   */
+  plants?: BoardPlants;
 }
 
 export interface CompBoards {
@@ -231,30 +300,43 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
     if (ids.length > 0) levelUnits.set(l.level, ids);
   }
   // Fruehe Boards: das meistgespielte je Stufe, Felder aus derselben Abfrage.
+  // Pflanzen stehen in MetaTFTs Liste mit drin (samt Kopien); sie werden wie auf
+  // den uebrigen Brettern erst nach den Units gesetzt, ohne Pflanzen-Option gar nicht.
   const earlyUnits = new Map<string, string[]>();
+  const earlyPlants = new Map<string, string[]>();
   if (opts.withEarlyBoards) {
     for (const [lvl, list] of Object.entries(early)) {
       const top = list.reduce((a, b) => (b.games > a.games ? b : a));
       const ids = top.units.filter(u => BOARD_UNIT_RE.test(u));
-      if (ids.length > 0) earlyUnits.set(lvl, ids);
+      const units = ids.filter(u => !isElderwoodPlant(u));
+      if (units.length > 0) earlyUnits.set(lvl, units);
+      if (opts.plants) earlyPlants.set(lvl, ids.filter(u => isElderwoodPlant(u)));
     }
   }
   const levelIds = [...new Set([...levelUnits.values(), ...earlyUnits.values()].flat())];
   const chunks: string[][] = [];
   for (let i = 0; i < levelIds.length; i += SHARES_CHUNK) chunks.push(levelIds.slice(i, i + SHARES_CHUNK));
 
+  // Pflanzen je Brett vorab: Felder werden nur geholt, wenn ein Brett welche hat.
+  const plantsOf = (units: string[]) => opts.plants?.forUnits(units) ?? [];
+  const boardPlants = plantsOf(boardUnits);
+  const levelPlants = new Map([...levelUnits].map(([lvl, ids]) => [lvl, plantsOf(ids)] as [number, string[]]));
+  const needPlants = !!opts.plants && [boardPlants, ...levelPlants.values(), ...earlyPlants.values()].some(p => p.length > 0);
+
   // Gesamtbrett und Stufenbretter gleichzeitig; die Anteile einer Unit haengen
   // nicht von den anderen Units der Anfrage ab.
   const ctx = { families, guide: guideId };
-  const [overall, ...parts] = await Promise.all([
+  const [plantShares, overall, ...parts] = await Promise.all([
+    needPlants ? opts.plants!.fetchShares(opts.plants!.ids, ctx).catch(() => null) : Promise.resolve(null),
     boardUnits.length > 0 ? fetchShares(boardUnits, ctx) : Promise.resolve(null),
     ...chunks.map(ids => fetchShares(ids, ctx)),
   ]);
+  const pShares: CellShares = plantShares ?? {};
 
   let board: CompanionBoardCell[] = [];
   let boardSource: BoardSource = null;
   if (overall) {
-    board = resolveBoard(boardUnits, overall.units);
+    board = resolveBoard(boardUnits, overall.units, boardPlants, pShares);
     boardSource = board.length > 0 ? overall.source : null;
   }
 
@@ -262,13 +344,13 @@ export async function buildCompBoards(opts: CompBoardsOptions): Promise<CompBoar
   let earlyBoardsByLevel: Record<string, CompanionBoardCell[]> | undefined;
   const shares: CellShares = Object.assign({}, ...parts.map(p => p?.units ?? {}));
   for (const [lvl, ids] of levelUnits) {
-    const b = resolveBoard(ids, shares);
+    const b = resolveBoard(ids, shares, levelPlants.get(lvl), pShares);
     if (b.length > 0) (boardsByPlayerLevel ??= {})[String(lvl)] = b;
   }
   if (opts.withEarlyBoards) {
     earlyBoardsByLevel = {};
     for (const [lvl, ids] of earlyUnits) {
-      const b = resolveBoard(ids, shares);
+      const b = resolveBoard(ids, shares, earlyPlants.get(lvl), pShares);
       if (b.length > 0) earlyBoardsByLevel[lvl] = b;
     }
   }

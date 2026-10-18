@@ -3,10 +3,12 @@
 // Gezeichnet wird aus Sicht des Spielers: hinterste Reihe unten.
 import type { CompanionLookups } from '../../../../app/lib/companion-types.ts';
 import { h, itemIcon } from './dom.ts';
+import { lang } from './i18n.ts';
 
 export interface BoardUnit { cell: number; unit: string; star?: number; items?: string[] }
 
-const COST_CLASS = ['', 'c1', 'c2', 'c3', 'c4', 'c5'];
+// c0: Elderwood-Pflanzen (keine Kosten) mit neutralem Rand statt Kostenfarbe.
+const COST_CLASS = ['c0', 'c1', 'c2', 'c3', 'c4', 'c5'];
 
 // names: Name im Feld wie auf der Homepage (Positioning der Comp-Liste).
 export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size: 'md' | 'sm' = 'md', opts: { names?: boolean; pulse?: boolean } = {}): HTMLElement {
@@ -19,11 +21,13 @@ export function boardView(units: BoardUnit[], lk: CompanionLookups | null, size:
       const u = byCell.get(row * 7 + col);
       if (!u) { cells.push(h('div', { class: 'cell' }, h('div', { class: 'hex empty' }))); continue; }
       const c = lk?.champions[u.unit];
-      const name = c?.name || u.unit.replace(/^(?:TFT\d*|DA)_(?:\d+_)?/, '');
+      const plant = c ? undefined : lk?.plants?.[u.unit];
+      const name = c?.name || plant?.names[lang()] || u.unit.replace(/^(?:TFT\d*|DA)_(?:\d+_)?/, '');
+      const icon = c?.icon ?? plant?.icon;
       cells.push(h('div', { class: 'cell', title: name },
-        h('div', { class: `hex ${COST_CLASS[c?.cost ?? 0] || ''}` },
+        h('div', { class: `hex ${plant ? 'c0' : COST_CLASS[c?.cost ?? 1] || ''}` },
           h('div', { class: 'hex-in' },
-            c?.icon ? h('img', { src: c.icon, alt: name, loading: 'lazy' }) : h('span', { class: 'unit-fallback' }, name.slice(0, 3)),
+            icon ? h('img', { src: icon, alt: name, loading: 'lazy' }) : h('span', { class: 'unit-fallback' }, name.slice(0, 3)),
             opts.names ? h('span', { class: name.length > 8 ? 'hex-name long' : 'hex-name' }, name) : null,
           ),
         ),

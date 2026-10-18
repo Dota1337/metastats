@@ -21,6 +21,11 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 //                 (11 of 79 families on 2026-10-08), the guide is the better fit.
 //   3. global     tft_position_unit_cell view (all comps).
 // `source` reports the one used, or 'mixed' if units came from different ones.
+//
+// ?only=metatft: nur Quelle 2, ohne Companion und ohne globale Sicht — fuer die
+// Elderwood-Pflanzen der Aufstellungs-Bretter (tft-comp-board.ts). Ihre
+// Companion-Daten sind zu duenn (57 Spiele, 18.10.2026), und eine Pflanze aus
+// der Sicht ueber alle Comps waere fuer diese Comp erfunden.
 
 const MIN_UNIT_MATCHES = 30;
 const KEEP_CELLS = 6;
@@ -88,8 +93,10 @@ export async function GET(request: NextRequest) {
     .filter(c => /^[\w@]+_[A-Za-z0-9_]+$/.test(c))
     .slice(0, 4);
 
+  const metatftOnly = searchParams.get('only') === 'metatft';
+
   // 1) Eigene Companion-Daten, je Unit sobald genug Partien da sind.
-  if (clusters.length > 0) {
+  if (clusters.length > 0 && !metatftOnly) {
     const r = await supabaseAdmin
       .from('tft_position_comp_cell')
       .select('cluster_key, unit, cell, observations, unit_matches')
@@ -126,7 +133,7 @@ export async function GET(request: NextRequest) {
   }
 
   // 3) Globale Sicht ueber alle Comps fuer den Rest.
-  const missing = units.filter(u => !result[u]);
+  const missing = metatftOnly ? [] : units.filter(u => !result[u]);
   if (missing.length > 0) {
     const r = await supabaseAdmin
       .from('tft_position_unit_cell')

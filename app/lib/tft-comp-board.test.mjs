@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import {
   boardLayout,
   buildCompBoards,
+  compBoardPlants,
   compPositioning,
   defaultLevel,
   earlyBoards,
@@ -108,6 +109,61 @@ test('resolveBoard: zwei Units mit demselben Lieblingsfeld landen nie auf einem 
   assert.equal(new Set(out.map(c => c.cell)).size, 2);
   // Gleichstand: alphabetisch zuerst; der zweite weicht in derselben Reihe aus.
   assert.deepEqual(out, [{ unit: 'X', cell: 24 }, { unit: 'Y', cell: 23 }]);
+});
+
+test('resolveBoard: Pflanzen erst nach allen Units, Ausweichen erst dieselbe Reihe, dann die Nachbarreihe', () => {
+  const shares = { X: [{ cell: 3, share: 0.2 }], Y: [{ cell: 4, share: 0.9 }] };
+  // Pflanze will Feld 3 staerker als X — die Unit bekommt es trotzdem.
+  const plantShares = { P: [{ cell: 3, share: 0.95 }, { cell: 10, share: 0.5 }], Q: [{ cell: 0, share: 0.4 }] };
+  const out = resolveBoard(['X', 'Y'], shares, ['P', 'Q'], plantShares);
+  assert.deepEqual(out, [{ unit: 'Y', cell: 4 }, { unit: 'X', cell: 3 }, { unit: 'P', cell: 10 }, { unit: 'Q', cell: 0 }]);
+  // Reihe 0 voll bis auf nichts: die Pflanze weicht in Reihe 1 aus, nicht nach vorn.
+  const row0 = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(c => [`U${c}`, [{ cell: c, share: 0.5 }]]));
+  const full = resolveBoard(Object.keys(row0), row0, ['P'], { P: [{ cell: 2, share: 0.9 }] });
+  assert.deepEqual(full.at(-1), { unit: 'P', cell: 9 });
+  // Zwei Kopien derselben Pflanze landen auf zwei Feldern.
+  const two = resolveBoard([], {}, ['P', 'P'], { P: [{ cell: 5, share: 0.9 }] });
+  assert.deepEqual(two.map(c => c.cell), [5, 4]);
+  // Ohne Feld-Anteile keine Pflanze.
+  assert.deepEqual(resolveBoard([], {}, ['P'], {}), []);
+});
+
+test('buildCompBoards: Pflanzen nach Elderwood-Zahl je Brett, eigene Abfrage, nie auf einem Unit-Feld', async () => {
+  const STONE = 'DA_Elderwood18_StonebarkTree';
+  const BLOOM = 'DA_Elderwood18_Lifeblossom';
+  const plantBundle = {
+    traits: { DA_18_Elderwood: { name: 'Elderwood', tiers: [3, 5, 7, 9, 11].map(minUnits => ({ minUnits })) } },
+    // A-C sind Elderwood: auf Stufe 7 und 8 je 3 → Baum + Blume.
+    champions: Object.fromEntries(['A', 'B', 'C'].map(u => [`TFT17_${u}`, { traits: ['Elderwood'] }])),
+  };
+  const plantCalls = [];
+  // Lieblingsfeld der Pflanzen liegt auf Units (Feld 0 und 1).
+  const fetchPlants = async (ids) => {
+    plantCalls.push(ids);
+    return { [STONE]: [{ cell: 0, share: 0.9 }], [BLOOM]: [{ cell: 1, share: 0.8 }] };
+  };
+  const { fn } = fakeShares();
+  const opts = { comp: fixtureComp(), fetchShares: fn, guides: GUIDES, levelRange: [7, 9], minLevelGames: 50, earlyMinGames: 50 };
+  const out = await buildCompBoards({ ...opts, plants: compBoardPlants(plantBundle, null, fetchPlants) });
+  for (const lvl of ['7', '8']) {
+    const board = out.boardsByPlayerLevel[lvl];
+    assert.deepEqual(board.filter(c => c.unit.startsWith('DA_')).map(c => c.unit).sort(), [BLOOM, STONE]);
+    assert.equal(new Set(board.map(c => c.cell)).size, board.length, `Stufe ${lvl}: zwei auf einem Feld`);
+    assert.equal(board.find(c => c.unit === 'TFT17_A').cell, 0);
+  }
+  assert.equal(plantCalls.length, 1);
+  // Mit Emblem in der Haelfte der Spiele: 4 Elderwood → weiter Stufe 1, gleiche Pflanzen.
+  const emblem = { basis: 'games', rows: [{ item: 'DA_18_EmblemElderwood', share: 0.6 }] };
+  const withEmblem = await buildCompBoards({ ...opts, plants: compBoardPlants(plantBundle, emblem, fetchPlants) });
+  assert.equal(withEmblem.boardsByPlayerLevel['7'].filter(c => c.unit.startsWith('DA_')).length, 2);
+  // Ohne Elderwood-Units keine Pflanzen-Abfrage.
+  const none = { ...plantBundle, champions: {} };
+  plantCalls.length = 0;
+  const plain = await buildCompBoards({ ...opts, plants: compBoardPlants(none, null, fetchPlants) });
+  assert.equal(plantCalls.length, 0);
+  assert.ok(Object.values(plain.boardsByPlayerLevel).every(b => b.every(c => !c.unit.startsWith('DA_'))));
+  // Trait fehlt im Bundle: keine Pflanzen-Option.
+  assert.equal(compBoardPlants({ traits: {}, champions: {} }, null, fetchPlants), undefined);
 });
 
 test('unitsAtPlayerLevel: nie mehr Units als die Stufe, auch wenn mehr auf der Stufe gespielt wurden', () => {

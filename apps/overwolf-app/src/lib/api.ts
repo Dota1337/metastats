@@ -43,11 +43,14 @@ export async function loadComps(force = false): Promise<CompanionCompsResponse |
   }
 }
 
+// Ab 0.8.4 mit Elderwood-Pflanzen (?plants=1). Ein gespeicherter Stand ohne
+// `plants` stammt aus einer aelteren App — dann sofort neu laden, sonst zeigen
+// die Bretter bis zu 6 h Pflanzen ohne Namen und Bild.
 export async function loadLookups(force = false): Promise<CompanionLookups | null> {
   const cached = read('ms.lookups');
-  if (cached && !force && Date.now() - cached.fetchedAt < LOOKUPS_TTL) return cached.data;
+  if (cached && !force && cached.data.plants && Date.now() - cached.fetchedAt < LOOKUPS_TTL) return cached.data;
   try {
-    const data = await getJson<CompanionLookups>('/api/companion/v1/lookups');
+    const data = await getJson<CompanionLookups>('/api/companion/v1/lookups?plants=1');
     write('ms.lookups', { fetchedAt: Date.now(), data });
     return data;
   } catch {
@@ -114,7 +117,9 @@ export async function loadCompDetail(slug: string, units: string[], carries: str
   const region = read('ms.settings').region;
   const path = `/api/companion/v1/comp?slug=${encodeURIComponent(slug)}&units=${encodeURIComponent(units.join(','))}&region=${encodeURIComponent(region)}`
     + (carries.length ? `&carries=${encodeURIComponent(carries.join(','))}` : '')
-    + `&guide=${encodeURIComponent(guide ?? 'none')}`;
+    + `&guide=${encodeURIComponent(guide ?? 'none')}`
+    // Ab 0.8.4: Elderwood-Pflanzen auf den Brettern (Namen/Bilder aus lookups.plants).
+    + '&plants=1';
   try {
     return await cached<CompanionCompDetail>(path, 60000);
   } catch (e) {

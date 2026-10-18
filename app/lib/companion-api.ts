@@ -14,6 +14,7 @@ import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBund
 import { componentCheckFromItems, namedCarries, shownItems } from './tft-comp-roles';
 import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
+import { plantIds, plantNames, plantRules } from './tft-elderwood-plants';
 import { matchupVerdict, type MatchupRow } from './tft-comp-matchups';
 import {
   COMPANION_API_VERSION,
@@ -280,7 +281,11 @@ function isAugmentEntry(icon: string | null | undefined): boolean {
   return /\/hud\/zaps\//i.test(icon ?? '');
 }
 
-export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
+// `plants` (ab App 0.8.4, ?plants=1): Elderwood-Pflanzen mit Namen in allen 6
+// Sprachen und Bild — sie sind keine Champions (Kosten 0, keine Synergie) und
+// stehen deshalb nicht unter `champions`. Leeres Objekt, wenn das Set keine hat,
+// damit die App den Stand nicht fuer veraltet haelt.
+export function toCompanionLookups(assets: TftAssetsBundle, opts: { plants?: boolean } = {}): CompanionLookups {
   const champions: CompanionLookups['champions'] = {};
   for (const [id, c] of Object.entries(assets.champions)) {
     if (!c || !(c.cost >= 1 && c.cost <= 5) || !c.traits?.length) continue;
@@ -309,7 +314,21 @@ export function toCompanionLookups(assets: TftAssetsBundle): CompanionLookups {
     if (!t) continue;
     traits[id] = { name: tftTraitDisplayName(assets, id), icon: absoluteUrl(tftIconUrl(assets, t.icon)) };
   }
-  return { v: COMPANION_API_VERSION, set: assets.set, champions, items, traits, shopOdds: SHOP_ODDS, bagSize: BAG_SIZE };
+  let plants: CompanionLookups['plants'];
+  if (opts.plants) {
+    plants = {};
+    const rules = plantRules(assets);
+    for (const id of rules ? plantIds(rules) : []) {
+      const c = assets.champions[id];
+      const names = plantNames(id);
+      if (!c || !names) continue;
+      plants[id] = { names: { ...names }, icon: absoluteUrl(tftChampionTileUrl(assets, c)) };
+    }
+  }
+  return {
+    v: COMPANION_API_VERSION, set: assets.set, champions, items, traits, shopOdds: SHOP_ODDS, bagSize: BAG_SIZE,
+    ...(plants ? { plants } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------

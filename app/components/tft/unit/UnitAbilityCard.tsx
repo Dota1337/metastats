@@ -48,6 +48,8 @@ export default function UnitAbilityCard({ unitId, info, assets }: {
   const stats = entry.stats ?? info.units[baseId]?.stats ?? null;
   const name = pickLang(entry.ability.name, lang);
   const lines = parseAbilityDesc(pickLang(entry.ability.desc, lang));
+  // 4★ nur, wenn der Text Werte fuer vier Stufen hat (z. B. Veigar 175/265/395/670).
+  const starCount = Math.max(3, ...lines.flat().map(s => (s.k === 'stars' ? s.values.length : 0)));
   const statLabel = (k: string) => {
     const key = `tft.stat.${k}` as TranslationKey;
     const v = t(key);
@@ -75,7 +77,7 @@ export default function UnitAbilityCard({ unitId, info, assets }: {
 
       <div className="p-4">
         <div className="flex items-center justify-center gap-1.5 mb-3" role="group" aria-label={t('tft.stars')}>
-          {[1, 2, 3].map(s => (
+          {Array.from({ length: starCount }, (_, i) => i + 1).map(s => (
             <button
               key={s}
               type="button"
@@ -170,6 +172,8 @@ function Seg({ seg, star }: { seg: AbilitySeg; star: number | null }) {
 function StarValues({ values, suffix = '', star, className = '' }: {
   values: Array<string | number>; suffix?: string; star: number | null; className?: string;
 }) {
+  // Gewaehlter Stern ohne eigenen Wert (4★ bei Werten fuer 3 Stufen): alle normal zeigen.
+  if (star != null && star > values.length) star = null;
   return (
     <span className={`tabular-nums ${className}`}>
       {values.map((v, i) => (

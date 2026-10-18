@@ -26,6 +26,11 @@ const fmtPct = (v: number | null | undefined, d = 1) => (v == null ? '—' : `${
 const fmtPc = (v: number | null) => (v == null ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : '±'}${Math.abs(v).toFixed(2)}`);
 const pcClass = (v: number | null) => (v == null ? 'text-fg-muted' : v <= -0.1 ? 'text-[#3ecf8e]' : v >= 0.1 ? 'text-[#ff6b6b]' : 'text-fg-secondary');
 
+// Embleme aus Augmenten (DA_18_EmblemFloraFatalisAugment, gleicher Name wie das
+// echte) zaehlen nicht — das waere eine Augment-Statistik (feedback_no_augment_stats).
+// Gleiche Regel wie isCompEmblem in tft-comp-outcome.ts.
+const isAugmentGranted = (id: string) => /Augment|Phantom/i.test(id);
+
 export default function UnitBuilds({
   unitId, unitName, region, bucket, assets, data, filters, setFilters,
 }: {
@@ -51,12 +56,12 @@ export default function UnitBuilds({
 
   const scoredItems = useMemo(() => {
     if (!items?.rows || !items.summary.avg) return [];
-    return scoreItems(items.rows, { games: items.summary.games, avg: items.summary.avg });
+    return scoreItems(items.rows.filter(r => !isAugmentGranted(r.key)), { games: items.summary.games, avg: items.summary.avg });
   }, [items]);
   const maxItemGames = useMemo(() => Math.max(0, ...(items?.rows ?? []).map(r => r.games)), [items]);
   const scoredBuilds = useMemo(() => {
     if (!builds?.rows || !builds.summary.avg) return [];
-    const rows = buildsWithCount(builds.rows, filters.itemCount);
+    const rows = buildsWithCount(builds.rows, filters.itemCount).filter(r => !r.key.split('|').some(isAugmentGranted));
     return scoreBuilds(rows, { games: builds.summary.games, avg: builds.summary.avg }, maxItemGames);
   }, [builds, filters.itemCount, maxItemGames]);
 
@@ -92,6 +97,9 @@ export default function UnitBuilds({
   const ref = view === 'builds' ? builds : items;
 
   const patchOptions = (data.stars?.meta.patches ?? []).map(p => p.patch);
+  // 4★ nur, wenn es die Stufe fuer diese Unit in den Daten gibt (Review 19.10.).
+  const starOptions: (number | null)[] = (data.stars?.rows ?? []).some(r => r.key === unitId && r.sub === 4 && r.games > 0)
+    ? [null, 1, 2, 3, 4] : [null, 1, 2, 3];
   const latest = data.latestPatch;
   const explorerHref = (tab: View, its?: string[]) => withLang(buildExplorerUrl({
     units: [unitFilterOf(unitId, filters, its)],
@@ -168,7 +176,7 @@ export default function UnitBuilds({
           )}
           <ChipGroup
             label={t('tft.stars')}
-            options={[null, 1, 2, 3]}
+            options={starOptions}
             value={filters.star}
             render={v => (v == null ? t('tft.starTierAll') : '★'.repeat(v))}
             onChange={v => setFilters({ ...filters, star: v })}

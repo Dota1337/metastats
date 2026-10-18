@@ -4,7 +4,7 @@
 // 3er-Kombis sind seit 2026-10-10 weg (User: die Aufstellung oben zeigt die
 // Items schon) — das API-Feld `sets` bleibt. Rechnung in app/lib/tft-comp-outcome.ts — hier nur Anzeige.
 // Wirkung = Ø Platz mit − Ø Platz ohne; negativ ist gut.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { costColor } from '../../lib/tft-ui';
@@ -206,14 +206,24 @@ function EmblemRow({ e, basis, assets, bucket, t }: {
   );
 }
 
+const showsItems = (u: UnitOutcome) => u.itemCopies > 0 && u.items.length > 0;
+
+/** Ob „Items je Unit“ etwas zeigt — die Detailseite stellt danach den
+    Varianten-Umschalter in diese Box oder an seinen eigenen Platz. */
+export function hasItemsPerUnit(outcome: CompOutcome | null | undefined): boolean {
+  return !!outcome && outcome.units.some(showsItems);
+}
+
 /** Items je Unit: Unit waehlen, darunter Items nach Gruppe; die Embleme der
     Comp stehen in jedem Reiter gleich unter den Artefakten. */
-export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemCarriers = [] }: {
+export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemCarriers = [], header = null }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
   /** Fest vorn in dieser Reihenfolge (Detailseite: der Haupt-Carry). */
   leadUnits?: readonly string[];
   /** Weitere Item-Traeger der Comp — danach, nach Item-Kopien; dann der Rest. */
   itemCarriers?: readonly string[];
+  /** Ganz oben in der Box (Detailseite: der Varianten-Umschalter). */
+  header?: ReactNode;
 }) {
   // Reihenfolge nach Wichtigkeit in der Comp (User 2026-10-10), innerhalb
   // einer Stufe nach Item-Kopien.
@@ -222,7 +232,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
     return i >= 0 ? i : itemCarriers.includes(cid) ? leadUnits.length : leadUnits.length + 1;
   };
   const units = outcome.units
-    .filter(u => u.itemCopies > 0 && u.items.length > 0)
+    .filter(showsItems)
     .sort((a, b) => rank(a.characterId) - rank(b.characterId) || b.itemCopies - a.itemCopies)
     .slice(0, MAX_UNIT_TABS);
   const [selected, setSelected] = useState<string | null>(null);
@@ -240,6 +250,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
 
   return (
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      {header}
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.items')}</h2>
       <div className="flex flex-wrap gap-1.5 mb-3" role="tablist">
         {units.map(u => {

@@ -90,6 +90,7 @@ export default function VariantsSwitcher({
   families = null,
   activeKey = null,
   end = null,
+  bare = false,
 }: {
   clusterKey: string;
   region: string;
@@ -111,6 +112,9 @@ export default function VariantsSwitcher({
   // Endtag der gezeigten Seite (volle Tage): die Knopf-Zahlen rechnen ueber
   // dieselben Tage wie die Seite, auch wenn der Endtag inzwischen weiter ist.
   end?: string | null;
+  // bare: ohne eigene Box, oben in der Box „Items je Unit“ (User 18.10.2026),
+  // mit Trennlinie zu den Items darunter.
+  bare?: boolean;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -237,8 +241,9 @@ export default function VariantsSwitcher({
   const showRow = !familyMergeActive || variants.length >= 2;
   if (!showRow && !showFamilyBanner) return null;
 
+  const Wrap = bare ? 'div' : 'section';
   return (
-    <section className="mt-3 bg-surface-base border border-border-subtle rounded p-3">
+    <Wrap className={bare ? 'mb-4 pb-3 border-b border-border-subtle' : 'mt-3 bg-surface-base border border-border-subtle rounded p-3'}>
       {showFamilyBanner && (
         <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-accent-a8 border border-accent-a30 rounded">
           <div className="text-xs text-fg-bright">
@@ -318,6 +323,6 @@ export default function VariantsSwitcher({
         })}
       </div>
       </>)}
-    </section>
+    </Wrap>
   );
 }

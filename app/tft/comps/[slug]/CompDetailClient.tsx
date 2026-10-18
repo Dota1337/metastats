@@ -23,7 +23,7 @@ import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits
 import { GuideAugments, GuideTraitAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
-import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect } from '../../../components/tft/CompOutcome';
+import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect, hasItemsPerUnit } from '../../../components/tft/CompOutcome';
 import CompDna, { hasCompDna } from '../../../components/tft/CompDna';
 import { computeActiveTraits } from '../../../lib/tft-active-traits';
 
@@ -325,8 +325,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
         end: pageEnd,
       }
     : null;
-  const hasOutcomeItems: boolean = !!comp?.outcome
-    && (comp.outcome.units || []).some((u: { itemCopies: number; items: unknown[] }) => u.itemCopies > 0 && u.items.length > 0);
+  const hasOutcomeItems: boolean = hasItemsPerUnit(comp?.outcome);
   // Gleiche Bedingung wie der Level-Board-Block „In der Runde".
   const hasLiveBoards: boolean = Array.isArray(comp?.levelOutcome) && comp.levelOutcome.length >= 2
     && (comp.levelOutcome as { games: number }[]).some(x => x.games > 0);
@@ -336,6 +335,29 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // sie nicht daneben (gemessen: Item-Tabelle braucht ~580 px, Unit-Wirkung
   // ~430, Positionierung ~420) und bleibt in der Detail-Analyse.
   const wide: boolean = hasUnitEffect(comp?.outcome);
+  // Varianten-Umschalter oben in der Items-Box (User 18.10.2026: er aendert
+  // Units, Items usw. — vorher stand er unter diesen Werten). Ohne Items-Box
+  // an seinem alten Platz, sonst fehlte der Rueckweg „Alle“.
+  const hasItemsBox: boolean = hasOutcomeItems || (comp?.carryItems?.length ?? 0) > 0;
+  const variantsSwitcher = (bare: boolean) => comp ? (
+    <VariantsSwitcher
+      clusterKey={comp.clusterKey}
+      region={region}
+      bucket={bucket}
+      days={days}
+      patch={null}
+      assets={assets}
+      familyMergeActive={variantMode === 'family'}
+      familySize={comp?.aliasedFromFamily?.mergedFrom?.length ?? 1}
+      // switchFamilies: auch die genaue Ansicht nennt alle
+      // zusammengelegten Familien, sonst schrumpft die Knopfreihe
+      // nach dem Klick (mergedFamilies ist dort nur die eigene).
+      families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
+      activeKey={variantMode === 'exact' ? slug : null}
+      end={pageEnd}
+      bare={bare}
+    />
+  ) : null;
   // Detail-Analyse bei drei Spalten: die Boxen ohne Unit-Wirkung nebeneinander,
   // so viele Spalten wie Boxen (keine leere Spalte). Gleiche Bedingungen wie
   // die Boxen unten. Die Comp-DNA zaehlt nicht: ab 1440 px steht sie im Kopf.
@@ -636,8 +658,9 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                 Direkt darunter das Wichtigste wie in der App (User
                 2026-10-10, „Positionen, Itemization etc. weiter nach oben"):
                 links Aufstellung + Leveln, rechts Bauteile (mit Synergien)
-                und Items; am Handy Aufstellung, Bauteile, Items, Leveln. Dann
-                Varianten und zwei Spalten (Variante D): links „In der Runde",
+                und Items; am Handy Aufstellung, Bauteile, Items, Leveln. Die
+                Varianten stehen oben in der Items-Box (User 18.10.2026), ohne
+                Items-Box hier. Dann zwei Spalten (Variante D): links „In der Runde",
                 rechts „Strategie" mit 3★-Ergebnis oben, danach die Analyse.
                 Am Handy erst links, dann rechts — das 3★-Ergebnis steht dort
                 deshalb zusaetzlich vor dem Raster.
@@ -675,7 +698,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                     <OutcomeUnitEffect outcome={comp.outcome} assets={assets} bucket={bucket} t={t} />
                   </div>
                 )}
-                {(hasOutcomeItems || (comp.carryItems?.length ?? 0) > 0) && (
+                {hasItemsBox && (
                   <div className={`min-w-0 lg:flex lg:flex-col [&>section]:grow ${wide ? 'min-[100rem]:col-start-1 min-[100rem]:row-start-2' : ''}`}>
                     {/* Items je Unit — der erste Reiter ist der Carry. Die fruehere
                         Box „Item-Sets am Carry" steht nur noch da, wenn es keine
@@ -685,11 +708,13 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                         outcome={comp.outcome} assets={assets} bucket={bucket} t={t}
                         leadUnits={leadCarry ? [leadCarry] : []}
                         itemCarriers={[...namedCompCarries, ...(compRoles?.carries || []), ...(compRoles?.itemCarriers || [])]}
+                        header={variantsSwitcher(true)}
                       />
                     )}
                     {/* Top Item-Sets pro Carry — Item-Build für Carousels Stage 2-4+. */}
                     {!hasOutcomeItems && comp.carryItems && comp.carryItems.length > 0 && (
                       <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+                        {variantsSwitcher(true)}
                         <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.topItemSets')}</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           {comp.carryItems.slice(0, 3).map((set: { items: string[]; count: number }, i: number) => {
@@ -742,22 +767,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
 
             {carryStarBox && <div className="lg:hidden">{carryStarBox}</div>}
 
-            <VariantsSwitcher
-              clusterKey={comp.clusterKey}
-              region={region}
-              bucket={bucket}
-              days={days}
-              patch={null}
-              assets={assets}
-              familyMergeActive={variantMode === 'family'}
-              familySize={comp?.aliasedFromFamily?.mergedFrom?.length ?? 1}
-              // switchFamilies: auch die genaue Ansicht nennt alle
-              // zusammengelegten Familien, sonst schrumpft die Knopfreihe
-              // nach dem Klick (mergedFamilies ist dort nur die eigene).
-              families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
-              activeKey={variantMode === 'exact' ? slug : null}
-              end={pageEnd}
-            />
+            {!hasItemsBox && variantsSwitcher(false)}
 
             {/* „In der Runde" (Level-Boards) steht ueber die volle Breite, nur
                 wenn es Boards gibt; darunter „Strategie" in zwei Spalten mit

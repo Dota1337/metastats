@@ -154,8 +154,8 @@ export function TimelineCard({ timeline }: { timeline: TimelinePoint[] }) {
             <RechartsTooltip
               contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
               labelStyle={{ color: 'var(--fg-secondary)' }}
-              labelFormatter={(label: any) => tftPatchLabel(String(label))}
-              formatter={(v: any): any => [Number(v).toFixed(2), t('tft.avgPlacement')]}
+              labelFormatter={(label: unknown) => tftPatchLabel(String(label))}
+              formatter={(v: unknown) => [Number(v).toFixed(2), t('tft.avgPlacement')] as [string, string]}
             />
             <ReferenceLine y={4.5} stroke="var(--fg-faint)" strokeDasharray="3 3" strokeOpacity={0.4} />
             <Line

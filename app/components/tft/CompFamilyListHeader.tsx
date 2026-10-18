@@ -2,11 +2,12 @@
 // Kopf der Comp-Liste (Spaltennamen + Core/Flex-Legende) — gemeinsam fuer den
 // Comps-Reiter und "Comps mit dieser Unit" auf der Unit-Detailseite, damit
 // beide Listen gleich aussehen (User 19.10.2026). Spalten wie CompFamilyRow.
+import type { TranslationKey } from '../../lib/i18n';
 import { coreFlexFrame } from '../../lib/tft-ui';
 import { deltaHeader } from './PatchDeltaCell';
 import type { DeltaView } from './CompRow';
 
-export default function CompFamilyListHeader({ t, deltaView = null }: { t: (k: any) => string; deltaView?: DeltaView | null }) {
+export default function CompFamilyListHeader({ t, deltaView = null }: { t: (k: TranslationKey) => string; deltaView?: DeltaView | null }) {
   return (
     <>
       {/* Handy: der Tabellenkopf mit der Legende ist dort ausgeblendet —
@@ -41,7 +42,7 @@ export default function CompFamilyListHeader({ t, deltaView = null }: { t: (k: a
 }
 
 // Legende zu den Core/Flex-Rahmen: Mini-Rahmen im Stil der Gruppen (coreFlexFrame).
-export function CoreFlexLegend({ t }: { t: (k: any) => string }) {
+export function CoreFlexLegend({ t }: { t: (k: TranslationKey) => string }) {
   return (
     <div className="flex items-center gap-3 font-normal text-fg-muted">
       {(['core', 'flex'] as const).map(k => (

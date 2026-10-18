@@ -7,7 +7,7 @@
 // Drei Abfragen NACHEINANDER (der Dienst rechnet auf einer Spur): Sterne
 // (Verteilung + neuester Patch), Items, Builds. Ein Filterwechsel holt nur,
 // was sich aendert; schon geladene Antworten bleiben im Speicher der Seite.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   EMPTY_QUERY, LATEST_PATCH, legacyBucketToRanks, serializeExplorerQuery,
   type ExplorerQuery, type ExplorerResponse, type UnitFilter,
@@ -80,32 +80,38 @@ export function useUnitExplorer(unitId: string, region: string, bucket: string, 
   const [stars, setStars] = useState<ExplorerResponse | null>(null);
   const [items, setItems] = useState<ExplorerResponse | null>(null);
   const [builds, setBuilds] = useState<ExplorerResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<ExplorerError | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const latest = useRef<string | null>(null);
+  const [latestPatch, setLatestPatch] = useState<string | null>(null);
+  // Laden/Fehler haengen am Schluessel der aktuellen Abfragen: ein neuer
+  // Schluessel heisst "laedt", ohne im Effekt Zustand setzen zu muessen.
+  const [doneKey, setDoneKey] = useState<string | null>(null);
+  const [failed, setFailed] = useState<{ key: string; code: ExplorerError } | null>(null);
 
+  // Gewaehlter Patch = neuester → dieselbe Adresse wie ohne Wahl (ein Cache-Eintrag).
+  const patch = f.patch && f.patch !== latestPatch ? f.patch : null;
+  const { star, itemCount } = f;
   const queries = useMemo(() => {
-    // Gewaehlter Patch = neuester → dieselbe Adresse wie ohne Wahl (ein Cache-Eintrag).
-    const patch = f.patch && f.patch !== latest.current ? f.patch : null;
     const base = unitBaseQuery(region, bucket, patch);
-    const unit = unitFilterOf(unitId, f);
+    const unit = unitFilterOf(unitId, { star, itemCount });
     return {
       stars: { ...base, units: [{ id: unitId }], tab: 'units', stars: [1, 2, 3] } as ExplorerQuery,
       items: { ...base, units: [unit], tab: 'items', focus: unitId } as ExplorerQuery,
       builds: { ...base, units: [unit], tab: 'builds', focus: unitId } as ExplorerQuery,
     };
-  }, [unitId, region, bucket, f.patch, f.star, f.itemCount]);
+  }, [unitId, region, bucket, patch, star, itemCount]);
+  const runKey = useMemo(
+    () => [queries.stars, queries.items, queries.builds].map(q => serializeExplorerQuery(q, { forApi: true })).join('|') + '#' + attempt,
+    [queries, attempt],
+  );
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
-    setError(null);
     (async () => {
       try {
         const s = await fetchExplorer(queries.stars);
         if (!alive) return;
-        latest.current = s.query?.patches?.[0] ?? latest.current;
+        const lp = s.query?.patches?.[0];
+        if (lp) setLatestPatch(lp);
         setStars(s);
         const it = await fetchExplorer(queries.items);
         if (!alive) return;
@@ -113,16 +119,17 @@ export function useUnitExplorer(unitId: string, region: string, bucket: string, 
         const b = await fetchExplorer(queries.builds);
         if (!alive) return;
         setBuilds(b);
-        setLoading(false);
+        setDoneKey(runKey);
       } catch (err) {
         if (!alive) return;
-        setError(((err as { code?: ExplorerError })?.code) || 'failed');
-        setLoading(false);
+        setFailed({ key: runKey, code: ((err as { code?: ExplorerError })?.code) || 'failed' });
       }
     })();
     return () => { alive = false; };
-  }, [queries, attempt]);
+  }, [queries, runKey]);
 
   const retry = useCallback(() => setAttempt(n => n + 1), []);
-  return { stars, items, builds, latestPatch: latest.current, loading, error, retry };
+  const error = failed?.key === runKey ? failed.code : null;
+  const loading = !error && doneKey !== runKey;
+  return { stars, items, builds, latestPatch, loading, error, retry };
 }

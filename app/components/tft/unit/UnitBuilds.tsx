@@ -4,7 +4,7 @@
 // Oben die Empfehlungen auf einen Blick (Builds, Items, Artefakte, Embleme),
 // darunter die Tabellen mit Filterzeile. Zahlen aus dem Data Explorer.
 import { useMemo, useState } from 'react';
-import { useI18n } from '../../../lib/i18n';
+import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import TftItemIcon from '../TftItemIcon';
 import { type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { itemBucketOf, type ItemBucket } from '../../../lib/tft-item-bucket';
@@ -185,7 +185,7 @@ export default function UnitBuilds({
               label={t('tft.explorer.x.itemKind')}
               options={['all', ...kinds] as Kind[]}
               value={kind}
-              render={k => t(`tft.item.bucket.${k}` as any)}
+              render={k => t(`tft.item.bucket.${k}` as TranslationKey)}
               onChange={k => { setKind(k); setShown(PAGE); }}
             />
           )}
@@ -319,7 +319,7 @@ function HighlightRow({ icons, assets, s, t, onItem, showName = false }: {
   icons: string[];
   assets: TftAssetsBundle | null;
   s: Scored<ExplorerRow>;
-  t: (k: any) => string;
+  t: (k: TranslationKey) => string;
   onItem: (id: string) => void;
   showName?: boolean;
 }) {
@@ -403,7 +403,7 @@ function ChipGroup<T extends string | number | null>({ label, options, value, re
   );
 }
 
-function ExplorerFailure({ error, retry, t }: { error: ExplorerError; retry: () => void; t: (k: any) => string }) {
+function ExplorerFailure({ error, retry, t }: { error: ExplorerError; retry: () => void; t: (k: TranslationKey) => string }) {
   const key = error === 'busy' ? 'tft.explorer.x.err.busy'
     : error === 'timeout' ? 'tft.explorer.x.err.timeout'
     : error === 'notReady' ? 'tft.explorer.x.err.notReady'

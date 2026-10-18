@@ -42,6 +42,7 @@ import {
   patchDiffPath,
   normalizePatchDiffRows,
   isValidPatchDiff,
+  RUNNING_PATCH_GRACE_MS,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -488,6 +489,32 @@ test('Patch-Diff-Blob: weniger Spiele, zu alt, falscher Ausschnitt oder Zukunft 
   assert.equal(isValidPatchDiff({ ...PD_SNAP, minGames: 30 }, PD_WANT), false);
   assert.equal(isValidPatchDiff({ ...PD_SNAP, lastDay: '2026-10-06' }, PD_WANT), false);
   assert.equal(isValidPatchDiff({ ...PD_SNAP, generatedAt: '2026-10-08T09:30:00Z' }, PD_WANT), false);
+});
+
+test('Kulanz: junge Datei des laufenden Patches gilt beim Lesen trotz neuer Spiele (18.10.2026)', () => {
+  const G = RUNNING_PATCH_GRACE_MS;
+  const behind = { ...PD_SNAP, totalMatches: 2_000_000, generatedAt: '2026-10-08T08:00:00Z' }; // 1 h alt
+  assert.equal(isValidPatchDiff(behind, PD_WANT), false); // Box: streng
+  assert.equal(isValidPatchDiff(behind, { ...PD_WANT, graceMs: G }), true); // Leser
+  // Neuer Tag in der Liste, Datei einen Kalendertag dahinter: gilt; zwei Tage: nicht.
+  assert.equal(isValidPatchDiff(behind, { ...PD_WANT, lastDay: '2026-10-08', graceMs: G }), true);
+  assert.equal(isValidPatchDiff(behind, { ...PD_WANT, lastDay: '2026-10-09', graceMs: G }), false);
+  // Aelter als die Kulanz, abgeschlossener Patch, Datei aus der Zukunft: nicht.
+  assert.equal(isValidPatchDiff({ ...behind, generatedAt: '2026-10-08T06:59:00Z' }, { ...PD_WANT, graceMs: G }), false);
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, lastDay: '2026-10-06', generatedAt: '2026-10-08T08:00:00Z' }, { ...PD_WANT, closed: true, graceMs: G }), false);
+  assert.equal(isValidPatchDiff({ ...behind, generatedAt: '2026-10-08T09:30:00Z' }, { ...PD_WANT, graceMs: G }), false);
+  // Ausschnitt bleibt streng.
+  assert.equal(isValidPatchDiff({ ...behind, entity: 'item' }, { ...PD_WANT, graceMs: G }), false);
+
+  const mpBehind = { ...MP_SNAP, totalMatches: 3_200_000 };
+  assert.equal(isValidMetaPulseDiff(mpBehind, MP_WANT), false);
+  assert.equal(isValidMetaPulseDiff(mpBehind, { ...MP_WANT, graceMs: G }), true);
+  assert.equal(isValidMetaPulseDiff(mpBehind, { ...MP_WANT, closed: true, graceMs: G }), false);
+
+  const vBehind = { ...V_SNAP, totalMatches: 3_200_000 };
+  assert.equal(isValidMetaPulseVelocity(vBehind, V_WANT), false);
+  assert.equal(isValidMetaPulseVelocity(vBehind, { ...V_WANT, graceMs: G }), true);
+  assert.equal(isValidMetaPulseVelocity({ ...vBehind, effDays: 2 }, { ...V_WANT, graceMs: G }), false);
 });
 
 test('Patch-Diff-Blob: Muell wird abgelehnt statt zu werfen', () => {

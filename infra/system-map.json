@@ -402,6 +402,89 @@
       "persistent": true
     },
     {
+      "name": "metastats-mirror-leaderboard.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /tft/leaderboard (Seite 1 der Standardansichten als Blob-Datei)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ]
+    },
+    {
+      "name": "metastats-mirror-leaderboard.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /tft/leaderboard alle 10 Minuten",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* *:00/10:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-leaderboard.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-mirror-ligen.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /ligen (LoL-Spielplan + Ligen-Uebersicht als Blob-Datei)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ]
+    },
+    {
+      "name": "metastats-mirror-ligen.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /ligen alle 30 Minuten",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* *:10,40:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-ligen.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-mirror-regions.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /tft/regions (12 Ansichten als Blob-Datei)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ]
+    },
+    {
+      "name": "metastats-mirror-regions.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /tft/regions alle 3 Stunden",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 00/3:40:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-regions.service",
+      "persistent": true
+    },
+    {
+      "name": "metastats-mirror-rising.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /tft/rising (48 Ansichten als Blob-Datei, nach metastats-tft-ladder)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ],
+      "After": [
+        "metastats-tft-ladder.service"
+      ]
+    },
+    {
+      "name": "metastats-mirror-rising.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /tft/rising — Nachholweg nach der Rangliste",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 06:30:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-rising.service",
+      "persistent": true
+    },
+    {
       "name": "metastats-phase1-probe.service",
       "kind": "service",
       "description": "metastats Phase-1 Aggregator-Readiness Probe (daily monitoring)",
@@ -477,6 +560,9 @@
       "description": "metastats TFT-Rangliste (Smaragd bis Challenger) fuer /tft/rising",
       "scripts": [
         "scripts/collect-tft-ladder.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-mirror-rising.service"
       ]
     },
     {
@@ -681,6 +767,34 @@
       ]
     },
     {
+      "timer": "metastats-mirror-leaderboard.timer",
+      "activates": "metastats-mirror-leaderboard.service",
+      "onCalendar": [
+        "*-*-* *:00/10:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-mirror-ligen.timer",
+      "activates": "metastats-mirror-ligen.service",
+      "onCalendar": [
+        "*-*-* *:10,40:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-mirror-regions.timer",
+      "activates": "metastats-mirror-regions.service",
+      "onCalendar": [
+        "*-*-* 00/3:40:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-mirror-rising.timer",
+      "activates": "metastats-mirror-rising.service",
+      "onCalendar": [
+        "*-*-* 06:30:00 UTC"
+      ]
+    },
+    {
       "timer": "metastats-phase1-probe.timer",
       "activates": "metastats-phase1-probe.service",
       "onCalendar": [
@@ -762,7 +876,9 @@
       "file": "deploy-hetzner.yml",
       "name": "Deploy crawler to Hetzner",
       "schedule": [],
-      "scripts": [],
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ],
       "manualDispatch": true,
       "onPush": true
     },
@@ -1273,6 +1389,19 @@
     ],
     "metastats-lol-builds-publish.service": [
       "lol-builds/blob-frische"
+    ],
+    "metastats-mirror-rising.service": [
+      "mirror/rising/index-frische"
+    ],
+    "metastats-mirror-leaderboard.service": [
+      "mirror/leaderboard/index-frische"
+    ],
+    "metastats-mirror-regions.service": [
+      "mirror/regions/index-frische"
+    ],
+    "metastats-mirror-ligen.service": [
+      "mirror/tournaments/index-frische",
+      "mirror/standings/index-frische"
     ],
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",

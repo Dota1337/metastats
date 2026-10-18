@@ -1,0 +1,11 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/regions alle 3 Stunden
+
+[Timer]
+# Tagesdaten: alle 3 h reicht (Dateien gelten 8 h). :40, damit der Lauf nicht
+# mit dem Meta-Pulse-Job (:25) zusammenfaellt.
+OnCalendar=*-*-* 00/3:40:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

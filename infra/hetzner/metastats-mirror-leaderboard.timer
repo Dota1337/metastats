@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/leaderboard alle 10 Minuten
+
+[Timer]
+# Alle 10 min (User 18.10.2026: „10"). Die Dateien gelten 25 min, danach
+# rechnet die Route live. Persistent=false: ein verpasster Termin muss nicht
+# nachgeholt werden, der naechste kommt ohnehin.
+OnCalendar=*-*-* *:00/10:00 UTC
+RandomizedDelaySec=30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

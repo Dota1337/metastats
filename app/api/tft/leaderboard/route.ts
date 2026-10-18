@@ -4,6 +4,7 @@ import { ACTIVE_REGIONS } from '../../../lib/active-regions';
 import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
 import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-groups';
+import { readRouteMirror, withSnapshotHeader } from '../../../lib/route-mirror-read';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // /api/tft/leaderboard?region=euw1&tier=GOLD&division=II&page=3
@@ -22,6 +23,10 @@ import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-g
 // account-v1-Call zur Namensaufloesung an. 205 Zeilen waeren 206 Riot-Calls pro
 // Seitenaufruf auf einem App-Limit von 500 in 10s, das wir uns mit den Crawlern
 // teilen. Mit 50 sind es maximal 52.
+//
+// Die erste Seite der Standardansichten (Welt Alle/Challenger/GM+, jede Region
+// Alle) legt die Box alle 10 min als Datei ab (Route-Spiegel,
+// app/lib/route-mirror.mjs) — live dauert die Welt-Liste 10 s.
 
 // Der Abstieg ueber alle Raenge kann bis zu 7 Rang-Gruppen nacheinander holen.
 // Der Vercel-Default von 10s reicht dafuer nicht.
@@ -167,10 +172,10 @@ async function allRegionsResponse(tier: string, rawPage: string | null, apiKey: 
     losses: e.losses,
   }));
 
-  return cachedJson(
+  return withSnapshotHeader(cachedJson(
     { region: REGION_ALL, tier, division: null, page, pageSize: PAGE_SIZE, hasNextPage: page < MAX_PAGE && startIdx + PAGE_SIZE < all.length, totalPlayers: all.length, players },
     { cache: STATS_CACHE_CONTROL_FRESH, degraded: failed || players.length === 0 },
-  );
+  ), 'leaderboard', false);
 }
 
 function bad(error: string, code: string) {
@@ -178,6 +183,9 @@ function bad(error: string, code: string) {
 }
 
 export async function GET(request: NextRequest) {
+  const mirrored = await readRouteMirror('leaderboard', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored, { cache: STATS_CACHE_CONTROL_FRESH }), 'leaderboard', true);
+
   const { searchParams } = new URL(request.url);
   const region = parseRegion(searchParams.get('region'), { fallback: 'euw1', allowAll: true });
   const tier = (searchParams.get('tier') || 'CHALLENGER').toUpperCase();
@@ -312,13 +320,13 @@ export async function GET(request: NextRequest) {
       losses: e.losses,
     }));
 
-    return cachedJson(
+    return withSnapshotHeader(cachedJson(
       { region, tier, division: (isAll || isApex) ? null : division, page, pageSize: PAGE_SIZE, hasNextPage, totalPlayers, players },
       // Leere Antwort nur 10s cachen: nach einem Set-Start sind die Apex-Ligen
       // tagelang leer und fuellen sich dann innerhalb von Stunden. Ein 5-min-TTL
       // wuerde die erste gefuellte Ladder verzoegern.
       { cache: STATS_CACHE_CONTROL_FRESH, degraded: players.length === 0 },
-    );
+    ), 'leaderboard', false);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

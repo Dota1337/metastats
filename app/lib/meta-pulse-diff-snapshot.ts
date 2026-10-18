@@ -13,6 +13,7 @@ import {
   patchDiffPath,
   META_PULSE_DIFF_BUCKETS,
   PATCH_DIFF_BUCKETS,
+  RUNNING_PATCH_GRACE_MS,
   type MetaPulseDiffRow,
   type MetaPulseVelocityRow,
   type MetaPulseVelocityWindow,
@@ -83,6 +84,7 @@ export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo; 
     buckets: o.buckets,
     now: Date.now(),
     closed: o.closed,
+    graceMs: RUNNING_PATCH_GRACE_MS,
   });
   return ok ? snap.rows : null;
 }
@@ -111,6 +113,7 @@ export async function loadPatchDiff(o: {
     buckets: o.buckets,
     now: Date.now(),
     closed: o.closed,
+    graceMs: RUNNING_PATCH_GRACE_MS,
   });
   return ok ? snap.rows : null;
 }
@@ -134,6 +137,7 @@ export async function loadMetaPulseVelocity(o: Scope & {
     buckets: o.buckets,
     window: o.window,
     now: Date.now(),
+    graceMs: RUNNING_PATCH_GRACE_MS,
   });
   return ok ? snap.rows : null;
 }

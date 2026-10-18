@@ -25,6 +25,8 @@ const CACHE_TTL = 30 * 60 * 1000;
 const DEGRADED_TTL = 60 * 1000;
 import { lolesportsJson } from '../../lib/lolesports';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
+import { isSnapshotPublisher } from '../../lib/snapshot-lookup';
+import { readRouteMirror, withSnapshotHeader } from '../../lib/route-mirror-read';
 
 async function fetchLoLEsports(pageToken?: string): Promise<any> {
   const url = pageToken
@@ -49,13 +51,25 @@ export async function GET(request: NextRequest) {
   // window=full keeps past events (calendar view); default drops them (drawer)
   const fullWindow = request.nextUrl.searchParams.get('window') === 'full';
 
-  if (cached && now - cached.time < (cached.degraded ? DEGRADED_TTL : CACHE_TTL)) {
+  // Der Publisher der Box (Route-Spiegel, app/lib/route-mirror.mjs) holt immer
+  // frisch — sonst legte er einen bis zu 30 min alten Speicherstand als neu ab.
+  const publisher = isSnapshotPublisher(request);
+  if (!publisher && cached && now - cached.time < (cached.degraded ? DEGRADED_TTL : CACHE_TTL)) {
     // Edge-TTL = Prozess-TTL (30min). Laenger waere hier falsch, obwohl es
     // billiger klingt: `filter=live` transportiert Live-Status.
     return cachedJson(applyFilters(cached.data, filter, leagueFilter, fullWindow), {
       cache: ASSET_CACHE_CONTROL,
       degraded: cached.degraded,
     });
+  }
+
+  // Kalte Funktion: die ungefilterte Liste, die die Box alle 30 min ablegt.
+  // Fuellt `cached` bewusst nicht — sonst gaelte ein alter Stand als frisch.
+  const mirrored = await readRouteMirror('tournaments', request);
+  if (mirrored) {
+    return withSnapshotHeader(cachedJson(applyFilters(mirrored, filter, leagueFilter, fullWindow), {
+      cache: ASSET_CACHE_CONTROL,
+    }), 'tournaments', true);
   }
 
   try {
@@ -146,10 +160,10 @@ export async function GET(request: NextRequest) {
     const degraded = failed || tournaments.length === 0;
     cached = { data: result, time: now, degraded };
 
-    return cachedJson(applyFilters(result, filter, leagueFilter, fullWindow), {
+    return withSnapshotHeader(cachedJson(applyFilters(result, filter, leagueFilter, fullWindow), {
       cache: ASSET_CACHE_CONTROL,
       degraded,
-    });
+    }), 'tournaments', false);
   } catch {
     return NextResponse.json(
       { error: 'Fehler beim Laden der Turnierdaten' },

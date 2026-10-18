@@ -6,6 +6,7 @@ import { parsePatch, parseBoundedInt } from '../../../../lib/query-params';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson } from '../../../../lib/api-cache';
 import { previousPatchOf } from '../../../../lib/snapshot-matrix';
+import { readRouteMirror, withSnapshotHeader } from '../../../../lib/route-mirror-read';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
 // Default-Window 7 Tage: KR-Crawls ziehen oft mit Verzögerung nach, ein
@@ -14,6 +15,9 @@ import { previousPatchOf } from '../../../../lib/snapshot-matrix';
 //
 // Output sortiert nach krAheadScore: positive Werte = KR spielt die Comp
 // häufiger UND besser als EU. Ideal um „was spielt KR vor uns?" zu erkennen.
+//
+// Die 12 Ansichten der Seite (3/7/14 Tage × 4 Raenge, min 80, patch any) legt
+// die Box alle 3 h als Datei ab (Route-Spiegel, app/lib/route-mirror.mjs).
 
 interface RegionRow {
   cluster_key: string;
@@ -29,6 +33,9 @@ interface RegionRow {
 }
 
 export async function GET(request: NextRequest) {
+  const mirrored = await readRouteMirror('regions', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored), 'regions', true);
+
   const { searchParams } = new URL(request.url);
   const days = Math.max(1, Math.min(14, parseInt(searchParams.get('days') || '7', 10)));
   const minGames = parseBoundedInt(searchParams.get('min'), { min: 10, max: 100000, fallback: 100 });
@@ -95,14 +102,14 @@ export async function GET(request: NextRequest) {
       return sb - sa;
     });
 
-    return cachedJson({
+    return withSnapshotHeader(cachedJson({
       hasData: enriched.length > 0,
       days,
       bucket: bucketLabel,
       minGames,
       patch,
       comps: enriched,
-    });
+    }), 'regions', false);
   } catch (e: any) {
     return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
   }

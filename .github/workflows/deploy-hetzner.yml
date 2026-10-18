@@ -19,6 +19,8 @@ on:
       - 'app/lib/snapshot-matrix.generated.mjs'
       - 'app/lib/lol-counters.mjs'
       - 'app/lib/lol-builds-blob.mjs'
+      # Route-Spiegel (scripts/publish-route-mirrors.mjs).
+      - 'app/lib/route-mirror.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
     const allRegions = listKey(regions) === listKey(ALL_REGIONS);
 
     // Je Seite zuerst der vorgerechnete Blob (nur alle Regionen), sonst live.
+    let fromBlob = 0;
     const side = async (patch: string): Promise<PatchDiffRow[]> => {
       const info = patches.find(p => p.patch === patch);
       if (allRegions && info) {
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
           entity, regions, bucketLabel: bucketParam, buckets,
           patch: info, set: Number(setNumber), closed: patch !== patches[0].patch,
         });
-        if (rows) return rows;
+        if (rows) { fromBlob++; return rows; }
       }
       return fetchEntityRows(entity, patch, setNumber, regions, buckets);
     };
@@ -138,7 +139,7 @@ export async function GET(request: NextRequest) {
     const winners = [...diffs].sort((a, b) => a.deltaAvgPlacement - b.deltaAvgPlacement).slice(0, 15);
     const losers  = [...diffs].sort((a, b) => b.deltaAvgPlacement - a.deltaAvgPlacement).slice(0, 15);
 
-    return cachedJson({
+    const res = cachedJson({
       hasData: diffs.length > 0,
       currentPatch,
       previousPatch,
@@ -148,6 +149,9 @@ export async function GET(request: NextRequest) {
       winners,
       losers,
     });
+    // Messung: kamen beide Seiten aus der Datei (blob), eine (mixed) oder keine?
+    res.headers.set('x-snapshot', `patch-diff=${fromBlob === 2 ? 'blob' : fromBlob === 1 ? 'mixed' : 'live'}`);
+    return res;
   } catch (e: any) {
     return NextResponse.json({ hasData: false, winners: [], losers: [], error: e.message }, { status: 502 });
   }

@@ -5,6 +5,9 @@ After=network-online.target
 # Kein Conflicts=: die Ranglisten-Abrufe laufen ueber die Plattform-Hosts
 # (euw1, kr, ...) mit eigenem Limit, die Partien-Nachladung nur ueber den
 # kleinen reservierten Anteil 'ladder' aus scripts/lib/riot-limits.mjs.
+# Nach erfolgreichem Lauf: Rising-Ansichten als Datei ablegen (Route-Spiegel).
+# Nachholweg bei Exit 1: metastats-mirror-rising.timer (06:30 UTC).
+OnSuccess=metastats-mirror-rising.service
 
 [Service]
 Type=oneshot

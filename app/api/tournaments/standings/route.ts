@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { lolesportsJson } from '../../../lib/lolesports';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../../lib/api-cache';
+import { isSnapshotPublisher } from '../../../lib/snapshot-lookup';
+import { readRouteMirror, withSnapshotHeader } from '../../../lib/route-mirror-read';
 
 const API = 'https://esports-api.lolesports.com/persisted/gw/';
 
@@ -35,17 +37,23 @@ export async function GET(request: NextRequest) {
   const leagueSlug = request.nextUrl.searchParams.get('league') || '';
 
   if (!leagueSlug) {
-    return await getLeaguesOverview();
+    return await getLeaguesOverview(request);
   }
 
   return await getLeagueDetail(leagueSlug);
 }
 
-async function getLeaguesOverview() {
+async function getLeaguesOverview(request: NextRequest) {
   const cacheKey = '__overview__';
   const now = Date.now();
-  const hit = fromCache(cacheKey, now);
-  if (hit) return hit;
+  // Der Publisher der Box (Route-Spiegel) holt immer frisch; kalte Funktionen
+  // lesen zuerst die Datei, die er alle 30 min ablegt.
+  if (!isSnapshotPublisher(request)) {
+    const hit = fromCache(cacheKey, now);
+    if (hit) return hit;
+    const mirrored = await readRouteMirror('standings', request);
+    if (mirrored) return withSnapshotHeader(cachedJson(mirrored, { cache: ASSET_CACHE_CONTROL }), 'standings', true);
+  }
 
   try {
     const leagues = await fetchLeagues();
@@ -64,7 +72,7 @@ async function getLeaguesOverview() {
     const result = { leagues: activeLeagues };
     const degraded = activeLeagues.length === 0;
     standingsCache[cacheKey] = { data: result, time: now, degraded };
-    return cachedJson(result, { cache: ASSET_CACHE_CONTROL, degraded });
+    return withSnapshotHeader(cachedJson(result, { cache: ASSET_CACHE_CONTROL, degraded }), 'standings', false);
   } catch {
     return unavailable();
   }

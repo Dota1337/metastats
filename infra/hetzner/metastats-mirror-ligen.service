@@ -1,0 +1,42 @@
+[Unit]
+Description=metastats Route-Spiegel /ligen (LoL-Spielplan + Ligen-Uebersicht als Blob-Datei)
+Wants=network-online.target
+After=network-online.target
+# Gestartet von metastats-mirror-ligen.timer alle 30 min.
+
+[Service]
+# Keine Riot-Anfragen von der Box: die Routen auf Vercel holen bei lolesports
+# wie bei jedem Besuch (Publisher-Kopfzeile umgeht ihren 30-min-Speicher), die
+# Box legt nur die Antwort ab.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet unter 30 s (2 Abrufe).
+TimeoutStartSec=10min
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=ligen
+StandardOutput=journal
+StandardError=journal
+Nice=15
+MemoryMax=300M
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

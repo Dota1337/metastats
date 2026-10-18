@@ -626,6 +626,29 @@ export const META_PULSE_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 export const META_PULSE_DIFF_CLOSED_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 export const META_PULSE_DIFF_BUCKETS = COMP_PRECOMPUTE_BUCKETS;
 
+// Kulanz beim Lesen (2026-10-18). Die Box schreibt den laufenden Patch erst zur
+// naechsten vollen Stunde neu, die Patch-Liste der Route kennt neue Spiele aber
+// sofort (gemessen 18.10. 12:26 UTC: Datei 5.136.760, Liste 5.151.160) — tagsueber
+// rechneten Patch-Gewinner und Meta Pulse deshalb fast immer live (10-20 s). Mit
+// graceMs gilt eine junge Datei trotzdem, wenn sie hoechstens einen Kalendertag
+// hinter der Liste liegt. NUR die Leser (meta-pulse-diff-snapshot.ts) uebergeben
+// graceMs: die Box entscheidet mit denselben Pruefern, ob sie ueberspringen darf
+// (publish-meta-pulse-diffs.mjs), und muss dabei streng bleiben.
+export const RUNNING_PATCH_GRACE_MS = 2 * 60 * 60 * 1000;
+
+function withinRunningGrace(
+  s: { generatedAt?: unknown; lastDay?: unknown },
+  wantLastDay: string,
+  now: number,
+  graceMs: number | undefined,
+): boolean {
+  if (!graceMs || !(graceMs > 0)) return false;
+  const age = now - Date.parse(String(s.generatedAt));
+  if (!Number.isFinite(age) || age < -5 * 60 * 1000 || age > graceMs) return false;
+  const lag = dayNum(String(wantLastDay)) - dayNum(String(s.lastDay ?? ''));
+  return Number.isFinite(lag) && lag <= 1;
+}
+
 export function metaPulseDiffPath(patch: string, bucketLabel: string): string {
   return `tft/meta-pulse/diff/${patch}/all__${bucketLabel}.json`;
 }
@@ -662,6 +685,8 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   now: number;
   /** Patch ist nicht der neueste der Liste → laengere Gueltigkeit. */
   closed?: boolean;
+  /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
+  graceMs?: number;
 }): snap is MetaPulseDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseDiffSnapshot>;
@@ -670,9 +695,11 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
   if (Number(s.minGames) !== META_PULSE_DIFF_MIN_GAMES) return false;
   // Kennt der Blob weniger Tage oder Spiele als die Patch-Liste der Route,
-  // sind seither Daten dazugekommen → live rechnen.
-  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
-  if (!(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
+  // sind seither Daten dazugekommen → live rechnen (ausser Kulanz, s. o.).
+  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
+    || !(Number(s.totalMatches) >= Number(want.totalMatches))) {
+    return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
+  }
   const age = want.now - Date.parse(String(s.generatedAt));
   const maxAge = want.closed ? META_PULSE_DIFF_CLOSED_MAX_AGE_MS : META_PULSE_DIFF_MAX_AGE_MS;
   return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
@@ -795,6 +822,8 @@ export function isValidPatchDiff(snap: unknown, want: {
   buckets: ReadonlyArray<string>;
   now: number;
   closed: boolean;
+  /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
+  graceMs?: number;
 }): snap is PatchDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<PatchDiffSnapshot>;
@@ -802,8 +831,10 @@ export function isValidPatchDiff(snap: unknown, want: {
   if (s.entity !== want.entity || Number(s.set) !== want.set || s.patch !== want.patch) return false;
   if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
   if (Number(s.days) !== PATCH_DIFF_P_DAYS || Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
-  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
-  if (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
+  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
+    || (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches)))) {
+    return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
+  }
   const age = want.now - Date.parse(String(s.generatedAt));
   const maxAge = want.closed ? PATCH_DIFF_CLOSED_MAX_AGE_MS : PATCH_DIFF_MAX_AGE_MS;
   return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
@@ -998,6 +1029,8 @@ export function isValidMetaPulseVelocity(snap: unknown, want: {
   buckets: ReadonlyArray<string>;
   window: MetaPulseVelocityWindow;
   now: number;
+  /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
+  graceMs?: number;
 }): snap is MetaPulseVelocitySnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseVelocitySnapshot>;
@@ -1008,11 +1041,14 @@ export function isValidMetaPulseVelocity(snap: unknown, want: {
   const w = want.window;
   if (s.mode !== w.mode || s.anchorDay !== w.anchorDay
     || Number(s.effDays) !== w.effDays || Number(s.effShift) !== w.effShift) return false;
-  // Spaet eintreffende Regionen erhoehen die Spielzahl des Patches → live rechnen.
-  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)) return false;
-  if (!(Number(s.totalMatches) >= Number(want.totalMatches))) return false;
-  if (w.mode === 'crossPatch'
-    && !(Number(s.compareTotalMatches) >= Number(want.compareTotalMatches ?? Infinity))) return false;
+  // Spaet eintreffende Regionen erhoehen die Spielzahl des Patches → live
+  // rechnen (ausser Kulanz, s. RUNNING_PATCH_GRACE_MS).
+  if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
+    || !(Number(s.totalMatches) >= Number(want.totalMatches))
+    || (w.mode === 'crossPatch'
+      && !(Number(s.compareTotalMatches) >= Number(want.compareTotalMatches ?? Infinity)))) {
+    return withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
+  }
   const age = want.now - Date.parse(String(s.generatedAt));
   return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= META_PULSE_VELOCITY_MAX_AGE_MS;
 }

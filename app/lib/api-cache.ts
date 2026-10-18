@@ -97,7 +97,11 @@ export function cachedJson(
   // echte Daten hat. Bleibt deshalb auf einer einzigen Kopfzeile wie bisher.
   if (opts.degraded) {
     return NextResponse.json(data, {
-      headers: { 'Cache-Control': DEGRADED_CACHE_CONTROL },
+      // X-Degraded: Erkennungsmerkmal fuer die Route-Spiegel der Box
+      // (scripts/publish-route-mirrors.mjs) — eine halbe Antwort darf nie als
+      // Datei abgelegt werden. Die Edge streicht s-maxage aus Cache-Control,
+      // die Kopfzeile oben taugt dafuer also nicht.
+      headers: { 'Cache-Control': DEGRADED_CACHE_CONTROL, 'X-Degraded': '1' },
     });
   }
   // Zwei Kopfzeilen wie im Bild-Proxy (app/api/img/[...p]/route.ts:76-79):

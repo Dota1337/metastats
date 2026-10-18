@@ -278,6 +278,61 @@
       "note": "Builds der LoL-Champion-Standardansicht (euw1 + EMERALD_PLUS) als Datei je Champion, Startdaten der Seite /champions/<id> und erste Quelle der Builds-Route (app/lib/lol-builds-snapshot.ts). Geschrieben von scripts/publish-lol-builds.mjs nach jedem Verdichtungslauf (alle 6 h, OnSuccess= aus metastats-lol-builds.service); index.json nur bei hoechstens 10 % Fehlern. Rot heisst: Seite zeigt die Builds wieder erst im Browser, Route rechnet live — kein Datenverlust. Dateien aelter als 48 h nimmt niemand mehr. Kein urlEnv: SNAPSHOT_MANIFEST_URL ist die volle Manifest-Adresse, nicht der Speicher. minEntries 150 von 173 Champions (15.10.2026: alle 173 mit Datenbank-Antwort bei EMERALD+); zum Saisonstart fallen viele unter 200, dann ist Rot ehrlich. Rot: journalctl -u metastats-lol-builds -u metastats-lol-builds-publish."
     },
     {
+      "id": "mirror/rising/index-frische",
+      "owner": "metastats-mirror-rising.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/rising/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 44,
+      "maxAgeDays": 1.25,
+      "note": "Route-Spiegel /tft/rising (app/lib/route-mirror.mjs): 48 Ansichten (1/3/5 Tage x alle + 15 Regionen) als Datei, geschrieben von scripts/publish-route-mirrors.mjs --group=rising nach jedem Ranglisten-Lauf (OnSuccess= aus metastats-tft-ladder.service, Nachhol-Timer 06:30 UTC). index.json nur bei hoechstens 10 % Fehlern. Rot heisst: Rising rechnet wieder live (7-9 s fuer alle Regionen), kein Datenverlust. Rot: journalctl -u metastats-tft-ladder -u metastats-mirror-rising."
+    },
+    {
+      "id": "mirror/leaderboard/index-frische",
+      "owner": "metastats-mirror-leaderboard.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/leaderboard/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 17,
+      "maxAgeDays": 0.05,
+      "note": "Route-Spiegel /tft/leaderboard: Seite 1 von Welt Alle/Challenger/GM+ und jeder Region Alle (18 Ansichten), alle 10 min (User 18.10.2026), scripts/publish-route-mirrors.mjs --group=leaderboard. Dateien gelten 25 min. maxAgeDays 0,05 = 72 min. Rot heisst: Rangliste rechnet live (Welt 10 s), kein Datenverlust. Rot: journalctl -u metastats-mirror-leaderboard."
+    },
+    {
+      "id": "mirror/regions/index-frische",
+      "owner": "metastats-mirror-regions.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/regions/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 11,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel /tft/regions: 12 Ansichten (3/7/14 Tage x 4 Raenge, min 80, patch any) alle 3 h, scripts/publish-route-mirrors.mjs --group=regions. Dateien gelten 8 h. Rot heisst: Regionen rechnen live (kalt bis 4 s). Rot: journalctl -u metastats-mirror-regions."
+    },
+    {
+      "id": "mirror/tournaments/index-frische",
+      "owner": "metastats-mirror-ligen.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/tournaments/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 0.125,
+      "note": "Route-Spiegel LoL-Spielplan (/api/tournaments, /ligen und Seitenleiste): ungefilterte Gesamtliste alle 30 min, scripts/publish-route-mirrors.mjs --group=ligen. Datei gilt 90 min. Rot heisst: kalte Funktionen holen live bei lolesports (1,6-2,4 s). Rot: journalctl -u metastats-mirror-ligen."
+    },
+    {
+      "id": "mirror/standings/index-frische",
+      "owner": "metastats-mirror-ligen.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/standings/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 0.125,
+      "note": "Route-Spiegel Ligen-Uebersicht (/api/tournaments/standings ohne Liga) alle 30 min, scripts/publish-route-mirrors.mjs --group=ligen. Datei gilt 90 min. Rot heisst: kalte Funktionen holen live bei lolesports. Rot: journalctl -u metastats-mirror-ligen."
+    },
+    {
       "id": "snapshot/manifest-frische",
       "owner": "metastats-snapshot-publisher.service",
       "type": "endpoint",

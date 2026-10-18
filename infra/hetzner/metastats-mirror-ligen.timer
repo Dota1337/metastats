@@ -1,0 +1,10 @@
+[Unit]
+Description=metastats Route-Spiegel /ligen alle 30 Minuten
+
+[Timer]
+# Alle 30 min wie der Speicher der Routen (Dateien gelten 90 min).
+OnCalendar=*-*-* *:10,40:00 UTC
+Persistent=false
+
+[Install]
+WantedBy=timers.target

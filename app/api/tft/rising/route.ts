@@ -4,6 +4,7 @@ import type { RisingPlayer } from '../../../lib/tft-hetzner-matches';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../../lib/api-cache';
 import { ACTIVE_REGIONS } from '../../../lib/active-regions';
 import { supabaseAdmin } from '../../../lib/supabase';
+import { readRouteMirror, withSnapshotHeader } from '../../../lib/route-mirror-read';
 
 // /api/tft/rising?days=1|3|5&region=all|euw1|…
 //
@@ -12,6 +13,8 @@ import { supabaseAdmin } from '../../../lib/supabase';
 // das Namensverzeichnis liegt allein auf Supabase.
 //
 // Die Rangliste wird einmal am Tag gesammelt, eine Stunde Edge-Frische reicht.
+// Alle 48 Ansichten legt die Box nach dem Sammeln als Datei ab (Route-Spiegel,
+// app/lib/route-mirror.mjs) — live dauert „alle Regionen" 7-9 s.
 export const maxDuration = 60;
 
 const DAYS = new Set([1, 3, 5]);
@@ -24,6 +27,9 @@ export async function GET(request: NextRequest) {
   if (region !== 'all' && !ACTIVE_REGIONS.includes(region)) {
     return NextResponse.json({ error: 'invalid_region' }, { status: 400 });
   }
+
+  const mirrored = await readRouteMirror('rising', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored, { cache: SLOW_CACHE_CONTROL }), 'rising', true);
 
   let data;
   try {
@@ -50,5 +56,5 @@ export async function GET(request: NextRequest) {
     gameName: names.get(p.puuid)?.gameName ?? null,
     tagLine: names.get(p.puuid)?.tagLine ?? null,
   }));
-  return cachedJson({ ...data, players }, { cache: SLOW_CACHE_CONTROL });
+  return withSnapshotHeader(cachedJson({ ...data, players }, { cache: SLOW_CACHE_CONTROL }), 'rising', false);
 }

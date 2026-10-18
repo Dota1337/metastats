@@ -1,0 +1,41 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/regions (12 Ansichten als Blob-Datei)
+Wants=network-online.target
+After=network-online.target
+# Gestartet von metastats-mirror-regions.timer alle 3 h.
+
+[Service]
+# Keine DB-Verbindung von der Box: die Route auf Vercel fragt Supabase wie bei
+# jedem Besuch (12 Abfragen je Lauf), die Box legt nur die Antwort ab.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet unter 1 min (12 Abrufe nacheinander, je 1-4 s).
+TimeoutStartSec=15min
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=regions
+StandardOutput=journal
+StandardError=journal
+Nice=15
+MemoryMax=300M
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

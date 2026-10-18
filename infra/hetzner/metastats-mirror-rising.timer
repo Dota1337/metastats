@@ -1,0 +1,12 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/rising — Nachholweg nach der Rangliste
+
+[Timer]
+# Der Normalfall ist OnSuccess= aus metastats-tft-ladder.service (~05:00 UTC).
+# Dieser Termin faengt den Teilausfall ab (Ranglisten-Lauf Exit 1, aber Daten
+# fuer die meisten Regionen da). Wiederholen ist harmlos: gleicher Stand, neue Datei.
+OnCalendar=*-*-* 06:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

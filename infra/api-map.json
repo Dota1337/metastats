@@ -1093,6 +1093,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/snapshot-lookup.ts",
@@ -1490,6 +1491,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1508,6 +1510,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-hetzner-matches.ts",
         "app/lib/tft-supabase-reader.ts",
@@ -1729,6 +1732,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1748,6 +1752,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"

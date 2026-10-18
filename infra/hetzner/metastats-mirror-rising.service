@@ -1,0 +1,49 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/rising (48 Ansichten als Blob-Datei, nach metastats-tft-ladder)
+Wants=network-online.target
+# After=: der Nachhol-Timer (06:30 UTC) wartet, falls die Rangliste noch laeuft.
+After=network-online.target metastats-tft-ladder.service
+# Zwei Ausloeser: OnSuccess= aus metastats-tft-ladder.service (sofort nach dem
+# Sammeln) und metastats-mirror-rising.timer als Nachholweg, falls der
+# Ranglisten-Lauf mit Exit 1 endet (Teilausfall) — dann fehlt das OnSuccess.
+# Bewusst KEIN OnFailure= dort: nach einem Abbruch mitten im Partien-Nachladen
+# waere der Stand halb. Laeuft diese Unit schon, geht ein zweiter Anstoss im
+# laufenden Auftrag auf — kein Doppellauf.
+# Rueckbau: ERST Timer stoppen und metastats-tft-ladder.service ohne OnSuccess=
+# aufspielen, DANN den Commit zuruecknehmen.
+
+[Service]
+# Keine Riot-Anfragen, keine DB-Verbindung: ruft die oeffentliche Route
+# (Publisher-Kopfzeile) und schreibt mirror/rising/* in den Blob.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet 1-2 min (48 Abrufe nacheinander, „alle Regionen" je 7-9 s).
+TimeoutStartSec=20min
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=rising
+StandardOutput=journal
+StandardError=journal
+Nice=15
+MemoryMax=300M
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

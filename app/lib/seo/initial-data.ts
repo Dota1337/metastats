@@ -18,12 +18,16 @@ import 'server-only';
 //   - Startdaten = genau die Antwort, die der Browser von der API bekaeme
 //     (gleiche Filter, gleiche Sortierung), sonst springt die Liste nach dem
 //     ersten Abruf. Ausnahme Comps (Liste und Uebersicht, gleicher Eintrag):
-//     nur die Zeilen der gezeigten Familien, ohne Mitspiel-Anteil und vom Trend
-//     nur der Pfeil-Wert (`partial`, compsStart unten).
+//     nur die Zeilen der gezeigten Familien, ohne Mitspiel-Anteil (`partial`,
+//     compsStart unten). Die Uebersicht bekommt dazu den Vorpatch-Vergleich
+//     ihrer Familien (compDeltaStart).
 import tierCutoffsFile from '../../../public/tft-tier-cutoffs.json' with { type: 'json' };
 import { lookupSnapshot } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
-import { resolveFilters } from '../tft-supabase-reader';
+import { resolveFilters, getAvailablePatches, ALL_REGIONS } from '../tft-supabase-reader';
+import { compTraitFamilyKey } from '../tft-cluster';
+import { patchDeltaPair, patchDeltaQuery, type PatchDeltaRow, type PatchDeltaStart } from '../tft-patch-delta';
+import { compactDeltaRows, loadPatchDeltaBlobs } from '../patch-delta-server';
 import { filtersFromSearchParams, filtersDataKey, type Filters, type PatchInfo } from '../tft-filters';
 import { resolveCutoffs, type TierCutoffs, type TierCutoffsBundle } from '../tft-tier-letter';
 import { sortUnitsRareLast } from '../tft-list-sort';
@@ -167,9 +171,10 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
   const filters = filtersFromSearchParams(sp, resolved?.bucketLabel ?? 'diamond_plus');
   if (!resolved) return { filters, data: null };
 
-  // Trend-Vergleich und ein ausdruecklich gewaehlter Patch: keine Startdaten
-  // (bei units laufen beide live, siehe units/route.ts).
-  if (resolved.patchFilter != null || filters.velocity > 0 || spec.skip) return { filters, data: null };
+  // Ein ausdruecklich gewaehlter Patch: keine Startdaten (bei units live,
+  // siehe units/route.ts). Der Δ-Vergleich zaehlt nicht — er hat eine eigene
+  // Abfrage, die Liste ist dieselbe.
+  if (resolved.patchFilter != null || spec.skip) return { filters, data: null };
 
   // Mit aufgeloestem Patch und Set: nach einem Patchwechsel neuer Schluessel.
   const key = `${spec.endpoint}|${resolved.patch}|${resolved.setNumber}|${filtersDataKey(filters)}`;
@@ -290,7 +295,7 @@ export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise
     // in 48 Filter-Kombinationen x 5 Sortierungen). shownFamilyRows prueft das
     // bei jedem Aufruf nach; weicht es ab, keine Startdaten.
     // Geprueft wird auf den schlanken Zeilen — genau denen, die der Browser
-    // bekommt (auch der Trend-Pfeil der Uebersicht).
+    // bekommt.
     prepare: (rows, bundle) => {
       const shown = shownFamilyRows(rows, bundle, leanCompRow);
       if (!shown) {
@@ -319,4 +324,62 @@ export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise
       return subsetBundle(bundle, { champions, items, traitIds });
     },
   }, sp);
+}
+
+// ---------- Comp-Uebersicht: Vorpatch-Vergleich ----------
+
+const DELTA_BUDGET_MS = 800;
+const deltaCache = new Map<string, { at: number; value: PatchDeltaStart | null }>();
+
+/**
+ * Pfeile der Uebersicht im ersten HTML (User 18.10.2026: „immer vs Vorpatch",
+ * ohne Nachspringen): dieselbe Antwort, die der Browser von
+ * /api/tft/patch-diff?full=1 bekaeme (gleiche Adresse `url`, gleiches Paar aus
+ * derselben Patch-Liste), aber nur die Zeilen der gezeigten Familien — der
+ * Browser legt sie deshalb nicht in seinen gemeinsamen Speicher
+ * (usePatchDelta). Nur alle Regionen (Dateien der Box, keine DB-Abfrage); in
+ * hoechstens DELTA_BUDGET_MS, sonst laedt der Browser wie bisher.
+ */
+export async function compDeltaStart(
+  filters: Filters,
+  start: StatsInitial<CompApiRow> | null,
+): Promise<PatchDeltaStart | null> {
+  if (!start || filters.region !== 'all' || process.env.SEO_START_DATA === '0') return null;
+  const pair = patchDeltaPair(start.payload.patches, filters.patch);
+  if (!pair) return null;
+  const url = patchDeltaQuery('comp', filters.bucket, filters.region, pair);
+  const families = new Set(start.payload.rows.map(r => compTraitFamilyKey(r.slug || r.clusterKey)));
+  const key = `${url}|${[...families].sort().join(',')}`;
+  const hit = deltaCache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+
+  const value = await withTimeout((async (): Promise<PatchDeltaStart | null> => {
+    const all = await getAvailablePatches(180);
+    const current = all.find(p => p.patch === pair.patch);
+    const previous = all.find(p => p.patch === pair.prev);
+    if (!current || !previous || !all[0]) return null;
+    const sides = await loadPatchDeltaBlobs({
+      entity: 'comp', regions: ALL_REGIONS, bucketLabel: filters.bucket,
+      current, previous, newestPatch: all[0].patch,
+    });
+    if (!sides) return null;
+    const own = (rows: PatchDeltaRow[]) => rows.filter(r => families.has(compTraitFamilyKey(r.k)));
+    return {
+      url,
+      res: {
+        hasData: true,
+        currentPatch: pair.patch,
+        previousPatch: pair.prev,
+        current: own(compactDeltaRows(sides[0])),
+        previous: own(compactDeltaRows(sides[1])),
+      },
+    };
+  })().catch(() => null), DELTA_BUDGET_MS);
+  // Nur Treffer merken: ein Fehlschlag (Zeitlimit, Datei der Box noch nicht
+  // da) soll beim naechsten Aufruf neu versucht werden.
+  if (value) {
+    deltaCache.set(key, { at: Date.now(), value });
+    while (deltaCache.size > CACHE_MAX) deltaCache.delete(deltaCache.keys().next().value as string);
+  }
+  return value;
 }

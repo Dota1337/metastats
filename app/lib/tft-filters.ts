@@ -20,9 +20,10 @@ export interface Filters {
   bucketAuto: boolean;
   days: number;
   region: string;
-  // W1-A: velocity comparison shift in days. 0 = disabled (no Δ column shown).
-  // 3 = compare current 3-day window vs the 3 days before that (48h-Verschiebung).
-  // 7 = compare current 3-day window vs the 3 days a week ago.
+  // Δ-Vergleich „vs Vorpatch": 0 = aus, 1 = an (ganzer gewaehlter Patch gegen
+  // den ganzen Vorpatch, tft-patch-delta.ts). Bis 18.10.2026 eine Tage-
+  // Verschiebung (1/2/3/7/14) — alte Links und gespeicherte Werte > 0 gelten
+  // als „an". Kein Teil des Daten-Schluessels: die Listen bleiben dieselben.
   velocity: number;
 }
 
@@ -36,11 +37,12 @@ export interface PatchInfo {
 
 // URL-state helpers — share filters via shareable URLs.
 
-// Allowed velocity shifts (days). 0 = off; otherwise prev-window starts N days
-// before the now-window. Anything else collapses to 0 so a stale URL can't
-// surface a shape the UI doesn't render.
-export const VELOCITY_SHIFTS: readonly number[] = [0, 1, 2, 3, 7, 14];
-const VELOCITY_SET = new Set(VELOCITY_SHIFTS);
+// Δ-Vergleich an/aus aus Adresse oder Speicher: jede positive Zahl ist „an"
+// (auch die alten Tage-Werte), alles andere „aus".
+export function deltaFlag(raw: unknown): number {
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? 1 : 0;
+}
 
 // Standardwerte, wenn die Adresse nichts sagt. Exportiert fuer das Vorab-Skript
 // (app/lib/seo/stats-pending.ts), das ohne Import im Browser laeuft.
@@ -61,8 +63,7 @@ export function hasUrlFilters(searchParams: URLSearchParams): boolean {
  *  Server-Seiten geben ihn ausdruecklich mit, damit Server und Browser
  *  dasselbe rechnen. */
 export function filtersFromSearchParams(searchParams: URLSearchParams, defaultBucket?: string): Filters {
-  const velocityRaw = parseInt(searchParams.get('velocity') || '0', 10);
-  const velocity = VELOCITY_SET.has(velocityRaw) ? velocityRaw : 0;
+  const velocity = deltaFlag(searchParams.get('velocity'));
   // Gleiche Regel wie resolveFilters (tft-supabase-reader.ts): ohne Rang ODER
   // mit bucketAuto=1 ist der Rang nicht gewaehlt. Die Adresse traegt dann nur
   // den zuletzt automatisch bestimmten, ein frisch bestimmter defaultBucket
@@ -90,16 +91,25 @@ export function filtersToQueryString(f: Filters): string {
   // Signalisiert dem Server: der Rang ist ein Default, kein User-Wunsch —
   // er darf ihn anhand der Datenlage des laufenden Sets ersetzen.
   if (f.bucketAuto) sp.set('bucketAuto', '1');
-  // Only emit velocity when non-zero to keep URLs clean for the default case.
-  if (f.velocity > 0) sp.set('velocity', String(f.velocity));
+  // Nur wenn an — die Adresse bleibt im Normalfall kurz.
+  if (f.velocity > 0) sp.set('velocity', '1');
   return sp.toString();
 }
 
+/** Abfrage der Listen-APIs: wie die Adresse, aber ohne den Δ-Vergleich — der
+ *  hat eine eigene Abfrage (/api/tft/patch-diff?full=1), die Liste bleibt im
+ *  Vorrat. Ohne Vergleich gleicht sie der Adresse Zeichen fuer Zeichen
+ *  (Edge-Cache-Schluessel, scripts/warm-tft-stats-cache.mjs). */
+export function filtersToApiQueryString(f: Filters): string {
+  return filtersToQueryString({ ...f, velocity: 0 });
+}
+
 /** Welche Daten ein Filter zeigt — ohne bucketAuto: der automatisch gewaehlte
- *  Rang X liefert dieselben Zahlen wie ein ausdruecklich gewaehltes X. Gleicher
+ *  Rang X liefert dieselben Zahlen wie ein ausdruecklich gewaehltes X. Ohne
+ *  Δ-Vergleich: der laedt eigene Zahlen, die Liste bleibt dieselbe. Gleicher
  *  Schluessel = die gezeigten Daten passen, kein neuer Abruf. */
 export function filtersDataKey(f: Filters): string {
-  return [f.patch, f.bucket, f.days, f.region, f.velocity].join('|');
+  return [f.patch, f.bucket, f.days, f.region].join('|');
 }
 
 // localStorage-Schicht für Cross-Session-Persistenz. URL ist Single-Source-
@@ -159,7 +169,6 @@ export function loadInitialFilters(searchParams: URLSearchParams, defaultBucket?
     const raw = window.localStorage.getItem(FILTERS_STORAGE_KEY);
     if (!raw) return fromUrl;
     const stored = JSON.parse(raw) as Partial<Filters>;
-    const velocityRaw = Number(stored.velocity);
     // Nur ein ausdrueckliches false zaehlt als bewusste Wahl. Aeltere
     // Storage-Eintraege kennen das Feld nicht — die duerfen nicht als
     // "User hat Diamond+ gewaehlt" gelesen werden, sonst sieht ein
@@ -175,7 +184,7 @@ export function loadInitialFilters(searchParams: URLSearchParams, defaultBucket?
       days: Number.isFinite(Number(stored.days))
         ? Math.max(DAYS_MIN, Math.min(DAYS_MAX, Number(stored.days))) : fromUrl.days,
       region: typeof stored.region === 'string' ? stored.region : fromUrl.region,
-      velocity: VELOCITY_SET.has(velocityRaw) ? velocityRaw : fromUrl.velocity,
+      velocity: deltaFlag(stored.velocity),
     };
   } catch {
     return fromUrl;
@@ -187,8 +196,9 @@ export function loadInitialFilters(searchParams: URLSearchParams, defaultBucket?
  *  gegen die der Server-Ansicht. Die Adresse zaehlt auch, weil Next beim
  *  Zurueck-Knopf die Props des ERSTEN Aufrufs wiederherstellt, die Adresse
  *  per replaceState aber andere Filter traegt.
- *  change 'data': andere Zahlen (laden), 'auto': gleiche Zahlen, der Rang war
- *  aber ausdruecklich gewaehlt (so merken), null: unveraendert. */
+ *  change 'data': andere Zahlen (laden), 'auto': gleiche Zahlen, aber der Rang
+ *  war ausdruecklich gewaehlt oder der Δ-Vergleich steht anders (so
+ *  uebernehmen), null: unveraendert. */
 export function resolveMountFilters(
   initial: Filters,
   params: URLSearchParams,
@@ -199,7 +209,7 @@ export function resolveMountFilters(
     ? filtersFromSearchParams(params, defaultBucket)
     : loadInitialFilters(params, defaultBucket);
   if (filtersDataKey(actual) !== filtersDataKey(initial)) return { filters: actual, change: 'data' };
-  if (actual.bucketAuto !== initial.bucketAuto) return { filters: actual, change: 'auto' };
+  if (actual.bucketAuto !== initial.bucketAuto || actual.velocity !== initial.velocity) return { filters: actual, change: 'auto' };
   return { filters: initial, change: null };
 }
 

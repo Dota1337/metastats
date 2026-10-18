@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 import { previousPatchOf } from '../../lib/snapshot-matrix';
+import { patchDeltaPair } from '../../lib/tft-patch-delta';
 import type { Filters, PatchInfo } from '../../lib/tft-filters';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
@@ -68,9 +69,12 @@ interface Props {
   // Optionaler Platz links neben den Auswahlfeldern (Comps: Umschalter
   // Liste/Uebersicht). Ab xl eine Zeile, darunter steht er ueber den Feldern.
   lead?: ReactNode;
+  // false: kein Δ-Feld (Meta Pulse — die Seite IST der Vergleich, und die
+  // Uebersicht der Comps zeigt ihn immer).
+  showDelta?: boolean;
 }
 
-export default function StatsFilterBar({ filters, patches, onChange, lead }: Props) {
+export default function StatsFilterBar({ filters, patches, onChange, lead, showDelta = true }: Props) {
   const { t } = useI18n();
 
   const dayLabel = (n: number) =>
@@ -105,9 +109,17 @@ export default function StatsFilterBar({ filters, patches, onChange, lead }: Pro
     return isAggregated ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
   })() : null;
 
+  // Δ-Vergleich „vs Vorpatch" (User 18.10.2026): direkt neben dem Patch-Feld,
+  // ganzer gewaehlter Patch gegen den ganzen Vorpatch. Ohne Vorpatch im selben
+  // Set oder bei einem zu jungen Patch gibt es nichts zu vergleichen — dann
+  // kein Feld, und ein gespeichertes „an" wirkt wie „aus" (die Listen fragen
+  // dasselbe Paar ab, tft-patch-delta.ts).
+  const deltaPair = showDelta ? patchDeltaPair(patches, filters.patch) : null;
+  const deltaOn = filters.velocity > 0 && !!deltaPair;
+
   const body = (
     <>
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className={`grid grid-cols-2 ${deltaPair ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3`}>
         <FilterSelect
           label={t('tft.filter.patch')}
           value={filters.patch}
@@ -125,6 +137,18 @@ export default function StatsFilterBar({ filters, patches, onChange, lead }: Pro
             </option>
           )}
         </FilterSelect>
+
+        {deltaPair && (
+          <FilterSelect
+            label={t('tft.filter.velocity')}
+            value={deltaOn ? '1' : '0'}
+            onChange={v => onChange({ ...filters, velocity: Number(v) })}
+            highlight={deltaOn}
+          >
+            <option value="0">{t('tft.filter.velocityOff')}</option>
+            <option value="1">{t('tft.filter.vsPrevPatch')} · {tftPatchLabel(deltaPair.prev)}</option>
+          </FilterSelect>
+        )}
 
         <FilterSelect
           label={t('tft.filter.bucket')}
@@ -158,20 +182,6 @@ export default function StatsFilterBar({ filters, patches, onChange, lead }: Pro
               {r.labelKey ? t(r.labelKey as TranslationKey) : r.label}
             </option>
           ))}
-        </FilterSelect>
-
-        <FilterSelect
-          label={t('tft.filter.velocity')}
-          value={String(filters.velocity)}
-          onChange={v => onChange({ ...filters, velocity: Number(v) })}
-          highlight={filters.velocity > 0}
-        >
-          <option value="0">{t('tft.filter.velocityOff')}</option>
-          <option value="1">{t('tft.filter.velocity1d')}</option>
-          <option value="2">{t('tft.filter.velocity2d')}</option>
-          <option value="3">{t('tft.filter.velocity3d')}</option>
-          <option value="7">{t('tft.filter.velocity7d')}</option>
-          <option value="14">{t('tft.filter.velocity14d')}</option>
         </FilterSelect>
       </div>
       {patchHint && (
@@ -239,6 +249,7 @@ export {
   hasUrlFilters,
   filtersFromSearchParams,
   filtersToQueryString,
+  filtersToApiQueryString,
   filtersDataKey,
   FILTERS_STORAGE_KEY,
   autoBucketDefault,

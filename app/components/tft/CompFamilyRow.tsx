@@ -7,6 +7,8 @@ import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompB
 import { useI18n } from '../../lib/i18n';
 import { compPath } from '../../lib/tft-comp-path';
 import { familyLinkSlug } from '../../lib/tft-comp-families';
+import type { PatchDelta } from '../../lib/tft-patch-delta';
+import type { DeltaView } from './CompRow';
 
 // CompFamilyRow — Trait+Carry-Family-Card mit Drop-Down (MetaTFT-Style).
 // Hauptcomp rendert als reguläre CompRow mit Toggle-Pfeil zwischen Trait+
@@ -30,6 +32,8 @@ export interface FamilyComp {
 
 export interface CompFamily {
   familyKey: string;           // <trait>__<carry> (bei zusammengelegten Familien der Anker)
+  // Alle Teil-Familien (<trait>__<carry>), bei zusammengelegten der Anker zuerst.
+  memberKeys?: string[];
   trait: string;
   carry: string;
   // Aus den Items der ganzen Familie erkannt (tft-comp-roles), staerkster Carry zuerst.
@@ -46,6 +50,8 @@ export interface CompFamily {
   weightedTop1Rate: number | null;
   emblems: Array<{ apiName: string; count: number }>;
   augments: Array<{ apiName: string; count: number }>;
+  // Vorpatch-Vergleich (attachPatchDeltas); fehlt ohne Vergleich.
+  delta?: PatchDelta | null;
 }
 
 // Hauptzeile: familyLinkSlug (Anker-Haelfte, wie Sitemap und Vorrat); Unterzeilen: ihre Variante.
@@ -61,8 +67,7 @@ export default function CompFamilyRow({
   bucket,
   days,
   patch,
-  showVelocity = false,
-  velocityShift = 0,
+  deltaView = null,
   tierCutoffs,
   compareSelected = false,
   onCompareToggle = null,
@@ -76,8 +81,8 @@ export default function CompFamilyRow({
   days?: number;
   // Patch-Filter der Seite (auch Alias wie "current") fuer das Aufstellungsbrett.
   patch: string;
-  showVelocity?: boolean;
-  velocityShift?: number;
+  // Vergleichs-Spalte „vs Vorpatch" (Werte in family.delta / variant.delta).
+  deltaView?: DeltaView | null;
   tierCutoffs?: TierCutoffs | null;
   // Compare-Toggle (User-Flow für /tft/comps/compare). Listing-Page hält den
   // Selection-State + reicht hier mit dem Family-Main-Slug durch.
@@ -121,8 +126,7 @@ export default function CompFamilyRow({
           rank={rank}
           assets={assets}
           href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
-          showVelocity={showVelocity}
-          velocityShift={velocityShift}
+          deltaView={deltaView}
           tierCutoffs={tierCutoffs}
           compareSelected={compareSelected}
           onCompareToggle={onCompareToggle}
@@ -156,8 +160,7 @@ export default function CompFamilyRow({
         rank={rank}
         assets={assets}
         href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
-        showVelocity={showVelocity}
-        velocityShift={velocityShift}
+        deltaView={deltaView}
         tierCutoffs={tierCutoffs}
         expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
         compareSelected={compareSelected}
@@ -194,8 +197,7 @@ export default function CompFamilyRow({
                   rank={0}
                   assets={assets}
                   href={withLang(familyHref(v.slug, region, bucket, days))}
-                  showVelocity={showVelocity}
-                  velocityShift={velocityShift}
+                  deltaView={deltaView}
                   tierCutoffs={tierCutoffs}
                 />
               ))}

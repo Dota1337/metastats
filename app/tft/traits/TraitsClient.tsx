@@ -9,18 +9,12 @@ import StatsFilterBar from '../../components/tft/StatsFilterBar';
 import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftStatsList } from '../../lib/useTftStatsList';
+import { usePatchDelta } from '../../lib/usePatchDelta';
+import { patchDeltaOf, traitDeltaKey } from '../../lib/tft-patch-delta';
+import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftIconUrl, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
-
-interface TraitVelocity {
-  deltaAvgPlace: number | null;
-  avgPlaceNow: number | null;
-  avgPlacePrev: number | null;
-  gamesNow: number;
-  gamesPrev: number;
-  isNew: boolean;
-}
 
 export interface TraitRow {
   name: string;
@@ -29,7 +23,6 @@ export interface TraitRow {
   avgPlacement: number | null;
   top4Rate: number | null;
   pickRate: number | null;
-  velocity?: TraitVelocity | null;
 }
 
 // One row per trait — collapsing the per-activation rows the API returns.
@@ -41,9 +34,10 @@ interface GroupedTrait {
   totalGames: number;
   bestAvg: number | null;
   bestActivation: number | null;
+  // apiName der gezeigten Stufe — ihr Vorpatch-Vergleich (O1: gleiche Stufe).
+  bestName: string | null;
   avgTop4Rate: number | null;
   pickRate: number | null;
-  velocity: TraitVelocity | null;
   rare: boolean;
 }
 
@@ -66,6 +60,10 @@ export default function TraitsClient({ initialFilters, initial }: {
   // Liste zeigt keine Tier-Buchstaben → keine Grenzen laden.
   const { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets } =
     useTftStatsList<TraitRow>({ endpoint: '/api/tft/traits', field: 'traits', initialFilters, initial, withTierCutoffs: false });
+  // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
+  // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
+  const delta = usePatchDelta({ entity: 'trait', filters, patches, enabled: filters.velocity > 0 });
+  const deltaOn = filters.velocity > 0 && !!delta.pair;
   const [search, setSearch] = useState('');
 
   // Collapse per-activation rows into one entry per *display name* (not
@@ -94,22 +92,14 @@ export default function TraitsClient({ initialFilters, initial }: {
       const groupPick = list.reduce((s, r) => s + (r.pickRate ?? 0), 0);
       const totalTop4 = list.reduce((s, r) => s + (r.top4Rate != null ? r.top4Rate * r.games : 0), 0);
       const totalPick = list.reduce((s, r) => s + (r.pickRate != null ? r.pickRate * r.games : 0), 0);
-      // Velocity: API ships one per apiName, but several apiNames can share a
-      // display name (Stargazer's 7 constellations). Pick the one with the
-      // most current-window games as representative — that's the variant
-      // driving the headline number anyway.
-      const velList = list.map(r => r.velocity).filter((v): v is TraitVelocity => !!v);
-      const velocity = velList.length
-        ? velList.reduce<TraitVelocity>((acc, v) => v.gamesNow > acc.gamesNow ? v : acc, velList[0])
-        : null;
       out.push({
         name: displayName,
         totalGames,
         bestAvg: best?.avgPlacement ?? null,
         bestActivation: best?.activation ?? null,
+        bestName: best?.name ?? null,
         avgTop4Rate: totalGames > 0 ? totalTop4 / totalGames : null,
         pickRate: totalGames > 0 ? totalPick / totalGames : null,
-        velocity,
         rare: groupPick < 0.005,
       });
     }
@@ -149,7 +139,7 @@ export default function TraitsClient({ initialFilters, initial }: {
 
         {hasData && visibleGrouped.length > 0 && !awaitingStored && (
           <div data-e3-rows className="bg-surface-base border border-border-subtle rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
+            <div className={`hidden md:grid ${deltaOn ? 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div>{t('nav.traits')}</div>
               <div>{t('tft.trait.tiers')}</div>
@@ -158,9 +148,9 @@ export default function TraitsClient({ initialFilters, initial }: {
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && (
+              {deltaOn && (
                 <div className="text-right text-[#c39bff]">
-                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                  {deltaHeader(t, delta.pair)}
                 </div>
               )}
             </div>
@@ -182,7 +172,7 @@ export default function TraitsClient({ initialFilters, initial }: {
                 <a
                   key={g.name}
                   href={withLang(`/tft/traits/${encodeURIComponent(g.name)}`)}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-border-subtle hover:bg-white/5`}
+                  className={`block md:grid ${deltaOn ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-border-subtle hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">
                     {url ? (
@@ -204,13 +194,18 @@ export default function TraitsClient({ initialFilters, initial }: {
                   <div className="hidden md:block text-right text-accent font-medium">
                     {g.bestActivation ?? '—'}
                   </div>
-                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
+                  <div className={`grid ${deltaOn ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={g.bestAvg?.toFixed(2) ?? '—'} accent="white" align="center" />
                     <Cell label={t('tft.pickRate')} value={g.pickRate != null ? `${(g.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={g.avgTop4Rate != null ? `${(g.avgTop4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(g.totalGames)} accent="muted" />
-                    {filters.velocity > 0 && (
-                      <VelocityCell velocity={g.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} t={t} />
+                    {deltaOn && (
+                      <PatchDeltaCell
+                        delta={g.bestName != null && g.bestActivation != null ? patchDeltaOf(delta.index, traitDeltaKey(g.bestName, g.bestActivation)) : null}
+                        pair={delta.pair}
+                        loading={delta.loading}
+                        label={deltaHeader(t, delta.pair)}
+                      />
                     )}
                   </div>
                 </a>
@@ -261,56 +256,4 @@ function Cell({ label, value, accent, align = 'right' }: { label: string; value:
       <div className={`hidden md:block ${alignClass} ${valueClass} tabular-nums`}>{value}</div>
     </>
   );
-}
-
-// Same Δ-cell shape as /tft/units — lila label on mobile, color-coded value
-// with directional tooltip (besser/schlechter + Jetzt/Vorher).
-function VelocityCell({ velocity, label, t }: {
-  velocity?: TraitVelocity | null;
-  label: string;
-  t: (k: any) => string;
-}) {
-  const renderDesktop = (content: React.ReactNode, title?: string) => (
-    <div className="hidden md:block text-right tabular-nums" title={title}>{content}</div>
-  );
-  const renderMobile = (content: React.ReactNode, title?: string) => (
-    <div className="md:hidden" title={title}>
-      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-      <div className="tabular-nums leading-tight">{content}</div>
-    </div>
-  );
-  if (!velocity) {
-    const tip = t('tft.velocity.notEnough') as string;
-    return (<>
-      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
-      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
-    </>);
-  }
-  if (velocity.isNew) {
-    const txt = t('tft.velocity.newComp') as string;
-    return (<>
-      {renderMobile(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
-      {renderDesktop(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
-    </>);
-  }
-  if (velocity.deltaAvgPlace == null) {
-    const tip = t('tft.velocity.notEnough') as string;
-    return (<>
-      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
-      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
-    </>);
-  }
-  const better = velocity.deltaAvgPlace < 0;
-  const color = better ? '#3ecf8e' : '#e44040';
-  const arrow = better ? '▲' : '▼';
-  const dirLabel = better ? (t('tft.velocity.better') as string) : (t('tft.velocity.worse') as string);
-  const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';
-  const prevStr = velocity.avgPlacePrev != null ? velocity.avgPlacePrev.toFixed(2) : '—';
-  const detail = (t('tft.velocity.tooltipDetail') as string).replace('{now}', nowStr).replace('{prev}', prevStr);
-  const tip = `${dirLabel} — ${detail}`;
-  const value = `${arrow} ${Math.abs(velocity.deltaAvgPlace).toFixed(2)}`;
-  return (<>
-    {renderMobile(<span style={{ color }} className="font-medium">{value}</span>, tip)}
-    {renderDesktop(<span style={{ color }} className="font-medium">{value}</span>, tip)}
-  </>);
 }

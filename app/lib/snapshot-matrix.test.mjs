@@ -34,7 +34,6 @@ import {
   fullDayComplete,
   dataWindow,
   addDays,
-  trendAnchorOffsetDays,
   PATCH_DIFF_ENTITIES,
   PATCH_DIFF_RPC,
   PATCH_DIFF_COLUMNS,
@@ -357,26 +356,6 @@ test('Velocity-Blob: Muell wird abgelehnt statt zu werfen', () => {
   for (const bad of [null, undefined, 'x', 42, [], {}, { ...V_SNAP, v: 2 }, { ...V_SNAP, rows: null }, { ...V_SNAP, generatedAt: 'kaputt' }]) {
     assert.equal(isValidMetaPulseVelocity(bad, V_WANT), false);
   }
-});
-
-// Trend-Anker der Listen (Comps/Items/Units/Traits), Datenlage 01.10. 15:00 UTC:
-// 18.3 seit 25.09., neuester Tag 30.09. (Teil-Tag), vollstaendig bis 29.09.
-test('Trend-Anker: endet am letzten vollstaendigen Tag, nie am Teil-Tag', () => {
-  const newest = { patch: '18.3', first_day: '2026-09-25', last_day: '2026-09-30' };
-  const todayNum = Math.floor(at('2026-10-01T15:00:00Z') / 86_400_000);
-  const base = { baseOffset: 1, completeDay: '2026-09-29', newest, patchFilter: null, todayNum };
-  assert.equal(trendAnchorOffsetDays(base), 2);
-  assert.equal(trendAnchorOffsetDays({ ...base, patchFilter: '18.3' }), 2);
-  // Aelterer Patch explizit gewaehlt: unveraendert.
-  assert.equal(trendAnchorOffsetDays({ ...base, patchFilter: '18.2' }), 1);
-  // Alles vollstaendig oder keine Aussage: unveraendert.
-  assert.equal(trendAnchorOffsetDays({ ...base, completeDay: '2026-09-30' }), 1);
-  assert.equal(trendAnchorOffsetDays({ ...base, completeDay: null }), 1);
-  assert.equal(trendAnchorOffsetDays({ ...base, newest: undefined }), 1);
-  // Erster Teil-Tag eines neuen Patches: nicht in den Vorpatch zurueck (wie Meta-Pulse).
-  assert.equal(trendAnchorOffsetDays({ ...base, newest: { ...newest, first_day: '2026-09-30' } }), 1);
-  // Nie kleiner als der bisherige Anker (Pipeline-Rueckstand).
-  assert.equal(trendAnchorOffsetDays({ ...base, baseOffset: 4 }), 4);
 });
 
 test('Vollstaendiger Tag: Publisher ohne Wartezeit zaehlt die letzte Region sofort', () => {

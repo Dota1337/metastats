@@ -9,7 +9,7 @@ import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './acti
 import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
 import {
-  PATCH_MIN_GAMES, establishedPatches, listWindowDays, metaPulseCompleteDay, trendAnchorOffsetDays,
+  PATCH_MIN_GAMES, establishedPatches, listWindowDays,
   META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, previousPatchOf, type CrawlMetaDayRow,
   fullDayComplete, dataWindow, addDays,
 } from './snapshot-matrix';
@@ -582,7 +582,7 @@ async function crawlMetaRows(publisher: boolean): Promise<CrawlMetaRows | null> 
       _crawlMetaNegativeTs = 0;
       return rows;
     } catch (e) {
-      console.error('[tft] crawl_meta (Endtag/Trend-Anker) fehlgeschlagen:', (e as Error).message);
+      console.error('[tft] crawl_meta (Endtag) fehlgeschlagen:', (e as Error).message);
       if (!publisher) _crawlMetaNegativeTs = Date.now();
       return null;
     }
@@ -592,34 +592,6 @@ async function crawlMetaRows(publisher: boolean): Promise<CrawlMetaRows | null> 
     void p.finally(() => { if (_crawlMetaInflight === p) _crawlMetaInflight = null; });
   }
   return p;
-}
-
-export async function resolveTrendAnchorOffset(
-  filters: ResolvedFilters,
-  patches: PatchInfo[],
-  opts: { publisher?: boolean } = {},
-): Promise<{ offset: number; degraded: boolean }> {
-  // Volle Tage: das Jetzt-Fenster der Trend-Pfeile endet am Endtag der Liste.
-  if (filters.endDay) {
-    const todayNum = Math.floor(Date.now() / 86_400_000);
-    const endNum = Math.floor(Date.parse(filters.endDay + 'T00:00:00Z') / 86_400_000);
-    return { offset: Math.max(0, todayNum - endNum), degraded: false };
-  }
-  const base = filters.anchorOffsetDays;
-  const newest = patches[0];
-  if (!newest || (filters.patchFilter != null && filters.patchFilter !== newest.patch)) {
-    return { offset: base, degraded: false };
-  }
-  const now = Date.now();
-  const todayNum = Math.floor(now / 86_400_000);
-  const rows = await crawlMetaRows(!!opts.publisher);
-  if (!rows) return { offset: base, degraded: true };
-  const setRows = filters.setNumber == null ? rows : rows.filter(r => Number(r.set_number) === Number(filters.setNumber));
-  const completeDay = metaPulseCompleteDay(setRows, filters.regions, now, opts.publisher ? 0 : META_PULSE_COMPLETE_SETTLE_MS);
-  return {
-    offset: trendAnchorOffsetDays({ baseOffset: base, completeDay, newest, patchFilter: filters.patchFilter, todayNum }),
-    degraded: false,
-  };
 }
 
 // Merge a list of jsonb dicts (key -> int) by summing values per key.

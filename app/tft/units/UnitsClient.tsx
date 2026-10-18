@@ -9,20 +9,14 @@ import StatsFilterBar from '../../components/tft/StatsFilterBar';
 import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftStatsList } from '../../lib/useTftStatsList';
+import { usePatchDelta } from '../../lib/usePatchDelta';
+import { patchDeltaOf } from '../../lib/tft-patch-delta';
+import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
 import TftHero from '../../components/tft/TftHero';
 import TftItemIcon from '../../components/tft/TftItemIcon';
-
-interface UnitVelocity {
-  deltaAvgPlace: number | null;
-  avgPlaceNow: number | null;
-  avgPlacePrev: number | null;
-  gamesNow: number;
-  gamesPrev: number;
-  isNew: boolean;
-}
 
 // Ein Item der Reihe; games = Kopien der Unit mit dem Item. Werte fehlen in
 // gespeicherten Staenden von vor 0097.
@@ -42,7 +36,6 @@ export interface UnitRow {
   pickRate: number | null;
   winShare?: number | null;
   top4Share?: number | null;
-  velocity?: UnitVelocity | null;
   topItems?: UnitItem[];
   artifacts?: UnitItem[];
   emblems?: UnitItem[];
@@ -74,6 +67,10 @@ export default function UnitsClient({ initialFilters, initial }: {
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Items/Traits.
   const { filters, setFilters, rows: units, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
     useTftStatsList<UnitRow>({ endpoint: '/api/tft/units', field: 'units', initialFilters, initial });
+  // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
+  // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
+  const delta = usePatchDelta({ entity: 'unit', filters, patches, enabled: filters.velocity > 0 });
+  const deltaOn = filters.velocity > 0 && !!delta.pair;
   const [costFilter, setCostFilter] = useState<number | null>(null);
   const [traitFilter, setTraitFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -219,7 +216,7 @@ export default function UnitsClient({ initialFilters, initial }: {
 
         {hasData && filtered.length > 0 && !awaitingStored && (
           <div data-e3-rows className="bg-surface-base border border-border-subtle rounded overflow-hidden">
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
+            <div className={`hidden md:grid ${deltaOn ? 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div></div>
               <div>{t('tft.champion')}</div>
@@ -228,9 +225,9 @@ export default function UnitsClient({ initialFilters, initial }: {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && (
+              {deltaOn && (
                 <div className="text-right text-[#c39bff]">
-                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                  {deltaHeader(t, delta.pair)}
                 </div>
               )}
             </div>
@@ -254,7 +251,7 @@ export default function UnitsClient({ initialFilters, initial }: {
                 <a
                   key={u.characterId}
                   href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
-                  className={`block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
+                  className={`block md:grid ${deltaOn ? 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   {/* Mobile: tier badge inline next to the icon; desktop has its own column. */}
                   <div className="hidden md:flex justify-center">
@@ -279,14 +276,14 @@ export default function UnitsClient({ initialFilters, initial }: {
                       <UnitItemRow u={u} assets={assets} t={t} />
                     </div>
                   </div>
-                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
+                  <div className={`grid ${deltaOn ? 'grid-cols-5' : 'grid-cols-4'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={u.avgPlacement?.toFixed(2) ?? '—'} accent="white" align="center" />
                     <Cell label={t('tft.pickRate')} value={u.pickRate != null ? `${(u.pickRate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top4')} value={u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(1)}%` : '—'} title={top4ShareTip} />
                     <Cell label={t('tft.top1')} value={u.top1Rate != null ? `${(u.top1Rate * 100).toFixed(1)}%` : '—'} title={winShareTip} />
                     <div className="hidden md:block text-right text-fg-muted">{u.games}</div>
-                    {filters.velocity > 0 && (
-                      <VelocityCell velocity={u.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} t={t} />
+                    {deltaOn && (
+                      <PatchDeltaCell delta={patchDeltaOf(delta.index, u.characterId)} pair={delta.pair} loading={delta.loading} label={deltaHeader(t, delta.pair)} />
                     )}
                   </div>
                 </a>
@@ -429,57 +426,4 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
       title={t(`tft.tier.tooltip.${letter}` as any)}
     >{letter}</span>
   );
-}
-
-// Δ-Vergleich-Zelle für die Units-Liste. Lila Trennlinie zur Stats-Strip,
-// grün/rot Pfeil mit Wert, "NEU" für frisch erschienene Units. Tooltip
-// liefert Jetzt/Vorher-Werte (damit die Zahl im Kontext steht).
-function VelocityCell({ velocity, label, t }: {
-  velocity?: { deltaAvgPlace: number | null; avgPlaceNow: number | null; avgPlacePrev: number | null; isNew: boolean } | null;
-  label: string;
-  t: (k: any) => string;
-}) {
-  const renderDesktop = (content: React.ReactNode, title?: string) => (
-    <div className="hidden md:block text-right tabular-nums" title={title}>{content}</div>
-  );
-  const renderMobile = (content: React.ReactNode, title?: string) => (
-    <div className="md:hidden" title={title}>
-      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-      <div className="tabular-nums leading-tight">{content}</div>
-    </div>
-  );
-  if (!velocity) {
-    const tip = t('tft.velocity.notEnough');
-    return (<>
-      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
-      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
-    </>);
-  }
-  if (velocity.isNew) {
-    const txt = t('tft.velocity.newComp');
-    return (<>
-      {renderMobile(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
-      {renderDesktop(<span className="text-[#c39bff] font-semibold">{txt}</span>)}
-    </>);
-  }
-  if (velocity.deltaAvgPlace == null) {
-    const tip = t('tft.velocity.notEnough');
-    return (<>
-      {renderMobile(<span className="text-fg-faint">—</span>, tip)}
-      {renderDesktop(<span className="text-fg-faint">—</span>, tip)}
-    </>);
-  }
-  const better = velocity.deltaAvgPlace < 0;
-  const color = better ? '#3ecf8e' : '#e44040';
-  const arrow = better ? '▲' : '▼';
-  const dirLabel = better ? t('tft.velocity.better') : t('tft.velocity.worse');
-  const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';
-  const prevStr = velocity.avgPlacePrev != null ? velocity.avgPlacePrev.toFixed(2) : '—';
-  const detail = (t('tft.velocity.tooltipDetail') as string).replace('{now}', nowStr).replace('{prev}', prevStr);
-  const tip = `${dirLabel} — ${detail}`;
-  const value = `${arrow} ${Math.abs(velocity.deltaAvgPlace).toFixed(2)}`;
-  return (<>
-    {renderMobile(<span style={{ color }} className="font-medium">{value}</span>, tip)}
-    {renderDesktop(<span style={{ color }} className="font-medium">{value}</span>, tip)}
-  </>);
 }

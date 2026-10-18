@@ -18,7 +18,7 @@
 //
 // Gleiche Regeln wie loadInitialFilters in app/lib/tft-filters.ts.
 import {
-  FILTERS_STORAGE_KEY, URL_FILTER_KEYS, VELOCITY_SHIFTS, FILTER_DEFAULTS, DAYS_MIN, DAYS_MAX,
+  FILTERS_STORAGE_KEY, URL_FILTER_KEYS, FILTER_DEFAULTS, DAYS_MIN, DAYS_MAX,
 } from '../tft-filters';
 import { PREFIX_LANGS } from '../lang-path';
 
@@ -41,10 +41,9 @@ var s=new URLSearchParams(location.search),k=${JSON.stringify(URL_FILTER_KEYS)};
 for(var i=0;i<k.length;i++)if(s.has(k[i]))return;
 var f=JSON.parse(localStorage.getItem(${JSON.stringify(FILTERS_STORAGE_KEY)})||'null');
 if(!f||typeof f!=='object')return;
-var dn=Number(f.days),days=isFinite(dn)?Math.max(${DAYS_MIN},Math.min(${DAYS_MAX},dn)):${FILTER_DEFAULTS.days},v=Number(f.velocity);
+var dn=Number(f.days),days=isFinite(dn)?Math.max(${DAYS_MIN},Math.min(${DAYS_MAX},dn)):${FILTER_DEFAULTS.days};
 var other=(typeof f.patch==='string'&&f.patch!==${JSON.stringify(FILTER_DEFAULTS.patch)})||days!==${FILTER_DEFAULTS.days}
-||(typeof f.region==='string'&&f.region!==${JSON.stringify(FILTER_DEFAULTS.region)})
-||(${JSON.stringify(VELOCITY_SHIFTS.filter(s => s > 0))}.indexOf(v)>=0);
+||(typeof f.region==='string'&&f.region!==${JSON.stringify(FILTER_DEFAULTS.region)});
 if(other)d.setAttribute('${PENDING_ATTR}','1');
 else if(f.bucketAuto===false&&typeof f.bucket==='string')d.setAttribute('${USER_BUCKET_ATTR}',f.bucket);
 else return;

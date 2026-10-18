@@ -1024,29 +1024,6 @@ export function metaPulseCompleteDay(
   return isoDay(new Date(Math.min(...alive) * DAY_MS));
 }
 
-// Trend-Anker der Listen (Comps/Items/Units/Traits): wie metaPulseVelocityWindow
-// endet das Jetzt-Fenster am letzten vollstaendigen Tag statt am neuesten
-// Teil-Tag. Nur fuer den neuesten Patch (patchFilter null oder gleich), und
-// nicht am ersten Teil-Tag eines neuen Patches (dann bleibt es beim neuesten
-// Tag, wie bei Meta-Pulse). Liefert nie einen kleineren Offset als baseOffset.
-export function trendAnchorOffsetDays(o: {
-  baseOffset: number;
-  completeDay: string | null | undefined;
-  newest: { patch: string; first_day: string; last_day: string } | undefined;
-  patchFilter: string | null;
-  todayNum: number;
-}): number {
-  if (!o.completeDay || !o.newest) return o.baseOffset;
-  if (o.patchFilter != null && o.patchFilter !== o.newest.patch) return o.baseOffset;
-  const dayNum = (d: string) => Math.floor(Date.parse(d) / DAY_MS);
-  const complete = dayNum(o.completeDay);
-  const first = dayNum(o.newest.first_day);
-  const last = dayNum(o.newest.last_day);
-  if (![complete, first, last].every(Number.isFinite)) return o.baseOffset;
-  if (complete < first || complete >= last) return o.baseOffset;
-  return Math.max(o.baseOffset, o.todayNum - complete);
-}
-
 export function metaPulseVelocityPath(patch: string, bucketLabel: string, w: MetaPulseVelocityWindow): string {
   return `tft/meta-pulse/velocity/${patch}/all__${bucketLabel}__${w.mode}_a${w.anchorDay}_d${w.effDays}_s${w.effShift}.json`;
 }

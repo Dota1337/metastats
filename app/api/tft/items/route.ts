@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseVelocity } from '../../../lib/query-params';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
 import { coreFromListRow, itemDetailBody, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
 import { itemCarriersFor } from '../../../lib/tft-detail-builds';
@@ -8,7 +7,6 @@ import {
   callRpc,
   getAvailablePatches,
   mergeJsonbCountArrays,
-  resolveTrendAnchorOffset,
   rpcWindowArgs,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
@@ -110,18 +108,10 @@ export async function GET(request: NextRequest) {
 
     const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
     fallbackFilters = filters;
-    // Velocity-Layer (W1-A): ?velocity=N → dedizierte RPC mit FILTER-
-    // Aggregation für now/prev in EINEM Scan (Migration 0036). p_days bleibt
-    // das User-gewählte Tagesfenster; p_shift_days = velocity-Wert vom
-    // StatsFilterBar (3 = "48h", 7 = "7d"). prev-Fenster ist immer von
-    // current_date-(days+shift) bis current_date-shift — kein Overlap mit dem
-    // now-Fenster, exakt wie bei der Comp-Velocity.
-    const velocityShift = parseVelocity(searchParams.get('velocity'));
-    const wantVelocity = velocityShift > 0;
-
-    // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Velocity-Overlays
-    // werden nicht vorgerendert → fall through to live RPC bei wantVelocity.
-    if (!wantVelocity) {
+    // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Den Δ-Vergleich
+    // „vs Vorpatch" liefert seit 18.10.2026 /api/tft/patch-diff?full=1; ein
+    // altes ?velocity= wird ignoriert.
+    {
       const hit = await lookupSnapshot('items', {
         patch: filters.patch,
         region: filters.regionLabel,
@@ -146,41 +136,14 @@ export async function GET(request: NextRequest) {
     // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
     // default (9s→72ms). Returns the same shape; the merged list is wrapped so
     // the mergeJsonbCountArrays call below still works unchanged.
-    // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
-    let trendAnchorDegraded = false;
-    const [rows, velocityRows] = await Promise.all([
-      callRpc<ItemListRow[]>('get_tft_item_stats_list', {
-        p_regions: filters.regions,
-        p_buckets: filters.buckets,
-        ...rpcWindowArgs(filters),
-        p_patch: filters.patchFilter,
-        p_set: filters.setNumber,
-      }),
-      wantVelocity
-        ? resolveTrendAnchorOffset(filters, patches).then(anchor => { trendAnchorDegraded = anchor.degraded; return callRpc<{
-            api_name: string;
-            games_now: number; games_prev: number;
-            sum_placement_now: number; sum_placement_prev: number;
-            top4_now: number; top4_prev: number;
-            total_slots_now: number; total_slots_prev: number;
-          }[]>('get_tft_item_velocity', {
-            p_regions: filters.regions,
-            p_buckets: filters.buckets,
-            p_set: filters.setNumber,
-            p_patch: filters.patchFilter,
-            // User-requested window (pre-stale-bump) — see comps/route.ts for
-            // the same rationale: bumped days would silently turn "1d vs 3d"
-            // into "5d vs 5d" during erstfill staleness.
-            p_days: filters.requestedDays,
-            p_shift_days: velocityShift,
-            p_anchor_offset_days: anchor.offset,
-            p_min_games: 30,
-          }); }).catch(() => [])
-        : Promise.resolve([] as any[]),
-    ]);
+    const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
+      p_regions: filters.regions,
+      p_buckets: filters.buckets,
+      ...rpcWindowArgs(filters),
+      p_patch: filters.patchFilter,
+      p_set: filters.setNumber,
+    });
     const totalSlots = rows[0]?.total_item_slots || 0;
-    const velocityByName = new Map<string, typeof velocityRows[number]>();
-    for (const v of velocityRows) velocityByName.set(v.api_name, v);
 
     const items = rows
       .filter(r => !isExcludedItem(r.api_name))
@@ -203,39 +166,6 @@ export async function GET(request: NextRequest) {
         const top1Rate = games > 0 && top1Raw > 0 ? top1Raw / games : null;
         const pickRate = totalSlots > 0 ? games / totalSlots : null;
 
-        // Velocity Δ (W1-A) — aus der dedizierten RPC-Aggregation. Die RPC
-        // liefert NUR Items, deren now+prev kombiniert ≥ 30 Games haben;
-        // jenseits davon prüfen wir hier nochmal individuelle Mindestschwellen
-        // damit das UI nicht "+99.00"-Ausreißer anzeigt.
-        let velocity: any = null;
-        if (wantVelocity) {
-          const v = velocityByName.get(r.api_name);
-          if (v) {
-            const gNow = Number(v.games_now);
-            const gPrev = Number(v.games_prev);
-            const slotsNow = Number(v.total_slots_now);
-            const slotsPrev = Number(v.total_slots_prev);
-            if (gNow >= 30 && gPrev >= 30) {
-              const avgNow = Number(v.sum_placement_now) / gNow;
-              const avgPrev = Number(v.sum_placement_prev) / gPrev;
-              const top4Now = Number(v.top4_now) / gNow;
-              const top4Prev = Number(v.top4_prev) / gPrev;
-              const pickNow = slotsNow > 0 ? gNow / slotsNow : null;
-              const pickPrev = slotsPrev > 0 ? gPrev / slotsPrev : null;
-              velocity = {
-                deltaAvgPlacement: avgNow - avgPrev,
-                deltaTop4Rate: top4Now - top4Prev,
-                deltaPickRate: pickNow != null && pickPrev != null ? pickNow - pickPrev : null,
-                prevGames: gPrev,
-                prevAvgPlacement: avgPrev,
-                prevTop4Rate: top4Prev,
-              };
-            } else if (gNow >= 30 && gPrev < 10) {
-              velocity = { isNew: true };
-            }
-          }
-        }
-
         return {
           apiName: r.api_name,
           games,
@@ -244,7 +174,6 @@ export async function GET(request: NextRequest) {
           top1Rate,
           pickRate,
           topUsers,
-          ...(velocity ? { velocity } : {}),
         };
       });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
@@ -260,7 +189,6 @@ export async function GET(request: NextRequest) {
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
-        velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
         startDay: filters.startDay,
         endDay: filters.endDay,
@@ -268,10 +196,10 @@ export async function GET(request: NextRequest) {
       },
       patches,
       items,
-    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
+    }, { cache: cacheControl });
   } catch (e: any) {
-    // Trifft v. a. Trend-Anfragen, die am Bundle vorbei live laufen: dann
-    // lieber die Liste ohne Trend als eine leere Seite. Nie fuer den Publisher.
+    // Trifft v. a. Anfragen, die am Bundle vorbei live laufen: dann lieber
+    // der Vorrat als eine leere Seite. Nie fuer den Publisher.
     if (fallbackFilters && !isSnapshotPublisher(request)) {
       const fb = await lookupFallbackSnapshot('items', 'items', fallbackFilters);
       if (fb) {

@@ -28,6 +28,7 @@ import {
   rememberAutoBucket,
   persistFilters,
   filtersToQueryString,
+  filtersToApiQueryString,
   filtersDataKey,
   type Filters,
   type PatchInfo,
@@ -133,7 +134,7 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial,
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     setLoading(true);
-    fetch(`${endpoint}?${qs}`, { signal: ctrl.signal })
+    fetch(`${endpoint}?${filtersToApiQueryString(filters)}`, { signal: ctrl.signal })
       .then(r => r.json())
       .then(d => {
         if (cancelled) return;

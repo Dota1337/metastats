@@ -9,9 +9,9 @@
     "routes": 90,
     "groups": 30,
     "tables": 42,
-    "rpcs": 35,
+    "rpcs": 32,
     "files": 14,
-    "edges": 629,
+    "edges": 622,
     "unused": 7,
     "unresolved": 1
   },
@@ -241,6 +241,7 @@
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-tier-letter.ts",
@@ -266,6 +267,7 @@
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-comp-matchups-server.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-supabase-reader.ts",
@@ -289,6 +291,7 @@
         "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-tier-letter.ts",
@@ -313,6 +316,7 @@
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-hetzner-matches.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
@@ -336,6 +340,7 @@
         "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-tier-letter.ts",
@@ -358,6 +363,7 @@
         "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-tier-letter.ts",
@@ -381,6 +387,7 @@
         "app/lib/regions.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
@@ -404,6 +411,7 @@
         "app/lib/i18n.tsx",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-tier-letter.ts",
@@ -941,6 +949,7 @@
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
+        "app/lib/tft-patch-label.ts",
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "app/lib/tft-tier-letter.ts",
@@ -1336,6 +1345,7 @@
       ],
       "used": true,
       "usedBy": [
+        "app/lib/tft-patch-delta.ts",
         "app/tft/patch/[version]/page.tsx",
         "app/tft/patch/winners/page.tsx",
         "scripts/lib/revalidate-edge.mjs",
@@ -2283,12 +2293,6 @@
       "declared": true
     },
     {
-      "id": "fn:get_tft_item_velocity",
-      "kind": "rpc",
-      "label": "get_tft_item_velocity",
-      "declared": true
-    },
-    {
       "id": "fn:get_tft_latest_marketvalues",
       "kind": "rpc",
       "label": "get_tft_latest_marketvalues",
@@ -2361,12 +2365,6 @@
       "declared": true
     },
     {
-      "id": "fn:get_tft_trait_velocity",
-      "kind": "rpc",
-      "label": "get_tft_trait_velocity",
-      "declared": true
-    },
-    {
       "id": "fn:get_tft_unit_builds",
       "kind": "rpc",
       "label": "get_tft_unit_builds",
@@ -2388,12 +2386,6 @@
       "id": "fn:get_tft_unit_stats",
       "kind": "rpc",
       "label": "get_tft_unit_stats",
-      "declared": true
-    },
-    {
-      "id": "fn:get_tft_unit_velocity",
-      "kind": "rpc",
-      "label": "get_tft_unit_velocity",
       "declared": true
     },
     {
@@ -3521,11 +3513,6 @@
       "kind": "calls"
     },
     {
-      "from": "api:/api/tft/comps",
-      "to": "fn:get_tft_comp_velocity",
-      "kind": "calls"
-    },
-    {
       "from": "api:/api/tft/comps/board",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -3953,11 +3940,6 @@
     {
       "from": "api:/api/tft/items",
       "to": "fn:get_tft_item_stats_list",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/items",
-      "to": "fn:get_tft_item_velocity",
       "kind": "calls"
     },
     {
@@ -4991,11 +4973,6 @@
       "kind": "calls"
     },
     {
-      "from": "api:/api/tft/traits",
-      "to": "fn:get_tft_trait_velocity",
-      "kind": "calls"
-    },
-    {
       "from": "api:/api/tft/unit-history",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -5093,11 +5070,6 @@
     {
       "from": "api:/api/tft/units",
       "to": "fn:get_tft_unit_stats",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/units",
-      "to": "fn:get_tft_unit_velocity",
       "kind": "calls"
     },
     {
@@ -5411,11 +5383,6 @@
       "kind": "reads"
     },
     {
-      "from": "fn:get_tft_item_velocity",
-      "to": "db:tft_daily_item_stats",
-      "kind": "reads"
-    },
-    {
       "from": "fn:get_tft_latest_marketvalues",
       "to": "db:tft_player_marketvalue_snapshots",
       "kind": "reads"
@@ -5506,11 +5473,6 @@
       "kind": "reads"
     },
     {
-      "from": "fn:get_tft_trait_velocity",
-      "to": "db:tft_daily_trait_stats",
-      "kind": "reads"
-    },
-    {
       "from": "fn:get_tft_unit_builds",
       "to": "db:tft_daily_unit_builds",
       "kind": "reads"
@@ -5537,11 +5499,6 @@
     },
     {
       "from": "fn:get_tft_unit_stats",
-      "to": "db:tft_daily_unit_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_unit_velocity",
       "to": "db:tft_daily_unit_stats",
       "kind": "reads"
     },

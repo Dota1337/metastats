@@ -5,19 +5,23 @@ import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
 import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
+import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
 
+// 'velocity' = „Trending": nach dem Vorpatch-Vergleich der Familie
+// (attachPatchDeltas); die Familienbildung selbst rechnet dann wie bei 'avg'.
 export type CompSortBy = 'avg' | 'win' | 'top4' | 'pick' | 'velocity' | 'games';
 
 // Zeile der Comp-API (/api/tft/comps) plus die Felder, die die Familienbildung
 // unterwegs anhaengt (_mergedFrom usw.).
-export interface CompVelocity { deltaAvgPlace?: number | null; gamesNow?: number | null; [key: string]: unknown }
 export interface CompApiRow extends FamilyComp {
-  velocity?: CompVelocity | null;
   typicalAugments?: Array<{ apiName: string; count: number }>;
   _mergedFrom?: string[];
   _mainOrigSlug?: string;
   _mergedFromBuilds?: string[];
+  // Alle Roh-Cluster der Variante (fuer ihren Vorpatch-Vergleich).
+  _clusterKeys?: string[];
   coreFlex?: Record<string, CoreFlexKind>;
+  delta?: PatchDelta | null;
 }
 
 // Wie viele Comp-Familien die Liste hoechstens zeigt. Gemessen 2026-08-27:
@@ -44,8 +48,6 @@ export function buildCompFamilies(
       case 'top4': return -(c.top4Rate ?? 0);
       case 'pick': return -(c.pickRate ?? 0);
       case 'games': return -(c.games ?? 0);
-      case 'velocity':
-        return c.velocity?.deltaAvgPlace ?? Infinity;
       case 'avg':
       default:     return c.avgPlacement ?? 9;
     }
@@ -184,8 +186,9 @@ export function buildCompFamilies(
       // Core/Flex je Variante: Zaehler und Nenner aus denselben Zeilen. Die
       // zusammengelegte Variante traegt nur die Units des Ankers, aber die
       // Spiele der ganzen Gruppe — deshalb ueber alle Gruppenzeilen summieren.
+      const clusterKeys = group.flatMap(v => v._mergedFrom ?? [v.slug || v.clusterKey]);
       if (group.length === 1) {
-        variants.push({ ...group[0], coreFlex: coreFlexMap(group[0].typicalUnits, group[0].games || 0) });
+        variants.push({ ...group[0], _clusterKeys: clusterKeys, coreFlex: coreFlexMap(group[0].typicalUnits, group[0].games || 0) });
         continue;
       }
       const gTotal = group.reduce((s, v) => s + (v.games || 0), 0);
@@ -202,6 +205,7 @@ export function buildCompFamilies(
         avgLevel: w('avgLevel'),
         pickRate: group.reduce((s, v) => s + (v.pickRate ?? 0), 0),
         _mergedFromBuilds: group.map(v => v.slug || v.clusterKey),
+        _clusterKeys: clusterKeys,
         coreFlex: coreFlexMap(sumUnits(group.map(v => v.typicalUnits)), gTotal),
       };
       variants.push(merged);
@@ -267,25 +271,6 @@ export function buildCompFamilies(
       mainComp.games = totalGames;
       mainComp.pickRate = familyPickRate;
     }
-    // Family-Velocity-Override: bei sortBy='velocity' sortiert die Family-Liste
-    // nach Min-Δ aller Sub-Variants, die Hauptcomp-Anzeige zeigte aber den
-    // mainComp-Δ — inkonsistente UX. Wir setzen den Family-Min-Δ auf die
-    // mainComp.velocity wenn velocity sortiert wird, damit die angezeigte
-    // Velocity-Zahl mit der Sortierung übereinstimmt.
-    if (sortBy === 'velocity') {
-      let bestΔ = Infinity;
-      let bestSrc: CompVelocity | null = null;
-      for (const v of variants) {
-        const δ = v.velocity?.deltaAvgPlace;
-        if (typeof δ === 'number' && δ < bestΔ) {
-          bestΔ = δ;
-          bestSrc = v.velocity ?? null;
-        }
-      }
-      if (bestSrc) {
-        mainComp.velocity = bestSrc;
-      }
-    }
     const famUnits = familyUnits(membersOf.get(familyKey) || [familyKey]);
     const familyRoles = computeRoles(famUnits, totalGames, { ...roleOpts, keyCarry: carry });
     // Core/Flex der Hauptzeile: die Einteilung ihrer Build-Gruppe (oben), also
@@ -301,6 +286,7 @@ export function buildCompFamilies(
       shownRows.reduce((s, v) => s + (v.games || 0), 0), roleOpts);
     out.push({
       familyKey,
+      memberKeys: membersOf.get(familyKey) || [familyKey],
       trait,
       carry,
       carries: familyRoles.carries,
@@ -326,14 +312,6 @@ export function buildCompFamilies(
       case 'top4': return -(a.weightedTop4Rate ?? 0) - -(b.weightedTop4Rate ?? 0);
       case 'pick': return (b.familyPickRate ?? 0) - (a.familyPickRate ?? 0);
       case 'games': return (b.totalGames ?? 0) - (a.totalGames ?? 0);
-      case 'velocity':
-        // Family-Velocity = Min-Δ über Variants (most-improved sub-variant
-        // drückt die Family nach oben).
-        {
-          const aΔ = Math.min(...a.variants.map(v => (v as CompApiRow).velocity?.deltaAvgPlace ?? Infinity));
-          const bΔ = Math.min(...b.variants.map(v => (v as CompApiRow).velocity?.deltaAvgPlace ?? Infinity));
-          return aΔ - bΔ;
-        }
       case 'avg':
       default: return (a.weightedAvgPlacement ?? 9) - (b.weightedAvgPlacement ?? 9);
     }
@@ -469,8 +447,9 @@ export function shownFamilyRows<T extends CompApiRow>(
 }
 
 // Alles, was eine Zeile der Liste oder eine Kachel der Uebersicht zeigt
-// (Hauptzeile, Varianten, Rollen, Trend-Pfeil, welche Familien die Uebersicht
-// nach dem Entdoppeln behaelt).
+// (Hauptzeile, Varianten, Rollen, welche Familien die Uebersicht nach dem
+// Entdoppeln behaelt). Der Vorpatch-Vergleich kommt aus einer eigenen Abfrage
+// (attachPatchDeltas), nicht aus diesen Zeilen.
 function familiesSignature(families: CompFamily[]): string {
   return JSON.stringify([
     families.map(f => [
@@ -478,17 +457,16 @@ function familiesSignature(families: CompFamily[]): string {
       f.weightedAvgPlacement, f.weightedTop4Rate, f.weightedTop1Rate, f.emblems,
       f.mainComp.slug, f.mainComp.games, f.mainComp.avgPlacement, f.mainComp.coreFlex,
       f.variants.map(v => [v.slug, v.games, v.avgPlacement, v.top4Rate, v.top1Rate, v.pickRate, (v as CompApiRow).coreFlex]),
-      familyTrend(f),
+      f.memberKeys,
     ]),
     dedupeByCarry(families).map(f => f.familyKey),
   ]);
 }
 
-// Startdaten-Zeile: ohne Mitspiel-Anteil je Unit (cooccurrence), vom Trend nur
-// die zwei Werte des Pfeils der Uebersicht (familyTrend: Δ Ø-Platz + Spiele).
-// Die Liste zeigt beides in der Standardansicht nicht; Trend-Filter (eigener
-// Daten-Schluessel) und Trend-Sortierung laden die volle Liste
-// (useTftCompsData).
+// Startdaten-Zeile: ohne Mitspiel-Anteil je Unit (cooccurrence) — die Liste
+// zeigt ihn in der Standardansicht nicht. Ein altes Trend-Feld (gespeicherte
+// Staende von vor dem 18.10.2026) faellt weg: den Vergleich liefert seitdem
+// /api/tft/patch-diff?full=1.
 export function leanCompRow<Row extends CompApiRow>(row: Row): Row {
   const lean: CompApiRow = {
     ...row,
@@ -498,12 +476,7 @@ export function leanCompRow<Row extends CompApiRow>(row: Row): Row {
       return unit;
     }),
   };
-  const vel = row.velocity;
-  if (vel && typeof vel.deltaAvgPlace === 'number') {
-    lean.velocity = { deltaAvgPlace: vel.deltaAvgPlace, gamesNow: vel.gamesNow ?? null };
-  } else {
-    delete lean.velocity;
-  }
+  delete (lean as { velocity?: unknown }).velocity;
   return lean as Row;
 }
 
@@ -552,20 +525,40 @@ export function dedupeByCarry(families: CompFamily[]): CompFamily[] {
   return families.filter(f => keep.has(f));
 }
 
-// Trend einer Familie: nach Spielen gewichtetes Δ Ø-Platz ueber die Varianten,
-// die ein belastbares Δ haben (route.ts deriveVelocity, ≥30 Spiele je Fenster).
-// Gewicht = Spiele im aktuellen Fenster der Zeile, zu der das Δ gehoert.
-// null, wenn keine Variante eines hat — dann zeigt die Uebersicht keinen Pfeil.
-export function familyTrend(f: CompFamily): number | null {
-  let w = 0;
-  let s = 0;
-  for (const v of f.variants) {
-    const vel = (v as CompApiRow).velocity;
-    const d = vel?.deltaAvgPlace;
-    if (typeof d !== 'number' || !Number.isFinite(d)) continue;
-    const g = Number(vel?.gamesNow) || 0;
-    s += d * g;
-    w += g;
+// Vorpatch-Vergleich (User 18.10.2026) an Familien und Varianten haengen.
+// Familie: alle Cluster ihrer Teil-Familien (memberKeys, inkl. Zwei-Carry-
+// Merge) im ganzen Patch, jede Seite fuer sich summiert — so zaehlen Cluster mit,
+// die im gewaehlten Tage-Fenster nicht vorkommen. Die Hauptzeile zeigt den Wert
+// der Familie (wie ihre uebrigen Zahlen), Unterzeilen den ihrer Variante.
+// sortByDelta (Trending): beste Verbesserung zuerst, ohne Wert ans Ende,
+// Gleichstand nach Ø-Platz. Ohne Index unveraendert.
+export function attachPatchDeltas(
+  families: CompFamily[],
+  index: PatchDeltaIndex | null,
+  sortByDelta: boolean,
+): CompFamily[] {
+  if (!index) return families;
+  const byFamily = new Map<string, string[]>();
+  for (const k of new Set([...index.now.keys(), ...index.prev.keys()])) {
+    const fk = compTraitFamilyKey(k);
+    const list = byFamily.get(fk);
+    if (list) list.push(k); else byFamily.set(fk, [k]);
   }
-  return w > 0 ? s / w : null;
+  const out = families.map(f => {
+    const delta = sumDeltaKeys(index, (f.memberKeys ?? [f.familyKey]).flatMap(m => byFamily.get(m) ?? []));
+    return {
+      ...f,
+      delta,
+      mainComp: { ...f.mainComp, delta },
+      variants: f.variants.map(v => ({
+        ...v,
+        delta: sumDeltaKeys(index, (v as CompApiRow)._clusterKeys ?? [v.slug || v.clusterKey]),
+      })),
+    };
+  });
+  if (sortByDelta) {
+    const d = (f: CompFamily) => f.delta?.deltaAvgPlace ?? Number.POSITIVE_INFINITY;
+    out.sort((a, b) => d(a) - d(b) || (a.weightedAvgPlacement ?? 9) - (b.weightedAvgPlacement ?? 9));
+  }
+  return out;
 }

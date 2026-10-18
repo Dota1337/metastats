@@ -13,7 +13,9 @@ import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
-import { dedupeByCarry, visibleFamilies, familyTrend, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
+import { dedupeByCarry, visibleFamilies, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
+import type { PatchDeltaPair, PatchDeltaStart } from '../../../lib/tft-patch-delta';
+import { deltaTooltip } from '../../../components/tft/PatchDeltaCell';
 import { compPath } from '../../../lib/tft-comp-path';
 import { costColor, HEX_CLIP } from '../../../lib/tft-ui';
 import type { StatsInitial } from '../../../lib/seo/initial-data';
@@ -35,18 +37,21 @@ function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
   return costs[0] ?? null;
 }
 
-export default function AtlasClient({ initialFilters, initial }: {
+export default function AtlasClient({ initialFilters, initial, initialDelta = null }: {
   // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
   // Zeilen der 40 gezeigten Familien, falls der Zwischenstand sie hatte.
   initialFilters: Filters;
   initial: StatsInitial<CompApiRow> | null;
+  // Vorpatch-Vergleich dieser Familien (Pfeile im ersten HTML).
+  initialDelta?: PatchDeltaStart | null;
 }) {
   const { t, withLang } = useI18n();
+  // Pfeile immer gegen den Vorpatch (User 18.10.2026) — deshalb hier kein Δ-Feld.
   const {
     filters, handleFiltersChange, sortBy, chooseSort,
     hasData, patches, assets, loading, currentPatchLabel, error, retry,
-    currentSetFamilies, topFamilyKeys, awaitingStored, awaitingFull,
-  } = useTftCompsData({ initialFilters, initial });
+    currentSetFamilies, topFamilyKeys, awaitingStored, awaitingFull, deltaView,
+  } = useTftCompsData({ initialFilters, initial, deltaAlways: true, initialDelta });
 
   // Dieselben 40 Familien wie die Liste, in der gewaehlten Sortierung —
   // ohne Doppelungen (gleicher Carry + gleiches Board, bestes Ø bleibt).
@@ -85,6 +90,7 @@ export default function AtlasClient({ initialFilters, initial }: {
           patches={patches}
           onChange={handleFiltersChange}
           lead={<CompsTabs active="overview" filters={filters} />}
+          showDelta={false}
         />
 
         <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
@@ -99,7 +105,7 @@ export default function AtlasClient({ initialFilters, initial }: {
             <option value="win">{t('tft.top1')}</option>
             <option value="pick">{t('tft.pickRate')}</option>
             <option value="games">{t('tft.gamesShort')}</option>
-            {filters.velocity > 0 && (
+            {deltaView && (
               <option value="velocity">{t('tft.velocity.trending')}</option>
             )}
           </select>
@@ -128,7 +134,7 @@ export default function AtlasClient({ initialFilters, initial }: {
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-3 min-w-0">
                   {row.families.map(f => (
-                    <AtlasTile key={f.familyKey} family={f} assets={assets} href={withLang(href(f))} t={t} />
+                    <AtlasTile key={f.familyKey} family={f} assets={assets} href={withLang(href(f))} t={t} pair={deltaView?.pair ?? null} />
                   ))}
                 </div>
               </section>
@@ -142,12 +148,13 @@ export default function AtlasClient({ initialFilters, initial }: {
 }
 
 function AtlasTile({
-  family: f, assets, href, t,
+  family: f, assets, href, t, pair,
 }: {
   family: CompFamily;
   assets: TftAssetsBundle;
   href: string;
   t: (k: TranslationKey) => string;
+  pair: PatchDeltaPair | null;
 }) {
   const { withLang, lang } = useI18n();
   const named = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry);
@@ -158,7 +165,8 @@ function AtlasTile({
   const carryName = (cid: string) => assets.champions[cid]?.name || prettyId(cid);
   const name = `${tftTraitDisplayName(assets, f.trait)} · ${named.map(carryName).join(' & ')}`;
   const avg = f.weightedAvgPlacement;
-  const trend = familyTrend(f);
+  // Pfeil nur mit belastbarem Vergleich (je Patch ≥ PATCH_DELTA_MIN_GAMES Spiele).
+  const trend = pair ? f.delta?.deltaAvgPlace ?? null : null;
   const tip = [
     name,
     `${t('tft.avgPlacement')}: ${avg != null ? avg.toFixed(2) : '—'}`,
@@ -189,7 +197,7 @@ function AtlasTile({
           <span
             className="absolute -top-1 -left-1.5 text-[11px] leading-none font-bold"
             style={{ color: trend < 0 ? '#3ecf8e' : '#e44040' }}
-            title={`${trend < 0 ? t('tft.velocity.better') : t('tft.velocity.worse')} (${trend > 0 ? '+' : ''}${trend.toFixed(2)})`}
+            title={`${deltaTooltip(f.delta ?? null, pair, t, lang)} (${trend > 0 ? '+' : ''}${trend.toFixed(2)})`}
           >
             {trend < 0 ? '▲' : '▼'}
           </span>

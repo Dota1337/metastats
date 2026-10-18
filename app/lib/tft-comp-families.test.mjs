@@ -1,28 +1,56 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  familyTrend, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
+  attachPatchDeltas, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
 } from './tft-comp-families.ts';
+import { compTraitFamilyKey } from './tft-cluster.ts';
+import { buildPatchDeltaIndex } from './tft-patch-delta.ts';
 
 const fam = (key, games, extra = {}) => ({
   familyKey: key, trait: 'DA_Trait', carry: 'DA_Carry', carries: [], tanks: [],
   totalGames: games, variants: [], ...extra,
 });
-const v = (deltaAvgPlace, gamesNow) => ({ velocity: { deltaAvgPlace, gamesNow } });
 
-test('familyTrend gewichtet das Delta nach Spielen im aktuellen Fenster', () => {
-  const f = fam('a', 0, { variants: [v(-0.4, 300), v(0.2, 100)] });
-  assert.equal(familyTrend(f), (-0.4 * 300 + 0.2 * 100) / 400);
+// Δ „vs Vorpatch": Cluster-Zeilen beider Patches, Schluessel wie die Liste.
+const K1 = 'DA_Trait@6_DA_Carry';
+const K2 = 'DA_Trait@8_DA_Carry';
+const K3 = 'DA_Other@4_DA_X';
+const deltaIndex = (current, previous) => buildPatchDeltaIndex('comp', { patch: '18.4', prev: '18.3' },
+  { hasData: true, currentPatch: '18.4', previousPatch: '18.3', current, previous });
+const famOf = (k, extra = {}) => fam(compTraitFamilyKey(k), 0, { mainComp: { slug: k }, ...extra });
+
+test('attachPatchDeltas: Familie summiert alle ihre Cluster beider Patches', () => {
+  const idx = deltaIndex(
+    [{ k: K1, g: 300, a: 4.0 }, { k: K2, g: 100, a: 3.0 }],
+    [{ k: K1, g: 200, a: 4.5 }, { k: K2, g: 200, a: 4.0 }],
+  );
+  const [f] = attachPatchDeltas([famOf(K1, { variants: [{ slug: K1, _clusterKeys: [K1] }, { slug: K2 }] })], idx, false);
+  // jetzt (1200+300)/400 = 3,75; vorher (900+800)/400 = 4,25
+  assert.ok(Math.abs(f.delta.deltaAvgPlace - -0.5) < 1e-9);
+  assert.equal(f.mainComp.delta, f.delta);
+  assert.ok(Math.abs(f.variants[0].delta.deltaAvgPlace - -0.5) < 1e-9);
+  assert.equal(f.variants[1].delta.deltaAvgPlace, null, 'K2 jetzt unter der Mindestmenge');
 });
 
-test('familyTrend ignoriert Varianten ohne belastbares Delta', () => {
-  const f = fam('a', 0, { variants: [v(null, 500), v(0.3, 50), { velocity: null }, {}] });
-  assert.equal(familyTrend(f), 0.3);
+test('attachPatchDeltas: zusammengelegte Familien zaehlen mit, fremde nicht', () => {
+  const idx = deltaIndex(
+    [{ k: K1, g: 200, a: 4.0 }, { k: K3, g: 200, a: 2.0 }],
+    [{ k: K1, g: 200, a: 4.0 }, { k: K3, g: 200, a: 4.0 }],
+  );
+  const solo = attachPatchDeltas([famOf(K1)], idx, false)[0];
+  assert.equal(solo.delta.deltaAvgPlace, 0);
+  const merged = attachPatchDeltas([famOf(K1, { memberKeys: [compTraitFamilyKey(K1), compTraitFamilyKey(K3)] })], idx, false)[0];
+  assert.equal(merged.delta.deltaAvgPlace, -1);
 });
 
-test('familyTrend ist null ohne Trenddaten — kein erfundener Pfeil', () => {
-  assert.equal(familyTrend(fam('a', 0, { variants: [{}, v(null, 10)] })), null);
-  assert.equal(familyTrend(fam('a', 0, { variants: [v(0.5, 0)] })), null);
+test('attachPatchDeltas: ohne Daten kein erfundener Pfeil, Sortierung nach Δ mit Luecken hinten', () => {
+  const fams = [famOf(K3, { weightedAvgPlacement: 4.1 }), famOf(K1, { weightedAvgPlacement: 4.0 })];
+  assert.equal(attachPatchDeltas(fams, null, true), fams);
+  const idx = deltaIndex([{ k: K1, g: 200, a: 4.0 }], [{ k: K1, g: 200, a: 4.2 }]);
+  const out = attachPatchDeltas(fams, idx, true);
+  assert.deepEqual(out.map(f => f.mainComp.slug), [K1, K3]);
+  assert.equal(out[1].delta, null);
+  assert.equal(fams[1].delta, undefined, 'Eingabe bleibt unveraendert');
 });
 
 test('topFamilyKeys waehlt nach Spielen, nicht nach Reihenfolge', () => {
@@ -45,23 +73,18 @@ test('topFamilyKeys: Gleichstand auf Platz 40/41 haengt nicht an der Eingangsrei
   assert.ok(a.includes('tie_a') && !a.includes('tie_b') && !a.includes('tie_c'));
 });
 
-test('leanCompRow: behaelt vom Trend nur Δ und Spiele, laesst Mitspiel-Anteil weg', () => {
+test('leanCompRow: laesst Mitspiel-Anteil und altes Trend-Feld weg', () => {
   const row = {
     slug: 'DA_Trait@6_DA_Carry', clusterKey: 'DA_Trait@6_DA_Carry', games: 100,
     typicalUnits: [{ characterId: 'DA_Carry', count: 90, cooccurrence: { DA_X: 0.5 } }],
     velocity: { deltaAvgPlace: -0.12, gamesNow: 80, gamesPrev: 70, avgPlaceNow: 3.9, isNew: false },
   };
   const lean = leanCompRow(row);
-  assert.deepEqual(lean.velocity, { deltaAvgPlace: -0.12, gamesNow: 80 });
+  assert.equal('velocity' in lean, false);
   assert.equal('cooccurrence' in lean.typicalUnits[0], false);
+  assert.equal(lean.games, 100);
   assert.equal(row.typicalUnits[0].cooccurrence.DA_X, 0.5, 'Eingabe bleibt unveraendert');
   assert.equal(row.velocity.gamesPrev, 70, 'Eingabe bleibt unveraendert');
-  // Ohne belastbares Δ: kein Trend-Feld — familyTrend zeigt dann keinen Pfeil.
-  assert.equal('velocity' in leanCompRow({ ...row, velocity: { deltaAvgPlace: null, gamesNow: 5 } }), false);
-  assert.equal('velocity' in leanCompRow({ ...row, velocity: null }), false);
-  // Gleicher Pfeil wie auf der vollen Zeile.
-  const f = (r) => familyTrend(fam('a', 0, { variants: [r] }));
-  assert.equal(f(lean), f(row));
 });
 
 test('visibleFamilies: ohne Suche Top-Schnitt in Eingangsreihenfolge, Suche hebt ihn auf', () => {

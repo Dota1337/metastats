@@ -17,21 +17,17 @@ import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUni
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, type CompRoles } from '../../lib/tft-comp-roles';
+import type { PatchDelta, PatchDeltaPair } from '../../lib/tft-patch-delta';
+import { deltaTooltip } from './PatchDeltaCell';
 
 // Dense, scannable row layout for /tft/comps. Replaces the narrative
 // CompCard so pros can survey 20+ comps at a glance — avg-placement is
 // the prominent column, everything else is auxiliary. CompCard is still
 // used on the TFT landing page where the bigger format makes sense.
 
-interface CompVelocity {
-  deltaAvgPlace: number | null;
-  deltaPickRate: number | null;
-  avgPlaceNow: number | null;
-  avgPlacePrev: number | null;
-  isNew: boolean;
-  gamesNow: number;
-  gamesPrev: number;
-}
+// Vergleichs-Spalte „vs Vorpatch": welches Paar, und ob die Zahlen noch laden
+// (dann bleibt die Zelle leer). null = Spalte aus.
+export interface DeltaView { pair: PatchDeltaPair; loading: boolean }
 
 interface Comp {
   source?: 'data' | 'editorial';
@@ -55,7 +51,8 @@ interface Comp {
     tankItemGames?: number | unknown;
     topItems?: { apiName: string; count: number | unknown }[];
   }[];
-  velocity?: CompVelocity | null;
+  // Vorpatch-Vergleich (tft-comp-families attachPatchDeltas).
+  delta?: PatchDelta | null;
   // Core/Flex je Unit, gerechnet in tft-comp-families.ts ueber die Build-Gruppe
   // des gezeigten Boards. Fehlt es, keine Rahmen (CoreFlexGroups).
   coreFlex?: Record<string, 'core' | 'flex'>;
@@ -91,7 +88,7 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
 // descriptorTag + rerollLevelForCost ausgelagert nach app/lib/tft-comp-descriptor.ts
 
 export default function CompRow({
-  comp, rank, assets, href, showVelocity = false, velocityShift = 0, tierCutoffs = null,
+  comp, rank, assets, href, deltaView = null, tierCutoffs = null,
   expandToggle = null,
   compareSelected = false,
   onCompareToggle = null,
@@ -103,8 +100,7 @@ export default function CompRow({
   rank: number;
   assets: TftAssetsBundle | null;
   href: string;
-  showVelocity?: boolean;
-  velocityShift?: number;
+  deltaView?: DeltaView | null;
   // Loaded once in the parent page (CompsPage / CompList) and passed down
   // to all rows. Earlier this hooked a useEffect per row which fired one
   // fetch + setState per CompRow on mount — 100 rows = 100 effects. The
@@ -132,7 +128,7 @@ export default function CompRow({
   // Anleitungen geladen sind — das Aufstellungsbrett nagelt sie fest.
   onGuide?: (guideId: string | null) => void;
 }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
@@ -315,7 +311,7 @@ export default function CompRow({
           einmal über Tile in Reihe). Grid-Spalte (vormals 2.5rem)
           entsprechend entfernt. */}
       <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
-        showVelocity
+        deltaView
           ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
           : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]'
       } items-center gap-2.5 sm:gap-3`}>
@@ -537,51 +533,22 @@ export default function CompRow({
         <div className="hidden sm:block text-right tabular-nums text-fg-bright text-[13px]">
           {comp.games}
         </div>
-        {showVelocity && (
+        {deltaView && (
           <div className="hidden sm:block text-right tabular-nums">
             {(() => {
-              const v = comp.velocity;
-              if (!v) {
-                return (
-                  <span
-                    className="text-fg-faint"
-                    title={t('tft.velocity.notEnough')}
-                  >—</span>
-                );
-              }
-              if (v.isNew) {
-                return (
-                  <span
-                    className="inline-block px-1 rounded text-[10px] font-semibold"
-                    style={{ color: '#c39bff', backgroundColor: '#c39bff1f', border: '1px solid #c39bff40' }}
-                    title={t('tft.velocity.newComp')}
-                  >
-                    {t('tft.velocity.newComp')}
-                  </span>
-                );
-              }
-              if (v.deltaAvgPlace == null) {
-                return (
-                  <span
-                    className="text-fg-faint"
-                    title={t('tft.velocity.notEnough')}
-                  >—</span>
-                );
+              // Waehrend des Ladens leer: die Zeile steht schon, die Spalte fuellt sich.
+              if (deltaView.loading) return null;
+              const v = comp.delta ?? null;
+              const tooltip = deltaTooltip(v, deltaView.pair, t, lang);
+              // Kein „NEU" bei Comps (tft-patch-delta.ts deltaFromSums).
+              if (v?.deltaAvgPlace == null) {
+                return <span className="text-fg-faint" title={tooltip}>—</span>;
               }
               // Lower placement = improvement → green ▲; higher = regression → red ▼.
               const better = v.deltaAvgPlace < 0;
-              const color = better ? '#3ecf8e' : '#e44040';
-              const arrow = better ? '▲' : '▼';
-              const label = better ? t('tft.velocity.better') : t('tft.velocity.worse');
-              const nowStr = v.avgPlaceNow != null ? v.avgPlaceNow.toFixed(2) : '—';
-              const prevStr = v.avgPlacePrev != null ? v.avgPlacePrev.toFixed(2) : '—';
-              const detail = t('tft.velocity.tooltipDetail')
-                .replace('{now}', nowStr)
-                .replace('{prev}', prevStr);
-              const tooltip = `${label} — ${detail}`;
               return (
-                <span style={{ color }} className="font-medium" title={tooltip}>
-                  {arrow} {Math.abs(v.deltaAvgPlace).toFixed(2)}
+                <span style={{ color: better ? '#3ecf8e' : '#e44040' }} className="font-medium" title={tooltip}>
+                  {better ? '▲' : '▼'} {Math.abs(v.deltaAvgPlace).toFixed(2)}
                 </span>
               );
             })()}

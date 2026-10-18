@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { filtersFromSearchParams, filtersToQueryString, filtersDataKey, resolveMountFilters, FILTERS_STORAGE_KEY } from './tft-filters.ts';
+import { filtersFromSearchParams, filtersToQueryString, filtersToApiQueryString, filtersDataKey, resolveMountFilters, FILTERS_STORAGE_KEY } from './tft-filters.ts';
 
 const AUTO = { patch: 'current', bucket: 'diamond_plus', bucketAuto: true, days: 3, region: 'all', velocity: 0 };
 
@@ -84,4 +84,24 @@ test('Mount: gespeicherter Auto-Rang von gestern weicht dem frischen Server-Rang
   const r = withStorage(stored, () => resolveMountFilters(AUTO, new URLSearchParams('')));
   assert.equal(r.change, null);
   assert.equal(r.filters.bucket, 'diamond_plus');
+});
+
+test('Δ-Vergleich: alte Tage-Werte in der Adresse gelten als „an", alles andere als „aus"', () => {
+  for (const [raw, want] of [['1', 1], ['3', 1], ['14', 1], ['21', 1], ['0', 0], ['-2', 0], ['x', 0], ['', 0]]) {
+    assert.equal(filtersFromSearchParams(new URLSearchParams(`velocity=${raw}`), 'all').velocity, want, raw);
+  }
+  assert.equal(new URLSearchParams(filtersToQueryString({ ...AUTO, velocity: 1 })).get('velocity'), '1');
+});
+
+test('Δ-Vergleich: kein Teil der Listen-Abfrage und des Daten-Schluessels', () => {
+  const on = { ...AUTO, velocity: 1 };
+  assert.equal(filtersToApiQueryString(on), filtersToQueryString(AUTO));
+  assert.equal(filtersToApiQueryString(AUTO), filtersToQueryString(AUTO));
+  assert.equal(filtersDataKey(on), filtersDataKey(AUTO));
+});
+
+test('Mount: gespeicherter Δ-Vergleich → uebernehmen, nicht laden', () => {
+  const r = withStorage({ ...AUTO, velocity: 7 }, () => resolveMountFilters(AUTO, new URLSearchParams('')));
+  assert.equal(r.change, 'auto');
+  assert.equal(r.filters.velocity, 1);
 });

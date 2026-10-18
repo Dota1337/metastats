@@ -9,6 +9,9 @@ import StatsFilterBar from '../../components/tft/StatsFilterBar';
 import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftStatsList } from '../../lib/useTftStatsList';
+import { usePatchDelta } from '../../lib/usePatchDelta';
+import { patchDeltaOf, type PatchDelta, type PatchDeltaPair } from '../../lib/tft-patch-delta';
+import { deltaHeader, deltaTooltip } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
@@ -23,15 +26,6 @@ export interface ItemRow {
   top1Rate: number | null;
   pickRate: number | null;
   topUsers: string[];
-  velocity?: {
-    deltaAvgPlacement?: number;
-    deltaTop4Rate?: number;
-    deltaPickRate?: number | null;
-    prevGames?: number;
-    prevAvgPlacement?: number;
-    prevTop4Rate?: number;
-    isNew?: boolean;
-  };
 }
 
 export default function ItemsClient({ initialFilters, initial }: {
@@ -44,6 +38,10 @@ export default function ItemsClient({ initialFilters, initial }: {
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
   const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
     useTftStatsList<ItemRow>({ endpoint: '/api/tft/items', field: 'items', initialFilters, initial });
+  // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
+  // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
+  const delta = usePatchDelta({ entity: 'item', filters, patches, enabled: filters.velocity > 0 });
+  const deltaOn = filters.velocity > 0 && !!delta.pair;
   // Client-side bucket filter analog to /tft/units cost-filter pattern.
   // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
   // into "other" and are only reachable via "Alle".
@@ -125,7 +123,7 @@ export default function ItemsClient({ initialFilters, initial }: {
                 fill the row) → 4 stat columns. Name moves from 1fr to a
                 fixed 12rem so the TopUsers row gets the slack — that's
                 where the cost-bordered champion tiles want to breathe. */}
-            <div className={`hidden md:grid ${filters.velocity > 0 ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
+            <div className={`hidden md:grid ${deltaOn ? 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 text-[11px] text-fg-secondary font-semibold whitespace-nowrap bg-surface-sunken`}>
               <div></div>
               <div></div>
               <div>{t('nav.items')}</div>
@@ -135,9 +133,9 @@ export default function ItemsClient({ initialFilters, initial }: {
               <div className="text-right">{t('tft.top4')}</div>
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && (
+              {deltaOn && (
                 <div className="text-right text-[#c39bff]">
-                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                  {deltaHeader(t, delta.pair)}
                 </div>
               )}
             </div>
@@ -156,7 +154,7 @@ export default function ItemsClient({ initialFilters, initial }: {
               return (
                 <div
                   key={it.apiName}
-                  className={`relative block md:grid ${filters.velocity > 0 ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
+                  className={`relative block md:grid ${deltaOn ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   <div className="hidden md:flex justify-center">
                     <TierBadge letter={letter} t={t} />
@@ -217,14 +215,14 @@ export default function ItemsClient({ initialFilters, initial }: {
                   </div>
                   {/* Stats: 4-column grid on mobile under the icon/users
                       block; explicit cells on desktop via contents. */}
-                  <div className={`grid ${filters.velocity > 0 ? 'grid-cols-6' : 'grid-cols-5'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
+                  <div className={`grid ${deltaOn ? 'grid-cols-6' : 'grid-cols-5'} gap-2 mt-1.5 pl-12 md:pl-0 md:mt-0 md:contents`}>
                     <Cell label={t('tft.avgPlacement')} value={it.avgPlacement?.toFixed(2) ?? '—'} accent="white" align="center" />
                     <Cell label={t('tft.pickRate')} value={it.pickRate != null ? `${(it.pickRate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top4')} value={it.top4Rate != null ? `${(it.top4Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.top1')} value={it.top1Rate != null ? `${(it.top1Rate * 100).toFixed(1)}%` : '—'} />
                     <Cell label={t('tft.gamesShort')} value={String(it.games)} accent="muted" />
-                    {filters.velocity > 0 && (
-                      <DeltaCell velocity={it.velocity} label={t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))} />
+                    {deltaOn && (
+                      <DeltaCell delta={patchDeltaOf(delta.index, it.apiName)} pair={delta.pair} loading={delta.loading} label={deltaHeader(t, delta.pair)} />
                     )}
                   </div>
                 </div>
@@ -283,43 +281,31 @@ function Cell({ label, value, accent, align = 'right' }: { label: string; value:
   );
 }
 
-// Δ-Spalte für den Velocity-Vergleich (W1-A). Negative Δ-avg-place = besser
-// geworden = grün; positive = schlechter = rot. "NEW" wenn Item im
-// Vergleichsfenster keine Sample-Size hat.
-function DeltaCell({ velocity, label }: { velocity?: { deltaAvgPlacement?: number; isNew?: boolean }; label: string }) {
-  if (!velocity) {
-    return (
-      <>
-        <div className="md:hidden">
-          <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-          <div className="text-fg-faint tabular-nums leading-tight">—</div>
-        </div>
-        <div className="hidden md:block text-right text-fg-faint tabular-nums">—</div>
-      </>
-    );
-  }
-  if (velocity.isNew) {
-    return (
-      <>
-        <div className="md:hidden">
-          <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-          <div className="text-accent tabular-nums leading-tight">NEW</div>
-        </div>
-        <div className="hidden md:block text-right text-accent tabular-nums">NEW</div>
-      </>
-    );
-  }
-  const d = velocity.deltaAvgPlacement ?? 0;
-  const sign = d < 0 ? '−' : d > 0 ? '+' : '';
-  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : 'var(--fg-secondary)';
-  const display = `${sign}${Math.abs(d).toFixed(2)}`;
-  return (
+// Δ-Spalte „vs Vorpatch". Negatives Δ Ø-Platz = besser geworden = gruen,
+// positives = schlechter = rot. „NEW", wenn das Item im Vorpatch fehlt; „—"
+// unter der Mindestzahl Spiele. Waehrend des Ladens leer.
+function DeltaCell({ delta, pair, loading, label }: {
+  delta: PatchDelta | null;
+  pair: PatchDeltaPair | null;
+  loading: boolean;
+  label: string;
+}) {
+  const { t, lang } = useI18n();
+  const tip = loading ? undefined : deltaTooltip(delta, pair, t, lang);
+  const render = (content: React.ReactNode, cls: string, style?: React.CSSProperties) => (
     <>
-      <div className="md:hidden">
+      <div className="md:hidden" title={tip}>
         <div className="text-fg-muted text-[9px] uppercase tracking-widest leading-tight">{label}</div>
-        <div className="tabular-nums leading-tight font-medium" style={{ color }}>{display}</div>
+        <div className={`${cls} tabular-nums leading-tight`} style={style}>{content}</div>
       </div>
-      <div className="hidden md:block text-right tabular-nums font-medium" style={{ color }}>{display}</div>
+      <div className={`hidden md:block text-right ${cls} tabular-nums`} style={style} title={tip}>{content}</div>
     </>
   );
+  if (loading) return render(null, '');
+  if (delta?.isNew) return render('NEW', 'text-accent');
+  if (delta?.deltaAvgPlace == null) return render('—', 'text-fg-faint');
+  const d = delta.deltaAvgPlace;
+  const sign = d < 0 ? '−' : d > 0 ? '+' : '';
+  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : 'var(--fg-secondary)';
+  return render(`${sign}${Math.abs(d).toFixed(2)}`, 'font-medium', { color });
 }

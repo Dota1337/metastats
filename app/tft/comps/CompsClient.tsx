@@ -18,6 +18,7 @@ import type { Filters } from '../../lib/tft-filters';
 import type { StatsInitial } from '../../lib/seo/initial-data';
 import { useTftCompsData } from '../../lib/useTftCompsData';
 import { coreFlexFrame } from '../../lib/tft-ui';
+import { deltaHeader } from '../../components/tft/PatchDeltaCell';
 
 // Filter shape and URL-sync mirror /tft/units and /tft/items so the
 // three stats pages behave identically (patch / bucket / days / region).
@@ -46,7 +47,7 @@ export default function CompsClient({ initialFilters, initial }: {
     filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
     comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
     currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
-    partial, awaitingStored, awaitingFull, dataEnd,
+    partial, awaitingStored, awaitingFull, dataEnd, deltaView,
   } = useTftCompsData({ initialFilters, initial, wantFull });
 
   // Compare-Selection State (für /tft/comps/compare User-Flow): bis zu 2 Slugs
@@ -112,7 +113,7 @@ export default function CompsClient({ initialFilters, initial }: {
                 <option value="top4">{t('tft.top4')}</option>
                 <option value="win">{t('tft.top1')}</option>
                 <option value="pick">{t('tft.pickRate')}</option>
-                {filters.velocity > 0 && (
+                {deltaView && (
                   <option value="velocity">{t('tft.velocity.trending')}</option>
                 )}
               </select>
@@ -146,7 +147,7 @@ export default function CompsClient({ initialFilters, initial }: {
               <CoreFlexLegend t={t} />
             </div>
             <div className={`hidden sm:grid items-center gap-3 px-3.5 py-2 text-[11px] text-fg-secondary font-semibold whitespace-nowrap ${
-              filters.velocity > 0
+              deltaView
                 ? 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
                 : 'grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]'
             }`}>
@@ -160,9 +161,9 @@ export default function CompsClient({ initialFilters, initial }: {
               <div className="text-right">{t('tft.top1')}</div>
               <div className="text-right">{t('tft.pickRate')}</div>
               <div className="text-right">{t('tft.gamesShort')}</div>
-              {filters.velocity > 0 && (
+              {deltaView && (
                 <div className="text-right text-[#c39bff]">
-                  {t('tft.velocity.deltaVs').replace('{n}', String(filters.velocity))}
+                  {deltaHeader(t, deltaView.pair)}
                 </div>
               )}
               <div></div>
@@ -178,8 +179,7 @@ export default function CompsClient({ initialFilters, initial }: {
                   bucket={filters.bucket}
                   days={filters.days}
                   patch={filters.patch}
-                  showVelocity={filters.velocity > 0}
-                  velocityShift={filters.velocity}
+                  deltaView={deltaView}
                   tierCutoffs={tierCutoffs}
                   compareSelected={compareSelection.includes(f.mainComp.slug)}
                   onCompareToggle={() => toggleCompare(f.mainComp.slug)}

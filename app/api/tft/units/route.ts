@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseVelocity } from '../../../lib/query-params';
 import { normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
-import { resolveFilters, callRpc, getAvailablePatches, resolveTrendAnchorOffset, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { coreFromListRow, unitDetailBody, type Blocks, type DetailCore, type UnitBuildsRaw } from '../../../lib/tft-detail-payload';
 import { unitBuildsFor } from '../../../lib/tft-detail-builds';
@@ -77,24 +76,6 @@ function listItem(r: UnitItemStatRow): UnitListItem {
     top4Rate: g > 0 ? round(Number(r.top4) / g, 4) : null,
   };
 }
-
-interface UnitVelocityRow {
-  character_id: string;
-  games_now: number;
-  games_prev: number;
-  sum_placement_now: number;
-  sum_placement_prev: number;
-  top4_now: number;
-  top4_prev: number;
-  top1_now: number;
-  top1_prev: number;
-  participants_now: number;
-  participants_prev: number;
-}
-
-// Same Δ-threshold used across comp/item velocity — below ~30 games per
-// window the Δs are too noisy to render with intent; the UI shows "—" instead.
-const VELOCITY_MIN_GAMES = 30;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -183,19 +164,13 @@ export async function GET(request: NextRequest) {
     // nicht (siehe Snapshot-Pfad unten) — dann keine Notreserve.
     if (filters.patchFilter == null) fallbackFilters = filters;
 
-    // Optional Δ-velocity layer (parallel to comps/items): when ?velocity=N is
-    // present the route fires a second RPC and merges per-character Δs into
-    // each row. Uses the raw user-requested window + anchor-offset, same
-    // semantics as get_tft_comp_velocity (see 0038/0039).
-    const velocityShift = parseVelocity(searchParams.get('velocity'));
-    const wantVelocity = velocityShift > 0;
-
     // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Wenn die Permutation
-    // im Bundle steckt, sparen wir den RPC-Roundtrip. Velocity-Overlays werden
-    // nicht vorgerendert → live RPC. Ein ausdruecklich gewaehlter Patch geht
-    // ebenfalls live: die Bundles sind patchuebergreifend gerechnet, liegen
-    // aber unter dem aufgeloesten Patch — sonst zaehlt „18.3" auch Vorpatch-Spiele.
-    if (!wantVelocity && filters.patchFilter == null) {
+    // im Bundle steckt, sparen wir den RPC-Roundtrip. Ein ausdruecklich
+    // gewaehlter Patch geht live: die Bundles sind patchuebergreifend
+    // gerechnet, liegen aber unter dem aufgeloesten Patch — sonst zaehlt
+    // „18.3" auch Vorpatch-Spiele. Den Δ-Vergleich „vs Vorpatch" liefert seit
+    // 18.10.2026 /api/tft/patch-diff?full=1; ein altes ?velocity= wird ignoriert.
+    if (filters.patchFilter == null) {
       const hit = await lookupSnapshot('units', {
         patch: filters.patch,
         region: filters.regionLabel,
@@ -237,9 +212,7 @@ export async function GET(request: NextRequest) {
     const extrasCall = callRpc<UnitExtraRow[]>('get_tft_unit_extras',
       { ...itemArgs, p_top: LIST_TOP_EXTRAS }, publisher ? 25_000 : undefined);
 
-    // Trend-Anker nicht lesbar → kurze Cache-Zeit statt 6 h schiefer Pfeile.
-    let trendAnchorDegraded = false;
-    const [rows, velocityRows, topItemRows, extraRows] = await Promise.all([
+    const [rows, topItemRows, extraRows] = await Promise.all([
       callRpc<UnitListRow[]>('get_tft_unit_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -247,18 +220,6 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
       }),
-      wantVelocity
-        ? resolveTrendAnchorOffset(filters, patches).then(anchor => { trendAnchorDegraded = anchor.degraded; return callRpc<UnitVelocityRow[]>('get_tft_unit_velocity', {
-            p_regions: filters.regions,
-            p_buckets: filters.buckets,
-            p_set: filters.setNumber,
-            p_patch: filters.patchFilter,
-            p_days: filters.requestedDays,
-            p_shift_days: velocityShift,
-            p_anchor_offset_days: anchor.offset,
-            p_min_games: 30,
-          }); }).catch(() => [] as UnitVelocityRow[])
-        : Promise.resolve([] as UnitVelocityRow[]),
       publisher ? topItemsCall : topItemsCall.catch(() => [] as UnitItemStatRow[]),
       publisher ? extrasCall : extrasCall.catch(() => [] as UnitExtraRow[]),
     ]);
@@ -279,8 +240,6 @@ export async function GET(request: NextRequest) {
     }
 
     const participants = rows[0]?.participants || 0;
-    const velocityByCid = new Map<string, UnitVelocityRow>();
-    for (const v of velocityRows) velocityByCid.set(v.character_id, v);
 
     const units = rows
       .filter(r => !isExcludedUnit(r.character_id))
@@ -294,7 +253,7 @@ export async function GET(request: NextRequest) {
           top4: Number(r.top4),
           participants: Number(participants),
         });
-        const base = {
+        return {
           characterId: r.character_id,
           games: Number(r.games),
           avgPlacement: r.games > 0 ? Number(r.sum_placement) / Number(r.games) : null,
@@ -306,37 +265,6 @@ export async function GET(request: NextRequest) {
           topItems: topItemsByCid.get(r.character_id) ?? [],
           artifacts: extrasByCid.get(r.character_id)?.artifacts ?? [],
           emblems: extrasByCid.get(r.character_id)?.emblems ?? [],
-        };
-        if (!wantVelocity) return base;
-        const v = velocityByCid.get(r.character_id);
-        if (!v) return base;
-        const gNow = Number(v.games_now);
-        const gPrev = Number(v.games_prev);
-        const pNow = Number(v.participants_now);
-        const pPrev = Number(v.participants_prev);
-        const avgNow = gNow > 0 ? Number(v.sum_placement_now) / gNow : null;
-        const avgPrev = gPrev > 0 ? Number(v.sum_placement_prev) / gPrev : null;
-        const top4Now = gNow > 0 ? Number(v.top4_now) / gNow : null;
-        const top4Prev = gPrev > 0 ? Number(v.top4_prev) / gPrev : null;
-        const pickNow = pNow > 0 ? gNow / pNow : null;
-        const pickPrev = pPrev > 0 ? gPrev / pPrev : null;
-        const canDelta = gPrev >= VELOCITY_MIN_GAMES && gNow >= VELOCITY_MIN_GAMES;
-        return {
-          ...base,
-          velocity: {
-            gamesNow: gNow,
-            gamesPrev: gPrev,
-            avgPlaceNow: avgNow,
-            avgPlacePrev: avgPrev,
-            deltaAvgPlace: canDelta && avgNow != null && avgPrev != null ? avgNow - avgPrev : null,
-            top4RateNow: top4Now,
-            top4RatePrev: top4Prev,
-            deltaTop4Rate: canDelta && top4Now != null && top4Prev != null ? top4Now - top4Prev : null,
-            pickRateNow: pickNow,
-            pickRatePrev: pickPrev,
-            deltaPickRate: canDelta && pickNow != null && pickPrev != null ? pickNow - pickPrev : null,
-            isNew: gPrev < 5 && gNow >= VELOCITY_MIN_GAMES,
-          },
         };
       });
     sortUnitsRareLast(units);
@@ -352,7 +280,6 @@ export async function GET(request: NextRequest) {
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
-        velocityShift: wantVelocity ? velocityShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
         startDay: filters.startDay,
         endDay: filters.endDay,
@@ -360,10 +287,10 @@ export async function GET(request: NextRequest) {
       },
       patches,
       units,
-    }, { cache: trendAnchorDegraded ? DEGRADED_CACHE_CONTROL : cacheControl });
+    }, { cache: cacheControl });
   } catch (e: any) {
-    // Trifft v. a. Trend-Anfragen, die am Bundle vorbei live laufen: dann
-    // lieber die Liste ohne Trend als eine leere Seite. Nie fuer den Publisher.
+    // Trifft v. a. Anfragen, die am Bundle vorbei live laufen: dann lieber
+    // der Vorrat als eine leere Seite. Nie fuer den Publisher.
     if (fallbackFilters && !isSnapshotPublisher(request)) {
       const fb = await lookupFallbackSnapshot('units', 'units', fallbackFilters);
       if (fb) {

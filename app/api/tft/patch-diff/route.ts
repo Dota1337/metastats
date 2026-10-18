@@ -16,6 +16,7 @@ import {
   type PatchDiffRow,
 } from '../../../lib/snapshot-matrix';
 import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
+import { compactDeltaRows, loadPatchDeltaBlobs } from '../../../lib/patch-delta-server';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -224,16 +225,6 @@ async function fetchEntityRows(
   return normalizePatchDiffRows(entity, rows);
 }
 
-// Kompakte Zeile: Schluessel, (Trait-)Stufe, Spiele, Ø-Platz auf 4 Stellen.
-interface FullRow { k: string; l?: number; g: number; a: number }
-const compact = (rows: PatchDiffRow[]): FullRow[] =>
-  rows.filter(r => r.games > 0).map(r => ({
-    k: r.key,
-    ...(r.level != null ? { l: r.level } : {}),
-    g: r.games,
-    a: Math.round((r.sum_placement / r.games) * 10000) / 10000,
-  }));
-
 async function fullRows(o: {
   entity: Entity;
   regions: string[];
@@ -261,15 +252,10 @@ async function fullRows(o: {
   try {
     if (o.allRegions) {
       if (!PATCH_DIFF_BUCKETS[o.bucketParam]) return cachedJson({ hasData: false, ...head, reason: 'bucket' });
-      const [c, p] = await Promise.all([current, previous].map(info => loadPatchDiff({
-        entity, regions: o.regions, bucketLabel: o.bucketParam, buckets: o.buckets,
-        patch: info, set, closed: info.patch !== o.patches[0].patch,
-      })));
-      // Traits brauchen die Stufe — alte Blobs haben sie schon zusammengezaehlt.
-      const usable = (rows: PatchDiffRow[] | null) =>
-        rows && (entity !== 'trait' || rows.every(r => r.level != null)) ? rows : null;
-      const cu = usable(c), pu = usable(p);
-      if (cu && pu) sides = [cu, pu];
+      sides = await loadPatchDeltaBlobs({
+        entity, regions: o.regions, bucketLabel: o.bucketParam,
+        current, previous, newestPatch: o.patches[0].patch,
+      });
     } else {
       sides = await Promise.all([current, previous].map(info =>
         fetchEntityRows(entity, info, set, o.regions, o.buckets, FULL_LIVE_TIMEOUT_MS))) as [PatchDiffRow[], PatchDiffRow[]];
@@ -286,8 +272,8 @@ async function fullRows(o: {
     hasData: true,
     ...head,
     minGames: PATCH_DIFF_MIN_GAMES,
-    current: compact(sides[0]),
-    previous: compact(sides[1]),
+    current: compactDeltaRows(sides[0]),
+    previous: compactDeltaRows(sides[1]),
   });
   res.headers.set('x-snapshot', `patch-diff=${source}`);
   return res;

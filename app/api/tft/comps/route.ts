@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseVelocity } from '../../../lib/query-params';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -9,7 +8,6 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
   mergeJsonbCountDicts,
-  resolveTrendAnchorOffset,
   rpcWindowArgs,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
@@ -210,70 +208,6 @@ interface CompPairRow {
   a_better: number;
 }
 
-interface VelocityRow {
-  cluster_key: string;
-  games_now: number;
-  games_prev: number;
-  sum_placement_now: number;
-  sum_placement_prev: number;
-  top4_now: number;
-  top4_prev: number;
-  top1_now: number;
-  top1_prev: number;
-  participants_now: number;
-  participants_prev: number;
-}
-
-interface CompVelocity {
-  gamesNow: number;
-  gamesPrev: number;
-  avgPlaceNow: number | null;
-  avgPlacePrev: number | null;
-  deltaAvgPlace: number | null;
-  pickRateNow: number | null;
-  pickRatePrev: number | null;
-  deltaPickRate: number | null;
-  top4RateNow: number | null;
-  top4RatePrev: number | null;
-  deltaTop4Rate: number | null;
-  // true when the cluster appeared in now-window but not in prev — usually
-  // means "new comp" (post-patch surge) and shouldn't be ranked by Δ at all.
-  isNew: boolean;
-}
-
-// Minimum games per window for Δ to be considered statistically meaningful.
-// Below that, the row keeps its raw now/prev counts but Δs are nulled — UI
-// then renders an "—" / "NEW" badge rather than misleading noise.
-const VELOCITY_MIN_PREV_GAMES = 30;
-
-function deriveVelocity(v: VelocityRow): CompVelocity {
-  const gn = Number(v.games_now);
-  const gp = Number(v.games_prev);
-  const pn = Number(v.participants_now);
-  const pp = Number(v.participants_prev);
-  const avgN = gn > 0 ? Number(v.sum_placement_now) / gn : null;
-  const avgP = gp > 0 ? Number(v.sum_placement_prev) / gp : null;
-  const pickN = pn > 0 ? gn / pn : null;
-  const pickP = pp > 0 ? gp / pp : null;
-  const t4N = gn > 0 ? Number(v.top4_now) / gn : null;
-  const t4P = gp > 0 ? Number(v.top4_prev) / gp : null;
-  const canDelta = gp >= VELOCITY_MIN_PREV_GAMES && gn >= VELOCITY_MIN_PREV_GAMES;
-  return {
-    gamesNow: gn,
-    gamesPrev: gp,
-    avgPlaceNow: avgN,
-    avgPlacePrev: avgP,
-    deltaAvgPlace: canDelta && avgN != null && avgP != null ? avgN - avgP : null,
-    pickRateNow: pickN,
-    pickRatePrev: pickP,
-    deltaPickRate: canDelta && pickN != null && pickP != null ? pickN - pickP : null,
-    top4RateNow: t4N,
-    top4RatePrev: t4P,
-    deltaTop4Rate: canDelta && t4N != null && t4P != null ? t4N - t4P : null,
-    isNew: gp < 5 && gn >= 30,
-  };
-}
-
 interface CounterEdge {
   opponent: string;   // cluster_key of the other comp
   games: number;
@@ -340,11 +274,10 @@ export async function GET(request: NextRequest) {
     if (slug) {
       // Detail-Snapshot-Fast-Path (Phase 2 2026-06-21): wenn der Slug zu den
       // Top-N-Family-Anchors gehoert + Default-Filter-Achsen, liefert ein
-      // Vercel-Blob das Aggregat in ~150ms statt 8-20s RPC. variant=exact +
-      // velocity skipt Snapshot (kein Pre-Render). Architect+perf-critic-
-      // Verdict siehe reference_tft_comp_detail_snapshot.md.
+      // Vercel-Blob das Aggregat in ~150ms statt 8-20s RPC. variant=exact
+      // skipt Snapshot (kein Pre-Render). Architect+perf-critic-Verdict siehe
+      // reference_tft_comp_detail_snapshot.md.
       const detailVariantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
-      const detailVelocity = parseVelocity(searchParams.get('velocity'));
       // Vorrat je Familie (E2) mit Rueckfall auf den Slug-Schluessel, dieselbe
       // Funktion wie OG-Bild und Startdaten der Seite (comp-detail-snapshot.ts).
       const detailHit = await lookupCompDetailSnapshot({
@@ -356,7 +289,7 @@ export async function GET(request: NextRequest) {
         setNumber: filters.setNumber,
         endDay: filters.endDay,
         slug,
-        skip: detailVariantMode === 'exact' || detailVelocity !== 0 || source === 'editorial'
+        skip: detailVariantMode === 'exact' || source === 'editorial'
           || isSnapshotPublisher(request),
       });
       if (detailHit) {
@@ -681,19 +614,15 @@ export async function GET(request: NextRequest) {
     // detail-only jsonb_agg merges. Measured ~12x faster cold (1847ms→152ms)
     // since the heavy detail jsonb is never detoasted or aggregated here.
     //
-    // Optional velocity layer (W1-A): with ?velocity=N we fire a second RPC
-    // in parallel and merge Δs (avg-place, pickrate, top4) into each row so
-    // the listing can sort/visualise "what shifted in the last N days". N is
-    // the shift between now-window (last `days` days) and prev-window.
-    const velocityShift = parseVelocity(searchParams.get('velocity'));
-    const wantVelocity = velocityShift > 0;
+    // Den Δ-Vergleich „vs Vorpatch" liefert seit 18.10.2026
+    // /api/tft/patch-diff?full=1 (eigene Abfrage, usePatchDelta); ein altes
+    // ?velocity= wird hier ignoriert.
 
     // Snapshot-Pfad: wenn das vorgerenderte Manifest einen passenden Eintrag
     // hat, liefern wir den Blob direkt. Spart den Supabase-RPC-Roundtrip + die
     // jsonb-Merges (Vercel-Blob fetch ~30-80ms vs. 150-3000ms RPC). Wir
-    // überspringen den Snapshot wenn der Caller velocity oder source=editorial
-    // verlangt — beides ist nicht im Bundle.
-    if (source === 'data' && velocityShift === 0) {
+    // überspringen den Snapshot bei source=editorial — das ist nicht im Bundle.
+    if (source === 'data') {
       const lookup = (mg: number) => lookupSnapshot('comps', {
         patch: filters.patch,
         region: filters.regionLabel,
@@ -754,17 +683,6 @@ export async function GET(request: NextRequest) {
     // nicht ein nackter Abort.
     const publisherRpcTimeoutMs = isSnapshotPublisher(request) ? 25_000 : undefined;
 
-    // Trend im vorberechneten Stand (User 2026-09-27, Option C): holt der
-    // Publisher die Liste ohne ?velocity, rechnen wir den Vergleich mit dem
-    // gleich langen Vorzeitraum gleich mit. So traegt der Snapshot die
-    // Trendpfeile der Comp-Uebersicht, ohne dass Besucher die langsame
-    // Trend-Abfrage ausloesen. Die Liste zeigt die Spalte weiter nur bei
-    // aktivem Trend-Filter.
-    const publisherTrend = isSnapshotPublisher(request) && source === 'data' && velocityShift === 0;
-    const trendShift = wantVelocity ? velocityShift : publisherTrend ? filters.requestedDays : 0;
-    let trendFailed = false;
-    let trendAnchorDegraded = false;
-
     const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
     let staleRows: CompRow[] | null = null;
     let servedStale = false;
@@ -781,72 +699,32 @@ export async function GET(request: NextRequest) {
       ...(adaptiveMin ? { p_min_share: ADAPTIVE_SHARE, p_min_cap: defaultMinGames } : {}),
     }, publisherRpcTimeoutMs);
 
-    const [rows, velocityRows] = await Promise.all([
-      // Vorab gerechnete Liste (Migration 0070) zuerst, sonst live.
+    // Vorab gerechnete Liste (Migration 0070) zuerst, sonst live.
       // _v2 (Migration 0058) merged die drei jsonb-Spalten SQL-seitig statt
       // pro Tages-Row einzeln zu liefern. Payload all/9d/all: 144,67 → 4,48 MB,
       // Laufzeit 19,6 → ~7,4 s warm. Aequivalenz gegen die alte RPC ueber 18
       // Permutationen belegt (Skalare, Unit-Felder, topItems, carryItems).
-      // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
-      (source === 'data'
-        ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames, publisher ? 25_000 : PRECOMPUTED_TIMEOUT_MS)
-            .then(r => { staleRows = r.stale; return r.fresh ?? liveList(); })
-        : liveList()
-      ).catch((err: unknown) => {
-        // Notreserve nur fuer Besucher. Der Publisher muss scheitern, sonst
-        // schriebe er alte Zahlen als neuen Stand in die Snapshots.
-        if (publisher || !staleRows) throw err;
-        console.error('[api/tft/comps] Live-Liste fehlgeschlagen, alte vorberechnete Liste:', (err as Error)?.message ?? err);
-        servedStale = true;
-        return staleRows;
-      }),
-      trendShift > 0
-        ? resolveTrendAnchorOffset(filters, patches, { publisher: isSnapshotPublisher(request) }).then(anchor => {
-          trendAnchorDegraded = anchor.degraded;
-          return callRpc<VelocityRow[]>('get_tft_comp_velocity', {
-            p_regions: filters.regions,
-            p_buckets: filters.buckets,
-            p_set: filters.setNumber,
-            p_patch: filters.patchFilter,
-            // Use the user-requested window size (not the stale-bumped one) so
-            // "Letzter Tag + Δ vs vor 3 Tagen" really compares 1d vs 1d shifted
-            // by 3d. The bump on filters.days is a fallback for the main list
-            // when the pipeline is days behind — for Δ-comparisons it would
-            // collapse the semantics ("1d" suddenly meaning "5d").
-            p_days: filters.requestedDays,
-            p_shift_days: trendShift,
-            // Anchor both windows at the last day ALL regions have delivered
-            // (resolveTrendAnchorOffset); a partial newest day would compare a
-            // few regions against full days. Falls back to the newest day.
-            p_anchor_offset_days: anchor.offset,
-            // Allow newer entries with only a current-window sample to surface
-            // as "NEW" rather than being filtered out for lacking a baseline.
-            p_min_games: Math.max(10, Math.floor(minGames / 3)),
-          }, publisherTrend ? publisherRpcTimeoutMs : undefined);
-          }).catch((e: any) => {
-            // Ohne Markierung waere ein Snapshot ohne Trend nicht von einem
-            // mit Trend zu unterscheiden — velocityShift bleibt dann null.
-            trendFailed = true;
-            if (publisherTrend) console.error('[api/tft/comps] Trend fuer Snapshot fehlgeschlagen:', e?.message ?? e);
-            return [] as VelocityRow[];
-          })
-        : Promise.resolve([] as VelocityRow[]),
-    ]);
+    // Rollback ist genau dieser eine Bezeichner — 0027 bleibt deployed.
+    const rows = await (source === 'data'
+      ? readPrecomputedList(filters, patches[0]?.last_day, listMinGames, publisher ? 25_000 : PRECOMPUTED_TIMEOUT_MS)
+          .then(r => { staleRows = r.stale; return r.fresh ?? liveList(); })
+      : liveList()
+    ).catch((err: unknown) => {
+      // Notreserve nur fuer Besucher. Der Publisher muss scheitern, sonst
+      // schriebe er alte Zahlen als neuen Stand in die Snapshots.
+      if (publisher || !staleRows) throw err;
+      console.error('[api/tft/comps] Live-Liste fehlgeschlagen, alte vorberechnete Liste:', (err as Error)?.message ?? err);
+      servedStale = true;
+      return staleRows;
+    });
 
     const participants = rows[0]?.participants || 0;
     const effectiveMinGames = effectiveMinFor(Number(participants));
-    const velocityByKey = new Map<string, VelocityRow>();
-    for (const v of velocityRows) velocityByKey.set(v.cluster_key, v);
 
     const dataComps = rows
       .filter(r => Number(r.games) >= effectiveMinGames)
       .filter(r => !isFragmentTraitClusterKey(r.cluster_key))
-      .map(r => {
-        const base = baseComp(r, participants);
-        const v = velocityByKey.get(r.cluster_key);
-        if (!v) return base;
-        return { ...base, velocity: deriveVelocity(v) };
-      });
+      .map(r => baseComp(r, participants));
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const listResp = cachedJson({
@@ -860,7 +738,6 @@ export async function GET(request: NextRequest) {
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
-        velocityShift: trendShift > 0 && !(publisherTrend && trendFailed) ? trendShift : null,
         anchorOffsetDays: filters.anchorOffsetDays,
         startDay: filters.startDay,
         endDay: filters.endDay,
@@ -870,7 +747,7 @@ export async function GET(request: NextRequest) {
       minGames: effectiveMinGames,
       source,
       comps: source === 'editorial' ? [] : dataComps,
-    }, { cache: trendAnchorDegraded || servedStale ? DEGRADED_CACHE_CONTROL : cacheControl });
+    }, { cache: servedStale ? DEGRADED_CACHE_CONTROL : cacheControl });
     if (servedStale) listResp.headers.set(FALLBACK_HEADER, 'precomputed-stale');
     return listResp;
   } catch (e: any) {

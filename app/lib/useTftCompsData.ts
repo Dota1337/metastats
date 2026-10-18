@@ -6,8 +6,9 @@
 // Startdaten (SEO-Plan Schritt 4, Liste und seit 16.10.2026 Uebersicht): die
 // Server-Seite schickt die Zeilen der 40 gezeigten Familien mit
 // (app/lib/seo/initial-data.ts, compsStart) — Teildaten. Die volle Liste (bis 1,8 MB) laedt erst, wenn eine
-// Ansicht sie braucht: Suche, Erweitert, Trend-Sortierung (`wantFull` bzw.
-// `fullForView`). Sonst gelten die Regeln von useTftStatsList:
+// Ansicht sie braucht: Suche, Erweitert (`wantFull` bzw. `fullForView`).
+// Vorpatch-Vergleich (Spalte der Liste, Pfeile der Uebersicht, Trending):
+// eigene Abfrage ueber usePatchDelta, die Liste bleibt dieselbe. Sonst gelten die Regeln von useTftStatsList:
 //   - Erstes Rendern = Server-HTML (Filter, Zeilen, Assets, Tier-Grenzen als
 //     Props), gespeicherte Filter erst im useLayoutEffect; weichen sie ab:
 //     Ladeanzeige statt fremder Zahlen (E3).
@@ -28,6 +29,7 @@ import {
   rememberAutoBucket,
   persistFilters,
   filtersToQueryString,
+  filtersToApiQueryString,
   filtersDataKey,
   hasUrlFilters,
   type Filters,
@@ -44,7 +46,9 @@ import {
   isAdvActive,
   type AdvancedFilters,
 } from '../components/tft/AdvancedCompFilters';
-import { buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
+import { attachPatchDeltas, buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
+import { usePatchDelta } from './usePatchDelta';
+import type { PatchDeltaStart } from './tft-patch-delta';
 
 // Volle Antwort bis 1,8 MB; ein Versuch darf auf langsamen Leitungen dauern.
 const FETCH_TIMEOUT_MS = 25_000;
@@ -66,12 +70,16 @@ function dataEndOf(filters: unknown): string | null {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
-export function useTftCompsData({ initialFilters, initial = null, wantFull = false }: {
+export function useTftCompsData({ initialFilters, initial = null, wantFull = false, deltaAlways = false, initialDelta = null }: {
   /** Liste: Filter der Server-Ansicht (Adresse + vom Server bestimmter Rang). */
   initialFilters?: Filters;
   initial?: StatsInitial<CompApiRow> | null;
   /** Die Seite braucht die volle Liste (Suche, Vergleich aus der Adresse). */
   wantFull?: boolean;
+  /** Uebersicht: Vorpatch-Vergleich immer (User 18.10.2026), nicht nur mit Δ-Filter. */
+  deltaAlways?: boolean;
+  /** Vorpatch-Vergleich der Server-Seite (seo/initial-data.ts compDeltaStart). */
+  initialDelta?: PatchDeltaStart | null;
 } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -187,9 +195,10 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     persistFilters(filters);
   }, [filters, adv, sortBy, sortTouched, hydrated, pathname]);
 
-  // Erweitert und Trend-Sortierung rechnen auf der vollen Liste; auf
-  // Teildaten kaemen andere Comps heraus → Ladeanzeige bis sie da ist.
-  const fullForView = isAdvActive(adv) || sortBy === 'velocity';
+  // Erweitert rechnet auf der vollen Liste; auf Teildaten kaemen andere Comps
+  // heraus → Ladeanzeige bis sie da ist. Trending nicht mehr: es sortiert
+  // dieselben 40 Familien nur um (Vorpatch-Vergleich, eigene Abfrage).
+  const fullForView = isAdvActive(adv);
   const needFull = wantFull || fullForView;
   const fullForViewRef = useRef(fullForView);
   fullForViewRef.current = fullForView;
@@ -228,7 +237,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     const upgrading = key === shownKey.current;
     const sv = startData.current?.key === key && startData.current.version
       ? `&sv=${encodeURIComponent(startData.current.version)}` : '';
-    const qs = `${filtersToQueryString(filters)}&source=data${sv}`;
+    const qs = `${filtersToApiQueryString(filters)}&source=data${sv}`;
     // Dieselbe Adresse laeuft schon (z. B. Suchfeld fokussiert, waehrend
     // gespeicherte Filter laden): weiterlaufen lassen.
     if (inflight.current?.qs === qs) return;
@@ -302,7 +311,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
           setAwaitingStored(false);
           // Nachladen zur gezeigten Teilliste gescheitert: die gezeigten Zahlen
           // stimmen weiter (Suche findet dann nur unter den 40). Nur wenn die
-          // Ansicht die volle Liste braucht (Erweitert, Trend), Fehlerkasten.
+          // Ansicht die volle Liste braucht (Erweitert), Fehlerkasten.
           if (upgrading && !fullForViewRef.current) return;
           // Keine leere Liste vortaeuschen: die Seite zeigt den Fehlerkasten.
           shownKey.current = null;
@@ -317,8 +326,8 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     // Kein Abbruch im Cleanup: der naechste Lauf entscheidet (stop() oben),
     // ob der laufende Abruf noch gebraucht wird.
     // fullForView eigens: scheiterte das Nachladen fuer die Suche still, bleibt
-    // needFull beim Klick auf Erweitert/Trend gleich — ohne neuen Versuch
-    // stuende die Ladeanzeige dann fuer immer.
+    // needFull beim Klick auf Erweitert gleich — ohne neuen Versuch stuende die
+    // Ladeanzeige dann fuer immer.
   }, [filters, hydrated, needFull, fullForView, reloadKey]);
   const retry = () => setReloadKey(k => k + 1);
 
@@ -353,9 +362,22 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     return applyAdvancedFilters(comps, adv, { carryCostLookup });
   }, [comps, adv, assets]);
 
-  const families = useMemo(
+  // Vorpatch-Vergleich: Liste nur mit Δ-Filter, Uebersicht immer. Ohne Paar
+  // (Set-Start, zu junger Patch) gibt es ihn nicht — auch nicht mit Filter.
+  const deltaOn = deltaAlways || filters.velocity > 0;
+  const delta = usePatchDelta({ entity: 'comp', filters, patches, enabled: deltaOn, initial: initialDelta });
+  const deltaView = useMemo(
+    () => (delta.pair && deltaOn ? { pair: delta.pair, loading: delta.loading } : null),
+    [delta.pair, delta.loading, deltaOn],
+  );
+
+  const builtFamilies = useMemo(
     () => buildCompFamilies(filteredComps, sortBy, assets),
     [filteredComps, sortBy, assets],
+  );
+  const families = useMemo(
+    () => attachPatchDeltas(builtFamilies, deltaOn ? delta.index : null, sortBy === 'velocity'),
+    [builtFamilies, deltaOn, delta.index, sortBy],
   );
   const setFamilies = useMemo(() => currentSetFamilies(families, assets), [families, assets]);
   const topKeys = useMemo(() => topFamilyKeys(setFamilies), [setFamilies]);
@@ -366,8 +388,10 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     sortBy, chooseSort,
     comps, filteredComps, hasData, patches, minGames, assets, loading, tierCutoffs,
     error, retry, dataEnd,
+    // Vergleichs-Spalte bzw. Pfeile (null = aus).
+    deltaView,
     // Teildaten: Zaehler ueber alle Comps waeren falsch. Auf Teildaten mit
-    // Erweitert/Trend-Sortierung zeigt die Seite die Ladeanzeige.
+    // Erweitert zeigt die Seite die Ladeanzeige.
     partial, awaitingStored, awaitingFull: partial && fullForView,
     currentPatchLabel: patches[0]?.patch,
     families, currentSetFamilies: setFamilies, topFamilyKeys: topKeys,

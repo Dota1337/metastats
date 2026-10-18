@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 
 import { STATS_PENDING_SCRIPT, PENDING_ATTR, USER_BUCKET_ATTR, statsPendingCss } from './stats-pending.ts';
 import {
-  loadInitialFilters, filtersFromSearchParams, filtersDataKey, FILTERS_STORAGE_KEY, VELOCITY_SHIFTS, DAYS_MIN, DAYS_MAX,
+  loadInitialFilters, filtersFromSearchParams, filtersDataKey, FILTERS_STORAGE_KEY, DAYS_MIN, DAYS_MAX,
 } from '../tft-filters.ts';
 
 // Fuehrt das Skript mit nachgebautem Browser aus; liefert die gesetzten Merkmale.
@@ -84,9 +84,8 @@ const STORED = [
   JSON.stringify({ velocity: 0 }),
   JSON.stringify({ bucketAuto: false }),
   JSON.stringify({ bucketAuto: 'false', bucket: 'master_plus' }),
-  // Aus den Konstanten erzeugt: kommt ein Wert dazu, laeuft er hier mit.
-  ...VELOCITY_SHIFTS.flatMap(v => [JSON.stringify({ velocity: v }), JSON.stringify({ velocity: String(v) })]),
-  JSON.stringify({ velocity: Math.max(...VELOCITY_SHIFTS) + 7 }),
+  // Δ-Vergleich: alte Tage-Werte und „an" — aendern die Zahlen der Liste nicht.
+  ...[1, 2, 3, 7, 14, 21, -1, 'x'].flatMap(v => [JSON.stringify({ velocity: v }), JSON.stringify({ velocity: String(v) })]),
   ...Array.from({ length: DAYS_MAX - DAYS_MIN + 3 }, (_, i) => JSON.stringify({ days: DAYS_MIN - 1 + i })),
 ];
 
@@ -115,6 +114,14 @@ test('gleiche Filter wie der Server → kein Merkmal (keine unnoetige Ladeanzeig
   const { attrs } = runScript({ stored: JSON.stringify({ bucket: 'diamond_plus', bucketAuto: false }) });
   assert.equal(attrs.get(USER_BUCKET_ATTR), 'diamond_plus');
   assert.equal(hidesRows(attrs, 'diamond_plus'), false);
+});
+
+test('nur der Δ-Vergleich gespeichert → kein Merkmal (eigene Abfrage, die Liste bleibt dieselbe)', () => {
+  for (const v of [1, 3, 7]) {
+    const stored = JSON.stringify({ patch: 'current', bucket: 'diamond_plus', bucketAuto: true, days: 3, region: 'all', velocity: v });
+    assert.equal(runScript({ stored }).attrs.size, 0, stored);
+    assert.equal(clientDiffers(stored, 'diamond_plus'), false, stored);
+  }
 });
 
 test('Filter in der Adresse oder fremde Seite → kein Merkmal', () => {

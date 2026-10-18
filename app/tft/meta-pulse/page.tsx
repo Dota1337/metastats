@@ -7,7 +7,7 @@ import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
 import StatsFilterBar, {
   filtersFromSearchParams,
-  filtersToQueryString,
+  filtersToApiQueryString,
   type Filters,
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
@@ -19,7 +19,7 @@ import RegionCompare, { REGION_COMPARE_DEFAULT, parseCompareRegions } from '../.
 import { compPath } from '../../lib/tft-comp-path';
 
 // W5: Meta-Pulse Landing:
-//   • Trending (was bewegt sich jetzt) — folgt jetzt dem Δ-Vergleich-Filter
+//   • Trending (was bewegt sich jetzt) — fest 3 Tage (Δ-Feld ausgeblendet, User 18.10.2026)
 //   • Patch-Movers (was hat der aktuelle Patch entschieden)
 //   • Regionsvergleich (Units in 2-3 Regionen nebeneinander, ?cmp=)
 
@@ -40,18 +40,19 @@ interface MetaPulse {
   counts: { rising: number; patchSampled: number };
 }
 
+// Vergleichs-Zeitraum der Aufsteiger in Tagen (frueher der Δ-Filter, Standard 3).
+const RISING_SHIFT = 3;
+
 export default function TftMetaPulsePage() {
   const { t, withLang } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Default Δ-shift = 3 days when the URL hasn't picked one. The Meta-Pulse
-  // page is the velocity view by definition — "off" isn't a valid state here,
-  // unlike the comps list where the Δ column is opt-in.
+  // Aufsteiger vergleicht fest 3 Tage (RISING_SHIFT) — das Δ-Feld der Listen
+  // („vs Vorpatch") gibt es hier nicht, die Seite IST der Vergleich.
   const [filters, setFilters] = useState<Filters>(() => {
     const f = filtersFromSearchParams(new URLSearchParams(searchParams.toString()));
-    if (f.velocity === 0) f.velocity = 3;
     if (!searchParams.has('bucket')) f.bucket = 'master_plus';
     return f;
   });
@@ -65,8 +66,10 @@ export default function TftMetaPulsePage() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const qs = filtersToQueryString(filters);
-    fetch(`/api/tft/meta-pulse?${qs}`)
+    const qs = filtersToApiQueryString(filters);
+    // velocity zuletzt: gleiche Adresse wie bisher (Edge-Cache, scripts/warm-tft-stats-cache.mjs).
+    // Ohne den Wert naehme die Route 1 Tag (meta-pulse/route.ts).
+    fetch(`/api/tft/meta-pulse?${qs}&velocity=${RISING_SHIFT}`)
       .then(r => r.json())
       .then(d => { if (!cancelled) { setData(d); setLoading(false); } })
       .catch(() => { if (!cancelled) { setData(null); setLoading(false); } });
@@ -110,7 +113,7 @@ export default function TftMetaPulsePage() {
       <Nav active="comps" />
       <TftHero pageTitle={t('tft.metaPulse.title')} subtitle={t('tft.metaPulse.subtitle')} patch={data?.selectedPatch || data?.currentPatch || undefined} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} />
+        <StatsFilterBar filters={filters} patches={data?.patches || []} onChange={setFilters} showDelta={false} />
 
         {loading && (
           <div className="text-fg-muted text-center py-12">…</div>

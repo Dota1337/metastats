@@ -12,6 +12,12 @@ export function costColor(cost: number): string {
     : '#e0c75a';
 }
 
+// Stern-Level → Farbe wie im Spiel: 1 grau, 2 silber, 3 gold, 4 prismatisch.
+// Comp-Builder-Brett und Galerie der veroeffentlichten Comps.
+export function starColor(star: number): string {
+  return star === 1 ? '#9aa6b2' : star === 2 ? '#cfd6dc' : star === 3 ? '#e0c75a' : '#c39bff';
+}
+
 // Core/Flex-Rahmen um eine Gruppe von Unit-Kacheln (Comp-Liste + Comp-DNA,
 // User 2026-10-10: „eine Umrandung für Core und eine für Flex"): durchgezogen =
 // Core, gestrichelt = Flex. Auch fuer die Mini-Symbole in Legende und Zaehler,

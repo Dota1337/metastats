@@ -13,6 +13,8 @@ import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
 import { compPath } from '../../../lib/tft-comp-path';
+import { loadItemTexts, itemTextFor, type ItemTexts } from '../../../lib/tft-item-texts';
+import ItemStatLine from '../../../components/tft/ItemStatLine';
 
 interface ItemDetail {
   apiName: string;
@@ -32,8 +34,9 @@ interface ItemDetail {
 
 // `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
 // Unit-Detailseite (UnitDetailClient.tsx).
-export default function TftItemDetailPage({ initial }: { initial: ItemDetailInitial | null }) {
-  const { t, withLang } = useI18n();
+// `texts`: Infotext dieses Items in allen 6 Sprachen (tft-item-texts-server.ts).
+export default function TftItemDetailPage({ initial, texts }: { initial: ItemDetailInitial | null; texts?: ItemTexts | null }) {
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
@@ -73,6 +76,10 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
   // Das volle Bundle ersetzt den Ausschnitt der Startdaten; scheitert der
   // Abruf, bleibt der Ausschnitt stehen.
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
+  // texts null = Datei fehlte auf dem Server → selbst holen. Ein leerer
+  // Teil (Item ohne Text) holt nichts; dann bleibt der Bundle-Text.
+  const [clientTexts, setClientTexts] = useState<ItemTexts | null>(null);
+  useEffect(() => { if (!texts) loadItemTexts().then(setClientTexts); }, [texts]);
   useEffect(() => {
     // Alte Antworten nach einem Rangwechsel verwerfen.
     let cancelled = false;
@@ -154,6 +161,7 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
   const compsTop6 = useMemo(() => compsWithItem.slice(0, 6), [compsWithItem]);
 
   const itemMeta = assets?.items[id];
+  const itemText = itemTextFor(texts || clientTexts, id, lang);
   const url = tftIconUrl(assets, itemMeta?.icon);
   const composition = itemMeta?.composition || [];
 
@@ -185,7 +193,16 @@ export default function TftItemDetailPage({ initial }: { initial: ItemDetailInit
             )}
             <div className="flex-1">
               <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
-              {itemMeta?.desc && <p className="text-fg-secondary text-xs mt-1 max-w-prose">{formatTftDesc(itemMeta.desc)}</p>}
+              {/* Werte + Wirkung aus den Item-Texten (Set 18: das Bundle hat
+                  keine Beschreibung), sonst der Bundle-Text wie vorher. */}
+              {itemText ? (
+                <>
+                  {itemText.stats.length > 0 && <ItemStatLine stats={itemText.stats} className="text-xs mt-1" />}
+                  <p className="text-fg-secondary text-xs mt-1 max-w-prose whitespace-pre-line">{itemText.desc}</p>
+                </>
+              ) : itemMeta?.desc && (
+                <p className="text-fg-secondary text-xs mt-1 max-w-prose whitespace-pre-line">{formatTftDesc(itemMeta.desc)}</p>
+              )}
             </div>
           </div>
 

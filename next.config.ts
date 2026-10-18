@@ -40,6 +40,8 @@ const nextConfig: NextConfig = {
     '/teams/[id]': ['./public/pro-teams/index.json'],
     // Aufstellungs-Karte aus dem MetaTFT-Import, Dateiname haengt am Set.
     '/api/tft/positions/by-units': ['./public/tft-metatft-boards-*.json'],
+    // Item-Infotext im ersten HTML (tft-item-texts-server.ts), Name am Set.
+    '/tft/items/[id]': ['./public/tft-item-texts-*.json'],
   },
   // Wochendateien (public/tft-stats-<region>.json) kommen in jede Funktion,
   // die loadTftStats erreicht — der Dateiname steht erst zur Laufzeit fest.

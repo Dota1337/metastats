@@ -21,6 +21,8 @@ export interface ItemTextEntry {
   unique?: boolean;
   // Thief's Gloves: belegt alle drei Plaetze
   slots?: number;
+  // Tactician's Crown/Cape/Shield: "+1 maximum team size"
+  teamSize?: number;
   i18n: Partial<Record<Lang, ItemTextLocale>>;
 }
 

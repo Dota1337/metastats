@@ -5,13 +5,14 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { starColor } from '../../../lib/tft-ui';
+import { toStarLevel, type BoardPlacement } from '../../../lib/tft-public-comps';
 
-interface Placement { cell: number; characterId: string; items?: string[] }
 interface CommunityComp {
   id: string;
   slug: string;
   name: string;
-  boardConfig: { placements: Placement[]; oppPlacements?: Placement[] };
+  boardConfig: { placements: BoardPlacement[]; oppPlacements?: BoardPlacement[] };
   traitLabel: string | null;
   carryUnit: string | null;
   authorHandle: string | null;
@@ -127,9 +128,12 @@ export default function TftCommunityGalleryPage() {
 
                 {/* Unit row */}
                 <div className="flex gap-1 flex-wrap">
-                  {placements.slice(0, 10).map((p, i) => {
+                  {/* Alle Units: mit Tactician-Items stehen mehr als 10 auf dem Brett. */}
+                  {placements.map((p, i) => {
                     const ch = assets?.champions[p.characterId];
                     const url = tftChampionTileUrl(assets, ch);
+                    // Eintraege von vor dem 18.10.2026 haben kein Stern-Level (1★).
+                    const star = toStarLevel(p.star);
                     // Same nested-<a> fix as CompRow/CompCard: outer was an <a>
                     // for the unit, inner <a>s for items — invalid HTML. Outer
                     // is now a div with link semantics; inner item anchors
@@ -165,6 +169,15 @@ export default function TftCommunityGalleryPage() {
                         title={ch?.name || p.characterId}
                       >
                         {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                        {/* Sterne wie auf dem Builder-Brett: Pille oben mittig. */}
+                        {star && (
+                          <div
+                            className="absolute top-0.5 left-1/2 -translate-x-1/2 pointer-events-none px-1 py-px rounded-full bg-black/80 text-[8px] leading-none font-bold tracking-tight whitespace-nowrap"
+                            style={{ color: starColor(star) }}
+                          >
+                            {'★'.repeat(star)}
+                          </div>
+                        )}
                         {p.items && p.items.length > 0 && (
                           <div className="absolute bottom-0 left-0 right-0 flex gap-px bg-black/60">
                             {p.items.slice(0, 3).map((it, j) => {

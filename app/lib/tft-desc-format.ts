@@ -74,7 +74,9 @@ export function formatTftDesc(raw: string | null | undefined): string {
     .replace(/\(\s+/g, '(')
     .replace(/(^|[^.])([.!?])(?:[,;]+[.!?]?)+/g, '$1$2')
     .replace(/([.!?。)）])(?:\s*[^.:!?。：()（）\n]{1,30}[:：])+\s*$/u, '$1')
-    .replace(/^[,.;:]\s*/, '')
+    // Satzzeichen-Rest am Zeilenanfang weg, eine Auslassung ("...the Heart of
+    // a hero...", Tactician's Crown) aber nicht anknabbern.
+    .replace(/^(?!\.\.\.)[,.;:]\s*/, '')
     .trim());
   return lines.filter(l => l && !/^[^.:]{0,40}:$/.test(l)).join('\n').trim();
 }

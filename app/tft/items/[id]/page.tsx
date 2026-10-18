@@ -1,6 +1,7 @@
 import { itemDetailStart } from '../../../lib/seo/detail-data';
 import { toSearchParams } from '../../../lib/seo/initial-data';
 import { decodeSlug } from '../../../lib/og/slugs';
+import { itemTextsSubset } from '../../../lib/tft-item-texts-server';
 import ItemDetailClient from './ItemDetailClient';
 
 // Server-Huelle der Item-Detailseite (SEO-Plan Schritt 5): Name, Zahlen und
@@ -13,5 +14,8 @@ export default async function Page({ params, searchParams }: {
 }) {
   const id = decodeSlug((await params).id);
   const initial = await itemDetailStart(id, toSearchParams(await searchParams));
-  return <ItemDetailClient initial={initial} />;
+  // Infotext getrennt von den Statistik-Startdaten: die koennen null sein
+  // (kein Vorrat, Zeitlimit, SEO_START_DATA=0), der Text soll trotzdem im
+  // ersten HTML stehen.
+  return <ItemDetailClient initial={initial} texts={itemTextsSubset(id)} />;
 }

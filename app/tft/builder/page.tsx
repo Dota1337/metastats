@@ -9,9 +9,11 @@ import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
-import { HEX_CLIP } from '../../lib/tft-ui';
-import { loadItemTexts, itemTextFor, type ItemTexts, type ItemStat, type ItemTextView } from '../../lib/tft-item-texts';
-import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, emblemTraitOf, itemBlock, slotsUsed } from '../../lib/tft-builder-items';
+import { HEX_CLIP, starColor as starColorOf } from '../../lib/tft-ui';
+import { loadItemTexts, itemTextFor, type ItemTexts, type ItemTextView } from '../../lib/tft-item-texts';
+import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, emblemTraitOf, itemBlock, itemTeamSize, slotsUsed, teamLimit } from '../../lib/tft-builder-items';
+import type { StarLevel } from '../../lib/tft-public-comps';
+import ItemStatLine from '../../components/tft/ItemStatLine';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
 // Row layout (cell indices) — matches in-game player POV:
@@ -35,7 +37,7 @@ import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, emblemTraitOf, itemBlock, slotsUs
 
 const ROWS = 4;
 const COLS = 7;
-const MAX_UNITS = 10;
+// Brettgrenze: teamLimit (tft-builder-items.ts) — 10 plus Tactician-Items.
 const STORAGE_KEY = 'tft.savedComps';
 
 // Miss Fortune (Set 17) has a "Choose Trait" placeholder that resolves to
@@ -65,7 +67,7 @@ type MfStance = 'AS' | 'Flex' | 'Mana';
 // 1-star is implicit (undefined) so we don't bloat URLs / saved comps with the
 // default. 4-star exists in Set 17 via Sona's command mods and Aurelion Sol
 // quest rewards — kept as an explicit option even though it's rare.
-type StarLevel = 2 | 3 | 4;
+// StarLevel (2 | 3 | 4) kommt aus tft-public-comps.ts, die Galerie nutzt ihn mit.
 
 interface Placement {
   cell: number;
@@ -154,8 +156,12 @@ function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
 // `emblemTrait`: Synergie, die das Emblem gibt (tft-builder-items.ts). Ein
 // "Emblem" ohne Synergie im Bundle (Phantom Emblem, Set-18-Mechanik) ist
 // nicht ausruestbar.
-function categorizeItem(id: string, name: string, hasComp: boolean, emblemTrait: string | null): ItemTab | null {
+// `teamSizeItem`: Tactician's Crown/Cape/Shield — stehen am Ende des
+// Embleme-Reiters, weil sie wie die Embleme aus dem Spatel gebaut werden
+// (so auch tactics.tools: direkt hinter den Emblemen).
+function categorizeItem(id: string, name: string, hasComp: boolean, emblemTrait: string | null, teamSizeItem: boolean): ItemTab | null {
   if (STANCE_ITEM_IDS.has(id)) return null;
+  if (teamSizeItem) return 'emblems';
   if (/Emblem/i.test(id) || /Emblem/i.test(name)) return emblemTrait ? 'emblems' : null;
   // `_Artifact_` mit Unterstrichen wie itemBucketOf (tft-item-bucket.ts):
   // ohne sie faengt das Muster DA_Artifactinate18 — ein Verbrauchsgegenstand
@@ -259,12 +265,6 @@ export default function TftBuilderPage() {
     if (lastPointerRef.current === 'mouse') return;
     setInfoItem({ id, rect: e.currentTarget.getBoundingClientRect(), touch: true });
   }
-  const statLabel = (key: string): string => {
-    const k = `tft.stat.${key}`;
-    const v = t(k as any);
-    return v && v !== k ? v : key.replace(/^scale/, '');
-  };
-
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -323,14 +323,15 @@ export default function TftBuilderPage() {
       if (RETIRED_ITEM_IDS.has(id)) return;
       if (/Augment/i.test(id)) return;
       if (noiseRe.test(id)) return;
-      if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|Tactician|TheStar/i.test(id)) return;
+      // Tactician's Crown/Cape/Shield bleiben drin (+1 Brettplatz, teamLimit).
+      if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|TheStar/i.test(id)) return;
       if (!item?.name) return;
       // Locale resolution failure = item is disabled in-game (Riot pulls the
       // localised string when an item leaves rotation). Belt-and-suspenders —
       // active.items should already exclude these.
       if (item.name.startsWith('tft_item_name_')) return;
       const hasComp = !!(item.composition && item.composition.length === 2);
-      const cat = categorizeItem(id, item.name, hasComp, emblemTraitOf(assets, id));
+      const cat = categorizeItem(id, item.name, hasComp, emblemTraitOf(assets, id), itemTeamSize(itemTexts, id) > 0);
       if (!cat) return;
       out.push({ id, name: item.name, icon: item.icon, category: cat });
     };
@@ -367,8 +368,10 @@ export default function TftBuilderPage() {
       if (!kept) { byName.set(key, entry); continue; }
       if (prefix && !kept.id.startsWith(prefix) && entry.id.startsWith(prefix)) byName.set(key, entry);
     }
-    return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
-  }, [assets]);
+    // Tactician-Items hinter die Embleme, sonst nach Name.
+    const tail = (e: ItemEntry) => (itemTeamSize(itemTexts, e.id) > 0 ? 1 : 0);
+    return [...byName.values()].sort((a, b) => tail(a) - tail(b) || a.name.localeCompare(b.name));
+  }, [assets, itemTexts]);
 
   const filteredItems = useMemo(() => {
     return items.filter(i => {
@@ -462,15 +465,18 @@ export default function TftBuilderPage() {
       const existingElsewhere = prev.find(p => p.characterId === cid && p.cell !== cell);
       let next = prev.filter(p => p.cell !== cell);
       if (existingElsewhere) {
+        // Umsetzen: Items, Sterne und Haltung wandern mit.
         next = next.filter(p => p.characterId !== cid);
-        next.push({ cell, characterId: cid, items: existingElsewhere.items });
+        next.push({ ...existingElsewhere, cell });
       } else {
-        if (next.length >= MAX_UNITS && !existing) return prev;
+        // Ersetzen auf besetztem Feld ist immer erlaubt; eine neue Unit nur
+        // unter der Grenze des Bretts, wie es vorher war (prev).
+        if (!existing && next.length >= teamLimit(itemTexts, prev)) return prev;
         next.push({ cell, characterId: cid, items: [] });
       }
       return next;
     });
-  }, []);
+  }, [itemTexts]);
 
   const removeAt = useCallback((team: Team, cell: number) => {
     setPlacementsFor(team, prev => prev.filter(p => p.cell !== cell));
@@ -696,16 +702,15 @@ export default function TftBuilderPage() {
       if (fromTeam === team) {
         if (from !== cell) swapWithinTeam(team, from, cell);
       } else {
-        // Move across teams: remove from source, place on target.
+        // Move across teams: erst pruefen, ob das Ziel-Brett Platz hat (die
+        // ankommende Unit kann selbst ein Tactician-Item tragen), dann von der
+        // Quelle loeschen — sonst ginge die Unit bei vollem Ziel verloren.
+        // Items, Sterne und Haltung wandern mit.
         const sourceP = placementsFor(fromTeam).find(p => p.cell === from);
-        if (sourceP) {
+        const rest = placementsFor(team).filter(p => p.cell !== cell);
+        if (sourceP && rest.length < teamLimit(itemTexts, [...rest, sourceP])) {
           setPlacementsFor(fromTeam, prev => prev.filter(p => p.cell !== from));
-          setPlacementsFor(team, prev => {
-            const next = prev.filter(p => p.cell !== cell);
-            if (next.length >= MAX_UNITS) return prev;
-            next.push({ cell, characterId: sourceP.characterId, items: sourceP.items });
-            return next;
-          });
+          setPlacementsFor(team, prev => [...prev.filter(p => p.cell !== cell), { ...sourceP, cell }]);
         }
       }
     }
@@ -756,7 +761,11 @@ export default function TftBuilderPage() {
   // erwartet die Slots so sortiert wie der Spieler sie sehen will.
   async function copyPlanAheadCode() {
     if (!assets) return;
-    const ids = ownPlacements.map(p => p.characterId);
+    // Riots Code hat fest 10 Plaetze (tft-plan-ahead-code.ts), das Brett mit
+    // Tactician-Items bis zu 13 Units: Units mit Items zuerst, damit beim
+    // Abschneiden eine Unit ohne Items wegfaellt statt eines Carrys.
+    const ids = [...ownPlacements.filter(p => p.items.length > 0), ...ownPlacements.filter(p => p.items.length === 0)]
+      .map(p => p.characterId);
     if (ids.length === 0) return;
     const result = buildPlanAheadCode(ids, assets.set, assets);
     if (!result || !result.code) {
@@ -829,7 +838,7 @@ export default function TftBuilderPage() {
       >
         <div className="flex items-center justify-between mb-2">
           <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
-            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{MAX_UNITS}
+            {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{teamLimit(itemTexts, placementsFor(team))}
           </div>
           {placementsFor(team).length > 0 && (
             <button
@@ -1284,7 +1293,7 @@ export default function TftBuilderPage() {
                       {equipped.map(x => (
                         <div key={x.id}>
                           <div className="text-white text-[11px] font-medium">{x.name}</div>
-                          {x.stats.length > 0 && <ItemStatLine stats={x.stats} label={statLabel} className="text-[10px]" />}
+                          {x.stats.length > 0 && <ItemStatLine stats={x.stats} className="text-[10px]" />}
                           {x.desc && <div className="text-[#cbd5e1] text-[10px] leading-relaxed whitespace-pre-line">{x.desc}</div>}
                         </div>
                       ))}
@@ -1379,7 +1388,6 @@ export default function TftBuilderPage() {
           anchor={infoItem.rect}
           assets={assets}
           text={itemTextFor(itemTexts, infoItem.id, lang)}
-          label={statLabel}
         />
       )}
       <Footer />
@@ -1387,28 +1395,14 @@ export default function TftBuilderPage() {
   );
 }
 
-// Werte-Zeile eines Items: "55% AD · 10% Schadensverstaerkung".
-function ItemStatLine({ stats, label, className = '' }: { stats: ItemStat[]; label: (key: string) => string; className?: string }) {
-  return (
-    <div className={`flex flex-wrap gap-x-2 gap-y-0.5 text-fg-secondary ${className}`}>
-      {stats.map((s, i) => (
-        <span key={i}>
-          <span className="text-white tabular-nums">{s.value}</span> {label(s.key)}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 // Infokarte zu einem Item: Name, Werte, Wirkung. Steht links neben dem Item
 // (Item-Auswahl rechts am PC), sonst darunter bzw. darueber. Faengt keine
 // Zeiger-Ereignisse, damit Ziehen und Klicken unberuehrt bleiben.
-function ItemInfoCard({ id, anchor, assets, text, label }: {
+function ItemInfoCard({ id, anchor, assets, text }: {
   id: string;
   anchor: DOMRect;
   assets: TftAssetsBundle | null;
   text: ItemTextView | null;
-  label: (key: string) => string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -1442,7 +1436,7 @@ function ItemInfoCard({ id, anchor, assets, text, label }: {
         {icon && <img src={icon} alt="" className="w-7 h-7 rounded" />}
         <div className="text-white text-xs font-medium">{text?.name || item?.name || id}</div>
       </div>
-      {text && text.stats.length > 0 && <ItemStatLine stats={text.stats} label={label} className="mt-2 text-[11px]" />}
+      {text && text.stats.length > 0 && <ItemStatLine stats={text.stats} className="mt-2 text-[11px]" />}
       {text?.desc && <div className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1] whitespace-pre-line">{text.desc}</div>}
     </div>
   );
@@ -1450,10 +1444,4 @@ function ItemInfoCard({ id, anchor, assets, text, label }: {
 
 function costColorOf(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
-}
-
-// In-game TFT star colours: 1=grey, 2=silver, 3=gold, 4=prismatic (Set 17's
-// rare Sona / Aurelion Sol upgrade tier).
-function starColorOf(star: number) {
-  return star === 1 ? '#9aa6b2' : star === 2 ? '#cfd6dc' : star === 3 ? '#e0c75a' : '#c39bff';
 }

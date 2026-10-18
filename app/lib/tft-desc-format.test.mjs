@@ -38,6 +38,9 @@ test('Negativfall: echte Zahlen und Satzzeichen bleiben', () => {
   assert.equal(formatTftDesc(de), de);
   assert.equal(formatTftDesc('Uno, dos..., ¡cinco!'), 'Uno, dos..., ¡cinco!');
   assert.equal(formatTftDesc('Gain a holographique !'), 'Gain a holographique !');
+  // Auslassung am Zeilenanfang bleibt ganz (Tactician's Crown, 18.10.2026)
+  assert.equal(formatTftDesc('Gain gold.<br><br><rules>...the Heart of a hero...</rules>'), 'Gain gold.\n...the Heart of a hero...');
+  assert.equal(formatTftDesc(', rest'), 'rest');
   assert.equal(formatTftDesc(''), '');
   assert.equal(formatTftDesc(undefined), '');
 });

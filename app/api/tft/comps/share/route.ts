@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { randomUUID } from 'node:crypto';
+import { sanitizePlacements } from '../../../../lib/tft-public-comps';
 
 // POST /api/tft/comps/share
 // Body: { name, placements, oppPlacements?, traitLabel?, carryUnit?, authorHandle? }
+// placements[i]: { cell, characterId, items?, star? } — Pruefung in
+// tft-public-comps.ts (Felder 0–27 je einmal, 3 Items, Stern 2–4).
 // Anonymous-friendly: no auth, but a cookie-stored authorToken identifies
 // the submitter for (a) "delete your own" and (b) rate-limiting.
 //
@@ -13,11 +16,7 @@ import { randomUUID } from 'node:crypto';
 
 const MAX_NAME_LENGTH = 60;
 const MAX_HANDLE_LENGTH = 24;
-const MAX_PLACEMENTS = 12;       // 10 board cells + a couple for opp viewport
-const MAX_ITEMS_PER_UNIT = 3;
 const DAILY_SUBMIT_CAP = 5;
-
-interface Placement { cell: number; characterId: string; items?: string[] }
 
 function sanitizeStr(s: unknown, max: number): string | null {
   if (typeof s !== 'string') return null;
@@ -26,26 +25,6 @@ function sanitizeStr(s: unknown, max: number): string | null {
   // Strip control chars + html/script-y characters
   const safe = trimmed.replace(/[<>{}]/g, '').slice(0, max);
   return safe || null;
-}
-
-function sanitizePlacements(arr: unknown): Placement[] {
-  if (!Array.isArray(arr)) return [];
-  const out: Placement[] = [];
-  for (const p of arr) {
-    if (!p || typeof p !== 'object') continue;
-    const cell = Number((p as any).cell);
-    const cid = sanitizeStr((p as any).characterId, 80);
-    if (!Number.isInteger(cell) || cell < 0 || cell > 27 || !cid) continue;
-    const items = Array.isArray((p as any).items)
-      ? (p as any).items
-          .filter((x: unknown) => typeof x === 'string')
-          .slice(0, MAX_ITEMS_PER_UNIT)
-          .map((x: string) => x.slice(0, 80))
-      : [];
-    out.push({ cell, characterId: cid, items });
-    if (out.length >= MAX_PLACEMENTS) break;
-  }
-  return out;
 }
 
 function slugify(name: string): string {

@@ -20,6 +20,9 @@
 // Client-Encoder gegenpruefen, nicht gegen die Erinnerung.
 const PLAN_AHEAD_FORMAT = '02';
 const SLOT_HEX_WIDTH = 3;
+// Fest 10, unabhaengig von der Brettgrenze des Builders (TEAM_SIZE_BASE plus
+// Tactician-Items, tft-builder-items.ts): das Format hat genau 10 Plaetze, die
+// Seite sortiert Units mit Items nach vorn, bevor hier abgeschnitten wird.
 const SLOT_COUNT = 10;
 const EMPTY_SLOT = '0'.repeat(SLOT_HEX_WIDTH);
 

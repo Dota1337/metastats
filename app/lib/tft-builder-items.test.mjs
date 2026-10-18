@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { emblemTraitOf, itemBlock, itemSlots, slotsUsed, RETIRED_ITEM_IDS, championTraitNames } from './tft-builder-items.ts';
+import { emblemTraitOf, itemBlock, itemSlots, slotsUsed, RETIRED_ITEM_IDS, championTraitNames, itemTeamSize, teamLimit, TEAM_SIZE_BASE, BOARD_CELLS } from './tft-builder-items.ts';
 
 const read = (p) => JSON.parse(fs.readFileSync(new URL(p, import.meta.url), 'utf8'));
 const bundle = read('../../public/tft-assets-18.json');
@@ -59,6 +59,38 @@ test('Emblem nicht auf eigene Synergie und nicht doppelt', () => {
   assert.equal(itemBlock(bundle, texts, { characterId: withVanguard, items: [] }, 'DA_18_EmblemVanguard'), 'emblem');
   assert.equal(itemBlock(bundle, texts, { characterId: withoutVanguard, items: [] }, 'DA_18_EmblemVanguard'), null);
   assert.equal(itemBlock(bundle, texts, { characterId: withoutVanguard, items: ['DA_18_EmblemVanguard'] }, 'DA_18_EmblemVanguard'), 'emblem');
+});
+
+// Anlass 2026-10-18: Tactician's Crown/Cape/Shield fehlten im Builder, das
+// Brett blieb fest bei 10.
+test('Tactician-Items: +1 Brettplatz je Item, aus Text und ohne Textdatei', () => {
+  const tactician = ['DA_TacticiansCape', 'DA_TacticiansCrown', 'DA_TacticiansShield'];
+  for (const id of tactician) {
+    assert.ok(active.has(id), `${id} nicht aktiv`);
+    assert.equal(itemTeamSize(texts, id), 1);
+    assert.equal(itemTeamSize(null, id), 1);
+  }
+  // Augment mit aehnlichem Namen und normale Items zaehlen nicht
+  for (const id of ['DA_TacticiansKitchen', 'TFT_Augment_TacticiansKitchen', 'DA_Deathblade', 'DA_18_EmblemVanguard']) {
+    assert.equal(itemTeamSize(texts, id), 0, id);
+    assert.equal(itemTeamSize(null, id), 0, id);
+  }
+  // In der Textdatei hat genau das Trio ein teamSize
+  assert.deepEqual(Object.keys(texts.items).filter(id => texts.items[id].teamSize).sort(), tactician);
+});
+
+test('Brettgrenze: 10, jedes Tactician-Item einzeln, hoechstens 28 Felder', () => {
+  const u = (items) => ({ characterId: withoutVanguard, items });
+  assert.equal(TEAM_SIZE_BASE, 10);
+  assert.equal(teamLimit(texts, []), 10);
+  assert.equal(teamLimit(texts, [u(['DA_Deathblade']), u([])]), 10);
+  assert.equal(teamLimit(texts, [u(['DA_TacticiansCrown'])]), 11);
+  // zwei gleiche auf einer Unit zaehlen doppelt, drei verschiedene verteilt dreifach
+  assert.equal(teamLimit(texts, [u(['DA_TacticiansCrown', 'DA_TacticiansCrown'])]), 12);
+  assert.equal(teamLimit(texts, [u(['DA_TacticiansCrown']), u(['DA_TacticiansCape']), u(['DA_TacticiansShield', 'DA_Deathblade'])]), 13);
+  assert.equal(teamLimit(null, [u(['DA_TacticiansShield'])]), 11);
+  const many = Array.from({ length: 10 }, () => u(['DA_TacticiansCrown', 'DA_TacticiansCrown', 'DA_TacticiansCrown']));
+  assert.equal(teamLimit(texts, many), BOARD_CELLS);
 });
 
 test('Rest-Liste zeigt auf Eintraege, die es im Set-18-Bundle wirklich gibt', () => {

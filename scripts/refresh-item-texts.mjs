@@ -17,6 +17,8 @@
  * damit der Builder nicht je Sprache nach Mustern suchen muss:
  *   unique: true  — "Unique - only 1 per champion"
  *   slots: 3      — "[Consumes 3 item slots.]" (Thief's Gloves)
+ *   teamSize: N   — "Your team gains +N maximum team size." (Tactician's
+ *                   Crown/Cape/Shield; aelterer Wortlaut "max team size")
  *
  * Schutz: fehlt die englische Datei oder kommen weniger als MIN_TEXTS Texte
  * zusammen, endet das Skript mit Exit 1 und die alte Datei bleibt stehen.
@@ -94,6 +96,8 @@ async function main() {
     const entry = { i18n: {} };
     if (/Unique - only 1 per champion/i.test(enDesc)) entry.unique = true;
     if (/Consumes 3 item slots/i.test(enDesc)) entry.slots = 3;
+    const team = enDesc.match(/\+(\d+) max(?:imum)? team size/i);
+    if (team) entry.teamSize = Number(team[1]);
     for (const lang of LANGS) {
       const src = byLang[lang];
       const desc = src?.[`${id}_desc`];
@@ -112,6 +116,10 @@ async function main() {
   console.log(`       Items mit Text: ${Object.keys(items).length} (${LANGS.map(l => `${l} ${counts[l]}`).join(', ')})`);
   console.log(`       unique: ${Object.entries(items).filter(([, e]) => e.unique).map(([k]) => k).join(', ') || '-'}`);
   console.log(`       3 Plaetze: ${Object.entries(items).filter(([, e]) => e.slots === 3).map(([k]) => k).join(', ') || '-'}`);
+  console.log(`       Teamgroesse: ${Object.entries(items).filter(([, e]) => e.teamSize).map(([k, e]) => `${k} +${e.teamSize}`).join(', ') || '-'}`);
+  // Builder zaehlt sonst nur ueber das Rueckfall-Muster (tft-builder-items.ts).
+  const missing = active.filter(id => /Tactician/i.test(id) && !/Augment|Kitchen/i.test(id) && !items[id]?.teamSize);
+  if (missing.length) console.warn(`       WARNUNG: aktive Tactician-Items ohne teamSize: ${missing.join(', ')} — Wortlaut bei tactics.tools geaendert?`);
   if (counts.en < MIN_TEXTS) {
     throw new Error(`Nur ${counts.en} englische Texte (< ${MIN_TEXTS}). Format bei tactics.tools geaendert?`);
   }

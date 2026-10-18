@@ -13,8 +13,16 @@
 
 import type { TftAssetsBundle } from './tft-cdragon';
 import type { ItemTexts } from './tft-item-texts';
+import { BOARD_CELLS, MAX_ITEMS_PER_UNIT } from './tft-board';
 
-export const MAX_ITEMS_PER_UNIT = 3;
+export { BOARD_CELLS, MAX_ITEMS_PER_UNIT };
+
+// Brettgrenze: 10 Units auf Stufe 10, je Tactician-Item (+1 maximale
+// Teamgroesse, Crown/Cape/Shield) ein Platz mehr. Jedes Item zaehlt einzeln,
+// auch zwei gleiche auf einer Unit — die Items tragen keinen Vermerk "Unique -
+// only 1 per champion" (Textdatei). Eine Obergrenze nennt keine Quelle,
+// also gilt die echte Brettgroesse (BOARD_CELLS).
+export const TEAM_SIZE_BASE = 10;
 
 // Altlasten im Radiant-Reiter: stehen in active.items (fetch-tft-assets nimmt
 // TFT5_*Radiant und RadiantVirtue ohne Spielnachweis auf), kommen aber in
@@ -29,6 +37,9 @@ export const RETIRED_ITEM_IDS: ReadonlySet<string> = new Set([
 // Rueckfall, falls die Textdatei fehlt (gleiches Muster wie
 // THIEFS_GLOVES_RE in scripts/lib/tft-build-aggregator.mjs).
 const THIEFS_GLOVES_RE = /thiefsgloves/i;
+// Rueckfall fuer teamSize, eng gefasst: das Bundle hat 14 Tactician-Kennungen,
+// darunter das Augment DA_TacticiansKitchen (node-Probe 18.10.2026).
+const TACTICIAN_RE = /Tacticians(?:Cape|Crown|Shield)$/;
 
 const traitNamesCache = new WeakMap<object, Set<string>>();
 function traitNames(bundle: TftAssetsBundle): Set<string> {
@@ -66,6 +77,21 @@ export function itemSlots(texts: ItemTexts | null, itemId: string): number {
 
 export function slotsUsed(texts: ItemTexts | null, items: readonly string[]): number {
   return items.reduce((n, id) => n + itemSlots(texts, id), 0);
+}
+
+// Zusaetzliche Brettplaetze durch ein Item ("+1 maximum team size").
+export function itemTeamSize(texts: ItemTexts | null, itemId: string): number {
+  const n = texts?.items?.[itemId]?.teamSize;
+  if (typeof n === 'number' && n > 0) return n;
+  return TACTICIAN_RE.test(itemId) ? 1 : 0;
+}
+
+// Wie viele Units auf ein Brett passen: Basis plus alle Tactician-Items auf
+// diesem Brett, hoechstens die Brettgroesse.
+export function teamLimit(texts: ItemTexts | null, placements: readonly { items: readonly string[] }[]): number {
+  let bonus = 0;
+  for (const p of placements) for (const id of p.items) bonus += itemTeamSize(texts, id);
+  return Math.min(BOARD_CELLS, TEAM_SIZE_BASE + bonus);
 }
 
 export type ItemBlock = 'full' | 'unique' | 'emblem' | null;

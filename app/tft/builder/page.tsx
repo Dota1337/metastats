@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { withAlpha } from '../../lib/color';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -10,6 +10,8 @@ import { useI18n } from '../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 import { HEX_CLIP } from '../../lib/tft-ui';
+import { loadItemTexts, itemTextFor, type ItemTexts, type ItemStat, type ItemTextView } from '../../lib/tft-item-texts';
+import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, emblemTraitOf, itemBlock, slotsUsed } from '../../lib/tft-builder-items';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
 // Row layout (cell indices) — matches in-game player POV:
@@ -34,7 +36,6 @@ import { HEX_CLIP } from '../../lib/tft-ui';
 const ROWS = 4;
 const COLS = 7;
 const MAX_UNITS = 10;
-const MAX_ITEMS_PER_UNIT = 3;
 const STORAGE_KEY = 'tft.savedComps';
 
 // Miss Fortune (Set 17) has a "Choose Trait" placeholder that resolves to
@@ -82,7 +83,16 @@ interface SavedComp {
   createdAt: number;
 }
 
-type ItemTab = 'completed' | 'radiant' | 'psyonic' | 'animasquad' | 'artifacts' | 'emblems';
+type ItemTab = 'completed' | 'radiant' | 'artifacts' | 'emblems';
+const ITEM_TABS: ItemTab[] = ['completed', 'radiant', 'artifacts', 'emblems'];
+
+// Ablegen mit Toleranz: Zielfeld ist der naechste Hex-Mittelpunkt, gemessen in
+// Zellbreiten. Units/Felder bis 0,75 (ein Hex reicht bis 0,58 vom Mittelpunkt,
+// damit zaehlen Luecken, Ecken und ein schmaler Rand ums Brett). Items gehen
+// auf die naechste BESETZTE Zelle bis 0,8 — wer mitten auf ein leeres Nachbar-
+// feld (Abstand 1,0) zielt, meint nicht die Unit daneben.
+const SNAP_CELL = 0.75;
+const SNAP_ITEM = 0.8;
 
 interface ItemEntry {
   id: string;
@@ -140,28 +150,23 @@ function decodeState(s: string): { own: Placement[]; opp: Placement[] } {
 // from `assets.active.items` (curated server-side in fetch-tft-assets.mjs
 // against the DB snapshots), so we only need pattern matching here — no
 // hand-maintained deny-lists for retired items.
-function categorizeItem(id: string, name: string, hasComp: boolean, setN: number): ItemTab | null {
+// Die Set-17-Reiter Psyonic/Anima sind seit Set 18 leer und entfallen.
+// `emblemTrait`: Synergie, die das Emblem gibt (tft-builder-items.ts). Ein
+// "Emblem" ohne Synergie im Bundle (Phantom Emblem, Set-18-Mechanik) ist
+// nicht ausruestbar.
+function categorizeItem(id: string, name: string, hasComp: boolean, emblemTrait: string | null): ItemTab | null {
   if (STANCE_ITEM_IDS.has(id)) return null;
-  if (/Emblem/i.test(id) || /Emblem/i.test(name)) return 'emblems';
-  // AnimaSquad trait items — all tiers including the RadiantField variants
-  // (Solar Eclipse, Radiant Field) belong to the animasquad tab. They share
-  // a display name with no other item, so the "Radiant" suffix in the id is
-  // pure naming, not a category signal.
-  if (new RegExp(`^TFT${setN}_AnimaSquadItem_`, 'i').test(id)) return 'animasquad';
-  // PsyOps trait items: only base variants. Every base PsyOps mod has a
-  // matching `_Radiant` upgrade with an identical display name — surfacing
-  // both is pure visual noise.
-  if (new RegExp(`^TFT${setN}_Item_PsyOps_(?!.*_Radiant$)`, 'i').test(id)) return 'psyonic';
-  if (new RegExp(`^TFT${setN}_Item_PsyOps_.*_Radiant$`, 'i').test(id)) return null;
-  if (/Artifact/i.test(id)) return 'artifacts';
+  if (/Emblem/i.test(id) || /Emblem/i.test(name)) return emblemTrait ? 'emblems' : null;
+  // `_Artifact_` mit Unterstrichen wie itemBucketOf (tft-item-bucket.ts):
+  // ohne sie faengt das Muster DA_Artifactinate18 — ein Verbrauchsgegenstand
+  // ("Lose 3 components … Gain an Artifact anvil"), kein Artefakt.
+  if (/_Artifact_/i.test(id)) return 'artifacts';
   // Set-agnostisch am Suffix statt am Namensanfang: Set 18 legt seine
   // Radiant-Gegenstaende als `DA_BloodthirsterRadiant` bzw.
   // `DA_AdaptiveHelm_Radiant` ab, der alte Filter auf `TFT5_Item_` liess sie
   // komplett aus der Palette fallen (gemessen 2026-09-08: 39 von 77 aktiven
-  // Radiants). Set 17 bleibt bitgleich bei 38 — die PsyOps- und
-  // AnimaSquad-Radiants werden weiter oben schon abgefangen.
+  // Radiants).
   if (/Radiant$/i.test(id)) return 'radiant';
-  if (id === 'TFT_Item_RadiantVirtue') return 'radiant';
   // Cross-set artifact-style items (Ornn artifact augments, Shimmerscale loot,
   // Crown of Demacia) — already filtered to "currently rotated" by active.items.
   if (/^TFT[479]_Item_(Ornn|Shimmerscale|CrownOfDemacia)/i.test(id)) return 'artifacts';
@@ -177,7 +182,7 @@ function categorizeItem(id: string, name: string, hasComp: boolean, setN: number
 }
 
 export default function TftBuilderPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
@@ -199,8 +204,66 @@ export default function TftBuilderPage() {
   const [publishState, setPublishState] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle');
   const [planAheadState, setPlanAheadState] = useState<'idle' | 'ok' | 'err'>('idle');
   const dragRef = useRef<{ from: 'palette' | 'board' | 'item'; payload: string | number; fromTeam?: Team } | null>(null);
+  const boardRefs = useRef<Record<Team, HTMLDivElement | null>>({ own: null, opp: null });
+  const [dropTarget, setDropTarget] = useState<{ team: Team; cell: number } | null>(null);
+  const [itemTexts, setItemTexts] = useState<ItemTexts | null>(null);
+  // Item-Infokarte: Element-Rechteck des Items, ueber dem sie steht.
+  const [infoItem, setInfoItem] = useState<{ id: string; rect: DOMRect; touch: boolean } | null>(null);
+  const lastPointerRef = useRef<string>('mouse');
 
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
+  useEffect(() => { loadItemTexts().then(setItemTexts); }, []);
+
+  // Ziel-Hervorhebung endet mit jedem Ziehen, auch wenn ausserhalb losgelassen.
+  useEffect(() => {
+    const clear = () => { setDropTarget(null); dragRef.current = null; };
+    document.addEventListener('dragend', clear);
+    return () => document.removeEventListener('dragend', clear);
+  }, []);
+
+  // Infokarte: verschwindet beim Scrollen (sie steht fest am Bildschirm);
+  // nach Antippen zusaetzlich nach 4 s oder beim naechsten Tippen woanders.
+  useEffect(() => {
+    if (!infoItem) return;
+    const hide = () => setInfoItem(null);
+    window.addEventListener('scroll', hide, { passive: true, capture: true });
+    const timer = infoItem.touch ? setTimeout(hide, 4000) : null;
+    if (infoItem.touch) document.addEventListener('pointerdown', hide);
+    return () => {
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('scroll', hide, { capture: true } as EventListenerOptions);
+      document.removeEventListener('pointerdown', hide);
+    };
+  }, [infoItem]);
+
+  // Maus: Karte beim Drueberfahren. Tastatur: beim Fokus. Finger: nach dem
+  // Antippen (showInfoAfterTap), weil es dort kein Drueberfahren gibt.
+  function infoHandlers(id: string) {
+    return {
+      onPointerDown: (e: React.PointerEvent) => { lastPointerRef.current = e.pointerType; },
+      onPointerEnter: (e: React.PointerEvent<HTMLElement>) => {
+        if (e.pointerType === 'mouse') setInfoItem({ id, rect: e.currentTarget.getBoundingClientRect(), touch: false });
+      },
+      onPointerLeave: (e: React.PointerEvent) => {
+        if (e.pointerType === 'mouse') setInfoItem(prev => (prev && prev.id === id && !prev.touch ? null : prev));
+      },
+      onFocus: (e: React.FocusEvent<HTMLElement>) => {
+        if (lastPointerRef.current === 'mouse' && e.currentTarget.matches(':focus-visible')) {
+          setInfoItem({ id, rect: e.currentTarget.getBoundingClientRect(), touch: false });
+        }
+      },
+      onBlur: () => setInfoItem(prev => (prev && prev.id === id && !prev.touch ? null : prev)),
+    };
+  }
+  function showInfoAfterTap(e: React.MouseEvent<HTMLElement>, id: string) {
+    if (lastPointerRef.current === 'mouse') return;
+    setInfoItem({ id, rect: e.currentTarget.getBoundingClientRect(), touch: true });
+  }
+  const statLabel = (key: string): string => {
+    const k = `tft.stat.${key}`;
+    const v = t(k as any);
+    return v && v !== k ? v : key.replace(/^scale/, '');
+  };
 
   useEffect(() => {
     try {
@@ -249,7 +312,6 @@ export default function TftBuilderPage() {
 
   const items = useMemo<ItemEntry[]>(() => {
     if (!assets) return [];
-    const setN = assets.set;
     // Game-mechanic noise that lives in `assets.items` but isn't equippable
     // gear: Chosen tracking markers, augment "offerings", Graves trait
     // modules, consumables, Sona command mods, Favored cause/effect markers,
@@ -258,6 +320,7 @@ export default function TftBuilderPage() {
     const noiseRe = /^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(MarketOffering_|GravesTrait_|ChampionItem|Consumable_|Favored|SonaUnique_|.*Selector|EkkoOffering_|CypherArmoryItem_)/i;
     const out: ItemEntry[] = [];
     const visit = (id: string, item: any) => {
+      if (RETIRED_ITEM_IDS.has(id)) return;
       if (/Augment/i.test(id)) return;
       if (noiseRe.test(id)) return;
       if (/Grant|Anvil|Orbs|Loot|Debug|Tutorial|Tactician|TheStar/i.test(id)) return;
@@ -267,7 +330,7 @@ export default function TftBuilderPage() {
       // active.items should already exclude these.
       if (item.name.startsWith('tft_item_name_')) return;
       const hasComp = !!(item.composition && item.composition.length === 2);
-      const cat = categorizeItem(id, item.name, hasComp, setN);
+      const cat = categorizeItem(id, item.name, hasComp, emblemTraitOf(assets, id));
       if (!cat) return;
       out.push({ id, name: item.name, icon: item.icon, category: cat });
     };
@@ -284,7 +347,7 @@ export default function TftBuilderPage() {
       // Fallback for asset bundles fetched before active.items shipped —
       // older deploys keep rendering until the next crawler run.
       const setPrefixRe = new RegExp(
-        `^TFT_Item_|^TFT${setN}_(Item_|AnimaSquadItem_)|^TFT5_Item_.+Radiant$`,
+        `^TFT_Item_|^TFT${assets.set}_(Item_|AnimaSquadItem_)|^TFT5_Item_.+Radiant$`,
         'i',
       );
       for (const [id, item] of Object.entries(assets.items)) {
@@ -321,13 +384,25 @@ export default function TftBuilderPage() {
   const activeTraits = useMemo(() => {
     if (!assets) return [] as { apiName: string; name: string; count: number; tiers: any[]; activeIdx: number | null; icon?: string | null }[];
     const counts = new Map<string, number>();
+    // Embleme geben ihre Synergie dazu. Wie im Spiel zaehlt jeder Champion je
+    // Synergie nur einmal — auch wenn das Emblem auf der zweiten Kopie liegt
+    // (Riots num_units, Probe tft-domain-expert 18.10.2026).
+    const emblemTraits = new Map<string, Set<string>>();
+    for (const p of ownPlacements) {
+      for (const iid of p.items) {
+        const tr = emblemTraitOf(assets, iid);
+        if (!tr) continue;
+        if (!emblemTraits.has(p.characterId)) emblemTraits.set(p.characterId, new Set());
+        emblemTraits.get(p.characterId)!.add(tr);
+      }
+    }
     const seen = new Set<string>();
     for (const p of ownPlacements) {
       if (seen.has(p.characterId)) continue;
       seen.add(p.characterId);
       const champ: any = assets.champions[p.characterId];
-      if (!champ?.traits) continue;
-      for (const rawTrait of champ.traits) {
+      const names = new Set<string>();
+      for (const rawTrait of champ?.traits || []) {
         // Resolve MF "Choose Trait" placeholder via the picked stance.
         // No stance → the slot doesn't count toward any trait.
         let tr = rawTrait;
@@ -336,9 +411,10 @@ export default function TftBuilderPage() {
           tr = MF_STANCE_TRAITS[p.stance];
         }
         const meta: any = assets.traits[tr] || Object.values(assets.traits).find((m: any) => m.name === tr);
-        const displayName = meta?.name || tr;
-        counts.set(displayName, (counts.get(displayName) || 0) + 1);
+        names.add(meta?.name || tr);
       }
+      for (const tr of emblemTraits.get(p.characterId) || []) names.add(tr);
+      for (const displayName of names) counts.set(displayName, (counts.get(displayName) || 0) + 1);
     }
     const out: { apiName: string; name: string; count: number; tiers: any[]; activeIdx: number | null; icon?: string | null }[] = [];
     for (const [displayName, count] of counts) {
@@ -413,26 +489,27 @@ export default function TftBuilderPage() {
     });
   }, []);
 
+  // Gleiche Items duerfen mehrfach auf eine Unit; was nicht darf (voll,
+  // "nur 1 pro Champion", Emblem fuer eine schon vorhandene Synergie, Thief's
+  // Gloves nur auf eine leere Unit) entscheidet itemBlock.
   const addItemToSelected = useCallback((itemId: string) => {
     if (selectedCell == null) return;
     setPlacementsFor(selectedTeam, prev => prev.map(p => {
       if (p.cell !== selectedCell) return p;
-      if (p.items.length >= MAX_ITEMS_PER_UNIT) return p;
-      if (p.items.includes(itemId)) return p;
+      if (itemBlock(assets, itemTexts, p, itemId)) return p;
       return { ...p, items: [...p.items, itemId] };
     }));
-  }, [selectedCell, selectedTeam]);
+  }, [selectedCell, selectedTeam, assets, itemTexts]);
 
   // Used by item drag-and-drop onto an arbitrary occupied cell (no selection
-  // required). No-op if the cell is empty or the item is already on the unit.
+  // required). No-op if the cell is empty or the item may not go on the unit.
   const addItemToCell = useCallback((team: Team, cell: number, itemId: string) => {
     setPlacementsFor(team, prev => prev.map(p => {
       if (p.cell !== cell) return p;
-      if (p.items.length >= MAX_ITEMS_PER_UNIT) return p;
-      if (p.items.includes(itemId)) return p;
+      if (itemBlock(assets, itemTexts, p, itemId)) return p;
       return { ...p, items: [...p.items, itemId] };
     }));
-  }, []);
+  }, [assets, itemTexts]);
 
   const setStanceFor = useCallback((team: Team, cell: number, stance: MfStance | null) => {
     setPlacementsFor(team, prev => prev.map(p => {
@@ -456,13 +533,86 @@ export default function TftBuilderPage() {
     }));
   }, []);
 
-  const removeItemFromSelected = useCallback((itemId: string) => {
+  // Per Platz, nicht per ID — sonst nimmt ein Klick alle gleichen Items mit.
+  const removeItemFromSelected = useCallback((slotIdx: number) => {
     if (selectedCell == null) return;
     setPlacementsFor(selectedTeam, prev => prev.map(p => p.cell === selectedCell
-      ? { ...p, items: p.items.filter(i => i !== itemId) }
+      ? { ...p, items: p.items.filter((_, i) => i !== slotIdx) }
       : p,
     ));
   }, [selectedCell, selectedTeam]);
+
+  // Naechste Zelle zum Zeigerpunkt (Bildschirm-Koordinaten) auf einem Brett.
+  // `occupiedOnly`: nur Zellen mit Unit (Items). null = weiter weg als erlaubt.
+  function nearestCell(team: Team, clientX: number, clientY: number, occupiedOnly: boolean): number | null {
+    const el = boardRefs.current[team];
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return null;
+    const cw = r.width / 7.5;
+    const ch = r.height / ROWS;
+    const occupied = byCell(team);
+    let best: number | null = null;
+    let bestD = Infinity;
+    for (let cell = 0; cell < ROWS * COLS; cell++) {
+      if (occupiedOnly && !occupied.has(cell)) continue;
+      const row = Math.floor(cell / COLS);
+      const col = cell % COLS;
+      const cx = r.left + (col + (row % 2 === 1 ? 0.5 : 0) + 0.5) * cw;
+      const cy = r.top + (ROWS - 1 - row + 0.5) * ch;
+      const d = Math.hypot(clientX - cx, clientY - cy);
+      // Gleichstand: die kleinere Zellnummer gewinnt (fest, kein Flackern).
+      if (d < bestD - 0.01) { bestD = d; best = cell; }
+    }
+    return best != null && bestD <= (occupiedOnly ? SNAP_ITEM : SNAP_CELL) * cw ? best : null;
+  }
+
+  function dropTargetFor(team: Team, e: React.DragEvent): number | null {
+    const drag = dragRef.current;
+    if (!drag) return null;
+    return nearestCell(team, e.clientX, e.clientY, drag.from === 'item');
+  }
+
+  function onBoardDragOver(e: React.DragEvent, team: Team) {
+    const cell = dropTargetFor(team, e);
+    if (cell != null) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = dragRef.current?.from === 'board' ? 'move' : 'copy';
+    }
+    setDropTarget(prev => {
+      if (cell == null) return prev?.team === team ? null : prev;
+      return prev?.team === team && prev.cell === cell ? prev : { team, cell };
+    });
+  }
+
+  function onBoardDragLeave(e: React.DragEvent, team: Team) {
+    // Nur beim echten Verlassen des Brett-Rahmens, nicht beim Wechsel auf ein Kind.
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDropTarget(prev => (prev?.team === team ? null : prev));
+  }
+
+  function onBoardDrop(e: React.DragEvent, team: Team) {
+    const cell = dropTargetFor(team, e);
+    setDropTarget(null);
+    if (cell == null) { dragRef.current = null; return; }
+    onDropCell(e, team, cell);
+  }
+
+  // Klick/Tippen neben ein Sechseck (Luecke, Ecke, Rand): naechstes Feld.
+  // Treffer auf ein Sechseck laufen ueber den Knopf selbst (stopPropagation).
+  function onBoardClick(e: React.MouseEvent, team: Team) {
+    if ((e.target as HTMLElement).closest('button')) return;
+    const cell = nearestCell(team, e.clientX, e.clientY, false);
+    if (cell != null) onCellClick(team, cell);
+  }
+
+  function onBoardContextMenu(e: React.MouseEvent, team: Team) {
+    const btn = (e.target as HTMLElement).closest('button');
+    if (btn && btn.dataset.cell == null) return;
+    const cell = nearestCell(team, e.clientX, e.clientY, true);
+    if (cell == null) return;
+    onCellContextMenu(e, team, cell);
+  }
 
   function onCellClick(team: Team, cell: number) {
     const occupied = byCell(team).get(cell);
@@ -525,6 +675,7 @@ export default function TftBuilderPage() {
     e.dataTransfer.setData('text/plain', String(cell));
   }
   function onDragStartItem(e: React.DragEvent, itemId: string) {
+    setInfoItem(null);
     dragRef.current = { from: 'item', payload: itemId };
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('text/plain', itemId);
@@ -560,7 +711,6 @@ export default function TftBuilderPage() {
     }
     dragRef.current = null;
   }
-  function onDragOver(e: React.DragEvent) { e.preventDefault(); }
 
   function saveCurrent() {
     const name = (typeof window !== 'undefined' && window.prompt(t('tft.builderSaveName'), '')) || '';
@@ -669,7 +819,14 @@ export default function TftBuilderPage() {
     const isOwn = team === 'own';
     const byCellMap = byCell(team);
     return (
-      <div className="bg-surface-base border border-border-subtle rounded-lg p-3">
+      <div
+        className="bg-surface-base border border-border-subtle rounded-lg p-3"
+        onDragOver={e => onBoardDragOver(e, team)}
+        onDragLeave={e => onBoardDragLeave(e, team)}
+        onDrop={e => onBoardDrop(e, team)}
+        onClick={e => onBoardClick(e, team)}
+        onContextMenu={e => onBoardContextMenu(e, team)}
+      >
         <div className="flex items-center justify-between mb-2">
           <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
             {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {placementsFor(team).length}/{MAX_UNITS}
@@ -691,6 +848,7 @@ export default function TftBuilderPage() {
             Position absolutely on the container (NOT inside row-flex) so
             cell widths stay identical regardless of row offset. */}
         <div
+          ref={el => { boardRefs.current[team] = el; }}
           className="relative mx-auto"
           style={{
             maxWidth: '420px',
@@ -709,10 +867,12 @@ export default function TftBuilderPage() {
             const cell = cellIdx;
             const p = byCellMap.get(cell);
             const isSelected = selectedTeam === team && selectedCell === cell;
+            // Beim Ziehen leuchtet das Feld, auf dem losgelassen wuerde.
+            const isDropTarget = dropTarget?.team === team && dropTarget.cell === cell;
             const champ: any = p && assets?.champions[p.characterId];
             const url = champ ? tftChampionTileUrl(assets, champ) : null;
             const cost = champ?.cost ?? 1;
-            const borderColor = isSelected
+            const borderColor = isSelected || isDropTarget
               ? '#a892ff'
               : p
                 ? costColorOf(cost)
@@ -737,17 +897,16 @@ export default function TftBuilderPage() {
                   style={{
                     clipPath: HEX_CLIP,
                     backgroundColor: borderColor,
-                    opacity: !p && !isSelected ? 0.6 : 1,
+                    opacity: !p && !isSelected && !isDropTarget ? 0.6 : 1,
                   }}
                 />
-                {/* inner content */}
+                {/* inner content — Ablegen und Rechtsklick laufen ueber den
+                    Brett-Rahmen (naechster Mittelpunkt), siehe onBoardDrop */}
                 <button
+                  data-cell={cell}
                   draggable={!!p}
-                  onClick={() => onCellClick(team, cell)}
-                  onContextMenu={e => onCellContextMenu(e, team, cell)}
+                  onClick={e => { e.stopPropagation(); onCellClick(team, cell); }}
                   onDragStart={p ? (e => onDragStartBoard(e, team, cell)) : undefined}
-                  onDragOver={onDragOver}
-                  onDrop={e => onDropCell(e, team, cell)}
                   className="absolute overflow-hidden transition-all duration-150 cursor-pointer"
                   style={{
                     top: '3px', left: '3px', right: '3px', bottom: '3px',
@@ -759,28 +918,33 @@ export default function TftBuilderPage() {
                   {url && (
                     <img src={url} alt={champ?.name || ''} className="w-full h-full object-cover pointer-events-none" />
                   )}
-                  {p && (p.star ?? 1) > 1 && (
-                    <div
-                      className="absolute top-0.5 left-0 right-0 flex justify-center pointer-events-none text-[8px] sm:text-[9px] leading-none font-bold tracking-tight"
-                      style={{ color: starColorOf(p.star ?? 1), textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
-                    >
-                      {'★'.repeat(p.star ?? 1)}
-                    </div>
-                  )}
-                  {p && p.items.length > 0 && (
-                    <div className="absolute bottom-0 left-0 right-0 flex gap-0.5 justify-center pb-0.5 pointer-events-none">
-                      {p.items.map((iid) => {
-                        const item = assets?.items[iid];
-                        const iurl = tftIconUrl(assets, item?.icon);
-                        return (
-                          <div key={iid} className="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded-sm overflow-hidden border border-black/70 bg-surface-sunken">
-                            {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </button>
+                {/* Sterne und Items AUSSERHALB des Sechseck-Zuschnitts, sonst
+                    schneidet die Spitze sie ab. Sterne als Pille auf der oberen
+                    Spitze (4 % Hoehe), Items als Reihe auf der Unterkante
+                    (74–98 %): so endet die Item-Reihe der Reihe darueber genau
+                    an der Zellgrenze und beruehrt die Pille nicht. */}
+                {p && (p.star ?? 1) > 1 && (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 z-10 pointer-events-none px-1 py-px rounded-full bg-black/80 text-[8px] sm:text-[9px] leading-none font-bold tracking-tight whitespace-nowrap"
+                    style={{ top: '4%', color: starColorOf(p.star ?? 1) }}
+                  >
+                    {'★'.repeat(p.star ?? 1)}
+                  </div>
+                )}
+                {p && p.items.length > 0 && (
+                  <div className="absolute left-0 right-0 z-10 flex justify-center pointer-events-none" style={{ top: '74%', columnGap: '3%' }}>
+                    {p.items.map((iid, idx) => {
+                      const item = assets?.items[iid];
+                      const iurl = tftIconUrl(assets, item?.icon);
+                      return (
+                        <div key={idx} className="rounded-sm overflow-hidden border border-black/80 bg-surface-sunken shadow" style={{ width: '28%', aspectRatio: '1 / 1' }}>
+                          {iurl && <img src={iurl} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1070,13 +1234,15 @@ export default function TftBuilderPage() {
                     const iid = selectedPlacement.items[slotIdx];
                     const item = iid ? assets?.items[iid] : null;
                     const url = tftIconUrl(assets, item?.icon);
-                    const tooltip = item ? `${item.name}${item.desc ? '\n\n' + formatTftDesc(item.desc) : ''}` : '';
+                    // Thief's Gloves belegt alle drei Plaetze: freie Plaetze dahinter gesperrt zeigen.
+                    const lockedEmpty = !iid && slotsUsed(itemTexts, selectedPlacement.items) >= MAX_ITEMS_PER_UNIT;
                     return (
                       <button
                         key={slotIdx}
-                        onClick={() => iid && removeItemFromSelected(iid)}
-                        className="flex-1 aspect-square rounded border border-border-subtle overflow-hidden bg-surface-sunken hover:border-[#e44040]/60 transition"
-                        title={tooltip}
+                        onClick={() => { if (iid) { removeItemFromSelected(slotIdx); setInfoItem(null); } }}
+                        {...(iid ? infoHandlers(iid) : {})}
+                        aria-label={item?.name || undefined}
+                        className={`flex-1 aspect-square rounded border border-border-subtle overflow-hidden bg-surface-sunken hover:border-[#e44040]/60 transition ${lockedEmpty ? 'opacity-40' : ''}`}
                       >
                         {url && <img src={url} alt={item?.name || ''} className="w-full h-full object-cover" />}
                       </button>
@@ -1099,16 +1265,27 @@ export default function TftBuilderPage() {
                   );
                 })()}
                 {selectedPlacement.items.length > 0 && (() => {
-                  const equipped = selectedPlacement.items
-                    .map(iid => ({ id: iid, item: assets?.items[iid] }))
-                    .filter(x => x.item?.desc);
+                  // Jedes Item nur einmal beschreiben, auch wenn es doppelt drauf ist.
+                  const equipped = [...new Set(selectedPlacement.items)]
+                    .map(iid => {
+                      const text = itemTextFor(itemTexts, iid, lang);
+                      const raw = assets?.items[iid];
+                      return {
+                        id: iid,
+                        name: text?.name || raw?.name || iid,
+                        desc: text?.desc || formatTftDesc(raw?.desc),
+                        stats: text?.stats || [],
+                      };
+                    })
+                    .filter(x => x.desc || x.stats.length > 0);
                   if (equipped.length === 0) return null;
                   return (
                     <div className="mt-3 pt-3 border-t border-border-subtle space-y-2">
-                      {equipped.map(({ id, item }) => (
-                        <div key={id}>
-                          <div className="text-white text-[11px] font-medium">{item!.name}</div>
-                          <div className="text-[#cbd5e1] text-[10px] leading-relaxed">{formatTftDesc(item!.desc)}</div>
+                      {equipped.map(x => (
+                        <div key={x.id}>
+                          <div className="text-white text-[11px] font-medium">{x.name}</div>
+                          {x.stats.length > 0 && <ItemStatLine stats={x.stats} label={statLabel} className="text-[10px]" />}
+                          {x.desc && <div className="text-[#cbd5e1] text-[10px] leading-relaxed whitespace-pre-line">{x.desc}</div>}
                         </div>
                       ))}
                     </div>
@@ -1150,7 +1327,7 @@ export default function TftBuilderPage() {
 
             <div className="bg-surface-base border border-border-subtle rounded-lg p-4">
               <div className="flex flex-wrap items-center gap-1 mb-3">
-                {(['completed', 'radiant', 'psyonic', 'animasquad', 'artifacts', 'emblems'] as ItemTab[]).map(tab => (
+                {ITEM_TABS.map(tab => (
                   <button
                     key={tab}
                     onClick={() => setItemTab(tab)}
@@ -1167,23 +1344,25 @@ export default function TftBuilderPage() {
                 placeholder={t('tft.builderItemsSearch')}
                 className="w-full bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60 mb-3"
               />
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(40px,1fr))] gap-1.5 max-h-[440px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(34px,1fr))] gap-1.5 max-h-[440px] overflow-y-auto pr-1">
                 {filteredItems.map(item => {
                   const url = tftIconUrl(assets, item.icon);
                   const onSelectedUnit = selectedPlacement?.items.includes(item.id);
-                  const fullOnSelected = selectedPlacement && selectedPlacement.items.length >= MAX_ITEMS_PER_UNIT && !onSelectedUnit;
-                  const fullItem = assets?.items[item.id];
-                  const tooltip = fullItem?.desc ? `${item.name}\n\n${formatTftDesc(fullItem.desc)}` : item.name;
+                  // Gesperrt nur fuer die ausgewaehlte Unit; Ziehen auf eine
+                  // andere Unit bleibt moeglich. Kein `disabled`, sonst
+                  // erscheint die Infokarte beim Drueberfahren nicht.
+                  const blocked = selectedPlacement ? itemBlock(assets, itemTexts, selectedPlacement, item.id) : null;
                   return (
                     <button
                       key={item.id}
                       draggable
                       onDragStart={(e) => onDragStartItem(e, item.id)}
-                      onClick={() => addItemToSelected(item.id)}
-                      disabled={!!fullOnSelected}
-                      className="aspect-square rounded overflow-hidden border border-border-subtle hover:border-[#a892ff] transition disabled:opacity-30 cursor-grab active:cursor-grabbing"
+                      onClick={e => { addItemToSelected(item.id); showInfoAfterTap(e, item.id); }}
+                      {...infoHandlers(item.id)}
+                      aria-disabled={blocked ? true : undefined}
+                      aria-label={item.name}
+                      className={`aspect-square rounded overflow-hidden border border-border-subtle hover:border-[#a892ff] transition cursor-grab active:cursor-grabbing ${blocked ? 'opacity-30' : ''}`}
                       style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
-                      title={tooltip}
                     >
                       {url && <img src={url} alt={item.name} className="w-full h-full object-cover pointer-events-none" />}
                     </button>
@@ -1194,8 +1373,78 @@ export default function TftBuilderPage() {
           </div>
         </div>
       </div>
+      {infoItem && (
+        <ItemInfoCard
+          id={infoItem.id}
+          anchor={infoItem.rect}
+          assets={assets}
+          text={itemTextFor(itemTexts, infoItem.id, lang)}
+          label={statLabel}
+        />
+      )}
       <Footer />
     </main>
+  );
+}
+
+// Werte-Zeile eines Items: "55% AD · 10% Schadensverstaerkung".
+function ItemStatLine({ stats, label, className = '' }: { stats: ItemStat[]; label: (key: string) => string; className?: string }) {
+  return (
+    <div className={`flex flex-wrap gap-x-2 gap-y-0.5 text-fg-secondary ${className}`}>
+      {stats.map((s, i) => (
+        <span key={i}>
+          <span className="text-white tabular-nums">{s.value}</span> {label(s.key)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// Infokarte zu einem Item: Name, Werte, Wirkung. Steht links neben dem Item
+// (Item-Auswahl rechts am PC), sonst darunter bzw. darueber. Faengt keine
+// Zeiger-Ereignisse, damit Ziehen und Klicken unberuehrt bleiben.
+function ItemInfoCard({ id, anchor, assets, text, label }: {
+  id: string;
+  anchor: DOMRect;
+  assets: TftAssetsBundle | null;
+  text: ItemTextView | null;
+  label: (key: string) => string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const gap = 8;
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let left = anchor.left - gap - w;
+    let top = anchor.top;
+    if (left < gap) {
+      left = Math.min(Math.max(gap, anchor.left + anchor.width / 2 - w / 2), vw - w - gap);
+      top = anchor.bottom + gap;
+      if (top + h > vh - gap) top = anchor.top - gap - h;
+    }
+    setPos({ left, top: Math.min(Math.max(gap, top), vh - h - gap) });
+  }, [id, anchor]);
+  const item = assets?.items[id];
+  const icon = tftIconUrl(assets, item?.icon);
+  return (
+    <div
+      ref={ref}
+      role="tooltip"
+      className="fixed z-50 w-64 max-w-[calc(100vw-16px)] pointer-events-none bg-surface-raised border border-border-subtle rounded-lg shadow-xl p-3"
+      style={{ left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? 'visible' : 'hidden' }}
+    >
+      <div className="flex items-center gap-2">
+        {icon && <img src={icon} alt="" className="w-7 h-7 rounded" />}
+        <div className="text-white text-xs font-medium">{text?.name || item?.name || id}</div>
+      </div>
+      {text && text.stats.length > 0 && <ItemStatLine stats={text.stats} label={label} className="mt-2 text-[11px]" />}
+      {text?.desc && <div className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1] whitespace-pre-line">{text.desc}</div>}
+    </div>
   );
 }
 

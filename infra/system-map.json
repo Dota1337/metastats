@@ -824,6 +824,7 @@
         "scripts/refresh-augment-stages.mjs",
         "scripts/refresh-patch-notes.mjs",
         "scripts/fetch-tft-assets.mjs",
+        "scripts/refresh-item-texts.mjs",
         "scripts/fetch-tft-tier-distribution.mjs",
         "scripts/collect-tft-allranks.mjs"
       ],
@@ -917,6 +918,7 @@
         "scripts/refresh-patch-notes.mjs",
         "scripts/lib/tft-augment-icons.mjs",
         "scripts/fetch-tft-assets.mjs",
+        "scripts/refresh-item-texts.mjs",
         "scripts/mirror-tft-icons.mjs",
         "scripts/collect-tft-allranks.mjs",
         "scripts/build-tft-knowledge-graph.mjs",

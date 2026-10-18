@@ -11,6 +11,9 @@ const ICONS: Record<string, string> = {
   scaleArmor: 'Armor', scaleMR: 'MR', scaleMana: 'Mana', scaleCrit: 'Crit',
   scaleDodge: 'Dodge', scaleHeal: 'Heal', scaleShield: 'Shield',
   scaleHPRegen: 'HP Regen',
+  // Set-18-Itemtexte von tactics.tools (scripts/refresh-item-texts.mjs)
+  TFTManaRegen: 'Mana Regen', scaleDA: 'Damage Amp', scaleSV: 'Omnivamp',
+  scaleDR: 'Durability', scaleCritMult: 'Crit Damage', goldCoins: 'Gold',
 };
 
 // Marken fuer Symbol und fehlenden Wert, damit die Satzreparatur sie sieht.

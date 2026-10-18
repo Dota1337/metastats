@@ -211,8 +211,8 @@ export default function VariantsSwitcher({
     if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
     else router.push(url, { scroll: false });
   };
+  // Nur noch vom Familien-Hinweis genutzt: Familie → genaue Ansicht.
   const toggleVariantMode = () => {
-    if (!familyMergeActive) { openFamily(); return; }
     if (!pathname) return;
     const next = new URLSearchParams(search?.toString() || '');
     next.set('variant', 'exact');
@@ -257,19 +257,8 @@ export default function VariantsSwitcher({
           </button>
         </div>
       )}
-      {!familyMergeActive && (
-        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-surface-sunken border border-border-subtle rounded">
-          <div className="text-xs text-fg-secondary">
-            {t('tft.comp.familyMode.exactNotice')}
-          </div>
-          <button
-            onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a40 rounded transition-colors"
-          >
-            {t('tft.comp.familyMode.toggleToFamily')}
-          </button>
-        </div>
-      )}
+      {/* Hinweis „nur diese eine Sub-Variante“ entfernt (User 18.10.2026):
+          „Alle“ ist in der genauen Ansicht der Rueckweg. */}
       {showRow && (<>
       <div className="flex items-center gap-2 mb-2">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.variants')}</h2>

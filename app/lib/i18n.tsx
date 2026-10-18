@@ -2610,22 +2610,6 @@ const translations = {
     '\u2192 Solo esta variante',
     '\u2192 Cette variante seulement'
   ),
-  'tft.comp.familyMode.exactNotice': t6(
-    'Du siehst nur diese eine Sub-Variante',
-    'You see only this single sub-variant',
-    '\uC774 \uC11C\uBE0C \uBCC0\uD615\uB9CC \uD45C\uC2DC',
-    '\u4EC5\u663E\u793A\u8BE5\u5B50\u53D8\u4F53',
-    'Solo ves esta \u00FAnica subvariante',
-    'Vous voyez uniquement cette sous-variante'
-  ),
-  'tft.comp.familyMode.toggleToFamily': t6(
-    '\u2192 Familien-Ansicht',
-    '\u2192 Family view',
-    '\u2192 \uD328\uBC00\uB9AC \uBCF4\uAE30',
-    '\u2192 \u65CF\u7CFB\u89C6\u56FE',
-    '\u2192 Vista de familia',
-    '\u2192 Vue Famille'
-  ),
   'tft.comp.flexUnits.pickrate': t6(
     'Pick', 'Pick',
     '\uD53D', '\u9009\u62E9',

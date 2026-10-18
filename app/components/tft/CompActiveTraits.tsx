@@ -128,14 +128,14 @@ function TraitPill({
         <div className="w-5 h-5 rounded-sm" style={{ backgroundColor: `${withAlpha(color, 0x33)}` }} />
       )}
       <span
-        className="text-[11px] font-bold tabular-nums w-5 text-center"
+        className="text-xs font-bold tabular-nums w-5 text-center"
         style={{ color }}
       >
         {trait.count}
       </span>
       <span className={`text-white text-xs font-medium${row ? ' truncate min-w-0' : ''}`}>{trait.displayName}</span>
       {nextHint && (
-        <span className={`text-fg-muted text-[10px] tabular-nums${row ? ' ml-auto shrink-0 whitespace-nowrap' : ''}`}>{nextHint}</span>
+        <span className={`text-fg-muted text-[11px] tabular-nums${row ? ' ml-auto shrink-0 whitespace-nowrap' : ''}`}>{nextHint}</span>
       )}
     </button>
   );
@@ -160,7 +160,7 @@ function TraitDrillDown({
       style={{ borderColor: `${withAlpha(color, 0x40)}` }}
     >
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color }}>
+        <span className="text-[11px] uppercase tracking-widest font-semibold" style={{ color }}>
           {(t('tft.comp.activeTraits.contributors') as string).replace('{n}', String(trait.contributingUnits.length))}
         </span>
       </div>
@@ -199,7 +199,7 @@ function TraitDrillDown({
                   </div>
                 )}
               </div>
-              <div className="text-white text-[10px] text-center max-w-[55px] truncate">
+              <div className="text-white text-[11px] text-center max-w-[55px] truncate">
                 {ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
               </div>
             </a>

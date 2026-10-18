@@ -47,7 +47,7 @@ export default function CompLevelActiveTraits({
               <div className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: `${withAlpha(color, 0x33)}` }} />
             )}
             <span
-              className="text-[10px] font-bold tabular-nums"
+              className="text-[11px] font-bold tabular-nums"
               style={{ color }}
             >
               {tr.count}

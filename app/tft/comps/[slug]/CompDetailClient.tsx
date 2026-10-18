@@ -457,13 +457,13 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                         <span className="absolute -top-1 -right-1 text-[9px] bg-[#e0c75a] text-surface-base px-1 rounded font-bold">1</span>
                       )}
                     </div>
-                    <div className="text-white text-[10px] mt-1 truncate max-w-full">
+                    <div className="text-white text-[11px] mt-1 truncate max-w-full">
                       {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
                     </div>
                     <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
                       <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="text-fg-secondary text-[10px] tabular-nums">{pct}%</div>
+                    <div className="text-fg-secondary text-[11px] tabular-nums">{pct}%</div>
                   </a>
                 );
               })}
@@ -471,7 +471,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
           )}
           {picks && (
             <div className={components.length > 0 ? 'mt-4' : ''}>
-              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.carousel')}</div>
+              <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-2">{t('tft.comp.carousel')}</div>
               <GuideCarouselPicks guide={picks} assets={assets} />
             </div>
           )}
@@ -479,13 +479,13 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
             <div id="cj-augments" data-jump="augments" className={`scroll-mt-16 ${components.length > 0 || picks ? 'mt-4' : ''}`}>
               {traitAugs.length > 0 && (
                 <>
-                  <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments.trait')}</div>
+                  <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-2">{t('tft.comp.augments.trait')}</div>
                   <GuideTraitAugments augments={traitAugs} assets={assets} stages={augStages ?? null} />
                 </>
               )}
               {augRows.length > 0 && (
                 <div className={traitAugs.length > 0 ? 'mt-4' : ''}>
-                  <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
+                  <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-2">{t('tft.comp.augments')}</div>
                   <GuideAugments rows={augRows} assets={assets} stages={augStages ?? null} />
                 </div>
               )}
@@ -493,7 +493,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
           )}
           {hasTraits && (
             <div className="mt-4 min-[90rem]:hidden">
-              <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.activeTraits')}</div>
+              <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-2">{t('tft.comp.activeTraits')}</div>
               <CompActiveTraits {...traitProps} bare />
             </div>
           )}
@@ -686,7 +686,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                             return (
                               <div key={i} className="bg-surface-raised border border-border-subtle rounded p-3">
                                 <div className="flex items-center justify-between mb-2">
-                                  <span className="text-fg-secondary text-[10px] uppercase tracking-widest">
+                                  <span className="text-fg-secondary text-[11px] uppercase tracking-widest">
                                     {t('tft.comp.itemSet')} {i + 1}
                                   </span>
                                   <span className="text-accent text-xs font-medium tabular-nums">
@@ -794,7 +794,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                                 </span>
                                 {lowSample && (
                                   <span
-                                    className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
+                                    className="text-[10px] uppercase tracking-wider px-1 py-[1px] rounded"
                                     style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
                                     title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
                                   >
@@ -850,7 +850,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                                 </div>
                               )}
                               {star3Share >= 10 && (
-                                <div className="text-[#c39bff] text-[10px] mt-2 tabular-nums">
+                                <div className="text-[#c39bff] text-[11px] mt-2 tabular-nums">
                                   {(t('tft.comp.levelOutcome.star3Share') as string).replace('{pct}', star3Share.toFixed(0))}
                                 </div>
                               )}
@@ -1013,7 +1013,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                         </div>
                       )}
                       <details className="mt-3 group">
-                        <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-white select-none">
+                        <summary className="cursor-pointer text-xs text-fg-muted hover:text-white select-none">
                           {t('tft.comp.death.detailsToggle')}
                         </summary>
                         <div className="mt-2 bg-surface-raised border border-border-subtle rounded p-3">
@@ -1127,9 +1127,9 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   const merged = dedupeMatchupEdges(edges);
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3">
-      <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color }}>{title}</div>
+      <div className="text-[11px] uppercase tracking-widest mb-2" style={{ color }}>{title}</div>
       {merged.length === 0 ? (
-        <div className="text-fg-muted text-[10px] py-1">{t('tft.comp.noMatchupData')}</div>
+        <div className="text-fg-muted text-[11px] py-1">{t('tft.comp.noMatchupData')}</div>
       ) : (
         <div className="space-y-1.5">
           {merged.map(e => {
@@ -1158,29 +1158,29 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
                   <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0 mt-0.5" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-fg-secondary text-[9px] truncate">{traitName}</div>
-                  <div className="text-white text-[11px] truncate flex items-center gap-1">
+                  <div className="text-fg-secondary text-[11px] truncate">{traitName}</div>
+                  <div className="text-white text-xs truncate flex items-center gap-1">
                     <span className="truncate">{carryName}</span>
                     {parts?.carryStar === 3 && (
                       <span
-                        className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-semibold tabular-nums flex-shrink-0"
+                        className="inline-flex items-center px-1 py-[1px] rounded text-[10px] font-semibold tabular-nums flex-shrink-0"
                         style={{ color: '#e0c75a', backgroundColor: 'rgba(224,199,90,0.15)', border: '1px solid rgba(224,199,90,0.4)' }}
                       >3★</span>
                     )}
                     {augName && (
                       <span
-                        className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-medium flex-shrink-0"
+                        className="inline-flex items-center px-1 py-[1px] rounded text-[10px] font-medium flex-shrink-0"
                         style={{ color: '#c39bff', backgroundColor: 'rgba(123,97,255,0.12)', border: '1px solid rgba(123,97,255,0.4)' }}
                       >{augName}</span>
                     )}
                   </div>
                   {secondaryName && (
-                    <div className="text-fg-muted text-[9px] truncate">+ {secondaryName}</div>
+                    <div className="text-fg-muted text-[11px] truncate">+ {secondaryName}</div>
                   )}
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
-                  <span className="text-[11px] tabular-nums font-medium" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
-                  <span className="text-fg-faint text-[9px] tabular-nums">{e.games}</span>
+                  <span className="text-xs tabular-nums font-medium" style={{ color }}>{(e.winRate * 100).toFixed(0)}%</span>
+                  <span className="text-fg-faint text-[11px] tabular-nums">{e.games}</span>
                 </div>
               </a>
             );
@@ -1202,7 +1202,7 @@ function costColor(cost: number) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
-      <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-secondary text-[11px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5">{value}</div>
     </div>
   );
@@ -1221,7 +1221,7 @@ function DeltaStat({
   if (pro == null) {
     return (
       <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
-        <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
+        <div className="text-fg-secondary text-[11px] uppercase tracking-widest">{label}</div>
         <div className="text-fg-muted text-base font-semibold mt-0.5">—</div>
       </div>
     );
@@ -1239,10 +1239,10 @@ function DeltaStat({
                      : (delta > 0 ? '▲' : '▼'));
   return (
     <div className="bg-surface-sunken border border-border-subtle rounded px-3 py-2">
-      <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-secondary text-[11px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-base font-semibold mt-0.5 tabular-nums">{fmt(pro)}</div>
       {!rawOnly && delta != null && (
-        <div className="text-[10px] tabular-nums mt-0.5" style={{ color }}>
+        <div className="text-[11px] tabular-nums mt-0.5" style={{ color }}>
           {arrow} {fmt(Math.abs(delta))} vs Solo-Queue
         </div>
       )}
@@ -1253,9 +1253,9 @@ function DeltaStat({
 function DeathKpi({ label, value, sub, accent }: { label: string; value: string; sub: string; accent: string }) {
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3" style={{ borderLeft: `3px solid ${accent}` }}>
-      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-muted text-[11px] uppercase tracking-widest">{label}</div>
       <div className="text-white text-lg font-medium mt-1 tabular-nums">{value}</div>
-      {sub && <div className="text-fg-muted text-[11px] mt-1">{sub}</div>}
+      {sub && <div className="text-fg-muted text-xs mt-1">{sub}</div>}
     </div>
   );
 }
@@ -1338,7 +1338,7 @@ function BlockHeadline({ label }: { label: string }) {
   return (
     <div className="mt-7 mb-1 flex items-center gap-3">
       <div className="h-px flex-1 bg-surface-overlay" />
-      <span className="text-fg-muted text-[10px] uppercase tracking-widest font-medium">{label}</span>
+      <span className="text-fg-muted text-[11px] uppercase tracking-widest font-medium">{label}</span>
       <div className="h-px flex-1 bg-surface-overlay" />
     </div>
   );
@@ -1353,7 +1353,7 @@ function RoiDetails({ chartData, label }: {
   const [open, setOpen] = useState(true);
   return (
     <details open={open} onToggle={e => setOpen(e.currentTarget.open)}>
-      <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-white select-none">{label}</summary>
+      <summary className="cursor-pointer text-xs text-fg-muted hover:text-white select-none">{label}</summary>
       {open && <div className="mt-2"><CompEconChart chartData={chartData} bare /></div>}
     </details>
   );

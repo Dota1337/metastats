@@ -332,12 +332,13 @@ export default function CompBoardPanel({
         <span className={`text-sm font-semibold whitespace-nowrap ${active ? '' : 'text-fg-primary'}`} style={active ? { color: '#e0c75a' } : undefined}>
           {x.level != null ? stepLabel(x.level) : t('tft.comp.positioning.finalBoard')}
         </span>
-        <span className="text-[11px] text-fg-muted tabular-nums whitespace-nowrap">{x.sub ?? ' '}</span>
+        {/* Detailseite (framed) 12 px seit 2026-10-18, Comp-Liste unverändert 11 px */}
+        <span className={`${framed ? 'text-xs' : 'text-[11px]'} text-fg-muted tabular-nums whitespace-nowrap`}>{x.sub ?? ' '}</span>
       </button>
     );
   };
   const groupLabel = (text: string) => (
-    <div className="text-fg-muted text-[10px] uppercase tracking-widest leading-none mb-1" aria-hidden="true">{text}</div>
+    <div className="text-fg-muted text-[11px] uppercase tracking-widest leading-none mb-1" aria-hidden="true">{text}</div>
   );
 
   const empty = state.status === 'ready' && cells.size === 0;
@@ -411,7 +412,7 @@ export default function CompBoardPanel({
                   <div className="flex gap-1">
                     {o.units.map((u, j) => <EarlyUnitTile key={`${u}-${j}`} apiName={u} assets={assets} />)}
                   </div>
-                  <div className="flex items-center gap-2 text-[11px] text-fg-muted tabular-nums whitespace-nowrap">
+                  <div className="flex items-center gap-2 text-xs text-fg-muted tabular-nums whitespace-nowrap">
                     {o.avg != null && (
                       <span>{t('tft.comp.avgPlacement')} <span className="text-white font-semibold">{o.avg.toFixed(2)}</span></span>
                     )}

@@ -345,7 +345,7 @@ export default function CompCard({
             }}
           />
           {hasLegend && (
-            <div className="flex items-center gap-3 text-[11px] tabular-nums text-fg-secondary min-[90rem]:hidden">
+            <div className="flex items-center gap-3 text-xs tabular-nums text-fg-secondary min-[90rem]:hidden">
               {legendItems}
             </div>
           )}
@@ -356,7 +356,7 @@ export default function CompCard({
         </div>
 
         {/* Ab 1440 px: Core/Flex untereinander neben dem Board. */}
-        <div className="hidden min-[90rem]:flex flex-col gap-1.5 text-[11px] tabular-nums text-fg-secondary">
+        <div className="hidden min-[90rem]:flex flex-col gap-1.5 text-xs tabular-nums text-fg-secondary">
           {hasLegend && legendItems}
         </div>
 
@@ -368,7 +368,7 @@ export default function CompCard({
           <Stat label={t('tft.win')} value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
           <Stat label="Pick" value={comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'} />
           <div className="flex flex-col items-end justify-center pl-2 border-l border-border-subtle">
-            <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.games')}</div>
+            <div className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.games')}</div>
             <div className="text-fg-secondary text-sm">{comp.games}</div>
           </div>
           {showVelocity && <VelocityStat velocity={comp.velocity} shift={velocityShift} t={t} />}
@@ -391,7 +391,7 @@ export default function CompCard({
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="flex flex-col items-end justify-center min-w-[3.5rem]">
-      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-fg-muted text-[11px] uppercase tracking-widest">{label}</div>
       <div className="text-base font-medium" style={{ color: accent || 'var(--fg-primary)' }}>{value}</div>
     </div>
   );
@@ -413,7 +413,7 @@ function VelocityStat({
   if (!velocity) {
     return (
       <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30" title={t('tft.velocity.notEnough') as string}>
-        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#c39bff] text-[11px] uppercase tracking-widest">{label}</div>
         <div className="text-fg-faint text-base">—</div>
       </div>
     );
@@ -421,7 +421,7 @@ function VelocityStat({
   if (velocity.isNew) {
     return (
       <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30">
-        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#c39bff] text-[11px] uppercase tracking-widest">{label}</div>
         <div className="text-[#c39bff] text-base font-semibold">{t('tft.velocity.newComp')}</div>
       </div>
     );
@@ -429,7 +429,7 @@ function VelocityStat({
   if (velocity.deltaAvgPlace == null) {
     return (
       <div className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30" title={t('tft.velocity.notEnough') as string}>
-        <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+        <div className="text-[#c39bff] text-[11px] uppercase tracking-widest">{label}</div>
         <div className="text-fg-faint text-base">—</div>
       </div>
     );
@@ -447,7 +447,7 @@ function VelocityStat({
       className="flex flex-col items-end justify-center min-w-[3.5rem] pl-2 border-l border-[#c39bff]/30"
       title={`${directionLabel} — ${detail}`}
     >
-      <div className="text-[#c39bff] text-[9px] uppercase tracking-widest">{label}</div>
+      <div className="text-[#c39bff] text-[11px] uppercase tracking-widest">{label}</div>
       <div className="text-base font-medium tabular-nums" style={{ color }}>
         {arrow} {Math.abs(velocity.deltaAvgPlace).toFixed(2)}
       </div>

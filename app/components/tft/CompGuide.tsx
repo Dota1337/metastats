@@ -85,7 +85,7 @@ function AugmentTile({
         </div>
         {stages && stages.length > 0 && stages.length < STAGE_ORDER.length && <StageBadge stages={stages} />}
       </div>
-      <div className="text-white text-[10px] mt-0.5 text-center truncate w-full">
+      <div className="text-white text-[11px] mt-0.5 text-center truncate w-full">
         {meta?.name || apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?/, '')}
       </div>
     </a>
@@ -116,7 +116,7 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <div>
-        <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-2">{t('tft.comp.levelling')}</div>
+        <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-2">{t('tft.comp.levelling')}</div>
         {planLabel && (
           <div className="text-white text-sm font-semibold">{planLabel}</div>
         )}
@@ -131,7 +131,7 @@ export function GuideLevelPlan({ guide }: { guide: CompGuideData }) {
               <div className="text-white text-xs font-semibold">
                 {(t('tft.comp.levelling.step') as string).replace('{level}', String(step.level))}
               </div>
-              <div className="text-fg-muted text-[11px] tabular-nums">
+              <div className="text-fg-muted text-xs tabular-nums">
                 {step.stage}-{step.round}
               </div>
             </div>
@@ -166,7 +166,7 @@ export function GuideAugments({
       {rows.map(row => (
         <div key={row.rarity} className="flex items-start gap-2">
           <div
-            className="w-[5.5rem] shrink-0 pt-3 text-[10px] uppercase tracking-wide font-semibold truncate"
+            className="w-[5.5rem] shrink-0 pt-3 text-[11px] uppercase tracking-wide font-semibold truncate"
             style={{ color: augmentTierBorderColor(row.rarity) }}
           >
             {t(`tft.comp.augments.rarity.${row.rarity}`)}
@@ -223,7 +223,7 @@ export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; as
               {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
             </div>
             {typeof pick.avg === 'number' && (
-              <div className="text-fg-muted text-[10px] mt-0.5">{pick.avg.toFixed(2)}</div>
+              <div className="text-fg-muted text-[11px] mt-0.5">{pick.avg.toFixed(2)}</div>
             )}
           </a>
         );

@@ -51,11 +51,12 @@ function RankBars({ rows, twoCols }: { rows: RankRow[]; twoCols: boolean }) {
         return (
           <div
             key={bk.bucket}
-            className="flex items-center gap-2 text-[10px] tabular-nums break-inside-avoid"
+            className="flex items-center gap-2 text-[11px] tabular-nums break-inside-avoid"
             style={{ opacity: bk.games < SOLID_RANK_GAMES ? 0.55 : 1 }}
             title={`${label}: Ø ${bk.avgPlacement.toFixed(2)} · ${bk.games} ${t('tft.gamesShort')}`}
           >
-            <span className="text-fg-secondary w-16 truncate">{label}</span>
+            {/* 4.75rem statt w-16 seit 11 px (2026-10-18): „Grand Maestro“ braucht 74 px */}
+            <span className="text-fg-secondary w-[4.75rem] truncate">{label}</span>
             <div className="flex-1 h-1 bg-surface-overlay rounded overflow-hidden">
               <div className="h-full" style={{ width: `${(share * 100).toFixed(0)}%`, backgroundColor: `hsl(${hue}, 60%, 50%)` }} />
             </div>
@@ -73,17 +74,17 @@ function AggroBlock({ comp, compact }: { comp: DnaComp; compact: boolean }) {
   if (comp.aggroIndex == null) return null;
   return (
     <div className={compact ? '' : 'bg-surface-raised border border-border-subtle rounded p-3'}>
-      <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
+      <div className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.comp.aggroIndex')}</div>
       <div className="flex items-baseline gap-1.5 mt-1">
         <span className={`text-white font-medium tabular-nums ${compact ? 'text-base' : 'text-2xl'}`}>{comp.aggroIndex.toFixed(2)}</span>
-        <span className="text-fg-muted text-[11px]">{t('tft.comp.aggro.perGame')}</span>
+        <span className="text-fg-muted text-xs">{t('tft.comp.aggro.perGame')}</span>
       </div>
       {comp.aggroLobbyAverage != null && (
-        <div className="text-fg-faint text-[10px] tabular-nums mt-0.5">
+        <div className="text-fg-faint text-[11px] tabular-nums mt-0.5">
           {t('tft.comp.aggro.lobbyAvg')}: {comp.aggroLobbyAverage.toFixed(2)}
         </div>
       )}
-      <div className="text-[#c39bff] text-[11px] mt-1.5">
+      <div className="text-[#c39bff] text-xs mt-1.5">
         {comp.aggroIndex >= 1.2 ? t('tft.comp.aggro.push')
           : comp.aggroIndex >= 0.7 ? t('tft.comp.aggro.balanced')
           : t('tft.comp.aggro.econ')}
@@ -103,7 +104,7 @@ export default function CompDna({ comp, variant, className = '' }: { comp: DnaCo
     return (
       // ml-6 + Raster-Luecke 16 px = 40 px bis zum Strich (User 2026-10-10: mehr Abstand zu den Werten).
       <div className="@container min-w-0 ml-6 pl-6 border-l border-border-subtle">
-        <div className="text-fg-muted text-[9px] uppercase tracking-widest mb-1.5">{t('tft.comp.compDna')}</div>
+        <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1.5">{t('tft.comp.compDna')}</div>
         <div className={aggro && rows.length > 0 ? 'grid grid-cols-[auto_minmax(0,1fr)] gap-x-4' : ''}>
           <AggroBlock comp={comp} compact />
           {rows.length > 0 && <RankBars rows={rows} twoCols={twoCols} />}

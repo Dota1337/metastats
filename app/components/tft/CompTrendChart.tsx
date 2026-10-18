@@ -41,7 +41,7 @@ export default function CompTrendChart({
               key={d}
               type="button"
               onClick={() => onTrendDaysChange(d)}
-              className={`px-2.5 py-0.5 text-[11px] rounded ${
+              className={`px-2.5 py-0.5 text-xs rounded ${
                 trendDays === d
                   ? 'bg-accent text-white'
                   : 'text-fg-secondary hover:text-white'
@@ -58,7 +58,7 @@ export default function CompTrendChart({
             <ComposedChart data={trendPoints} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
               <XAxis
                 dataKey="day"
-                tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-muted)', fontSize: 11 }}
                 tickFormatter={(d: string) => d.slice(5)}
                 axisLine={{ stroke: 'var(--border-subtle)' }}
                 tickLine={false}
@@ -67,21 +67,24 @@ export default function CompTrendChart({
                 yAxisId="place"
                 domain={[3, 6]}
                 reversed
-                tick={{ fill: 'var(--fg-muted)', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-muted)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                width={30}
+                // 42: der linke Diagramm-Rand ist -12, schmaler schneidet „3.75“ ab
+                width={42}
+                // alle Stufen zeigen — bei 11 px liesse recharts sonst die „3“ oben weg
+                interval={0}
               />
               <YAxis
                 yAxisId="games"
                 orientation="right"
-                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                width={40}
+                width={44}
               />
               <RechartsTooltip
-                contentStyle={{ backgroundColor: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'var(--surface-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 12 }}
                 labelStyle={{ color: 'var(--fg-secondary)' }}
                 formatter={(value: any, name: any) => {
                   if (name === 'avgPlacement') return [Number(value).toFixed(2), t('tft.avgPlacement')];
@@ -108,7 +111,7 @@ export default function CompTrendChart({
                     value: (t('tft.trend.patchLine') as string).replace('{p}', patchBoundary.patch),
                     position: 'top',
                     fill: '#e0c75a',
-                    fontSize: 10,
+                    fontSize: 11,
                   }}
                 />
               )}

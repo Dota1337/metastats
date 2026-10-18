@@ -31,22 +31,22 @@ export default function CompEconChart({
             <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
               <XAxis
                 dataKey="label"
-                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 11 }}
                 axisLine={{ stroke: 'var(--border-subtle)' }}
                 tickLine={false}
               />
               <YAxis
                 yAxisId="left"
-                tick={{ fill: 'var(--fg-faint)', fontSize: 10 }}
+                tick={{ fill: 'var(--fg-faint)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                width={28}
+                width={34}
                 tickFormatter={(v: any) => `${v}%`}
               />
               <YAxis
                 yAxisId="right"
                 orientation="right"
-                tick={{ fill: 'var(--pos-win)', fontSize: 10 }}
+                tick={{ fill: 'var(--pos-win)', fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 width={36}
@@ -54,7 +54,7 @@ export default function CompEconChart({
                 domain={[(dataMin: number) => Math.max(8, dataMin - 2), (dataMax: number) => dataMax + 2]}
               />
               <RechartsTooltip
-                contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+                contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 12 }}
                 labelStyle={{ color: 'var(--fg-secondary)' }}
                 formatter={(value: any, name: any, item: any): any => {
                   if (name === 'share') return [`${value}%`, t('tft.comp.levelShare')];
@@ -78,7 +78,7 @@ export default function CompEconChart({
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div className="flex justify-between text-[9px] text-fg-faint mt-1.5">
+        <div className="flex justify-between text-[11px] text-fg-faint mt-1.5">
           <span><span className="inline-block w-2 h-2 bg-accent rounded-sm mr-1"/>{t('tft.comp.levelShare')}</span>
           <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.avgLastRound')}</span>
         </div>

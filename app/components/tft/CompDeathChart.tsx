@@ -30,11 +30,11 @@ export default function CompDeathChart({
       <div style={{ width: '100%', height: 200 }}>
         <ResponsiveContainer>
           <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-            <XAxis dataKey="stage" tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} interval="preserveStartEnd" />
-            <YAxis yAxisId="left" tick={{ fill: 'var(--fg-faint)', fontSize: 10 }} axisLine={false} tickLine={false} width={28} />
-            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: 'var(--pos-win)', fontSize: 10 }} axisLine={false} tickLine={false} width={32} tickFormatter={v => `${v}%`} />
+            <XAxis dataKey="stage" tick={{ fill: 'var(--fg-faint)', fontSize: 11 }} axisLine={{ stroke: 'var(--border-subtle)' }} tickLine={false} interval="preserveStartEnd" />
+            <YAxis yAxisId="left" tick={{ fill: 'var(--fg-faint)', fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
+            <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tick={{ fill: 'var(--pos-win)', fontSize: 11 }} axisLine={false} tickLine={false} width={36} tickFormatter={v => `${v}%`} />
             <RechartsTooltip
-              contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 11 }}
+              contentStyle={{ backgroundColor: 'var(--surface-base)', border: '1px solid var(--border-subtle)', borderRadius: 4, fontSize: 12 }}
               labelStyle={{ color: 'var(--fg-secondary)' }}
               formatter={(value: any, name: any): any => {
                 if (name === 'games') return [value, t('tft.comp.dieHere')];
@@ -52,7 +52,7 @@ export default function CompDeathChart({
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex justify-between text-[9px] text-fg-faint mt-1.5">
+      <div className="flex justify-between text-[11px] text-fg-faint mt-1.5">
         <span><span className="inline-block w-2 h-2 bg-[#e44040] rounded-sm mr-1"/>{t('tft.comp.dieHere')}</span>
         <span><span className="inline-block w-2 h-2 bg-[#3ecf8e] rounded-sm mr-1"/>{t('tft.comp.survivalChart')}</span>
       </div>

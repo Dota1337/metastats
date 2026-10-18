@@ -251,7 +251,7 @@ export default function VariantsSwitcher({
           </div>
           <button
             onClick={toggleVariantMode}
-            className="text-[10px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-accent-a40 text-fg-bright hover:text-white hover:border-accent rounded transition-colors"
+            className="text-[11px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-accent-a40 text-fg-bright hover:text-white hover:border-accent rounded transition-colors"
           >
             {t('tft.comp.familyMode.toggleToExact')}
           </button>
@@ -303,7 +303,7 @@ export default function VariantsSwitcher({
                 </span>
               )}
               {v.belowThreshold && (
-                <span className="ml-2 text-fg-faint text-[10px]">
+                <span className="ml-2 text-fg-faint text-[11px]">
                   {t('tft.comp.variant.lowSample')}
                 </span>
               )}

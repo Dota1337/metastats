@@ -43,7 +43,7 @@ function MoreToggle({ hidden, open, onToggle, t }: { hidden: number; open: boole
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="mt-2 text-[11px] text-fg-muted hover:text-white transition-colors"
+      className="mt-2 text-xs text-fg-muted hover:text-white transition-colors"
     >
       {open ? t('tft.player.showLess') : t('tft.player.showMore').replace('{n}', String(hidden))}
     </button>
@@ -54,12 +54,11 @@ function unitName(assets: TftAssetsBundle | null, cid: string) {
   return findChampion(assets, cid)?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
-// large: 10 px statt 8 px — nur in der Platzverteilung (User 2026-10-18:
-// kleine Schrift der Strategie-Boxen groesser); die Tabellen bleiben bei 8 px.
-function LowData({ t, large = false }: { t: T; large?: boolean }) {
+// 10 px wie alle Abzeichen der Detailseite (User 2026-10-18: kleine Schrift groesser).
+function LowData({ t }: { t: T }) {
   return (
     <span
-      className={`${large ? 'text-[10px]' : 'text-[8px]'} uppercase tracking-wider px-1 py-[1px] rounded whitespace-nowrap`}
+      className="text-[10px] uppercase tracking-wider px-1 py-[1px] rounded whitespace-nowrap"
       style={{ color: WARN, backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
     >
       {t('tft.comp.outcome.lowData')}
@@ -76,7 +75,7 @@ function EffectCell({ effect }: { effect: Effect | null }) {
       <span className="font-medium" style={{ color: sure ?? 'var(--fg-primary, #fff)' }}>
         {sign}{Math.abs(effect.delta).toFixed(2)}
       </span>
-      <span className="hidden sm:inline text-fg-muted text-[10px]"> ±{effect.ci.toFixed(2)}</span>
+      <span className="hidden sm:inline text-fg-muted text-[11px]"> ±{effect.ci.toFixed(2)}</span>
     </span>
   );
 }
@@ -117,7 +116,7 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
       <div className="flex items-center gap-2 mb-3">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.outcome.placement')}</h2>
-        {outcome.lowData && <LowData t={t} large />}
+        {outcome.lowData && <LowData t={t} />}
         <span className="ml-auto text-fg-muted text-xs tabular-nums">{outcome.games} {t('tft.gamesShort')}</span>
       </div>
       <div className="grid grid-cols-8 gap-1.5 sm:gap-2 items-end h-20">
@@ -146,10 +145,12 @@ function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssets
   return (
     <tr className="border-t border-border-subtle">
       <td className="py-1.5 pr-1 sm:pr-2">
-        <a href={withLang(`/tft/items/${encodeURIComponent(it.item)}?bucket=${bucket}`)} title={name} aria-label={name} className="flex items-center gap-1.5 sm:gap-2 hover:text-accent min-w-0">
+        {/* flex-wrap unter lg: das Abzeichen rutscht unter das Item, statt die
+            Tabelle am Handy breiter als die Box zu machen. */}
+        <a href={withLang(`/tft/items/${encodeURIComponent(it.item)}?bucket=${bucket}`)} title={name} aria-label={name} className="flex flex-wrap lg:flex-nowrap items-center gap-x-1.5 sm:gap-x-2 gap-y-1 hover:text-accent min-w-0">
           <TftItemIcon apiName={it.item} assets={assets} className="w-7 h-7 flex-shrink-0" />
           <span className="hidden sm:inline text-white truncate sm:max-w-[14rem]">{name}</span>
-          {it.perCopy >= 1.5 && <span className="text-fg-muted text-[10px] tabular-nums">×{it.perCopy.toFixed(1)}</span>}
+          {it.perCopy >= 1.5 && <span className="text-fg-muted text-[11px] tabular-nums">×{it.perCopy.toFixed(1)}</span>}
           {it.lowData && <LowData t={t} />}
         </a>
       </td>
@@ -183,7 +184,7 @@ function EmblemRow({ e, basis, assets, bucket, t }: {
             {e.holders.map(h => (
               <span key={h.characterId} className="flex items-center gap-0.5" title={`${unitName(assets, h.characterId)} ${pct(h.share)}`}>
                 <UnitTile cid={h.characterId} assets={assets} size="w-5 h-5" />
-                <span className="text-fg-muted text-[10px] tabular-nums">{pct(h.share)}</span>
+                <span className="text-fg-muted text-[11px] tabular-nums">{pct(h.share)}</span>
               </span>
             ))}
           </span>
@@ -196,7 +197,7 @@ function EmblemRow({ e, basis, assets, bucket, t }: {
           // Handy so breit, dass rechts die Stufen abgeschnitten werden.
           <>
             <span className="block">{e.count}</span>
-            <span className="block text-[10px] text-fg-muted leading-tight">{t('tft.comp.outcome.copies')}</span>
+            <span className="block text-[11px] text-fg-muted leading-tight">{t('tft.comp.outcome.copies')}</span>
           </>
         )}
       </td>
@@ -283,7 +284,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-fg-muted text-[10px] uppercase tracking-widest">
+            <tr className="text-fg-muted text-[11px] uppercase tracking-widest">
               <th className="text-left font-normal pb-1 pr-1 sm:pr-2">{t('tft.comp.outcome.item')}</th>
               <th className="text-right font-normal pb-1 px-1 sm:px-2">{t('tft.comp.outcome.share')}</th>
               <th className="text-right font-normal pb-1 px-1 sm:px-2"><span className="sm:hidden">{t('tft.comp.outcome.avgShort')}</span><span className="hidden sm:inline">{t('tft.avgPlacement')}</span></th>
@@ -298,7 +299,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
               <tbody key={g}>
                 {g !== 'standard' && (
                   <tr>
-                    <td colSpan={6} className="pt-3 pb-1 text-fg-muted text-[10px] uppercase tracking-widest">
+                    <td colSpan={6} className="pt-3 pb-1 text-fg-muted text-[11px] uppercase tracking-widest">
                       {t(`tft.comp.outcome.group.${g}` as TranslationKey)}
                     </td>
                   </tr>
@@ -310,7 +311,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
             return [block, (
               <tbody key="compEmblem">
                 <tr>
-                  <td colSpan={6} className="pt-3 pb-1 text-fg-muted text-[10px] uppercase tracking-widest">
+                  <td colSpan={6} className="pt-3 pb-1 text-fg-muted text-[11px] uppercase tracking-widest">
                     {t('tft.comp.outcome.group.compEmblem')}
                     {emblems.basis === 'games' && (
                       <span className="normal-case tracking-normal tabular-nums"> · {emblems.games} {t('tft.gamesShort')}</span>
@@ -354,7 +355,7 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
-            <tr className="text-fg-muted text-[10px] uppercase tracking-widest">
+            <tr className="text-fg-muted text-[11px] uppercase tracking-widest">
               <th className="text-left font-normal pb-1 pr-2" />
               <th className="text-right font-normal pb-1 px-1 sm:px-2">{t('tft.comp.outcome.presence')}</th>
               <th className="text-right font-normal pb-1 px-1 sm:px-2"><span className="sm:hidden">{t('tft.comp.outcome.avgShort')}</span><span className="hidden sm:inline">{t('tft.avgPlacement')}</span></th>
@@ -394,11 +395,11 @@ export function OutcomeEndLevel({ outcome, t, bare = false }: { outcome: CompOut
   return (
     <Wrap className={bare ? '' : 'mt-5 bg-surface-base border border-border-subtle rounded p-4'}>
       {bare
-        ? <div className="text-fg-muted text-[10px] uppercase tracking-widest mb-1">{t('tft.comp.outcome.endLevel')}</div>
+        ? <div className="text-fg-muted text-[11px] uppercase tracking-widest mb-1">{t('tft.comp.outcome.endLevel')}</div>
         : <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.endLevel')}</h2>}
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-fg-muted text-[10px] uppercase tracking-widest whitespace-nowrap">
+          <tr className="text-fg-muted text-[11px] uppercase tracking-widest whitespace-nowrap">
             <th className="text-left font-normal pb-1 pr-2">{t('tft.comp.outcome.level')}</th>
             <th className="text-left font-normal pb-1 px-2 w-1/3">{t('tft.comp.outcome.share')}</th>
             {/* bare = schmale Spalte: kurze Ueberschrift auch auf breiten Bildschirmen */}

@@ -4,7 +4,7 @@
 // 3er-Kombis sind seit 2026-10-10 weg (User: die Aufstellung oben zeigt die
 // Items schon) — das API-Feld `sets` bleibt. Rechnung in app/lib/tft-comp-outcome.ts — hier nur Anzeige.
 // Wirkung = Ø Platz mit − Ø Platz ohne; negativ ist gut.
-import { useState, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { costColor } from '../../lib/tft-ui';
@@ -31,9 +31,122 @@ const MAX_ITEMS: Record<ItemGroup, number> = { standard: 12, artifact: 6, radian
 const SHORT_ITEMS: Record<ItemGroup, number> = { standard: 6, artifact: 3, radiant: 3, emblem: 3, tactician: 3 };
 // Unit-Wirkung zugeklappt: nur Units, die in mindestens so vielen Spielen stehen.
 const UNIT_EFFECT_MIN_PRESENCE = 0.10;
+// Unit-Wirkung: Units unter so vielen Spielen blass, auch aufgeklappt (User
+// 2026-10-18; gleiche Grenze wie Endlevel und Carry-Sterne auf dieser Seite).
+const UNIT_EFFECT_SOLID_GAMES = 30;
 const MAX_UNIT_TABS = 8;
+// Bis zur Unterkante auffuellen (User 2026-10-18): ab lg zeigen „Items je
+// Unit“ und „Unit-Wirkung“ so viele weitere Zeilen, wie ganz in die Box
+// passen; der Knopf nur fuer den Rest. false = Ablauf wie vorher.
+const FILL_TO_BOTTOM = true;
+const FILL_LG_QUERY = '(min-width: 64rem)';
+const FILL_TOLERANCE_PX = 0.5;
 
 const pct = (v: number) => `${(v * 100).toFixed(0)}%`;
+
+interface Fit { minH: number; extra: number }
+
+/** Was die Messung ueber Durchlaeufe behaelt: Knopfzeile, seitliche
+    Scrollleiste (Hoehe und ab wie vielen Zusatzzeilen sie erscheint — je
+    Tabelleninhalt und Breite), Notbremse. */
+interface FillMemo { toggleH: number; key: string; sbAt: number; sbH: number; t: number; n: number; stuck: boolean }
+
+const sameFit = (a: Fit | null, b: Fit | null) =>
+  a === b || (!!a && !!b && a.extra === b.extra && Math.abs(a.minH - b.minH) <= FILL_TOLERANCE_PX);
+
+function nextFit(area: HTMLElement, wrap: HTMLElement, fit: Fit | null, hiddenTotal: number, dataKey: string, m: FillMemo): Fit | null {
+  const k = fit?.extra ?? 0;
+  let extraH = 0;
+  wrap.querySelectorAll<HTMLElement>('[data-fill-extra]').forEach(r => { extraH += r.getBoundingClientRect().height; });
+  const rowH = wrap.querySelector<HTMLElement>('[data-fill-row]')?.getBoundingClientRect().height ?? 0;
+  // Knopfzeile im Fluss-Modus messen: dort ist die Flaeche genau Tabelle plus
+  // Knopfzeile — und die Zeile ist hoeher als der Knopf (Schrift-Unterlaenge).
+  if (!fit && area.querySelector('[data-fill-toggle]')) m.toggleH = area.offsetHeight - wrap.offsetHeight;
+  // Seitliche Scrollleiste: eine weitere Unit mit langem Namen macht die
+  // Tabelle breiter als die Box, dann kostet die Leiste ~15 px. Ohne dieses
+  // Gedaechtnis pendelt die Zahl (mit Leiste passt die Zeile nicht, ohne
+  // schon) — gemessen elderwood-draven Familie, 1700 px.
+  const sbNow = wrap.offsetHeight - wrap.clientHeight;
+  const key = `${dataKey}|${Math.round(wrap.clientWidth)}`;
+  if (m.key !== key) { m.key = key; m.sbAt = Infinity; }
+  if (sbNow > 0) { m.sbH = Math.max(m.sbH, sbNow); m.sbAt = Math.min(m.sbAt, k); }
+  const contentH = wrap.clientHeight - extraH;
+  if (rowH <= 0 || contentH <= 0 || m.toggleH <= 0) return null;
+  const height = (n: number) => contentH + n * rowH + (n >= m.sbAt ? m.sbH : 0) + (n < hiddenTotal ? m.toggleH : 0);
+  const minH = height(0);
+  // Erst die (neue) Mindesthoehe setzen — die Flaeche hat ihre richtige Hoehe
+  // erst im naechsten Durchlauf.
+  if (!fit || Math.abs(fit.minH - minH) > FILL_TOLERANCE_PX) return { minH, extra: 0 };
+  const room = area.clientHeight + FILL_TOLERANCE_PX;
+  let n = hiddenTotal;
+  while (n > 0 && height(n) > room) n--;
+  return { minH, extra: n };
+}
+
+/** Fuellt eine Tabellen-Box bis zur Unterkante, die der Nachbar im Raster
+    vorgibt. Drei Regeln, sonst haelt die Box sich mit den eigenen
+    Zusatzzeilen hoch oder pendelt:
+    (a) Grundhoehe = Tabelleninhalt minus der gerade gezeigten Zusatzzeilen
+        (data-fill-extra), nie mit ihnen.
+    (b) Die Knopfzeile steckt immer in der Mindesthoehe, auch wenn der Knopf
+        wegfaellt.
+    (c) Die Zahl der Zusatzzeilen haengt nur an Flaechenhoehe, Grundhoehe,
+        Zeilenhoehe (data-fill-row) und der beobachteten Scrollleiste (wird
+        je Inhalt und Breite nur strenger, nie lockerer), mit 0,5 px
+        Toleranz; State nur bei echter Aenderung, im ResizeObserver kein
+        flushSync.
+    Notbremse: mehr als 30 Aenderungen in einer Sekunde → Fluss-Modus bis zum
+    naechsten Laden. Im Fuell-Modus hat die Flaeche contain:size: ihre Zeilen
+    zaehlen nicht zur Eigenhoehe der Box, nur die Mindesthoehe. Unter lg,
+    aufgeklappt, unsichtbar (doppelte Unit-Wirkung ab 1600 px) und im
+    Server-HTML gilt der Fluss-Modus = Ablauf wie vorher. Der Raster-Kommentar
+    in CompDetailClient.tsx verweist hierher. */
+function useFillToBottom(mounted: boolean, active: boolean, hiddenTotal: number, dataKey: string) {
+  const areaRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const memo = useRef<FillMemo>({ toggleH: 0, key: '', sbAt: Infinity, sbH: 0, t: 0, n: 0, stuck: false });
+  const [lg, setLg] = useState(false);
+  const [fit, setFit] = useState<Fit | null>(null);
+  const on = FILL_TO_BOTTOM && mounted && active && lg && hiddenTotal > 0;
+  const measure = useRef<() => void>(() => {});
+  // Nach jedem Render vor dem Zeichnen (Reiter, Daten, Auf-/Zuklappen); der
+  // ResizeObserver ruft dieselbe, jeweils neueste Messung.
+  useLayoutEffect(() => {
+    measure.current = () => {
+      const m = memo.current;
+      const area = areaRef.current;
+      const wrap = wrapRef.current;
+      const next = on && !m.stuck && area && wrap && area.offsetHeight > 0
+        ? nextFit(area, wrap, fit, hiddenTotal, dataKey, m)
+        : null;
+      if (sameFit(next, fit)) return;
+      const now = performance.now();
+      if (now - m.t > 1000) { m.t = now; m.n = 0; }
+      if (++m.n > 30) { m.stuck = true; setFit(null); return; }
+      setFit(next);
+    };
+    measure.current();
+  });
+  // Fensterbreite, Hoehe des Nachbarn, nachgeladene Teile der Box.
+  useLayoutEffect(() => {
+    if (!mounted) return;
+    const mq = window.matchMedia(FILL_LG_QUERY);
+    const onMq = () => setLg(mq.matches);
+    onMq();
+    mq.addEventListener('change', onMq);
+    const ro = new ResizeObserver(() => measure.current());
+    if (areaRef.current) ro.observe(areaRef.current);
+    if (wrapRef.current) ro.observe(wrapRef.current);
+    return () => { mq.removeEventListener('change', onMq); ro.disconnect(); };
+  }, [mounted]);
+  return {
+    areaRef,
+    wrapRef,
+    areaClass: fit ? 'flex-1 [contain:size] overflow-hidden' : undefined,
+    areaStyle: fit ? { minHeight: fit.minH } : undefined,
+    extraRows: fit ? Math.min(fit.extra, hiddenTotal) : 0,
+  };
+}
 
 /** „+ n weitere anzeigen" / „Weniger anzeigen" unter einer gekuerzten Liste. */
 function MoreToggle({ hidden, open, onToggle, t }: { hidden: number; open: boolean; onToggle: () => void; t: T }) {
@@ -43,6 +156,7 @@ function MoreToggle({ hidden, open, onToggle, t }: { hidden: number; open: boole
       type="button"
       onClick={onToggle}
       aria-expanded={open}
+      data-fill-toggle=""
       className="mt-2 text-xs text-fg-muted hover:text-white transition-colors"
     >
       {open ? t('tft.player.showLess') : t('tft.player.showMore').replace('{n}', String(hidden))}
@@ -139,11 +253,11 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
   );
 }
 
-function ItemRow({ it, assets, bucket, t }: { it: ItemOutcome; assets: TftAssetsBundle | null; bucket: string; t: T }) {
+function ItemRow({ it, assets, bucket, t, extra = false }: { it: ItemOutcome; assets: TftAssetsBundle | null; bucket: string; t: T; extra?: boolean }) {
   const { withLang } = useI18n();
   const name = assets?.items[it.item]?.name || it.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
   return (
-    <tr className="border-t border-border-subtle">
+    <tr className="border-t border-border-subtle" data-fill-row="" data-fill-extra={extra ? '' : undefined}>
       <td className="py-1.5 pr-1 sm:pr-2">
         {/* flex-wrap unter lg: das Abzeichen rutscht unter das Item, statt die
             Tabelle am Handy breiter als die Box zu machen. */}
@@ -240,19 +354,26 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
     .slice(0, MAX_UNIT_TABS);
   const [selected, setSelected] = useState<string | null>(null);
   const [allItems, setAllItems] = useState(false);
-  if (units.length === 0) return null;
-  const unit: UnitOutcome = units.find(u => u.characterId === selected) ?? units[0];
+  const unit: UnitOutcome | undefined = units.find(u => u.characterId === selected) ?? units[0];
+  const totalOf = (g: ItemGroup) => (unit ? Math.min(unit.items.filter(i => i.group === g).length, MAX_ITEMS[g]) : 0);
+  const hiddenItems = GROUP_ORDER.reduce((n, g) => n + Math.max(0, totalOf(g) - SHORT_ITEMS[g]), 0);
+  const { areaRef, wrapRef, areaClass, areaStyle, extraRows } = useFillToBottom(units.length > 0, !allItems, hiddenItems, unit ? `${unit.characterId}:${unit.games}` : '');
+  if (!unit) return null;
   // Gespeicherte Antworten von vor 0091 haben das Feld nicht — dann der
   // Uebergang aus den Items je Unit.
   const emblems = outcome.emblems === undefined ? compEmblemsFromUnits(outcome.units) : outcome.emblems;
-  const capOf = (g: ItemGroup) => (allItems ? MAX_ITEMS[g] : SHORT_ITEMS[g]);
-  const hiddenItems = GROUP_ORDER.reduce((n, g) => {
-    const all = Math.min(unit.items.filter(i => i.group === g).length, MAX_ITEMS[g]);
-    return n + Math.max(0, all - SHORT_ITEMS[g]);
-  }, 0);
+  // Aufgefuellte Zeilen von oben nach unten: erst Standard bis 12, dann
+  // Artefakte, dann Radiant (Taktiker ist schon voll).
+  const cap = {} as Record<ItemGroup, number>;
+  let left = extraRows;
+  for (const g of GROUP_ORDER) {
+    const more = allItems ? MAX_ITEMS[g] - SHORT_ITEMS[g] : Math.min(Math.max(0, totalOf(g) - SHORT_ITEMS[g]), left);
+    if (!allItems) left -= more;
+    cap[g] = SHORT_ITEMS[g] + more;
+  }
 
   return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4 lg:flex lg:flex-col">
       {header}
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.items')}</h2>
       <div className="flex flex-wrap gap-1.5 mb-3" role="tablist">
@@ -281,7 +402,8 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
         {unit.lowData && <LowData t={t} />}
       </div>
 
-      <div className="overflow-x-auto">
+      <div ref={areaRef} className={areaClass} style={areaStyle}>
+      <div ref={wrapRef} className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-fg-muted text-[11px] uppercase tracking-widest">
@@ -294,7 +416,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
             </tr>
           </thead>
           {GROUP_ORDER.flatMap(g => {
-            const rows = unit.items.filter(i => i.group === g).slice(0, capOf(g));
+            const rows = unit.items.filter(i => i.group === g).slice(0, cap[g]);
             const block = rows.length === 0 ? null : (
               <tbody key={g}>
                 {g !== 'standard' && (
@@ -304,7 +426,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
                     </td>
                   </tr>
                 )}
-                {rows.map(it => <ItemRow key={it.item} it={it} assets={assets} bucket={bucket} t={t} />)}
+                {rows.map((it, i) => <ItemRow key={it.item} it={it} assets={assets} bucket={bucket} t={t} extra={!allItems && i >= SHORT_ITEMS[g]} />)}
               </tbody>
             );
             if (g !== 'artifact' || !emblems) return [block];
@@ -324,7 +446,8 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
           })}
         </table>
       </div>
-      <MoreToggle hidden={hiddenItems} open={allItems} onToggle={() => setAllItems(v => !v)} t={t} />
+      <MoreToggle hidden={hiddenItems - extraRows} open={allItems} onToggle={() => setAllItems(v => !v)} t={t} />
+      </div>
     </section>
   );
 }
@@ -341,18 +464,24 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
 }) {
   const { withLang } = useI18n();
   const [showAll, setShowAll] = useState(false);
-  if (!hasUnitEffect(outcome)) return null;
+  const has = hasUnitEffect(outcome);
   const all = outcome.units
     .filter(u => u.effect != null)
     .sort((a, b) => a.effect!.delta - b.effect!.delta);
   const main = all.filter(u => u.presence >= UNIT_EFFECT_MIN_PRESENCE);
   // Steht keine Unit ueber der Schwelle, nicht kuerzen — sonst bliebe die Box leer.
-  const short = main.length > 0 ? main : all;
-  const rows = showAll ? all : short;
+  const short = new Set(main.length > 0 ? main : all);
+  const { areaRef, wrapRef, areaClass, areaStyle, extraRows } = useFillToBottom(has, !showAll, all.length - short.size, String(outcome.games));
+  if (!has) return null;
+  // Aufgefuellt wird nach Anwesenheit (belastbarste zuerst); jede Unit steht
+  // an ihrer Stelle in der Wirkungs-Sortierung, wie aufgeklappt.
+  const filled = new Set(all.filter(u => !short.has(u)).sort((a, b) => b.presence - a.presence).slice(0, extraRows));
+  const rows = showAll ? all : all.filter(u => short.has(u) || filled.has(u));
   return (
-    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4 lg:flex lg:flex-col">
       <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.outcome.unitEffect')}</h2>
-      <div className="overflow-x-auto">
+      <div ref={areaRef} className={areaClass} style={areaStyle}>
+      <div ref={wrapRef} className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="text-fg-muted text-[11px] uppercase tracking-widest">
@@ -364,7 +493,13 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
           </thead>
           <tbody>
             {rows.map(u => (
-              <tr key={u.characterId} className="border-t border-border-subtle">
+              <tr
+                key={u.characterId}
+                className="border-t border-border-subtle"
+                data-fill-row=""
+                data-fill-extra={!showAll && filled.has(u) ? '' : undefined}
+                style={u.games < UNIT_EFFECT_SOLID_GAMES ? { opacity: 0.55 } : undefined}
+              >
                 <td className="py-1.5 pr-2">
                   <a href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)} className="flex items-center gap-2 hover:text-accent">
                     <UnitTile cid={u.characterId} assets={assets} size="w-7 h-7" />
@@ -380,7 +515,8 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
           </tbody>
         </table>
       </div>
-      <MoreToggle hidden={all.length - short.length} open={showAll} onToggle={() => setShowAll(v => !v)} t={t} />
+      <MoreToggle hidden={all.length - short.size - extraRows} open={showAll} onToggle={() => setShowAll(v => !v)} t={t} />
+      </div>
     </section>
   );
 }

@@ -637,7 +637,10 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                 gemeinsamen Unterkante. Ab 1600 px (wide) drei Spalten:
                 #cj-items ueber Spalte 2–3 als Subgrid — Bauteil-Box ueber
                 beiden, darunter Items | Unit-Wirkung. Kein `hidden`/`contents`
-                auf Elementen mit id/data-jump (Sprungleiste, geteilte Links). */}
+                auf Elementen mit id/data-jump (Sprungleiste, geteilte Links).
+                Items je Unit und Unit-Wirkung fuellen den Platz bis zur
+                Unterkante selbst mit Zeilen auf (useFillToBottom in
+                CompOutcome.tsx) — dafuer muessen ihre Wrapper weiter wachsen. */}
             <div className={`lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-6 ${wide ? 'min-[100rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_minmax(0,1fr)]' : ''}`}>
               <div id="cj-positioning" data-jump="positioning" className="scroll-mt-16 min-w-0 lg:col-start-1 lg:row-start-1">
                 {boardParams && (

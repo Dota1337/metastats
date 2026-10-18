@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, expandBuckets, expandRegions, ALL_REGIONS } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, expandBuckets, expandRegions, resolvePatchFromList, ALL_REGIONS, type PatchInfo } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
 import {
   listKey,
   normalizePatchDiffRows,
+  patchDayCount,
+  patchDiffWindowArgs,
   previousPatchOf,
+  sumPatchDiffLevels,
+  PATCH_DIFF_BUCKETS,
   PATCH_DIFF_MIN_GAMES,
   PATCH_DIFF_P_DAYS,
+  PREVIOUS_PATCH_MIN_DAYS,
   type PatchDiffEntity,
   type PatchDiffRow,
 } from '../../../lib/snapshot-matrix';
@@ -60,6 +65,12 @@ export async function GET(request: NextRequest) {
   // and there are no rows literally tagged 'master_plus'.
   const buckets = expandBuckets(bucketParam);
 
+  // full=1: alle Zeilen beider Seiten fuer den Δ-Vergleich „vs Vorpatch" der
+  // Listen (Comps/Units/Items/Traits). Alle Regionen NUR aus den Blobs der Box
+  // — live liefen comp/item dort in den 20-s-Deckel (HTTP 502, perf-critic
+  // 18.10.2026). Fehlt ein Blob: leer und kurz gecacht, die Liste steht trotzdem.
+  const full = searchParams.get('full') === '1';
+
   try {
     const patches = await getAvailablePatches(180);
     if (patches.length === 0) {
@@ -67,10 +78,16 @@ export async function GET(request: NextRequest) {
     }
     // Nur real vorhandene Patches akzeptieren. Ein frei erfundener Wert
     // erzeugte sonst pro Aufruf eine eigene Abfrage samt eigenem Cache-Key.
+    // „current"/„previous" zentral aufloesen (wie die Listen) — frueher fiel
+    // „previous" hier still auf den neuesten Patch zurueck.
     const knownPatches = new Set(patches.map(p => p.patch));
     const patchParam = searchParams.get('patch');
     const prevParam = searchParams.get('prev');
-    const currentPatch = patchParam && knownPatches.has(patchParam) ? patchParam : patches[0].patch;
+    const resolved = patchParam ? await resolvePatchFromList(patches, patchParam) : null;
+    if (full && patchParam && !(resolved && knownPatches.has(resolved))) {
+      return cachedJson({ hasData: false, entity, reason: 'unknown_patch' });
+    }
+    const currentPatch = resolved && knownPatches.has(resolved) ? resolved : patches[0].patch;
     const previousPatch = prevParam && knownPatches.has(prevParam)
       ? prevParam
       : (previousPatchOf(patches, currentPatch)?.patch ?? null);
@@ -84,17 +101,24 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const setNumber = patches.find(p => p.patch === currentPatch)?.set_number
-                    ?? patches[0].set_number;
+    const infoOf = (patch: string) => patches.find(p => p.patch === patch);
+    const setNumber = infoOf(currentPatch)?.set_number ?? patches[0].set_number;
     // Unbekannte Region-Werte faengt expandRegions ab (sonst: eine eigene
     // Abfrage je erfundenem Wert).
     const regions = region ? expandRegions(region) : ALL_REGIONS;
     const allRegions = listKey(regions) === listKey(ALL_REGIONS);
 
+    if (full) {
+      return fullRows({
+        entity, regions, allRegions, bucketParam, buckets, patches,
+        current: infoOf(currentPatch), previous: infoOf(previousPatch),
+      });
+    }
+
     // Je Seite zuerst der vorgerechnete Blob (nur alle Regionen), sonst live.
     let fromBlob = 0;
     const side = async (patch: string): Promise<PatchDiffRow[]> => {
-      const info = patches.find(p => p.patch === patch);
+      const info = infoOf(patch);
       if (allRegions && info) {
         const rows = await loadPatchDiff({
           entity, regions, bucketLabel: bucketParam, buckets,
@@ -102,9 +126,10 @@ export async function GET(request: NextRequest) {
         });
         if (rows) { fromBlob++; return rows; }
       }
-      return fetchEntityRows(entity, patch, setNumber, regions, buckets);
+      return fetchEntityRows(entity, info ?? patch, setNumber, regions, buckets, LIVE_TIMEOUT_MS);
     };
-    const [curr, prev] = await Promise.all([side(currentPatch), side(previousPatch)]);
+    // Patch-Gewinner fragt nach der Eigenschaft, nicht nach ihrer Stufe.
+    const [curr, prev] = (await Promise.all([side(currentPatch), side(previousPatch)])).map(sumPatchDiffLevels);
 
     const prevMap = new Map(prev.map(r => [r.key, r]));
     const diffs: DiffEntry[] = [];
@@ -165,26 +190,105 @@ export async function GET(request: NextRequest) {
 // die vollen Varianten liefen bei 30 Tagen in den Timeout bzw. trugen 10 MB
 // jsonb je Aufruf.
 type RpcRows = Record<string, unknown>[];
-const LIVE_RPC: Record<Entity, (args: Record<string, unknown>) => Promise<RpcRows>> = {
-  unit: args => callRpc<RpcRows>('get_tft_unit_stats', args, 20000),
-  item: args => callRpc<RpcRows>('get_tft_item_stats_list', args, 20000),
-  trait: args => callRpc<RpcRows>('get_tft_trait_stats', args, 20000),
-  comp: args => callRpc<RpcRows>('get_tft_comp_stats_for_diff', { ...args, p_min_games: PATCH_DIFF_MIN_GAMES }, 20000),
+const LIVE_RPC: Record<Entity, (args: Record<string, unknown>, ms: number) => Promise<RpcRows>> = {
+  unit: (args, ms) => callRpc<RpcRows>('get_tft_unit_stats', args, ms),
+  item: (args, ms) => callRpc<RpcRows>('get_tft_item_stats_list', args, ms),
+  trait: (args, ms) => callRpc<RpcRows>('get_tft_trait_stats', args, ms),
+  comp: (args, ms) => callRpc<RpcRows>('get_tft_comp_stats_for_diff', { ...args, p_min_games: PATCH_DIFF_MIN_GAMES }, ms),
 };
 
+const LIVE_TIMEOUT_MS = 20000;
+// Δ-Vergleich der Listen, Einzelregion: dieselbe Grenze wie jede Besucher-
+// Abfrage (tft-supabase-reader.ts RPC_TIMEOUT_MS) — live 0,3-2,8 s gemessen.
+const FULL_LIVE_TIMEOUT_MS = 8000;
+
+// Je Patch genau sein Fenster (erster bis letzter Tag, Migration 0095) —
+// die alten 30 Tage ab heute schnitten aeltere Patches still ab.
 async function fetchEntityRows(
   entity: Entity,
-  patch: string,
+  patch: PatchInfo | string,
   setNumber: number | null,
   regions: string[],
   buckets: string[],
+  timeoutMs: number,
 ): Promise<PatchDiffRow[]> {
+  const info = typeof patch === 'string' ? null : patch;
+  const win = info ? patchDiffWindowArgs(info) : null;
   const rows = await LIVE_RPC[entity]({
     p_regions: regions,
     p_buckets: buckets,
-    p_days: PATCH_DIFF_P_DAYS,
-    p_patch: patch,
+    ...(win ?? { p_days: PATCH_DIFF_P_DAYS }),
+    p_patch: info ? info.patch : patch,
     p_set: setNumber,
-  });
+  }, timeoutMs);
   return normalizePatchDiffRows(entity, rows);
+}
+
+// Kompakte Zeile: Schluessel, (Trait-)Stufe, Spiele, Ø-Platz auf 4 Stellen.
+interface FullRow { k: string; l?: number; g: number; a: number }
+const compact = (rows: PatchDiffRow[]): FullRow[] =>
+  rows.filter(r => r.games > 0).map(r => ({
+    k: r.key,
+    ...(r.level != null ? { l: r.level } : {}),
+    g: r.games,
+    a: Math.round((r.sum_placement / r.games) * 10000) / 10000,
+  }));
+
+async function fullRows(o: {
+  entity: Entity;
+  regions: string[];
+  allRegions: boolean;
+  bucketParam: string;
+  buckets: string[];
+  patches: PatchInfo[];
+  current: PatchInfo | undefined;
+  previous: PatchInfo | undefined;
+}): Promise<NextResponse> {
+  const { entity, current, previous } = o;
+  const head = { entity, currentPatch: current?.patch ?? null, previousPatch: previous?.patch ?? null };
+  if (!current || !previous) return cachedJson({ hasData: false, ...head, reason: 'single_patch' });
+  // Kein Vergleich ueber eine Set-Grenze und keiner fuer einen Patch mit zu
+  // wenigen Tagen (Patch-Tag selbst mischt noch Spiele des alten Patches).
+  if (Number(current.set_number) !== Number(previous.set_number)) {
+    return cachedJson({ hasData: false, ...head, reason: 'cross_set' });
+  }
+  if (patchDayCount(current) < PREVIOUS_PATCH_MIN_DAYS) {
+    return cachedJson({ hasData: false, ...head, reason: 'too_new' });
+  }
+  const set = Number(current.set_number);
+  const source = o.allRegions ? 'blob' : 'live';
+  let sides: [PatchDiffRow[], PatchDiffRow[]] | null = null;
+  try {
+    if (o.allRegions) {
+      if (!PATCH_DIFF_BUCKETS[o.bucketParam]) return cachedJson({ hasData: false, ...head, reason: 'bucket' });
+      const [c, p] = await Promise.all([current, previous].map(info => loadPatchDiff({
+        entity, regions: o.regions, bucketLabel: o.bucketParam, buckets: o.buckets,
+        patch: info, set, closed: info.patch !== o.patches[0].patch,
+      })));
+      // Traits brauchen die Stufe — alte Blobs haben sie schon zusammengezaehlt.
+      const usable = (rows: PatchDiffRow[] | null) =>
+        rows && (entity !== 'trait' || rows.every(r => r.level != null)) ? rows : null;
+      const cu = usable(c), pu = usable(p);
+      if (cu && pu) sides = [cu, pu];
+    } else {
+      sides = await Promise.all([current, previous].map(info =>
+        fetchEntityRows(entity, info, set, o.regions, o.buckets, FULL_LIVE_TIMEOUT_MS))) as [PatchDiffRow[], PatchDiffRow[]];
+    }
+  } catch {
+    sides = null;
+  }
+  if (!sides) {
+    const res = cachedJson({ hasData: false, ...head, reason: 'pending' }, { degraded: true });
+    res.headers.set('x-snapshot', 'patch-diff=pending');
+    return res;
+  }
+  const res = cachedJson({
+    hasData: true,
+    ...head,
+    minGames: PATCH_DIFF_MIN_GAMES,
+    current: compact(sides[0]),
+    previous: compact(sides[1]),
+  });
+  res.headers.set('x-snapshot', `patch-diff=${source}`);
+  return res;
 }

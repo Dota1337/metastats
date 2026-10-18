@@ -278,6 +278,17 @@
       "note": "Builds der LoL-Champion-Standardansicht (euw1 + EMERALD_PLUS) als Datei je Champion, Startdaten der Seite /champions/<id> und erste Quelle der Builds-Route (app/lib/lol-builds-snapshot.ts). Geschrieben von scripts/publish-lol-builds.mjs nach jedem Verdichtungslauf (alle 6 h, OnSuccess= aus metastats-lol-builds.service); index.json nur bei hoechstens 10 % Fehlern. Rot heisst: Seite zeigt die Builds wieder erst im Browser, Route rechnet live — kein Datenverlust. Dateien aelter als 48 h nimmt niemand mehr. Kein urlEnv: SNAPSHOT_MANIFEST_URL ist die volle Manifest-Adresse, nicht der Speicher. minEntries 150 von 173 Champions (15.10.2026: alle 173 mit Datenbank-Antwort bei EMERALD+); zum Saisonstart fallen viele unter 200, dann ist Rot ehrlich. Rot: journalctl -u metastats-lol-builds -u metastats-lol-builds-publish."
     },
     {
+      "id": "meta-pulse/patch-diff-frische",
+      "owner": "metastats-meta-pulse-diffs.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/tft/patch-diff/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 40,
+      "maxAgeDays": 0.5,
+      "note": "Patch-Vergleich je Art x Rang-Gruppe des laufenden Patches (4 x 11 = 44 Dateien, scripts/publish-meta-pulse-diffs.mjs Teil patchdiff, stuendlich :25). Daran haengen Patch-Gewinner, RSS-Feed und seit 18.10.2026 der Δ-Vergleich „vs Vorpatch“ auf Comps/Units/Items/Traits (/api/tft/patch-diff?full=1, alle Regionen NUR aus diesen Dateien). Rot heisst: der Vergleich bleibt leer, die Listen selbst laufen weiter. Die Notbremse um ~19:25 UTC laesst einzelne Laeufe aus — 12 h Luft. Rot: journalctl -u metastats-meta-pulse-diffs."
+    },
+    {
       "id": "mirror/rising/index-frische",
       "owner": "metastats-mirror-rising.service",
       "type": "endpoint",

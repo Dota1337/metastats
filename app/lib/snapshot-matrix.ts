@@ -729,24 +729,54 @@ export const PATCH_DIFF_RPC: Record<PatchDiffEntity, string> = {
 export const PATCH_DIFF_COLUMNS: Record<PatchDiffEntity, readonly string[]> = {
   unit: ['character_id', 'games', 'sum_placement', 'top4', 'participants'],
   item: ['api_name', 'games', 'sum_placement', 'top4', 'total_item_slots'],
-  trait: ['name', 'games', 'sum_placement', 'top4', 'participants'],
+  // Stufe mit (seit 18.10.2026): der Δ-Vergleich der Traits-Liste gilt fuer
+  // die gezeigte Stufe; Patch-Gewinner zaehlt sie per sumPatchDiffLevels zusammen.
+  trait: ['name', 'activation', 'games', 'sum_placement', 'top4', 'participants'],
   comp: ['cluster_key', 'games', 'sum_placement', 'top4', 'participants'],
 };
+// Altes Fenster: die letzten 30 Tage ab heute. Schnitt still alles ab, was
+// weiter zurueckliegt — ein abgeschlossener Patch schrumpfte so von Woche zu
+// Woche (data-skeptic 18.10.2026: 18.2b noch mit 5 von 9 Tagen).
 export const PATCH_DIFF_P_DAYS = 30;
+// Neues Fenster (18.10.2026): genau der Patch, p_end_day = sein letzter Tag,
+// p_days = seine Tage (Migration 0095). Blobs tragen dann window 'patch'.
+// Alte Blobs (days 30, ohne window) gelten fuer Leser weiter, bis die Box sie
+// ersetzt hat; die Box selbst verlangt das neue Fenster (requireWindow).
+export const PATCH_DIFF_WINDOW = 'patch';
+
+/** RPC-Fenster fuer genau einen Patch; null ohne brauchbare Tage. */
+export function patchDiffWindowArgs(
+  p: { first_day?: string | null; last_day?: string | null },
+): { p_days: number; p_end_day: string } | null {
+  const days = patchDayCount(p);
+  return days >= 1 ? { p_days: days, p_end_day: String(p.last_day).slice(0, 10) } : null;
+}
 // Mindestspiele je Seite im Vergleich; die Comp-Funktion filtert selbst damit.
 export const PATCH_DIFF_MIN_GAMES = 50;
 export const PATCH_DIFF_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 export const PATCH_DIFF_CLOSED_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 // Die Rang-Auswahlen der Gewinner-Seite (all/diamond/master_plus/
 // grandmaster_plus), der Patch-Seite (dazu challenger) und des Feeds
-// (master_plus). Test: muss expandBuckets() im Leser entsprechen.
+// (master_plus). Seit 18.10.2026 zusaetzlich jede Rang-Auswahl der
+// Filterleiste (Δ-Vergleich „vs Vorpatch" auf Comps/Units/Items/Traits).
+// Tests: muss expandBuckets() im Leser entsprechen, jede Option der
+// Filterleiste muss hier stehen.
 export const PATCH_DIFF_BUCKETS: Record<string, readonly string[]> = {
   all: LADDER_UP,
   diamond: ['diamond'],
   master_plus: plusFrom('master'),
   grandmaster_plus: plusFrom('grandmaster'),
   challenger: ['challenger'],
+  diamond_plus: plusFrom('diamond'),
+  emerald_plus: plusFrom('emerald'),
+  platinum_plus: plusFrom('platinum'),
+  gold: ['gold'],
+  silver: ['silver'],
+  bronze: ['bronze'],
 };
+// Die Box rechnet diese Gruppen zuerst (fuer alle Arten und Patches), die
+// uebrigen danach — eine Notbremse in den neuen haelt die alten nicht auf.
+export const PATCH_DIFF_CORE_BUCKETS: readonly string[] = ['all', 'diamond', 'master_plus', 'grandmaster_plus', 'challenger'];
 
 export function patchDiffPath(patch: string, entity: PatchDiffEntity, bucketLabel: string): string {
   return `tft/patch-diff/${patch}/${entity}/all__${bucketLabel}.json`;
@@ -754,6 +784,8 @@ export function patchDiffPath(patch: string, entity: PatchDiffEntity, bucketLabe
 
 export interface PatchDiffRow {
   key: string;
+  /** Nur Traits: Aktivierungsstufe. Fehlt in alten Blobs (Stufen schon summiert). */
+  level?: number;
   games: number;
   sum_placement: number;
   top4: number;
@@ -772,28 +804,31 @@ export interface PatchDiffSnapshot {
   buckets: string[];
   days: number;
   minGames: number;
+  /** 'patch' = genau der Patch (seit 18.10.2026); fehlt = letzte 30 Tage. */
+  window?: typeof PATCH_DIFF_WINDOW;
   rows: PatchDiffRow[];
 }
 
-// RPC-Zeilen → eine Zeile je Schluessel. Eigenschaften werden ueber die
-// Aktivierungsstufen zusammengezaehlt: „wurde sie gebufft/generft?" fragt
-// nicht nach der Stufe. Teilnehmer = Gesamtzahl der ersten Zeile.
+// RPC-Zeilen → eine Zeile je Schluessel, bei Traits je Schluessel und Stufe.
+// Teilnehmer = Gesamtzahl der ersten Zeile.
 export function normalizePatchDiffRows(
   entity: PatchDiffEntity,
   rows: ReadonlyArray<Record<string, unknown>>,
 ): PatchDiffRow[] {
   if (entity === 'trait') {
     const participants = Number(rows[0]?.participants || 0);
-    const byName = new Map<string, PatchDiffRow>();
+    const byLevel = new Map<string, PatchDiffRow>();
     for (const r of rows) {
       const name = String(r.name);
-      const cur = byName.get(name) || { key: name, games: 0, sum_placement: 0, top4: 0, participants };
+      const level = Number(r.activation);
+      const id = `${name}|${level}`;
+      const cur = byLevel.get(id) || { key: name, level, games: 0, sum_placement: 0, top4: 0, participants };
       cur.games += Number(r.games);
       cur.sum_placement += Number(r.sum_placement);
       cur.top4 += Number(r.top4);
-      byName.set(name, cur);
+      byLevel.set(id, cur);
     }
-    return [...byName.values()];
+    return [...byLevel.values()];
   }
   const keyField = entity === 'unit' ? 'character_id' : entity === 'item' ? 'api_name' : 'cluster_key';
   const participants = Number(rows[0]?.[entity === 'item' ? 'total_item_slots' : 'participants'] || 0);
@@ -804,6 +839,24 @@ export function normalizePatchDiffRows(
     top4: Number(r.top4),
     participants,
   }));
+}
+
+// Eine Zeile je Schluessel: Trait-Stufen zusammengezaehlt. Patch-Gewinner
+// fragt „wurde die Eigenschaft gebufft/generft?" — nicht nach der Stufe.
+// Zeilen ohne Stufe (alte Blobs, andere Arten) bleiben unveraendert.
+export function sumPatchDiffLevels(rows: ReadonlyArray<PatchDiffRow>): PatchDiffRow[] {
+  const byKey = new Map<string, PatchDiffRow>();
+  for (const r of rows) {
+    const cur = byKey.get(r.key);
+    if (!cur) {
+      byKey.set(r.key, { key: r.key, games: r.games, sum_placement: r.sum_placement, top4: r.top4, participants: r.participants });
+      continue;
+    }
+    cur.games += r.games;
+    cur.sum_placement += r.sum_placement;
+    cur.top4 += r.top4;
+  }
+  return [...byKey.values()];
 }
 
 // Laufender Patch: Blob muss mindestens den letzten Tag und die Spielzahl der
@@ -824,13 +877,20 @@ export function isValidPatchDiff(snap: unknown, want: {
   closed: boolean;
   /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
   graceMs?: number;
+  /** Box: nur Blobs mit Patch-Fenster gelten, alte werden neu gerechnet. */
+  requireWindow?: boolean;
 }): snap is PatchDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<PatchDiffSnapshot>;
   if (s.v !== 1 || !Array.isArray(s.rows) || !Array.isArray(s.regions) || !Array.isArray(s.buckets)) return false;
   if (s.entity !== want.entity || Number(s.set) !== want.set || s.patch !== want.patch) return false;
   if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
-  if (Number(s.days) !== PATCH_DIFF_P_DAYS || Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
+  if (s.window === PATCH_DIFF_WINDOW) {
+    if (!(Number(s.days) >= 1)) return false;
+  } else if (want.requireWindow || Number(s.days) !== PATCH_DIFF_P_DAYS) {
+    return false;
+  }
+  if (Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
     || (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches)))) {
     return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);

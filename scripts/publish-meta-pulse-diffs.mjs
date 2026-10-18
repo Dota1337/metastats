@@ -46,8 +46,10 @@ import {
   PATCH_DIFF_RPC,
   PATCH_DIFF_COLUMNS,
   PATCH_DIFF_BUCKETS,
-  PATCH_DIFF_P_DAYS,
+  PATCH_DIFF_CORE_BUCKETS,
   PATCH_DIFF_MIN_GAMES,
+  PATCH_DIFF_WINDOW,
+  patchDiffWindowArgs,
   patchDiffPath,
   isValidPatchDiff,
   normalizePatchDiffRows,
@@ -85,6 +87,11 @@ const REFRESH_AFTER_MS = 12 * 60 * 60 * 1000;
 // - Notbremse: erster DB-Fehler oder eine Abfrage ueber 60 s beendet den Lauf;
 // - kurze Pause zwischen den Abfragen.
 const CLOSED_REFRESH_AFTER_MS = 7 * 24 * 60 * 60 * 1000; // Web akzeptiert sie 14 Tage
+// Patch-Gewinner abgeschlossener Patches: hoechstens so viele je Lauf. Nach dem
+// Fenster-Fix (18.10.2026) muessen alle alten Blobs einmal neu — verteilt auf
+// mehrere Stunden statt in einem Lauf ueber kalte Tage.
+const CLOSED_PATCHDIFF_PER_RUN = 30;
+const PATCH_DIFF_INDEX_PATH = 'tft/patch-diff/index.json';
 const SLOW_QUERY_MS = Number(process.env.META_PULSE_SLOW_MS) || 60_000; // Umgebung nur zum Testen der Bremse
 const PAUSE_MS = 250;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -180,75 +187,110 @@ async function main() {
   log(`fertig: ${computed} neu, ${skipped} aktuell, ${failed} Fehler (Patches ${patches.map(p => p.patch).join(', ')}${runs('patchdiff') ? `; Patch-Gewinner ${allPatches.map(p => p.patch).join(', ')}` : ''})`);
   return failed;
 
-  // Patch-Gewinner (/api/tft/patch-diff, RSS-Feed): Rohzeilen je Art × Patch ×
-  // Rang-Gruppe, nur alle Regionen, alle Patches der 30-Tage-Liste (aeltere
-  // sind in den Stats-Funktionen ohnehin leer). Gruppe „all" zuerst (laedt
-  // die Tage in den Speicher), Items zuletzt (langsamste Abfrage).
+  // Patch-Gewinner (/api/tft/patch-diff, RSS-Feed, Δ-Vergleich der Listen):
+  // Rohzeilen je Art × Patch × Rang-Gruppe, nur alle Regionen, alle Patches
+  // der 30-Tage-Liste. Je Patch genau sein Fenster (erster bis letzter Tag aus
+  // der 180-Tage-Liste — die 30-Tage-Liste kennt bei alten Patches nur den
+  // Rest). Erst die Kern-Gruppen fuer alle Arten und Patches, dann die
+  // uebrigen; „all" zuerst (laedt die Tage in den Speicher), Items zuletzt.
   async function runPatchDiffs() {
-    for (const entity of PATCH_DIFF_ENTITIES) {
-      for (const [idx, p] of allPatches.entries()) {
-        const closed = idx > 0;
-        for (const [bucketLabel, buckets] of Object.entries(PATCH_DIFF_BUCKETS)) {
-          const path = patchDiffPath(p.patch, entity, bucketLabel);
-          const want = {
-            set: Number(p.set_number), patch: p.patch, entity, lastDay: isoDay(p.last_day),
-            totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
-          };
-          if (!FORCE) {
-            const old = await existing(path);
-            // Laufend: neu bei jeder neuen Spielzahl oder nach 12 h.
-            // Abgeschlossen: neu nur bei mehr Spielen (Nachzuegler) oder nach
-            // 7 Tagen — die 30-Tage-Liste laesst ihre Summe sonst schrumpfen.
-            if (isValidPatchDiff(old, want)
-              && (closed ? Number(old.totalMatches) >= want.totalMatches : Number(old.totalMatches) === want.totalMatches)
-              && Date.now() - Date.parse(old.generatedAt) < (closed ? CLOSED_REFRESH_AFTER_MS : REFRESH_AFTER_MS)) {
-              skipped++;
-              continue;
-            }
-          }
-          try {
-            const isComp = entity === 'comp';
-            const { rows, ms } = await guardedQuery(
-              `select ${PATCH_DIFF_COLUMNS[entity].join(', ')} from ${PATCH_DIFF_RPC[entity]}(
-                 p_regions => $1::text[], p_buckets => $2::text[], p_days => $3::int,
-                 p_patch => $4::text, p_set => $5::int${isComp ? ', p_min_games => $6::int' : ''})`,
-              [regions, [...buckets], PATCH_DIFF_P_DAYS, p.patch, want.set, ...(isComp ? [PATCH_DIFF_MIN_GAMES] : [])],
-            );
-            const snap = {
-              v: 1,
-              generatedAt: new Date().toISOString(),
-              set: want.set,
-              patch: p.patch,
-              entity,
-              lastDay: want.lastDay,
-              totalMatches: want.totalMatches,
-              regions,
-              buckets: [...buckets],
-              days: PATCH_DIFF_P_DAYS,
-              minGames: PATCH_DIFF_MIN_GAMES,
-              rows: normalizePatchDiffRows(entity, rows),
+    const { rows: full } = await pool.query(
+      'select patch, set_number, first_day::text as first_day, last_day::text as last_day, total_matches from get_tft_available_patches(180)',
+    );
+    const fullInfo = new Map(full.map(r => [r.patch, r]));
+    const passes = [
+      [...PATCH_DIFF_CORE_BUCKETS],
+      Object.keys(PATCH_DIFF_BUCKETS).filter(l => !PATCH_DIFF_CORE_BUCKETS.includes(l)),
+    ];
+    let closedComputed = 0, closedDeferred = 0;
+    const runningOk = [];
+    for (const labels of passes) {
+      for (const entity of PATCH_DIFF_ENTITIES) {
+        for (const [idx, p0] of allPatches.entries()) {
+          const closed = idx > 0;
+          const p = fullInfo.get(p0.patch) ?? p0;
+          const win = patchDiffWindowArgs({ first_day: isoDay(p.first_day), last_day: isoDay(p.last_day) });
+          if (!win) { failed++; log(`FEHLER ${p0.patch}: keine Patch-Tage`); continue; }
+          for (const bucketLabel of labels) {
+            const buckets = PATCH_DIFF_BUCKETS[bucketLabel];
+            const path = patchDiffPath(p.patch, entity, bucketLabel);
+            const want = {
+              set: Number(p.set_number), patch: p.patch, entity, lastDay: isoDay(p.last_day),
+              totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
+              requireWindow: true,
             };
-            if (!isValidPatchDiff(snap, want)) throw new Error('eigener Blob faellt durch die Pruefung');
-            if (!DRY_RUN) {
-              await put(path, JSON.stringify(snap), {
-                access: 'public',
-                contentType: 'application/json',
-                token: TOKEN,
-                addRandomSuffix: false,
-                allowOverwrite: true,
-                cacheControlMaxAge: 60,
-              });
+            if (!FORCE) {
+              const old = await existing(path);
+              // Laufend: neu bei jeder neuen Spielzahl oder nach 12 h.
+              // Abgeschlossen: neu nur bei mehr Spielen (Nachzuegler) oder nach 7 Tagen.
+              if (isValidPatchDiff(old, want)
+                && (closed ? Number(old.totalMatches) >= want.totalMatches : Number(old.totalMatches) === want.totalMatches)
+                && Date.now() - Date.parse(old.generatedAt) < (closed ? CLOSED_REFRESH_AFTER_MS : REFRESH_AFTER_MS)) {
+                skipped++;
+                if (!closed) runningOk.push(path);
+                continue;
+              }
             }
-            computed++;
-            log(`${path}: ${snap.rows.length} Zeilen in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
-            brakeIfSlow(ms, path);
-          } catch (e) {
-            if (e instanceof Brake) throw e;
-            failed++;
-            log(`FEHLER ${path}: ${e.message}`);
+            if (closed && closedComputed >= CLOSED_PATCHDIFF_PER_RUN) { closedDeferred++; continue; }
+            try {
+              const isComp = entity === 'comp';
+              const { rows, ms } = await guardedQuery(
+                `select ${PATCH_DIFF_COLUMNS[entity].join(', ')} from ${PATCH_DIFF_RPC[entity]}(
+                   p_regions => $1::text[], p_buckets => $2::text[], p_days => $3::int,
+                   p_patch => $4::text, p_set => $5::int, p_end_day => $6::date${isComp ? ', p_min_games => $7::int' : ''})`,
+                [regions, [...buckets], win.p_days, p.patch, want.set, win.p_end_day, ...(isComp ? [PATCH_DIFF_MIN_GAMES] : [])],
+              );
+              if (closed) closedComputed++;
+              const snap = {
+                v: 1,
+                generatedAt: new Date().toISOString(),
+                set: want.set,
+                patch: p.patch,
+                entity,
+                lastDay: want.lastDay,
+                totalMatches: want.totalMatches,
+                regions,
+                buckets: [...buckets],
+                days: win.p_days,
+                minGames: PATCH_DIFF_MIN_GAMES,
+                window: PATCH_DIFF_WINDOW,
+                rows: normalizePatchDiffRows(entity, rows),
+              };
+              if (!isValidPatchDiff(snap, want)) throw new Error('eigener Blob faellt durch die Pruefung');
+              if (!DRY_RUN) {
+                await put(path, JSON.stringify(snap), {
+                  access: 'public',
+                  contentType: 'application/json',
+                  token: TOKEN,
+                  addRandomSuffix: false,
+                  allowOverwrite: true,
+                  cacheControlMaxAge: 60,
+                });
+              }
+              computed++;
+              if (!closed) runningOk.push(path);
+              log(`${path}: ${snap.rows.length} Zeilen in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
+              brakeIfSlow(ms, path);
+            } catch (e) {
+              if (e instanceof Brake) throw e;
+              failed++;
+              log(`FEHLER ${path}: ${e.message}`);
+            }
           }
         }
       }
+    }
+    if (closedDeferred > 0) log(`Patch-Gewinner: ${closedDeferred} abgeschlossene auf spaetere Laeufe verschoben (hoechstens ${CLOSED_PATCHDIFF_PER_RUN} je Lauf)`);
+    // Frische-Nachweis fuer den Vertrag meta-pulse/patch-diff-frische: welche
+    // Dateien des laufenden Patches nach diesem Lauf gueltig sind. Bremst der
+    // Lauf vorher, bleibt der alte Stand stehen und altert sichtbar.
+    if (!DRY_RUN && runningOk.length > 0) {
+      await put(PATCH_DIFF_INDEX_PATH, JSON.stringify({
+        builtAt: new Date().toISOString(), patch: allPatches[0].patch, entries: runningOk,
+      }), {
+        access: 'public', contentType: 'application/json', token: TOKEN,
+        addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60,
+      });
     }
   }
 

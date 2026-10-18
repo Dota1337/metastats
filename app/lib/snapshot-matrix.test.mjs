@@ -39,8 +39,11 @@ import {
   PATCH_DIFF_RPC,
   PATCH_DIFF_COLUMNS,
   PATCH_DIFF_BUCKETS,
+  PATCH_DIFF_CORE_BUCKETS,
   patchDiffPath,
+  patchDiffWindowArgs,
   normalizePatchDiffRows,
+  sumPatchDiffLevels,
   isValidPatchDiff,
   RUNNING_PATCH_GRACE_MS,
 } from './snapshot-matrix.ts';
@@ -404,12 +407,50 @@ test('Patch-Diff: Live-Rueckfall der Route ruft dieselben Funktionen wie die Box
   const { readFileSync } = await import('node:fs');
   const src = readFileSync(new URL('../api/tft/patch-diff/route.ts', import.meta.url), 'utf8');
   const live = Object.fromEntries(
-    [...src.matchAll(/^\s*(unit|item|trait|comp): args => callRpc<RpcRows>\('([a-z0-9_]+)'/gm)].map(m => [m[1], m[2]]),
+    [...src.matchAll(/^\s*(unit|item|trait|comp): \(args, ms\) => callRpc<RpcRows>\('([a-z0-9_]+)'/gm)].map(m => [m[1], m[2]]),
   );
   assert.deepEqual(live, { ...PATCH_DIFF_RPC });
 });
 
-test('Patch-Diff: Zeilen werden einheitlich, Eigenschaften ueber Stufen zusammengezaehlt', () => {
+test('Patch-Diff: jede Rang-Auswahl der Filterleiste hat vorgerechnete Dateien (18.10.2026)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../components/tft/StatsFilterBar.tsx', import.meta.url), 'utf8');
+  const block = src.slice(src.indexOf('const BUCKET_OPTIONS'), src.indexOf('];', src.indexOf('const BUCKET_OPTIONS')));
+  const values = [...block.matchAll(/^\s*\{ value: '([a-z_]+)'/gm)].map(m => m[1]);
+  assert.ok(values.length >= 10, `nur ${values.length} Optionen gefunden`);
+  for (const v of values) assert.ok(PATCH_DIFF_BUCKETS[v], `Rang-Auswahl ${v} fehlt in PATCH_DIFF_BUCKETS`);
+  // Kern-Gruppen zuerst, alle existieren.
+  for (const l of PATCH_DIFF_CORE_BUCKETS) assert.ok(PATCH_DIFF_BUCKETS[l], l);
+});
+
+test('Patch-Diff: Fenster genau ueber den Patch (18.10.2026)', () => {
+  assert.deepEqual(patchDiffWindowArgs({ first_day: '2026-09-14', last_day: '2026-09-22' }), { p_days: 9, p_end_day: '2026-09-22' });
+  assert.deepEqual(patchDiffWindowArgs({ first_day: '2026-09-23', last_day: '2026-09-23' }), { p_days: 1, p_end_day: '2026-09-23' });
+  assert.equal(patchDiffWindowArgs({ first_day: '2026-09-23', last_day: '2026-09-22' }), null);
+  assert.equal(patchDiffWindowArgs({}), null);
+});
+
+test('Patch-Diff: Trait-Stufen bleiben getrennt, sumPatchDiffLevels zaehlt sie zusammen', () => {
+  const rows = normalizePatchDiffRows('trait', [
+    { name: 'TFT18_Mage', activation: 3, games: 100, sum_placement: 450, top4: 50, participants: 9000 },
+    { name: 'TFT18_Mage', activation: 5, games: 40, sum_placement: 120, top4: 30, participants: 9000 },
+    { name: 'TFT18_Tank', activation: 2, games: 60, sum_placement: 270, top4: 28, participants: 9000 },
+  ]);
+  assert.deepEqual(rows, [
+    { key: 'TFT18_Mage', level: 3, games: 100, sum_placement: 450, top4: 50, participants: 9000 },
+    { key: 'TFT18_Mage', level: 5, games: 40, sum_placement: 120, top4: 30, participants: 9000 },
+    { key: 'TFT18_Tank', level: 2, games: 60, sum_placement: 270, top4: 28, participants: 9000 },
+  ]);
+  assert.deepEqual(sumPatchDiffLevels(rows), [
+    { key: 'TFT18_Mage', games: 140, sum_placement: 570, top4: 80, participants: 9000 },
+    { key: 'TFT18_Tank', games: 60, sum_placement: 270, top4: 28, participants: 9000 },
+  ]);
+  // Alte Blobs (Stufen schon summiert) und andere Arten bleiben unveraendert.
+  const legacy = [{ key: 'TFT18_Mage', games: 140, sum_placement: 570, top4: 80, participants: 9000 }];
+  assert.deepEqual(sumPatchDiffLevels(legacy), legacy);
+});
+
+test('Patch-Diff: Zeilen werden einheitlich', () => {
   assert.deepEqual(
     normalizePatchDiffRows('unit', [
       { character_id: 'TFT18_Ahri', games: '120', sum_placement: '480', top4: '60', participants: '9000' },
@@ -423,17 +464,6 @@ test('Patch-Diff: Zeilen werden einheitlich, Eigenschaften ueber Stufen zusammen
   assert.deepEqual(
     normalizePatchDiffRows('item', [{ api_name: 'TFT_Item_Bloodthirster', games: 70, sum_placement: 280, top4: 40, total_item_slots: 5000 }]),
     [{ key: 'TFT_Item_Bloodthirster', games: 70, sum_placement: 280, top4: 40, participants: 5000 }],
-  );
-  assert.deepEqual(
-    normalizePatchDiffRows('trait', [
-      { name: 'TFT18_Mage', activation: 3, games: 100, sum_placement: 450, top4: 50, participants: 9000 },
-      { name: 'TFT18_Mage', activation: 5, games: 40, sum_placement: 120, top4: 30, participants: 9000 },
-      { name: 'TFT18_Tank', activation: 2, games: 60, sum_placement: 270, top4: 28, participants: 9000 },
-    ]),
-    [
-      { key: 'TFT18_Mage', games: 140, sum_placement: 570, top4: 80, participants: 9000 },
-      { key: 'TFT18_Tank', games: 60, sum_placement: 270, top4: 28, participants: 9000 },
-    ],
   );
   assert.deepEqual(
     normalizePatchDiffRows('comp', [{ cluster_key: 'mage@8_ahri', games: 55, sum_placement: 220, top4: 30, participants: 9000 }]),
@@ -515,6 +545,17 @@ test('Kulanz: junge Datei des laufenden Patches gilt beim Lesen trotz neuer Spie
   assert.equal(isValidMetaPulseVelocity(vBehind, V_WANT), false);
   assert.equal(isValidMetaPulseVelocity(vBehind, { ...V_WANT, graceMs: G }), true);
   assert.equal(isValidMetaPulseVelocity({ ...vBehind, effDays: 2 }, { ...V_WANT, graceMs: G }), false);
+});
+
+test('Patch-Diff-Blob: Patch-Fenster neu, altes 30-Tage-Fenster nur noch fuer Leser (18.10.2026)', () => {
+  const windowed = { ...PD_SNAP, days: 13, window: 'patch' };
+  assert.equal(isValidPatchDiff(windowed, PD_WANT), true);
+  assert.equal(isValidPatchDiff(windowed, { ...PD_WANT, requireWindow: true }), true);
+  // Alter Blob: Leser nimmt ihn noch, die Box rechnet ihn neu.
+  assert.equal(isValidPatchDiff(PD_SNAP, PD_WANT), true);
+  assert.equal(isValidPatchDiff(PD_SNAP, { ...PD_WANT, requireWindow: true }), false);
+  assert.equal(isValidPatchDiff({ ...windowed, days: 0 }, PD_WANT), false);
+  assert.equal(isValidPatchDiff({ ...windowed, window: 'tage' }, PD_WANT), false);
 });
 
 test('Patch-Diff-Blob: Muell wird abgelehnt statt zu werfen', () => {

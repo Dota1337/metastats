@@ -147,7 +147,10 @@ export interface PatchInfo {
   total_matches: number;
 }
 
-let _patchCache: { ts: number; rows: PatchInfo[] } | null = null;
+// Je `days` ein eigener Eintrag: /api/tft/patch-diff fragt 180 Tage (volle
+// Grenzen alter Patches), die Listen 30. Mit einem gemeinsamen Eintrag bekam
+// patch-diff je nach Instanz die 30-Tage-Liste mit gekuerztem first_day.
+const _patchCache = new Map<number, { ts: number; rows: PatchInfo[] }>();
 
 // A freshly-released patch surfaces here on its first (usually partial) crawl
 // day with only a few thousand games — far too thin for the comp view's
@@ -181,8 +184,9 @@ let _patchCacheNegativeTs = 0;
 const _patchInflight = new Map<number, Promise<PatchInfo[]>>();
 
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
-  if (_patchCache && Date.now() - _patchCache.ts < PATCH_CACHE_TTL_MS) {
-    return _patchCache.rows;
+  const hit = _patchCache.get(days);
+  if (hit && Date.now() - hit.ts < PATCH_CACHE_TTL_MS) {
+    return hit.rows;
   }
   // Negative-Cache: wenn der letzte Call gerade fehlgeschlagen ist, NICHT
   // sofort wieder probieren — sonst blockiert jede Listing-Request 30-60s
@@ -203,14 +207,16 @@ async function fetchAvailablePatches(days: number): Promise<PatchInfo[]> {
     const rows = (await callRpc<PatchInfo[]>('get_tft_available_patches', { p_days: days })) || [];
     // Never return empty: if every patch is below the floor (e.g. right after a
     // set launch) keep the raw list so the page still shows the best available.
-    _patchCache = { ts: Date.now(), rows: establishedPatches(rows, PATCH_MIN_GAMES) };
+    const entry = { ts: Date.now(), rows: establishedPatches(rows, PATCH_MIN_GAMES) };
+    _patchCache.set(days, entry);
     _patchCacheNegativeTs = 0;
-    return _patchCache.rows;
+    return entry.rows;
   } catch (e) {
     // Stale-serve: a cold-buffer statement timeout on this pre-flight query must
     // not blank the patch dropdown or 502 the whole stats page. Fall back to the
     // last good list (even if expired) when we have one.
-    if (_patchCache) return _patchCache.rows;
+    const stale = _patchCache.get(days);
+    if (stale) return stale.rows;
     // Cold-Lambda + RPC-down: KEIN throw mehr (code-analyzer-Verdict
     // 2026-06-21 — würde sonst alle 4 Listing-Routes mit EmptyData killen
     // weil sie getAvailablePatches als Pre-Flight aufrufen). Stattdessen
@@ -465,7 +471,8 @@ async function completeDayFromCrawlMeta(publisher: boolean): Promise<string | nu
 
 // Variant of resolvePatch that takes the patch-list as input (avoids a second
 // getAvailablePatches roundtrip when the caller already has them).
-async function resolvePatchFromList(patches: PatchInfo[], param: string): Promise<string | null> {
+// Exportiert fuer /api/tft/patch-diff (Δ-Vergleich „vs Vorpatch", 18.10.2026).
+export async function resolvePatchFromList(patches: PatchInfo[], param: string): Promise<string | null> {
   if (param === 'current') return patches[0]?.patch ?? null;
   if (param === 'previous') return previousPatchOf(patches, patches[0]?.patch)?.patch ?? null;
   return param;

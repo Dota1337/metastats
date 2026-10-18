@@ -22,6 +22,9 @@ export interface UnitExplorerFilters {
   itemCount: number | null;
 }
 
+/** Standardansicht der Seite (Builds mit 3 Items); der Dienst waermt genau diese vor. */
+export const UNIT_DEFAULT_FILTERS: UnitExplorerFilters = { patch: null, star: null, itemCount: 3 };
+
 export interface UnitExplorerState {
   stars: ExplorerResponse | null;
   items: ExplorerResponse | null;
@@ -49,6 +52,22 @@ export function unitFilterOf(id: string, f: Pick<UnitExplorerFilters, 'star' | '
     ...(f.star ? { s: f.star, sx: f.star } : {}),
     ...(f.itemCount ? { n: f.itemCount, nx: f.itemCount } : {}),
     ...(items?.length ? { it: items } : {}),
+  };
+}
+
+/** Die drei Abfragen der Seite in fester Reihenfolge. Der Explorer-Dienst waermt
+ *  die Standardansicht mit denselben Abfragen vor (scripts/lib/explorer-unit-warm.mjs,
+ *  der Test dort haelt beide gleich). */
+export function unitExplorerQueries(
+  unitId: string, region: string, bucket: string, patch: string | null,
+  f: Pick<UnitExplorerFilters, 'star' | 'itemCount'>,
+): { stars: ExplorerQuery; items: ExplorerQuery; builds: ExplorerQuery } {
+  const base = unitBaseQuery(region, bucket, patch);
+  const unit = unitFilterOf(unitId, f);
+  return {
+    stars: { ...base, units: [{ id: unitId }], tab: 'units', stars: [1, 2, 3] },
+    items: { ...base, units: [unit], tab: 'items', focus: unitId },
+    builds: { ...base, units: [unit], tab: 'builds', focus: unitId },
   };
 }
 
@@ -90,15 +109,10 @@ export function useUnitExplorer(unitId: string, region: string, bucket: string, 
   // Gewaehlter Patch = neuester → dieselbe Adresse wie ohne Wahl (ein Cache-Eintrag).
   const patch = f.patch && f.patch !== latestPatch ? f.patch : null;
   const { star, itemCount } = f;
-  const queries = useMemo(() => {
-    const base = unitBaseQuery(region, bucket, patch);
-    const unit = unitFilterOf(unitId, { star, itemCount });
-    return {
-      stars: { ...base, units: [{ id: unitId }], tab: 'units', stars: [1, 2, 3] } as ExplorerQuery,
-      items: { ...base, units: [unit], tab: 'items', focus: unitId } as ExplorerQuery,
-      builds: { ...base, units: [unit], tab: 'builds', focus: unitId } as ExplorerQuery,
-    };
-  }, [unitId, region, bucket, patch, star, itemCount]);
+  const queries = useMemo(
+    () => unitExplorerQueries(unitId, region, bucket, patch, { star, itemCount }),
+    [unitId, region, bucket, patch, star, itemCount],
+  );
   const runKey = useMemo(
     () => [queries.stars, queries.items, queries.builds].map(q => serializeExplorerQuery(q, { forApi: true })).join('|') + '#' + attempt,
     [queries, attempt],

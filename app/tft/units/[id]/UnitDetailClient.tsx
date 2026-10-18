@@ -19,7 +19,7 @@ import CompFamilyListHeader from '../../../components/tft/CompFamilyListHeader';
 import UnitAbilityCard from '../../../components/tft/unit/UnitAbilityCard';
 import UnitBuilds from '../../../components/tft/unit/UnitBuilds';
 import { ItemSlotsCard, StarDistCard, TimelineCard, type TimelinePoint } from '../../../components/tft/unit/UnitSideCards';
-import { useUnitExplorer, type UnitExplorerFilters } from '../../../components/tft/unit/useUnitExplorer';
+import { UNIT_DEFAULT_FILTERS, useUnitExplorer, type UnitExplorerFilters } from '../../../components/tft/unit/useUnitExplorer';
 
 type SlotEntry = { item: string; count: number };
 type SlotData = { total: number; entries: SlotEntry[] };
@@ -63,7 +63,7 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
   const [info, setInfo] = useState<UnitInfoFile | null>(initialInfo);
   const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
-  const [filters, setFilters] = useState<UnitExplorerFilters>({ patch: null, star: null, itemCount: 3 });
+  const [filters, setFilters] = useState<UnitExplorerFilters>(UNIT_DEFAULT_FILTERS);
   const explorer = useUnitExplorer(id, region, bucket, filters);
 
   const initialPending = !!(initial?.detail?.unit as UnitDetail | undefined)?.itemsPending;

@@ -68,6 +68,7 @@ import { TABS, neededCaps, normalizeQuery } from './lib/explorer-normalize.mjs';
 import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
+import { unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -89,6 +90,12 @@ const AGG_WARM_TIMEOUT_MS = 30_000;
 // Notschalter Paket B/C: Zaehler-Filter bzw. Spiele-Reiter aus (Antwort 409).
 const COUNTS_ON = process.env.EXPLORER_BOARD_COUNTS !== '0';
 const GAMES_ON = process.env.EXPLORER_GAMES !== '0';
+// Unit-Detailseiten vorwaermen (warmUnits); 0 = aus.
+const UNIT_WARM_ON = process.env.EXPLORER_UNIT_WARM !== '0';
+// Liegt waehrend eines Baus neben der Datei (build-explorer-store.mjs).
+const BUILD_LOCK = `${DB_PATH}.lock`;
+const UNIT_WARM_IDLE_MS = 2_000;
+const UNIT_WARM_BUILD_MS = 60_000;
 
 const { DuckDBInstance } = await import(DUCKDB_MODULE);
 
@@ -240,7 +247,7 @@ async function pollSwap() {
       try { prev.warmConn?.interrupt(); } catch { /* bereits fertig */ }
       if (prev.refs === 0) closeHolder(prev);
     }
-    warmUp(next).catch(err => log('Vorwaermen abgebrochen:', err.message));
+    warmUp(next).then(() => warmUnits(next)).catch(err => log('Vorwaermen abgebrochen:', err.message));
   } catch (err) {
     log('Laden fehlgeschlagen, alte Datei bleibt:', err.message);
   } finally {
@@ -531,6 +538,54 @@ async function warmUp(holder) {
     todo = failed;
   }
   log(`vorgewaermt: ${n} Startansichten in ${Date.now() - t0} ms${todo.length ? ` (fehlgeschlagen: ${todo.join(', ')})` : ''}`);
+}
+
+// Unit-Detailseiten (Plan 19.10.2026): die drei Abfragen der Standardansicht
+// (scripts/lib/explorer-unit-warm.mjs) je Unit mit genug Brettern, meistgespielte
+// zuerst — die Liste kommt aus der Startansicht des Units-Reiters. Laeuft nach
+// den Startansichten und nur, wenn niemand wartet: vor jeder Abfrage Pause,
+// solange die Live-Spur belegt ist oder ein Bau laeuft (Speicher der Box).
+// Drei Fehler in Folge beenden den Durchgang. Ergebnisse liegen in der festen
+// Ablage der Datei wie die Startansichten.
+async function warmUnits(holder) {
+  if (!UNIT_WARM_ON || current !== holder) return;
+  const start = normalizeQuery({ tab: 'units', patches: ['latest'] });
+  resolveLatest(holder, start);
+  const ids = unitsToWarm(holder.pinned.get(cacheKey(holder, start))?.rows);
+  if (!ids.length) { log('Unit-Vorwaermen uebersprungen: keine Startansicht Units'); return; }
+  const t0 = Date.now();
+  let n = 0;
+  let fails = 0;
+  for (const id of ids) {
+    for (const body of unitWarmBodies(id)) {
+      if (!(await warmIdle(holder))) return;
+      const q = normalizeQuery(body);
+      resolveLatest(holder, q);
+      if (neededCaps(q).some(c => !holder.caps.has(c))) continue;
+      try {
+        await warmOne(holder, q, cacheKey(holder, q));
+        n++;
+        fails = 0;
+      } catch (err) {
+        if (current !== holder) return;
+        log(`Vorwaermen Unit ${id} (${q.tab}) fehlgeschlagen: ${err.message}`);
+        if (++fails >= 3) { log(`Unit-Vorwaermen nach 3 Fehlern in Folge beendet (${n} Abfragen fertig)`); return; }
+      }
+    }
+  }
+  log(`Unit-Seiten vorgewaermt: ${n} Abfragen fuer ${ids.length} Units in ${Date.now() - t0} ms`);
+}
+
+// Wartet, bis die Live-Spur leer ist und kein Bau laeuft; false nach einem Tausch.
+async function warmIdle(holder) {
+  let told = false;
+  for (;;) {
+    if (current !== holder) return false;
+    const building = fs.existsSync(BUILD_LOCK);
+    if (!building && liveLane.running === 0 && liveLane.queue.length === 0) return true;
+    if (building && !told) { log('Unit-Vorwaermen wartet: Bau laeuft'); told = true; }
+    await new Promise(r => setTimeout(r, building ? UNIT_WARM_BUILD_MS : UNIT_WARM_IDLE_MS));
+  }
 }
 
 async function warmOne(holder, q, key) {

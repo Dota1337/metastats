@@ -4,7 +4,21 @@ import {
   scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, scanAlarm, lockIsStale, rawSql, filesFor,
   SCRIPT_VERSION, inFullWindow, buildCodeHash, CODE_FILES,
   diskGate, spillCapBytes, CYCLE_REASON, DISK_FULL_FACTOR, DISK_DELTA_FACTOR, DISK_FIRST_BYTES, DISK_SPILL_MIN_BYTES,
+  sliceKeys, sliceCond, DELETE_SLICE_ROWS,
 } from './build-explorer-store.mjs';
+
+test('sliceKeys: Scheiben nach Zeilen, grosser Schluessel allein, Reihenfolge bleibt', () => {
+  const g = [{ k: 'A', n: 3n }, { k: 'B', n: 4n }, { k: 'C', n: 12n }, { k: 'D', n: 1n }, { k: 'E', n: 9n }];
+  assert.deepEqual(sliceKeys(g, 10), [['A', 'B'], ['C'], ['D', 'E']]);
+  assert.deepEqual(sliceKeys([], 10), []);
+  assert.deepEqual(sliceKeys(g, 100).flat(), ['A', 'B', 'C', 'D', 'E']);
+  // 18.10.: units 137 Mio Zeilen, 81 Units → keine Scheibe ueber der Grenze ausser Einzel-Schluesseln
+  const units = Array.from({ length: 81 }, (_, i) => ({ k: `U${i}`, n: 1_690_000 }));
+  for (const s of sliceKeys(units)) assert.ok(s.length === 1 || s.length * 1_690_000 <= DELETE_SLICE_ROWS);
+  assert.equal(sliceCond('trait', ["A'B", 'C']), "trait IN ('A''B', 'C')");
+  assert.equal(sliceCond('trait', [null]), 'trait IS NULL');
+  assert.equal(sliceCond('trait', ['A', null]), "(trait IN ('A') OR trait IS NULL)");
+});
 
 // Ausschnitt aus public/tft-set.json (Stand 2026-10-05), fest eingefroren,
 // damit der Test nicht mit jedem Terminplan-Lauf kippt.

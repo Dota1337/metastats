@@ -469,6 +469,36 @@ async function readPatchRanges(setNumber, today) {
 const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`;
 const sha1 = (s) => crypto.createHash('sha1').update(s).digest('hex');
 
+// Alt-Tage loeschen (Teil-Aufbau) scheibenweise: units/traits sind nach
+// Unit/Trait sortiert, ein Alt-Tag steckt also in fast jedem 2048er-Block,
+// und DuckDB haelt die Loesch-Vermerke je Block bis zum CHECKPOINT im
+// Speicher. 18.10.: DELETE units am Stueck (328.549 Boards, 137 Mio Zeilen)
+// lief nach 7 s in die 900-MB-Grenze; an einer Kopie in Scheiben zu 12
+// Units/Traits 52 s, Spitze 689 MB. Scheiben nach Zeilen, nicht nach
+// Schluesseln: ein Schluessel ueber der Grenze bildet eine eigene Scheibe.
+export const DELETE_SLICE_ROWS = 8_000_000;
+export function sliceKeys(groups, maxRows = DELETE_SLICE_ROWS) {
+  const out = [];
+  let cur = [];
+  let n = 0;
+  for (const g of groups) {
+    const c = Number(g.n);
+    if (cur.length && n + c > maxRows) { out.push(cur); cur = []; n = 0; }
+    cur.push(g.k);
+    n += c;
+  }
+  if (cur.length) out.push(cur);
+  return out;
+}
+// Bedingung fuer eine Scheibe; NULL-Schluessel (Trait ohne Namen) eigens.
+export function sliceCond(col, keys) {
+  const named = keys.filter((k) => k != null);
+  const parts = [];
+  if (named.length) parts.push(`${col} IN (${named.map(sqlStr).join(', ')})`);
+  if (named.length < keys.length) parts.push(`${col} IS NULL`);
+  return parts.length > 1 ? `(${parts.join(' OR ')})` : parts[0];
+}
+
 function readJson(p) {
   try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
 }
@@ -979,12 +1009,19 @@ async function build({ t0, win, testRun, untilMs, files }) {
       await run(`CREATE TABLE gone AS SELECT bid FROM ${outdb}.boards WHERE day < DATE ${sqlStr(win.w)}`);
       const nGone = Number((await one('SELECT count(*) AS n FROM gone')).n);
       if (nGone) {
-        // Nach jeder Tabelle CHECKPOINT: gibt die Loesch-Vermerke der vorigen
-        // Tabelle frei, bevor die naechste beginnt (11.–13.10. lief DELETE
-        // traits direkt nach DELETE units in die Speichergrenze). Gemessen
-        // 17.10. an einer Kopie, 615.705 Boards: DELETE ~70 s gesamt, Datei
-        // schrumpft; Neuschreiben per CREATE … AS SELECT 520 s, Datei +1 GB.
-        for (const t of ['units', 'traits', 'board_rank', 'boards']) {
+        // Nach jeder Scheibe bzw. Tabelle CHECKPOINT: gibt die Loesch-Vermerke
+        // frei, bevor die naechste beginnt (11.–13.10. lief DELETE traits
+        // direkt nach DELETE units in die Speichergrenze, 18.10. schon DELETE
+        // units allein — sliceKeys). Neuschreiben per CREATE … AS SELECT
+        // waere 520 s statt ~60 s und blaeht die Datei um 1 GB auf (17.10.).
+        for (const [t, col] of [['units', 'unit'], ['traits', 'trait']]) {
+          const groups = await all(`SELECT ${col} AS k, count(*) AS n FROM ${outdb}.${t} GROUP BY 1 ORDER BY 1`);
+          for (const keys of sliceKeys(groups)) {
+            await run(`DELETE FROM ${outdb}.${t} WHERE ${sliceCond(col, keys)} AND bid IN (SELECT bid FROM gone)`);
+            await run(`CHECKPOINT ${outdb}`);
+          }
+        }
+        for (const t of ['board_rank', 'boards']) {
           await run(`DELETE FROM ${outdb}.${t} WHERE bid IN (SELECT bid FROM gone)`);
           await run(`CHECKPOINT ${outdb}`);
         }

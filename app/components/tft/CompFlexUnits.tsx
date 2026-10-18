@@ -64,7 +64,7 @@ export default function CompFlexUnits({
             <a
               key={u.characterId}
               href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
-              className="flex items-center gap-3 bg-surface-sunken border border-border-subtle rounded p-2 hover:border-[#2a3d57] transition"
+              className="flex items-center gap-3 bg-surface-sunken border border-border-subtle rounded p-1.5 hover:border-[#2a3d57] transition"
               title={`n = ${u.n} picks${u.nOutcome > 0 ? ` · outcome n = ${u.nOutcome}` : ''}`}
             >
               {url ? (
@@ -72,24 +72,25 @@ export default function CompFlexUnits({
                   src={url}
                   alt={name}
                   loading="lazy"
-                  className="w-10 h-10 rounded object-cover border-2 flex-shrink-0"
+                  className="w-8 h-8 rounded object-cover border-2 flex-shrink-0"
                   style={{ borderColor: costColor(cost) }}
                 />
               ) : (
-                <div className="w-10 h-10 rounded bg-surface-overlay flex-shrink-0" />
+                <div className="w-8 h-8 rounded bg-surface-overlay flex-shrink-0" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-white text-xs font-semibold truncate">{name}</div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-fg-secondary">
+                {/* 12 px seit 2026-10-18 (vorher 10); darf bei schmaler Karte umbrechen */}
+                <div className="flex flex-wrap items-center gap-x-2">
+                  <span className="text-xs text-fg-secondary whitespace-nowrap">
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.pickrate')} </span>
                     <span className="text-white font-semibold">{fmtPct(u.pickrate)}</span>
                   </span>
-                  <span className={`text-[10px] ${u.top1Rate != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                  <span className={`text-xs whitespace-nowrap ${u.top1Rate != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.top1')} </span>
                     <span className={u.top1Rate != null ? 'text-white font-semibold' : ''}>{fmtPct(u.top1Rate)}</span>
                   </span>
-                  <span className={`text-[10px] ${u.avgPlacement != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                  <span className={`text-xs whitespace-nowrap ${u.avgPlacement != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.avgPlc')} </span>
                     <span className={u.avgPlacement != null ? 'text-white font-semibold' : ''}>{fmtPlace(u.avgPlacement)}</span>
                   </span>

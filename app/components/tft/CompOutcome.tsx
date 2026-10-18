@@ -54,10 +54,12 @@ function unitName(assets: TftAssetsBundle | null, cid: string) {
   return findChampion(assets, cid)?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
-function LowData({ t }: { t: T }) {
+// large: 10 px statt 8 px — nur in der Platzverteilung (User 2026-10-18:
+// kleine Schrift der Strategie-Boxen groesser); die Tabellen bleiben bei 8 px.
+function LowData({ t, large = false }: { t: T; large?: boolean }) {
   return (
     <span
-      className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded whitespace-nowrap"
+      className={`${large ? 'text-[10px]' : 'text-[8px]'} uppercase tracking-wider px-1 py-[1px] rounded whitespace-nowrap`}
       style={{ color: WARN, backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
     >
       {t('tft.comp.outcome.lowData')}
@@ -115,13 +117,13 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
     <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
       <div className="flex items-center gap-2 mb-3">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.outcome.placement')}</h2>
-        {outcome.lowData && <LowData t={t} />}
+        {outcome.lowData && <LowData t={t} large />}
         <span className="ml-auto text-fg-muted text-xs tabular-nums">{outcome.games} {t('tft.gamesShort')}</span>
       </div>
-      <div className="grid grid-cols-8 gap-1.5 sm:gap-2 items-end h-28">
+      <div className="grid grid-cols-8 gap-1.5 sm:gap-2 items-end h-20">
         {outcome.placementShare.map((v, i) => (
           <div key={i} className="flex flex-col items-center justify-end h-full" title={`${i + 1}: ${(v * 100).toFixed(1)}%`}>
-            <span className="text-[10px] text-fg-secondary tabular-nums mb-1">{pct(v)}</span>
+            <span className="text-xs text-fg-secondary tabular-nums mb-1">{pct(v)}</span>
             <div
               className="w-full rounded-t"
               style={{ height: `${Math.max(2, (v / max) * 100)}%`, backgroundColor: i < 4 ? GOOD : '#6b7785', opacity: i < 4 ? 0.85 : 0.6 }}
@@ -131,7 +133,7 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
       </div>
       <div className="grid grid-cols-8 gap-1.5 sm:gap-2 mt-1">
         {outcome.placementShare.map((_, i) => (
-          <span key={i} className="text-center text-[11px] text-fg-muted tabular-nums">{i + 1}</span>
+          <span key={i} className="text-center text-xs text-fg-muted tabular-nums">{i + 1}</span>
         ))}
       </div>
     </section>

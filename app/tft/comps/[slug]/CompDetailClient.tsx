@@ -372,65 +372,28 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // Carry-Star-Outcome — Reroll-Entscheidung Stage 3-5/3-6. Wird zweimal
   // gerendert: am Handy oben ueber den Spalten, am PC oben in der rechten Spalte.
   const carryStarBox = comp && comp.carryStarOutcome && comp.carryStarOutcome.length >= 2 ? (() => {
-    const totalGames = (comp.carryStarOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
-    if (totalGames === 0) return null;
+    const rows = comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[];
+    if (rows.reduce((s, x) => s + x.games, 0) === 0) return null;
     return (
-      <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-        <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.carryStarOutcome')}</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
-          {(comp.carryStarOutcome as { star: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
-            const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
-            // Star-Color: 1=grau, 2=gold, 3=prismatic, 4=chromatic
-            // (Set-14-Mechanik: Sona Command Mods + Aurelion Sol Quest Rewards)
-            const starColor = row.star === 4 ? '#e75480'
-              : row.star === 3 ? '#c39bff'
-              : row.star === 2 ? '#e0c75a'
-              : '#9ab0bf';
-            const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
-            return (
-              <div
-                key={row.star}
-                className="bg-surface-raised border rounded p-3"
-                style={{ borderColor: `${withAlpha(starColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-base font-medium" style={{ color: starColor }}>
-                    {'★'.repeat(row.star)}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    {lowSample && (
-                      <span
-                        className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
-                        style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
-                        title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
-                      >
-                        {t('tft.comp.lowSample')}
-                      </span>
-                    )}
-                    <span className="text-fg-muted text-[10px] tabular-nums">
-                      {share.toFixed(0)}% · {row.games}
-                    </span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
-                  <div>
-                    <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
-                    <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
-                  </div>
-                  <div>
-                    <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
-                    <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
-                  </div>
-                  <div>
-                    <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
-                    <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <OutcomeRowsBox
+        title={t('tft.comp.carryStarOutcome')}
+        t={t}
+        rows={rows.map((row) => ({
+          key: row.star,
+          label: '★'.repeat(row.star),
+          labelClass: 'text-base font-medium',
+          // Star-Color: 1=grau, 2=gold, 3=prismatic, 4=chromatic
+          // (Set-14-Mechanik: Sona Command Mods + Aurelion Sol Quest Rewards)
+          color: row.star === 4 ? '#e75480'
+            : row.star === 3 ? '#c39bff'
+            : row.star === 2 ? '#e0c75a'
+            : '#9ab0bf',
+          games: row.games,
+          avgPlacement: row.avgPlacement,
+          top4Rate: row.top4Rate,
+          top1Rate: row.top1Rate,
+        }))}
+      />
     );
   })() : null;
 
@@ -909,7 +872,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                 <BlockHeadline label={t('tft.comp.block.strategy')} />
                 {/* Zwei Gruppen nebeneinander: 3★-Ergebnis + Platzverteilung,
                     Contested + Flex; die letzte Box jeder Gruppe waechst bis
-                    zur Unterkante. */}
+                    zur Unterkante. 3★ und Contested: OutcomeRowsBox. */}
                 <div className={!(carryStarBox || comp.outcome)
                   ? 'lg:flex lg:flex-col lg:grow'
                   : 'lg:grid lg:grid-cols-2 lg:gap-x-6 lg:grow'}>
@@ -921,68 +884,27 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                   <div className="min-w-0 lg:flex lg:flex-col lg:grow lg:[&>*:last-child]:grow">
                     {/* Contested-Penalty — Solo/Duo/Triple Outcome-Cards. */}
                     {(comp.contestedOutcome && comp.contestedOutcome.length >= 2) && (() => {
-                      const solo = (comp.contestedOutcome as { contested: number; avgPlacement: number; games: number; top4Rate: number; top1Rate: number }[]).find((c) => c.contested === 1);
-                      const totalGames = (comp.contestedOutcome as { games: number }[]).reduce((s: number, x: { games: number }) => s + x.games, 0);
-                      if (totalGames === 0) return null;
+                      const rows = comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[];
+                      const solo = rows.find((c) => c.contested === 1);
+                      if (rows.reduce((s, x) => s + x.games, 0) === 0) return null;
                       return (
-                        <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
-                          <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.contestedPenalty')}</h2>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-3">
-                            {(comp.contestedOutcome as { contested: number; games: number; avgPlacement: number; top4Rate: number; top1Rate: number }[]).map((row) => {
-                              const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
-                              const delta = solo && solo.games > 0 && row.contested !== 1 ? row.avgPlacement - solo.avgPlacement : null;
-                              const accentColor = row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040';
-                              const label = row.contested === 1 ? t('tft.comp.contestedSolo')
-                                          : row.contested === 2 ? t('tft.comp.contestedDuo')
-                                          : t('tft.comp.contestedTriple');
-                              const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
-                              return (
-                                <div
-                                  key={row.contested}
-                                  className="bg-surface-raised border rounded p-3"
-                                  style={{ borderColor: `${withAlpha(accentColor, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-medium uppercase tracking-widest" style={{ color: accentColor }}>{label}</span>
-                                    <div className="flex items-center gap-1.5">
-                                      {lowSample && (
-                                        <span
-                                          className="text-[8px] uppercase tracking-wider px-1 py-[1px] rounded"
-                                          style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
-                                          title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
-                                        >
-                                          {t('tft.comp.lowSample')}
-                                        </span>
-                                      )}
-                                      <span className="text-fg-muted text-[10px] tabular-nums">
-                                        {share.toFixed(0)}% · {row.games}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-1 text-[11px] tabular-nums">
-                                    <div>
-                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.avgPlacement')}</div>
-                                      <div className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</div>
-                                      {delta != null && (
-                                        <div className="text-[10px] tabular-nums mt-0.5" style={{ color: delta > 0 ? '#e44040' : '#3ecf8e' }}>
-                                          {delta > 0 ? '+' : ''}{delta.toFixed(2)}
-                                        </div>
-                                      )}
-                                    </div>
-                                    <div>
-                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top4')}</div>
-                                      <div className="text-white">{(row.top4Rate * 100).toFixed(0)}%</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-fg-muted text-[9px] uppercase tracking-widest">{t('tft.top1')}</div>
-                                      <div className="text-white">{(row.top1Rate * 100).toFixed(0)}%</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </section>
+                        <OutcomeRowsBox
+                          title={t('tft.comp.contestedPenalty')}
+                          t={t}
+                          rows={rows.map((row) => ({
+                            key: row.contested,
+                            label: row.contested === 1 ? t('tft.comp.contestedSolo')
+                              : row.contested === 2 ? t('tft.comp.contestedDuo')
+                              : t('tft.comp.contestedTriple'),
+                            labelClass: 'text-xs font-medium uppercase tracking-widest',
+                            color: row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040',
+                            games: row.games,
+                            avgPlacement: row.avgPlacement,
+                            top4Rate: row.top4Rate,
+                            top1Rate: row.top1Rate,
+                            delta: solo && solo.games > 0 && row.contested !== 1 ? row.avgPlacement - solo.avgPlacement : null,
+                          }))}
+                        />
                       );
                     })()}
 
@@ -1338,6 +1260,76 @@ function DeathKpi({ label, value, sub, accent }: { label: string; value: string;
   );
 }
 
+// Carry-Sternstufe und Contested-Penalty: eine Zeile je Stufe, Spaltennamen
+// einmal oben (User 2026-10-18: Boxen kleiner, kleine Schrift groesser).
+// Wurzel muss <section> bleiben — die Strategie-Spalte streckt genau dieses
+// Element bis zur Unterkante ([&>section]:grow bzw. last-child-grow).
+interface OutcomeRow {
+  key: number;
+  label: string;
+  labelClass: string;
+  color: string;
+  games: number;
+  avgPlacement: number;
+  top4Rate: number;
+  top1Rate: number;
+  delta?: number | null; // Ø-Platz gegen Solo, nur Contested
+}
+
+function OutcomeRowsBox({ title, rows, t }: { title: string; rows: OutcomeRow[]; t: (k: TranslationKey) => string }) {
+  const totalGames = rows.reduce((s, r) => s + r.games, 0);
+  return (
+    <section className="mt-5 bg-surface-base border border-border-subtle rounded p-4">
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{title}</h2>
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 gap-y-1.5 tabular-nums">
+        <div className="col-span-4 grid grid-cols-subgrid px-3 text-fg-muted text-[11px] uppercase tracking-widest">
+          <span />
+          <span className="text-right">
+            <span className="sm:hidden">{t('tft.comp.outcome.avgShort')}</span>
+            <span className="hidden sm:inline">{t('tft.avgPlacement')}</span>
+          </span>
+          <span className="text-right">{t('tft.top4')}</span>
+          <span className="text-right">{t('tft.top1')}</span>
+        </div>
+        {rows.map((row) => {
+          const share = totalGames > 0 ? (row.games / totalGames) * 100 : 0;
+          const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
+          return (
+            <div
+              key={row.key}
+              className="col-span-4 grid grid-cols-subgrid items-center bg-surface-raised border rounded px-3 py-2"
+              style={{ borderColor: `${withAlpha(row.color, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
+            >
+              <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                <span className={row.labelClass} style={{ color: row.color }}>{row.label}</span>
+                <span className="text-fg-muted text-xs">{share.toFixed(0)}% · {row.games}</span>
+                {lowSample && (
+                  <span
+                    className="text-[10px] uppercase tracking-wider px-1 py-[1px] rounded whitespace-nowrap"
+                    style={{ color: '#e0a040', backgroundColor: 'rgba(224,160,64,0.12)', border: '1px solid rgba(224,160,64,0.35)' }}
+                    title={`${row.games} ${t('tft.gamesShort')} < ${MIN_GAMES_PER_OUTCOME_CARD}`}
+                  >
+                    {t('tft.comp.lowSample')}
+                  </span>
+                )}
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <span className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</span>
+                {row.delta != null && (
+                  <span className="ml-1.5 text-xs" style={{ color: row.delta > 0 ? '#e44040' : '#3ecf8e' }}>
+                    {row.delta > 0 ? '+' : ''}{row.delta.toFixed(2)}
+                  </span>
+                )}
+              </div>
+              <div className="text-right text-white text-sm">{(row.top4Rate * 100).toFixed(0)}%</div>
+              <div className="text-right text-white text-sm">{(row.top1Rate * 100).toFixed(0)}%</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 // Block-Headline — dezenter Section-Trenner mit zentriertem Label, der die
 // drei Workflow-Blöcke der Detail-Page (In der Runde / Strategie / Detail-

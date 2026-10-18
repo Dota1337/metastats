@@ -16,6 +16,8 @@ import { ACTIVE_REGIONS } from '../../scripts/lib/active-regions.mjs';
 
 const NOW = Date.parse('2026-10-18T14:00:00Z');
 const ago = ms => new Date(NOW - ms).toISOString();
+// Bewusst keine echte Set-Nummer (check-drift: keine Set-Literale ausser CURRENT_SET).
+const S = 42;
 
 test('Varianten: genau die Ansichten der Seiten', () => {
   assert.equal(routeMirrorVariants('rising', ACTIVE_REGIONS).length, 3 * (1 + ACTIVE_REGIONS.length));
@@ -61,15 +63,15 @@ test('Schluessel: jede Variante hat einen eigenen, gueltigen Schluessel und Abru
   assert.equal(routeMirrorFetchPath('tournaments', {}), '/api/tournaments?window=full');
 });
 
-const RISING = { v: 1, name: 'rising', key: 'days-1__region-all', builtAt: ago(60_000), set: 18,
+const RISING = { v: 1, name: 'rising', key: 'days-1__region-all', builtAt: ago(60_000), set: S,
   body: { hasData: true, days: 1, region: 'all', endDay: '2026-10-18', players: [{ puuid: 'p' }] } };
 
 test('Pruefung: passende frische Datei gilt, alles andere nicht', () => {
-  const ok = (snap, name = 'rising', key = 'days-1__region-all', set = 18) => isValidRouteMirror(snap, name, key, { set, now: NOW });
+  const ok = (snap, name = 'rising', key = 'days-1__region-all', set = S) => isValidRouteMirror(snap, name, key, { set, now: NOW });
   assert.equal(ok(RISING), true);
   assert.equal(ok(RISING, 'rising', 'days-3__region-all'), false); // anderer Schluessel
-  assert.equal(ok({ ...RISING, set: 17 }), false); // anderes Set
-  assert.equal(ok(RISING, 'rising', 'days-1__region-all', 19), false);
+  assert.equal(ok({ ...RISING, set: S - 1 }), false); // anderes Set
+  assert.equal(ok(RISING, 'rising', 'days-1__region-all', S + 1), false);
   assert.equal(ok({ ...RISING, builtAt: ago(37 * 3600_000) }), false); // zu alt
   assert.equal(ok({ ...RISING, builtAt: new Date(NOW + 10 * 60_000).toISOString() }), false); // Zukunft
   assert.equal(ok({ ...RISING, body: { ...RISING.body, players: [] } }), false); // leer
@@ -80,8 +82,8 @@ test('Pruefung: passende frische Datei gilt, alles andere nicht', () => {
 
   const lb = { v: 1, name: 'leaderboard', key: 'region-all__tier-ALL__page-1', builtAt: ago(20 * 60_000),
     body: { region: 'all', tier: 'ALL', page: 1, players: [{ puuid: 'p' }] } };
-  assert.equal(isValidRouteMirror(lb, 'leaderboard', lb.key, { set: 18, now: NOW }), true);
-  assert.equal(isValidRouteMirror({ ...lb, builtAt: ago(26 * 60_000) }, 'leaderboard', lb.key, { set: 18, now: NOW }), false);
+  assert.equal(isValidRouteMirror(lb, 'leaderboard', lb.key, { set: S, now: NOW }), true);
+  assert.equal(isValidRouteMirror({ ...lb, builtAt: ago(26 * 60_000) }, 'leaderboard', lb.key, { set: S, now: NOW }), false);
 
   const tn = { v: 1, name: 'tournaments', key: 'default', builtAt: ago(60_000),
     body: { tournaments: [{ league: 'LEC' }], byLeague: {}, sortedLeagues: [] } };

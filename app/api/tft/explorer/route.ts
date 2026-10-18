@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DEGRADED_CACHE_CONTROL, cacheHeaders } from '../../../lib/api-cache';
 import { checkRateLimit } from '../../../lib/rate-limit';
-import { parseExplorerParams, serializeExplorerQuery, toServiceBody } from '../../../lib/tft-explorer-query';
+import { supabaseAdmin } from '../../../lib/supabase';
+import { tftProfileHref } from '../../../lib/tft-player-search';
+import { parseExplorerParams, serializeExplorerQuery, toServiceBody, type ExplorerGame } from '../../../lib/tft-explorer-query';
 
 // Data Explorer. Die Rechnung laeuft auf der Hetzner-Box im Abfrage-Dienst
 // (scripts/explorer-duckdb-server.mjs), erreichbar nur ueber refresh-api
@@ -22,6 +24,36 @@ export const maxDuration = 60;
 
 const HETZNER_URL = process.env.HETZNER_REFRESH_URL;
 const TOKEN = process.env.REFRESH_API_TOKEN;
+
+type ServiceGame = Omit<ExplorerGame, 'player'> & { puuid: string | null };
+
+// Spiele-Reiter: Riot-ID aus dem Namensverzeichnis (liegt nur auf Supabase),
+// Link auf unsere Spielerseite. Die puuid des Dienstes geht nicht weiter.
+// ok = false: Verzeichnis nicht erreichbar → Zeilen ohne Namen, kurz cachen.
+async function withPlayerNames(games: ServiceGame[]): Promise<{ games: ExplorerGame[]; ok: boolean }> {
+  const ids = [...new Set(games.map(g => g.puuid).filter((p): p is string => !!p))];
+  const names = new Map<string, { gameName: string; tagLine: string }>();
+  let ok = true;
+  if (ids.length) {
+    try {
+      const { data, error } = await supabaseAdmin.from('tft_player_names').select('puuid, game_name, tag_line').in('puuid', ids);
+      if (error) ok = false;
+      for (const r of data ?? []) if (r.game_name && r.tag_line) names.set(r.puuid, { gameName: r.game_name, tagLine: r.tag_line });
+    } catch {
+      ok = false;
+    }
+  }
+  return {
+    ok,
+    games: games.map(({ puuid, ...g }) => {
+      const n = puuid ? names.get(puuid) : undefined;
+      return {
+        ...g,
+        player: n && puuid ? { name: n.gameName, tag: n.tagLine, href: tftProfileHref({ puuid, gameName: n.gameName, tagLine: n.tagLine, region: g.region || null }) } : null,
+      };
+    }),
+  };
+}
 
 function secondsUntilNextBuild(now = new Date()): number {
   const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 3, 30));
@@ -75,6 +107,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data ?? { error: 'explorer_unavailable' }, { status, headers });
   }
 
-  const cc = `public, s-maxage=${secondsUntilNextBuild()}, stale-while-revalidate=3600`;
+  let namesOk = true;
+  if (Array.isArray(data.games)) {
+    const r = await withPlayerNames(data.games as ServiceGame[]);
+    data.games = r.games;
+    namesOk = r.ok;
+  }
+
+  const cc = namesOk ? `public, s-maxage=${secondsUntilNextBuild()}, stale-while-revalidate=3600` : DEGRADED_CACHE_CONTROL;
   return NextResponse.json(data, { status: 200, headers: cacheHeaders(cc) });
 }

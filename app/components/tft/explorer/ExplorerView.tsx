@@ -43,7 +43,8 @@ export default function ExplorerView() {
       {error ? (
         <div className="rounded-xl border border-border-subtle bg-surface-base p-6 flex flex-col items-center gap-3 text-center">
           <span className="text-sm text-fg-secondary">
-            {t(error === 'busy' ? 'tft.explorer.x.err.busy' : error === 'timeout' ? 'tft.explorer.x.err.timeout' : 'tft.explorer.x.err.unavailable')}
+            {t(error === 'busy' ? 'tft.explorer.x.err.busy' : error === 'timeout' ? 'tft.explorer.x.err.timeout'
+              : error === 'notReady' ? 'tft.explorer.x.err.notReady' : 'tft.explorer.x.err.unavailable')}
           </span>
           <button type="button" onClick={reload}
             className="px-3 py-1.5 rounded-md border border-accent-a50 bg-accent-a15 text-xs text-fg-bright hover:bg-accent-a25">

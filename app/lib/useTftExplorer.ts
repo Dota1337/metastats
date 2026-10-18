@@ -11,7 +11,9 @@ import {
 // neuen an (push), damit die Zurueck-Taste dorthin zurueckfuehrt. Die Anfrage an /api/tft/explorer benutzt dieselbe Form, damit
 // Vercel sie als Cache-Schluessel nimmt.
 
-export type ExplorerError = 'busy' | 'timeout' | 'unavailable' | 'failed';
+// notReady: die Datei auf der Box stammt noch vom alten Aufbau und kennt
+// Zaehler, Spiele oder Builds noch nicht (Dienst 409).
+export type ExplorerError = 'busy' | 'timeout' | 'unavailable' | 'notReady' | 'failed';
 
 export function useTftExplorer() {
   const router = useRouter();
@@ -56,6 +58,7 @@ export function useTftExplorer() {
           if (!r.ok || !body) {
             const code: ExplorerError = r.status === 504 ? 'timeout'
               : body?.error === 'busy' ? 'busy'
+              : body?.error === 'not_ready' ? 'notReady'
               : r.status === 503 ? 'unavailable' : 'failed';
             throw Object.assign(new Error(code), { code });
           }

@@ -4,8 +4,8 @@ import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
-  EXPLORER_LIMITS, ITEM_KINDS, filterCount,
-  type ExplorerQuery, type FilterGroup, type ItemFilter, type ItemKind, type TraitFilter, type UnitFilter,
+  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, filterCount,
+  type BoardCountKey, type BoardTag, type ExplorerQuery, type FilterGroup, type ItemFilter, type ItemKind, type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
 import {
   itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
@@ -23,6 +23,39 @@ const PLACES = [1, 2, 3, 4, 5, 6, 7, 8];
 const KIND_LABEL: Record<ItemKind, TranslationKey> = {
   artifact: 'tft.item.bucket.artifact', emblem: 'tft.item.bucket.emblem', radiant: 'tft.item.bucket.radiant',
 };
+
+// Brett-Zaehler (Paket B) im Brett-Fenster: Gruppen wie bei MetaTFT, Werte
+// je Zaehler; hoehere Werte gehen ueber „mind.". tr steht nicht hier, sondern
+// als Schalter „Keine Traits" (tr = genau 0).
+const BOARD_ROWS: { head: TranslationKey; rows: { k: BoardCountKey; values: number[] }[] }[] = [
+  { head: 'tft.explorer.items', rows: [
+    { k: 'emb', values: [0, 1, 2, 3, 4] }, { k: 'rad', values: [0, 1, 2, 3, 4] },
+    { k: 'art', values: [0, 1, 2, 3, 4] }, { k: 'norm', values: [0, 2, 4, 6, 8, 10] },
+  ] },
+  { head: 'tft.explorer.units', rows: [
+    { k: 's3', values: [0, 1, 2, 3] }, { k: 's4', values: [0, 1, 2] }, { k: 'dup', values: [0, 1, 2, 3] },
+    ...(['k1', 'k2', 'k3', 'k4', 'k5'] as const).map(k => ({ k, values: [0, 1, 2, 3, 4, 5, 6] })),
+  ] },
+  { head: 'tft.explorer.traits', rows: [{ k: 'bronze', values: [0, 1, 2, 3, 4, 5] }, { k: 'extra', values: [0, 1, 2, 3] }] },
+];
+const TAG_LABEL: Record<BoardTag, TranslationKey> = {
+  shred: 'tft.explorer.x.tag.shred', sunder: 'tft.explorer.x.tag.sunder', wound: 'tft.explorer.x.tag.wound',
+};
+function boardLabel(t: (k: TranslationKey) => string, k: BoardCountKey): string {
+  switch (k) {
+    case 'emb': return t(KIND_LABEL.emblem);
+    case 'rad': return t(KIND_LABEL.radiant);
+    case 'art': return t(KIND_LABEL.artifact);
+    case 'norm': return t('tft.explorer.x.bc.norm');
+    case 's3': return t('tft.explorer.x.bc.s3');
+    case 's4': return t('tft.explorer.x.bc.s4');
+    case 'dup': return t('tft.explorer.x.bc.dup');
+    case 'bronze': return t('tft.explorer.x.bc.bronze');
+    case 'extra': return t('tft.explorer.x.bc.extra');
+    case 'tr': return t('tft.explorer.x.bc.noTraits');
+    default: return t('tft.explorer.x.bc.cost').replace('{n}', k.slice(1));
+  }
+}
 
 // Wohin die Auswahl hinzufuegt: Hauptleiste, Kasten Nr. g oder ein neuer Kasten.
 type Target = 'main' | number | 'any' | 'none';
@@ -179,9 +212,19 @@ export default function ExplorerFilters({
     </>;
   };
 
-  const hasAny = total > 0 || query.levels.length > 0 || query.place != null;
+  const hasAny = total > 0 || query.levels.length > 0 || query.place != null || query.bc.length > 0 || query.tags.length > 0;
   const place = query.place ?? [1, 8];
   const setPlace = (lo: number, hi: number) => setQuery({ ...query, place: lo === 1 && hi === 8 ? null : [lo, hi] });
+  const setCount = (k: BoardCountKey, n: number | undefined, nx: number | undefined) => setQuery({
+    ...query, bc: canonBoardCounts([...query.bc.filter(e => e.k !== k), ...(n == null && nx == null ? [] : [{ k, n, nx }])]),
+  });
+  const toggleTag = (tag: BoardTag) => setQuery({
+    ...query, tags: query.tags.includes(tag) ? query.tags.filter(x => x !== tag) : BOARD_TAGS.filter(x => x === tag || query.tags.includes(x)),
+  });
+  const boardValue = [
+    ...query.bc.map(e => (e.k === 'tr' ? boardLabel(t, 'tr') : `${spanText(e.n, e.nx, 0, String) ?? ''} ${boardLabel(t, e.k)}`)),
+    ...query.tags.map(x => t(TAG_LABEL[x])),
+  ].join(', ') || null;
 
   // Auswahl: was ist im Ziel schon gewaehlt, ist es voll?
   const tgtGroup = typeof target === 'number' ? query.groups[target] : null;
@@ -231,10 +274,40 @@ export default function ExplorerFilters({
             ))}
           </Row>
         </PlainChip>
+        <PlainChip label={t('tft.explorer.x.board')} value={boardValue} wide
+          open={open === 'bc'} onToggle={() => setOpen(open === 'bc' ? null : 'bc')} onClear={() => setQuery({ ...query, bc: [], tags: [] })}>
+          {BOARD_ROWS.map(sec => (
+            <div key={sec.head} className="space-y-2">
+              <div className="text-xs font-medium text-fg-secondary">{t(sec.head)}</div>
+              {sec.rows.map(r => {
+                const cur = query.bc.find(e => e.k === r.k);
+                return (
+                  <SpanRow key={r.k} label={boardLabel(t, r.k)} lo={cur?.n} hi={cur?.nx} min={0} values={r.values} fmt={String}
+                    set={(n, nx) => setCount(r.k, n, nx)} />
+                );
+              })}
+              {sec.head === 'tft.explorer.traits' && (() => {
+                const on = query.bc.some(e => e.k === 'tr' && e.n === 0 && e.nx === 0);
+                return (
+                  <button type="button" className={seg(on)} aria-pressed={on} onClick={() => setCount('tr', on ? undefined : 0, on ? undefined : 0)}>
+                    {boardLabel(t, 'tr')}
+                  </button>
+                );
+              })()}
+            </div>
+          ))}
+          <Row label={t('tft.explorer.x.tags')}>
+            {BOARD_TAGS.map(tag => (
+              <button key={tag} type="button" className={seg(query.tags.includes(tag))} aria-pressed={query.tags.includes(tag)} onClick={() => toggleTag(tag)}>
+                {t(TAG_LABEL[tag])}
+              </button>
+            ))}
+          </Row>
+        </PlainChip>
         {hasAny && (
           <button type="button" onClick={() => {
             setTarget(null);
-            setQuery({ ...query, units: [], items: [], traits: [], groups: [], levels: [], place: null, focus: null });
+            setQuery({ ...query, units: [], items: [], traits: [], groups: [], levels: [], place: null, bc: [], tags: [], focus: null });
           }}
             className="text-xs text-fg-muted hover:text-fg-primary underline-offset-2 hover:underline">
             {t('tft.explorer.resetAll')}
@@ -293,18 +366,19 @@ function Chip({
   );
 }
 
-function Popover({ children }: { children: React.ReactNode }) {
+function Popover({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className="absolute z-30 left-0 top-full mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3">
+    <div className={`absolute z-30 left-0 top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 ${
+      wide ? 'w-[min(26rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto' : 'w-[min(20rem,calc(100vw-2rem))]'}`}>
       {children}
     </div>
   );
 }
 
-// Level / Platz: immer da; gesetzt = hervorgehoben mit ×.
+// Level / Platz / Brett: immer da; gesetzt = hervorgehoben mit ×.
 function PlainChip({
-  label, value, open, onToggle, onClear, children,
-}: { label: string; value: string | null; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode }) {
+  label, value, open, onToggle, onClear, children, wide = false,
+}: { label: string; value: string | null; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode; wide?: boolean }) {
   const { t } = useI18n();
   return (
     <div className="relative">
@@ -312,14 +386,14 @@ function PlainChip({
         <button type="button" onClick={onToggle} aria-expanded={open}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 ${value ? 'text-fg-primary' : 'text-fg-secondary hover:text-fg-primary'}`}>
           {label}
-          {value && <span className="text-fg-bright tabular-nums">{value}</span>}
+          {value && <span className="text-fg-bright tabular-nums truncate max-w-[16rem]">{value}</span>}
         </button>
         {value && (
           <button type="button" onClick={onClear} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
             className="px-1.5 py-1 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
         )}
       </div>
-      {open && <Popover>{children}</Popover>}
+      {open && <Popover wide={wide}>{children}</Popover>}
     </div>
   );
 }

@@ -3,8 +3,12 @@
 // und der Anfrage-Koerper passt durch die Pruefung des Dienstes.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1 } from './tft-explorer-query.ts';
-import { normalizeQuery } from '../../scripts/lib/explorer-normalize.mjs';
+import {
+  parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1,
+  BOARD_COUNT_KEYS, BOARD_COUNT_MAX, BOARD_TAGS, EXPLORER_TABS,
+} from './tft-explorer-query.ts';
+import { normalizeQuery, TABS } from '../../scripts/lib/explorer-normalize.mjs';
+import { COUNT_KEYS, COUNT_MAX, TAGS } from '../../scripts/lib/explorer-counts.mjs';
 
 const parse = (qs) => parseExplorerParams(new URLSearchParams(qs));
 const round = (qs, o) => serializeExplorerQuery(parse(qs), o);
@@ -87,6 +91,32 @@ test('Anfrage-Koerper geht durch die Pruefung des Dienstes und meint dasselbe', 
   assert.deepEqual(normalizeQuery(toServiceBody(parse('i=DA_X:n4'))).items, [{ id: 'DA_X', x: false, n: null }]);
   assert.deepEqual(normalizeQuery(toServiceBody(parse('i=DA_X:n3'))).items, [{ id: 'DA_X', x: false, n: 3 }]);
   assert.throws(() => normalizeQuery({ items: [{ id: 'DA_X', n: 4 }] }), /item_count/);
+});
+
+test('Brett-Zaehler und Tags: gleiche Listen wie der Dienst, Form, Kanonisierung', () => {
+  assert.deepEqual([...BOARD_COUNT_KEYS], COUNT_KEYS);
+  assert.equal(BOARD_COUNT_MAX, COUNT_MAX);
+  assert.deepEqual([...BOARD_TAGS], TAGS);
+  for (const t of EXPLORER_TABS) assert.ok(TABS.includes(t), t);
+  assert.equal(decodeURIComponent(round('bc=tr:0,k5:2-3,emb:2-,rad:0-,dup:-15,norm:-4,s3:15-15&tg=wound,shred,burn')),
+    'bc=emb:2-,norm:-4,s3:15-,k5:2-3,tr:0&tg=shred,wound');
+  // doppelt, verkehrt, unbekannt, ohne Wert → weg
+  assert.equal(round('bc=emb:2-,emb:3-,k1:4-2,gold:1-,k2:-,k3:16-'), enc('bc=emb:2-'));
+  for (const qs of ['bc=emb:2-,k5:2-3,tr:0&tg=sunder', 'bc=k1:0-2,extra:1&tab=games', 'tab=builds&f=DA_A&c=2']) {
+    for (const o of [{}, { forApi: true }]) { const once = round(qs, o); assert.equal(round(once, o), once, qs); }
+  }
+  // c gilt nur bei Items, f auch bei Builds
+  assert.equal(decodeURIComponent(round('tab=builds&f=DA_A&c=2')), 'tab=builds&f=DA_A');
+  const n = normalizeQuery(toServiceBody(parse('bc=emb:2-,k5:2-3,tr:0,norm:-4&tg=wound,shred&tab=builds&f=DA_A')));
+  assert.deepEqual(n.bc, [{ k: 'emb', n: 2, nx: null }, { k: 'norm', n: null, nx: 4 }, { k: 'k5', n: 2, nx: 3 }, { k: 'tr', n: 0, nx: 0 }]);
+  assert.deepEqual(n.tags, ['shred', 'wound']);
+  assert.equal(n.focus, 'DA_A');
+  assert.equal(n.tab, 'builds');
+  assert.equal(normalizeQuery(toServiceBody(parse('tab=games&f=DA_A'))).focus, null);
+  // zaehlen nicht zur Grenze, sind aber Brett-Filter
+  assert.equal(filterCount(parse('bc=emb:2-&tg=shred')), 0);
+  assert.equal(hasBoardFilters(parse('bc=emb:2-')), true);
+  assert.equal(hasBoardFilters(parse('tg=shred')), true);
 });
 
 test('Brett-Filter und Top-4-/Sieg-Spalten', () => {

@@ -11,7 +11,7 @@
     "tables": 42,
     "rpcs": 32,
     "files": 14,
-    "edges": 622,
+    "edges": 624,
     "unused": 7,
     "unresolved": 1
   },
@@ -1057,6 +1057,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/regions.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -3871,6 +3872,16 @@
       "from": "api:/api/tft/explorer",
       "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/explorer",
+      "to": "db:tft_player_names",
+      "kind": "reads"
+    },
+    {
+      "from": "api:/api/tft/explorer",
+      "to": "ext:riot-api",
+      "kind": "fetches"
     },
     {
       "from": "api:/api/tft/explorer",

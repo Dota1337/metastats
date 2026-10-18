@@ -16,7 +16,10 @@
 //   i=ITEM:n2,!ITEM             Items irgendwo auf dem Board; n2 = mind. zweimal
 //   t=ID:l2e,!ID                Traits; l2 = mind. Stufe 2 (e = genau)
 //   g1=any,u.ID:s2,i.X,t.T:l2   Kaesten: any = eins davon, none = keins davon (g1-g3)
-//   tab, f (Traeger im Item-Reiter), split=over (Traits), c (1-3 Items je Kombi)
+//   bc=emb:2-,k5:2-3,tr:0       Brett-Zaehler: 2- = mind. 2, -3 = hoechstens 3,
+//                               2-3 = 2 bis 3, 0 = genau 0 (tr:0 = keine Traits)
+//   tg=shred,wound              Brett traegt alle genannten Tags
+//   tab, f (Traeger im Item- und Builds-Reiter), split=over (Traits), c (1-3 Items je Kombi)
 //   st=2,3                      Units-Reiter: Sternstufen vergleichen (API: split=star)
 //
 // Die Bedeutung der Felder steht im Kopf von scripts/lib/explorer-normalize.mjs;
@@ -27,11 +30,22 @@
 export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'] as const;
 export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
 
-export const EXPLORER_TABS = ['units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'] as const;
+export const EXPLORER_TABS = ['units', 'items', 'builds', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank', 'games'] as const;
 export type ExplorerTab = (typeof EXPLORER_TABS)[number];
 
 export const ITEM_KINDS = ['artifact', 'emblem', 'radiant'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
+
+// Brett-Zaehler und Tags wie im Dienst (COUNT_KEYS, COUNT_MAX, TAGS in
+// scripts/lib/explorer-counts.mjs; der Test prueft den Gleichlauf). Hier als
+// Kopie, weil die Datei auch im Browser laeuft.
+export const BOARD_COUNT_KEYS = ['emb', 'rad', 'art', 'norm', 's3', 's4', 'dup', 'k1', 'k2', 'k3', 'k4', 'k5', 'bronze', 'extra', 'tr'] as const;
+export type BoardCountKey = (typeof BOARD_COUNT_KEYS)[number];
+export const BOARD_COUNT_MAX = 15;
+export const BOARD_TAGS = ['shred', 'sunder', 'wound'] as const;
+export type BoardTag = (typeof BOARD_TAGS)[number];
+/** n..nx auf dem Brett; n ohne nx = mind., nx ohne n = hoechstens. */
+export interface BoardCount { k: BoardCountKey; n?: number; nx?: number }
 
 export interface UnitFilter {
   id: string; x?: boolean;
@@ -59,7 +73,11 @@ export interface ExplorerQuery {
   items: ItemFilter[];
   traits: TraitFilter[];
   groups: FilterGroup[];
+  /** Brett-Zaehler (zaehlen nicht zur Filtergrenze). */
+  bc: BoardCount[];
+  tags: BoardTag[];
   tab: ExplorerTab;
+  /** Traeger im Item- und Builds-Reiter. */
   focus: string | null;
   split: 'star' | 'over' | null;
   /** Units-Reiter: gewaehlte Sternstufen (1-4). Nicht leer → split=star an den Dienst. */
@@ -79,7 +97,7 @@ export const LATEST_PATCH = 'latest';
 
 export const EMPTY_QUERY: ExplorerQuery = {
   region: 'all', ranks: [], patches: [LATEST_PATCH], levels: [], place: null, units: [], items: [], traits: [], groups: [],
-  tab: 'units', focus: null, split: null, stars: [], combo: 1,
+  bc: [], tags: [], tab: 'units', focus: null, split: null, stars: [], combo: 1,
 };
 
 type Params = { get(name: string): string | null };
@@ -92,7 +110,47 @@ export const filterCount = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' 
   q.units.length + q.items.length + q.traits.length + q.groups.reduce((a, g) => a + groupSize(g), 0);
 
 /** Brett-Filter vorhanden? (Level/Platz gehoeren wie der Rang zur Grundmenge.) */
-export const hasBoardFilters = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' | 'groups'>) => filterCount(q) > 0;
+export const hasBoardFilters = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' | 'groups'> & Partial<Pick<ExplorerQuery, 'bc' | 'tags'>>) =>
+  filterCount(q) > 0 || (q.bc?.length ?? 0) > 0 || (q.tags?.length ?? 0) > 0;
+
+/** Kanonische Brett-Zaehler wie span() im Dienst: Grenzen ohne Wirkung fallen
+ *  weg, jeder Zaehler einmal (erster gewinnt), feste Reihenfolge. */
+export function canonBoardCounts(list: BoardCount[]): BoardCount[] {
+  const seen = new Set<string>();
+  const out: BoardCount[] = [];
+  for (const e of list) {
+    if (!(BOARD_COUNT_KEYS as readonly string[]).includes(e.k) || seen.has(e.k)) continue;
+    const ok = (v: number | undefined) => v == null || (Number.isInteger(v) && v >= 0 && v <= BOARD_COUNT_MAX);
+    if (!ok(e.n) || !ok(e.nx) || (e.n != null && e.nx != null && e.n > e.nx)) continue;
+    const lo = e.n ?? 0;
+    const hi = e.nx ?? BOARD_COUNT_MAX;
+    const c: BoardCount = { k: e.k };
+    if (!(lo === 0 && hi !== lo)) c.n = lo;
+    if (hi !== BOARD_COUNT_MAX) c.nx = hi;
+    if (c.n == null && c.nx == null) continue;
+    seen.add(e.k);
+    out.push(c);
+  }
+  return out.sort((a, b) => BOARD_COUNT_KEYS.indexOf(a.k) - BOARD_COUNT_KEYS.indexOf(b.k));
+}
+
+const canonTags = (list: string[]): BoardTag[] =>
+  BOARD_TAGS.filter(t => list.includes(t));
+
+// "2-" | "-3" | "2-3" | "2" (genau)
+function parseBoardCount(tok: string): BoardCount | null {
+  const m = /^([a-z0-9]+):(\d{1,2})?(-)?(\d{1,2})?$/.exec(tok);
+  if (!m || (m[2] == null && m[4] == null)) return null;
+  const lo = m[2] != null ? Number(m[2]) : undefined;
+  const hi = m[4] != null ? Number(m[4]) : undefined;
+  if (!m[3]) return lo != null && hi == null ? { k: m[1] as BoardCountKey, n: lo, nx: lo } : null;
+  return { k: m[1] as BoardCountKey, n: lo, nx: hi };
+}
+
+function boardCountToken(e: BoardCount): string {
+  if (e.n != null && e.nx != null) return e.n === e.nx ? `${e.k}:${e.n}` : `${e.k}:${e.n}-${e.nx}`;
+  return e.n != null ? `${e.k}:${e.n}-` : `${e.k}:-${e.nx}`;
+}
 
 // Spanne lo..hi gueltig? Verkehrte Spanne oder Werte ausserhalb fallen ganz weg.
 // Grenzen ohne Wirkung (mind. 1★) bleiben stehen: alte Links bleiben
@@ -293,6 +351,9 @@ export function parseExplorerParams(sp: Params): ExplorerQuery {
     q.groups.push(g);
   }
 
+  q.bc = canonBoardCounts(list(sp.get('bc')).map(parseBoardCount).filter((e): e is BoardCount => !!e));
+  q.tags = canonTags(list(sp.get('tg')));
+
   const tab = sp.get('tab');
   if (tab && (EXPLORER_TABS as readonly string[]).includes(tab)) q.tab = tab as ExplorerTab;
   const f = sp.get('f');
@@ -367,12 +428,17 @@ export function serializeExplorerQuery(q: ExplorerQuery, { forApi = false } = {}
   // Kaesten in Anlege-Reihenfolge (die Oberflaeche merkt sich den Kasten ueber
   // seine Nummer); Glieder darin sortiert.
   q.groups.filter(g => groupSize(g) > 0).map(groupToken).forEach((g, n) => sp.set(`g${n + 1}`, g));
+  const bc = canonBoardCounts(q.bc ?? []);
+  if (bc.length) sp.set('bc', bc.map(boardCountToken).join(','));
+  const tg = canonTags(q.tags ?? []);
+  if (tg.length) sp.set('tg', tg.join(','));
   if (forApi || q.tab !== 'units') sp.set('tab', q.tab);
-  // Traeger und Kombi-Groesse wirken nur im Item-Reiter, Aufteilung nur bei
-  // Units/Traits — sonst weglassen, damit sie den Cache nicht zersplittern.
-  if (q.tab === 'items' && q.focus) {
+  // Traeger wirkt nur im Item- und Builds-Reiter, Kombi-Groesse nur bei Items,
+  // Aufteilung nur bei Units/Traits — sonst weglassen, damit sie den Cache
+  // nicht zersplittern.
+  if ((q.tab === 'items' || q.tab === 'builds') && q.focus) {
     sp.set('f', q.focus);
-    if (q.combo !== 1) sp.set('c', String(q.combo));
+    if (q.tab === 'items' && q.combo !== 1) sp.set('c', String(q.combo));
   }
   if (q.tab === 'units' && q.stars.length) {
     if (forApi) sp.set('split', 'star');
@@ -407,8 +473,10 @@ export function toServiceBody(q: ExplorerQuery) {
       items: g.items.map(i => ({ ...itemBody(i), x: false })),
       traits: g.traits.map(t => ({ ...traitBody(t), x: false })),
     })),
+    bc: canonBoardCounts(q.bc ?? []).map(e => ({ k: e.k, n: e.n ?? null, nx: e.nx ?? null })),
+    tags: canonTags(q.tags ?? []),
     tab: q.tab,
-    focus: q.tab === 'items' ? q.focus : null,
+    focus: q.tab === 'items' || q.tab === 'builds' ? q.focus : null,
     split: q.tab === 'units' && q.stars.length ? 'star' : q.tab === 'traits' && q.split === 'over' ? 'over' : null,
     combo: q.tab === 'items' && q.focus ? q.combo : 1,
   };
@@ -448,6 +516,19 @@ export interface ExplorerResponse {
   headDelta: { dOut: number | null; dOutHalf: number | null; dBase: number | null; dBaseHalf: number | null } | null;
   rows: ExplorerRow[] | null;
   refGames: number | null;
+  /** Nur Spiele-Reiter: die neuesten Bretter der Auswahl. */
+  games?: ExplorerGame[];
+}
+
+export interface ExplorerGame {
+  /** Spielende, Sekunden seit 1970 (UTC). */
+  ts: number;
+  placement: number; level: number; round: number;
+  patch: string | null; region: string; rank: string | null;
+  /** Riot-ID und Profil-Link; null, wenn der Name unbekannt ist. */
+  player: { name: string; tag: string; href: string } | null;
+  units: { id: string; s: number; it: string[] }[];
+  traits: { id: string; l: number; n: number }[];
 }
 
 // Blass darstellen: zu wenige Partien oder zu breiter Vertrauensbereich

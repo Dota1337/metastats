@@ -14,11 +14,13 @@ import {
 } from './explorer-options';
 import { DeltaToggle, deltaClass, type DeltaMode } from './ExplorerSummary';
 import { RANK_LABEL } from './ExplorerScope';
+import ExplorerGames from './ExplorerGames';
 
 const TAB_LABEL: Record<ExplorerTab, TranslationKey> = {
-  units: 'tft.explorer.x.tab.units', items: 'tft.explorer.x.tab.items', traits: 'tft.explorer.x.tab.traits',
-  comps: 'tft.explorer.x.tab.comps', level: 'tft.explorer.x.tab.level', round: 'tft.explorer.x.tab.round',
-  gold: 'tft.explorer.x.tab.gold', region: 'tft.explorer.x.tab.region', rank: 'tft.explorer.x.tab.rank',
+  units: 'tft.explorer.x.tab.units', items: 'tft.explorer.x.tab.items', builds: 'tft.explorer.x.tab.builds',
+  traits: 'tft.explorer.x.tab.traits', comps: 'tft.explorer.x.tab.comps', level: 'tft.explorer.x.tab.level',
+  round: 'tft.explorer.x.tab.round', gold: 'tft.explorer.x.tab.gold', region: 'tft.explorer.x.tab.region',
+  rank: 'tft.explorer.x.tab.rank', games: 'tft.explorer.x.tab.games',
 };
 
 type SortKey = 'games' | 'share' | 'avg' | 'top4' | 'top1' | 'delta' | 'star3' | 'key';
@@ -41,7 +43,7 @@ const NUMERIC_TABS: ExplorerTab[] = ['level', 'round', 'gold', 'rank'];
 // Runde: wann man ausscheidet, bestimmt den Platz — ein Delta sagt nichts.
 // Region: die Abweichung misst, wie viele Spieler je Lobby wir erfassen.
 // Level: Ergebnis-Groesse wie die Runde (hoeheres Level = laenger ueberlebt).
-const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region', 'level'];
+const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region', 'level', 'games'];
 
 export default function ExplorerResults({
   query, setQuery, backToUnits, data, dataQuery, options, assets, deltaMode, setDeltaMode,
@@ -74,6 +76,7 @@ export default function ExplorerResults({
   const rowsFit = !!dataQuery && dataQuery.tab === tab && (
     tab === 'units' ? starData === query.stars.length > 0
     : tab === 'items' ? dataQuery.focus === query.focus && dataQuery.combo === query.combo
+    : tab === 'builds' ? dataQuery.focus === query.focus
     : tab === 'traits' ? (dataQuery.split === 'over') === (query.split === 'over')
     : true);
   const stars = rowsFit && starData ? query.stars : [];
@@ -87,7 +90,7 @@ export default function ExplorerResults({
   const labelOf = (r: ExplorerRow): string => {
     switch (tab) {
       case 'units': return unitName(options, assets, r.key) + (r.sub && !grouped ? ` ${r.sub}★` : '');
-      case 'items': return r.key.split('|').map(i => itemName(options, assets, i)).join(' + ');
+      case 'items': case 'builds': return r.key.split('|').map(i => itemName(options, assets, i)).join(' + ');
       case 'traits': {
         const m = r.sub ? traitMin(options, assets, r.key, r.sub) : null;
         return `${traitName(options, assets, r.key)}${m != null ? ` ${m}` : ''}${r.sub2 ? ` +${r.sub2}` : ''}`;
@@ -149,7 +152,11 @@ export default function ExplorerResults({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, rowsFit, stars.join(), minGames, sort, tab, deltaMode, options, assets, lang, t4, t1]);
 
-  const setTab = (next: ExplorerTab) => setQuery({ ...query, tab: next });
+  // Builds brauchen einen Traeger: ohne Auswahl die erste Unit aus den Filtern.
+  const setTab = (next: ExplorerTab) => setQuery({
+    ...query, tab: next,
+    focus: next === 'builds' && !query.focus ? (query.units.find(u => !u.x)?.id ?? null) : query.focus,
+  });
 
   // Kopf der ersten Spalte = worum es im Reiter geht (Item-Paare/-Trios mit Traeger).
   const keyHeader: TranslationKey = tab === 'items' && query.focus && query.combo > 1
@@ -163,7 +170,7 @@ export default function ExplorerResults({
       case 'units':
         if (query.units.some(u => u.id === r.key) || query.units.length >= 9 || left < 1) return null;
         return () => setQuery({ ...query, units: [...query.units, r.sub ? { id: r.key, s: r.sub, sx: r.sub } : { id: r.key }] });
-      case 'items': {
+      case 'items': case 'builds': {
         const ids = r.key.split('|');
         if (query.focus) {
           const f = query.focus;
@@ -225,7 +232,7 @@ export default function ExplorerResults({
       const cost = options.unitById.get(r.key)?.cost ?? 1;
       const src = unitImg(options, assets, r.key);
       icons = src ? <img src={src} alt="" loading="lazy" className="w-7 h-7 rounded object-cover" style={{ boxShadow: `inset 0 0 0 1.5px ${costColor(cost)}` }} /> : null;
-    } else if (tab === 'items') {
+    } else if (tab === 'items' || tab === 'builds') {
       icons = <span className="flex gap-0.5">{r.key.split('|').map(i => { const s = itemImg(options, assets, i); return s ? <img key={i} src={s} alt="" loading="lazy" className="w-6 h-6 rounded" /> : null; })}</span>;
     } else if (tab === 'traits' || tab === 'comps') {
       const id = tab === 'traits' ? r.key : r.key.split('__')[0];
@@ -265,7 +272,7 @@ export default function ExplorerResults({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-border-subtle">
+      {tab !== 'games' && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-border-subtle">
         {tab === 'units' && (
           <div className="flex items-center gap-1">
             <span className="text-xs text-fg-muted mr-1">{t('tft.explorer.x.split.star')}</span>
@@ -294,7 +301,7 @@ export default function ExplorerResults({
             {'←'} {t('tft.explorer.x.tab.units')}
           </button>
         )}
-        {tab === 'items' && (
+        {(tab === 'items' || tab === 'builds') && (
           <label className="flex items-center gap-2">
             <span className="text-xs text-fg-muted">{t('tft.explorer.x.focus')}</span>
             <select value={query.focus ?? ''} onChange={e => setQuery({ ...query, focus: e.target.value || null, combo: 1 })}
@@ -321,9 +328,11 @@ export default function ExplorerResults({
             {MIN_GAMES.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
-      </div>
+      </div>}
 
-      <div className="overflow-x-auto">
+      {tab === 'games' ? (
+        <ExplorerGames games={rowsFit ? (data?.games ?? []) : null} options={options} assets={assets} />
+      ) : <div className="overflow-x-auto">
         <table className="w-full text-xs tabular-nums">
           <thead className="text-fg-muted">
             <tr className="border-b border-border-subtle">
@@ -398,7 +407,7 @@ export default function ExplorerResults({
             )}
           </tbody>
         </table>
-      </div>
+      </div>}
     </div>
   );
 }

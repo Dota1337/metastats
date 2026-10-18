@@ -18,7 +18,7 @@ import { isExcludedItem, isExcludedUnit } from '../tft-excluded';
 import { coreFromListRow, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
 import { lookupDetailBuildsStock } from '../tft-detail-builds';
 import {
-  compsOfTrait, compsWithItem, compsWithUnit, detailFiltersFrom, detailKey, sharedComponentItems,
+  compsOfTrait, compsWithItem, detailFiltersFrom, detailKey, sharedComponentItems,
   traitFiltersFrom, traitIdsForParam,
 } from '../tft-detail-filters';
 import { sortUnitsRareLast } from '../tft-list-sort';
@@ -28,6 +28,7 @@ import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
 import { subsetBundle } from './initial-data';
+import { dataEndOf, familyRowsFor, leanCompRow, unitListFamilies, type CompApiRow } from '../tft-comp-families';
 
 const BUDGET_MS = 1500;
 // Vorgerechnete Staende je Filter, nicht je Seite: viele Detailseiten lesen
@@ -98,13 +99,10 @@ export interface UnitDetailInitial {
   key: string;
   /** Antwort von /api/tft/units?id=… */
   detail: { hasData?: boolean; unit?: unknown } | null;
-  /** Die ersten 6 Comps mit dieser Unit, wie aus /api/tft/comps gefiltert. */
-  comps: CompRef[] | null;
+  /** Zeilen von /api/tft/comps, die die Comps-Familien mit dieser Unit bilden
+   *  (unitListFamilies), schlank wie in der Liste; dataEnd wie die Antwort. */
+  comps: { rows: CompApiRow[]; dataEnd: string | null } | null;
   assets: TftAssetsBundle;
-}
-
-function compRef(c: Record<string, any>): CompRef {
-  return { slug: c.slug, clusterKey: c.clusterKey, games: c.games, avgPlacement: c.avgPlacement, top4Rate: c.top4Rate };
 }
 
 export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<UnitDetailInitial | null> {
@@ -131,8 +129,9 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
       filterSet: r.setNumber, filterPatch: r.patch,
     }, stock ? (stock.units[id] ?? null) : 'pending').body;
   }
-  const compRows = listRows(compsSnap, 'comps');
-  const comps = compRows ? compsWithUnit(compRows, id).map(compRef) : null;
+  const compRows = listRows(compsSnap, 'comps') as CompApiRow[] | null;
+  const famRows = compRows ? familyRowsFor(compRows, list => unitListFamilies(list, bundle, id), leanCompRow) : null;
+  const comps = famRows ? { rows: famRows, dataEnd: dataEndOf(compsSnap?.filters) } : null;
   if (!detail && !comps) return null;
 
   const unit = (detail?.unit ?? null) as Record<string, any> | null;
@@ -148,10 +147,15 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
       for (const slot of Object.values(slots || {}) as any[]) for (const e of slot?.entries || []) items.add(e.item);
     }
   }
-  for (const c of comps || []) {
+  // Die Comp-Zeilen zeigen Units, ihre Items, Embleme und den Familien-Trait.
+  for (const c of comps?.rows || []) {
     const p = unitIdsOfComp(c.clusterKey);
     if (p.trait) traitIds.add(p.trait);
     for (const ch of p.champions) champions.add(ch);
+    for (const u of c.typicalUnits || []) {
+      champions.add(u.characterId);
+      for (const it of u.topItems || []) items.add(it.apiName);
+    }
   }
   return {
     key: detailKey(id, f),
@@ -167,6 +171,10 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
 }
 
 // ---------- Item ----------
+
+function compRef(c: Record<string, any>): CompRef {
+  return { slug: c.slug, clusterKey: c.clusterKey, games: c.games, avgPlacement: c.avgPlacement, top4Rate: c.top4Rate };
+}
 
 export interface ItemCompRef extends CompRef {
   carryItems: { items: string[]; count: number }[];

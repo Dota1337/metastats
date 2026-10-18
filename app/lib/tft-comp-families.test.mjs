@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   attachPatchDeltas, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
+  familyShowsUnit, SHOWN_BOARD_UNITS,
 } from './tft-comp-families.ts';
 import { compTraitFamilyKey } from './tft-cluster.ts';
 import { buildPatchDeltaIndex } from './tft-patch-delta.ts';
@@ -122,4 +123,13 @@ test('Core/Flex: zusammengelegte Variante zaehlt alle Gruppenzeilen, Hauptzeile 
   assert.equal(f.totalGames, 200);
   assert.equal(f.mainComp._mergedFromBuilds?.length, 2);
   assert.deepEqual(f.mainComp.coreFlex, { DA_C: 'core', A: 'flex', B: 'core' });
+});
+
+test('familyShowsUnit: nur die meistgespielten Units des gezeigten Bretts zaehlen', () => {
+  const units = Array.from({ length: 11 }, (_, i) => ({ characterId: 'U' + i, count: 100 - i }));
+  const fam = { mainComp: { typicalUnits: units.slice().reverse() } };
+  assert.equal(familyShowsUnit(fam, 'U0'), true);
+  assert.equal(familyShowsUnit(fam, 'U' + (SHOWN_BOARD_UNITS - 1)), true);
+  assert.equal(familyShowsUnit(fam, 'U' + SHOWN_BOARD_UNITS), false);
+  assert.equal(familyShowsUnit({ mainComp: {} }, 'U0'), false);
 });

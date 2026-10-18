@@ -46,7 +46,7 @@ import {
   isAdvActive,
   type AdvancedFilters,
 } from '../components/tft/AdvancedCompFilters';
-import { attachPatchDeltas, buildCompFamilies, currentSetFamilies, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
+import { attachPatchDeltas, buildCompFamilies, currentSetFamilies, dataEndOf, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
 import { usePatchDelta } from './usePatchDelta';
 import type { PatchDeltaStart } from './tft-patch-delta';
 
@@ -63,12 +63,6 @@ interface Loaded {
   dataEnd: string | null;
 }
 
-// Endtag der Antwort (volle Tage, filters.dataEnd). Folgeabfragen der Liste
-// (Aufstellungsbrett) rechnen damit ueber dieselben Tage.
-function dataEndOf(filters: unknown): string | null {
-  const v = (filters as { dataEnd?: unknown } | null | undefined)?.dataEnd;
-  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
-}
 
 export function useTftCompsData({ initialFilters, initial = null, wantFull = false, deltaAlways = false, initialDelta = null }: {
   /** Liste: Filter der Server-Ansicht (Adresse + vom Server bestimmter Rang). */

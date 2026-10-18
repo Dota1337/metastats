@@ -294,7 +294,7 @@ const uniqBy = <T extends { id: string }>(arr: (T | null)[]) => {
 
 // Alte Rang-Stufen (TierFilter) auf die Raenge im Speicher abbilden. Unter
 // Smaragd gibt es im Speicher nichts, daher "emerald_plus oder tiefer" = alle fuenf.
-function legacyBucketToRanks(bucket: string | null): ExplorerRank[] {
+export function legacyBucketToRanks(bucket: string | null): ExplorerRank[] {
   switch (bucket) {
     case 'challenger': return ['CHALLENGER'];
     case 'grandmaster_plus': return ['CHALLENGER', 'GRANDMASTER'];

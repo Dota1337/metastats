@@ -42,6 +42,8 @@ const nextConfig: NextConfig = {
     '/api/tft/positions/by-units': ['./public/tft-metatft-boards-*.json'],
     // Item-Infotext im ersten HTML (tft-item-texts-server.ts), Name am Set.
     '/tft/items/[id]': ['./public/tft-item-texts-*.json'],
+    // Faehigkeit + Grundwerte im ersten HTML (tft-unit-info-server.ts), Name am Set.
+    '/tft/units/[id]': ['./public/tft-unit-info-*.json'],
   },
   // Wochendateien (public/tft-stats-<region>.json) kommen in jede Funktion,
   // die loadTftStats erreicht — der Dateiname steht erst zur Laufzeit fest.

@@ -80,11 +80,6 @@ interface CompRow {
   carryItems?: { items?: string[] }[];
 }
 
-/** Unit-Detail: die ersten 6 Comps mit der Unit im typischen Board. */
-export function compsWithUnit<T extends CompRow>(rows: T[], id: string): T[] {
-  return rows.filter(c => (c.typicalUnits || []).some(u => u.characterId === id)).slice(0, 6);
-}
-
 /** Item-Detail: ALLE Comps, deren Carry-Items das Item enthalten (die Seite rechnet daraus Combos). */
 export function compsWithItem<T extends CompRow>(rows: T[], id: string): T[] {
   return rows.filter(c => (c.carryItems || []).some(ci => (ci.items || []).includes(id)));

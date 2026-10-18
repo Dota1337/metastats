@@ -391,6 +391,29 @@ export function standardListFamilies(rows: CompApiRow[], assets: TftAssetsBundle
   return visibleFamilies(families, topFamilyKeys(families), '', assets);
 }
 
+// Endtag einer /api/tft/comps-Antwort (volle Tage, filters.dataEnd).
+// Folgeabfragen (Aufstellungsbrett) rechnen damit ueber dieselben Tage.
+export function dataEndOf(filters: unknown): string | null {
+  const v = (filters as { dataEnd?: unknown } | null | undefined)?.dataEnd;
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+// Unit-Detailseite (User 19.10.2026: „Comps with this unit genau so wie auf dem
+// Comps-Reiter"): die Familien der Standardansicht der Liste, deren gezeigtes
+// Brett die Unit traegt. Gezeigt wird in CompRow die Hauptvariante mit ihren
+// 9 meistgespielten Units — dieselbe Regel hier, sonst stuende eine Comp in
+// der Liste ohne die Unit auf dem Brett.
+export const SHOWN_BOARD_UNITS = 9;
+export function familyShowsUnit(f: CompFamily, unitId: string): boolean {
+  return [...(f.mainComp.typicalUnits || [])]
+    .sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0))
+    .slice(0, SHOWN_BOARD_UNITS)
+    .some(u => u.characterId === unitId);
+}
+export function unitListFamilies(rows: CompApiRow[], assets: TftAssetsBundle | null, unitId: string): CompFamily[] {
+  return standardListFamilies(rows, assets).filter(f => familyShowsUnit(f, unitId));
+}
+
 // Suche matched gegen Trait-Display-Name + Carry-Display-Name + raw apiNames.
 export function visibleFamilies(
   families: CompFamily[],
@@ -434,7 +457,17 @@ export function shownFamilyRows<T extends CompApiRow>(
   assets: TftAssetsBundle | null,
   transform: (row: T) => T = row => row,
 ): T[] | null {
-  const view = (list: T[]) => standardListFamilies(list, assets);
+  return familyRowsFor(rows, list => standardListFamilies(list, assets), transform);
+}
+
+// Wie shownFamilyRows, fuer eine beliebige Auswahl von Familien (view): die
+// Zeilen genau dieser Familien, oder null, wenn die Teildaten etwas anderes
+// zeigen wuerden.
+export function familyRowsFor<T extends CompApiRow>(
+  rows: T[],
+  view: (list: T[]) => CompFamily[],
+  transform: (row: T) => T = row => row,
+): T[] | null {
   const shown = view(rows);
   const keys = new Set<string>();
   for (const f of shown) {

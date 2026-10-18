@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   traitIdsForParam, detailFiltersFrom, traitFiltersFrom, detailKey, compDetailKey,
-  compsWithUnit, compsWithItem, compsOfTrait, sharedComponentItems,
+  compsWithItem, compsOfTrait, sharedComponentItems,
 } from './tft-detail-filters.ts';
 
 const TRAITS = {
@@ -93,12 +93,6 @@ const COMPS = [
   { slug: 'b', clusterKey: 'DA_18_Arcana@4_DA_18_Ahri', typicalUnits: [{ characterId: 'DA_18_Ahri' }, { characterId: 'DA_18_Lulu' }], carryItems: [{ items: ['Y'] }] },
   { slug: 'c', clusterKey: 'DA_18_Elderwood@7_DA_18_Maokai', typicalUnits: [{ characterId: 'DA_18_Maokai' }] },
 ];
-
-test('Comps einer Unit: typisches Board, hoechstens 6', () => {
-  assert.deepEqual(compsWithUnit(COMPS, 'DA_18_Lulu').map(c => c.slug), ['a', 'b']);
-  const many = Array.from({ length: 9 }, (_, i) => ({ slug: String(i), typicalUnits: [{ characterId: 'U' }] }));
-  assert.equal(compsWithUnit(many, 'U').length, 6);
-});
 
 test('Comps eines Items: alle mit dem Item in den Carry-Items, ohne Kappung', () => {
   assert.deepEqual(compsWithItem(COMPS, 'Y').map(c => c.slug), ['a', 'b']);

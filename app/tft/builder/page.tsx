@@ -242,14 +242,16 @@ export default function TftBuilderPage() {
   // assetsRef: Brett-Aenderungen laufen in Updatern mit festen Abhaengigkeiten
   // und brauchen fuer trimBoard das aktuelle Bundle.
   const assetsRef = useRef<TftAssetsBundle | null>(null);
-  useEffect(() => { loadTftAssets().then(a => { assetsRef.current = a; setAssets(a); }); }, []);
-  useEffect(() => { loadItemTexts().then(setItemTexts); }, []);
-  // Ein Link kann vor dem Bundle geladen sein: Pflanzen danach nachziehen.
+  // Ein Link kann vor dem Bundle geladen sein: Pflanzen mit dem Bundle nachziehen.
   useEffect(() => {
-    if (!assets) return;
-    setOwnPlacements(ps => trimBoard(assets, ps));
-    setOppPlacements(ps => trimBoard(assets, ps));
-  }, [assets]);
+    loadTftAssets().then(a => {
+      assetsRef.current = a;
+      setAssets(a);
+      setOwnPlacements(ps => trimBoard(a, ps));
+      setOppPlacements(ps => trimBoard(a, ps));
+    });
+  }, []);
+  useEffect(() => { loadItemTexts().then(setItemTexts); }, []);
 
   // Ziel-Hervorhebung endet mit jedem Ziehen, auch wenn ausserhalb losgelassen.
   useEffect(() => {

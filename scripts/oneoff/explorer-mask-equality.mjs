@@ -50,7 +50,7 @@ const addDay = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000)
 const { DuckDBInstance } = await import(pathToFileURL(DUCK).href);
 fs.mkdirSync(TMP, { recursive: true });
 const P = (f) => path.join(TMP, f);
-const TAGS = ['S', 'R', 'A', 'P', 'N', 'G', 'work'];
+const TAGS = ['S', 'R', 'A', 'P', 'N', 'G', 'K', 'work'];
 const dbFile = (tag) => P(`${tag}.duckdb`);
 const files = (tag) => ({ maskwork: P(`${tag}.maskwork`), masktry: P(`${tag}.masktry`) });
 const rmTag = (tag) => {
@@ -381,6 +381,43 @@ try {
   expect(await num('SELECT count(*)::DOUBLE AS v FROM outdb.agg_probe') === 1000, 'G AGG_MASKS=0: Probe-Tabelle veraendert');
   await exec('DROP TABLE IF EXISTS nb0');
   await exec('DETACH outdb');
+
+  // ── K: Abbrueche beim Rechnen behalten die gedeckten Tage ────────────────
+  // 18.10.2026 leerte ein Speicher-Abbruch in der Block-Kopie alle Masken.
+  const failOn = (re, nth = 1) => {
+    let k = 0;
+    return async (s) => {
+      if (re.test(s) && ++k === nth) throw new Error('Out of Memory Error: Test-Abbruch');
+      return exec(s);
+    };
+  };
+  await open('K');
+  const rK0 = await run('K', 'K Vollaufbau', { mode: 'full', win: win(D[0]) });
+  want('K Vollaufbau', rK0, { token: true, covered: 6, total: 6, failed: 0, alarms: 0 });
+  await setToken(rK0.token);
+  // D0 entdecken wie uncover: erst die Deckung, dann die Masken-Zeilen.
+  for (const t of ['mask_days', ...MASK_DATA_TABLES]) await exec(`DELETE FROM outdb.${t} WHERE day = DATE '${D[0]}'`);
+  await exec('CREATE OR REPLACE TABLE nb0 AS SELECT bid, mid, day FROM outdb.boards WHERE false');
+  const rK1 = await run('K', 'K Kopie bricht ab', {
+    mode: 'delta', win: win(D[0]), newBoards: 'nb0', exec: failOn(/^CREATE TABLE mw\.ud /),
+  });
+  want('K Kopie bricht ab', rK1, { token: true, reason: null, covered: 5, total: 6, newDays: 0, failed: 0, alarms: 1 });
+  expect(rK1.alarms.some((a) => a.includes('Test-Abbruch')), 'K Kopie: Alarm fehlt');
+  expect(await countMaskRows(` WHERE day = DATE '${D[0]}'`) === 0, 'K Kopie: Masken-Zeilen fuer den offenen Tag');
+  await compare('K', D.slice(1));
+  await setToken(rK1.token);
+
+  // ui bricht beim zweiten Tag ab: D0 wird gerechnet, D5 nachgerechnet, D1–D4
+  // behalten den alten Stand.
+  const rK2 = await run('K', 'K ui bricht ab', {
+    mode: 'delta', win: win(D[0]), newBoards: 'nb0', compHash: 'neu', exec: failOn(/^\s*UPDATE outdb\.mask_days SET comp_hash/, 2),
+  });
+  want('K ui bricht ab', rK2, { token: true, reason: null, covered: 6, total: 6, newDays: 1, uiRedone: 1, failed: 0, alarms: 1 });
+  expect(rK2.alarms.some((a) => a.includes('Test-Abbruch')), 'K ui: Alarm fehlt');
+  expect(await num(`SELECT count(*)::DOUBLE AS v FROM outdb.mask_days WHERE comp_hash = 'neu'`) === 2, 'K ui: nicht genau D0 und D5 neu');
+  await compare('K', D.slice(1, 5));
+  await exec('DROP TABLE IF EXISTS nb0');
+  await exec('DETACH outdb');
 } catch (e) {
   ok = false;
   log(`FEHLER: ${e.stack ?? e.message}`);
@@ -395,5 +432,5 @@ try {
     try { fs.rmSync(P('spill'), { recursive: true, force: true }); } catch { /* egal */ }
   }
 }
-log(ok ? 'GLEICH — Teil-Aufbau, Uebernahme und Verstoesse verhalten sich wie geplant' : 'NICHT GLEICH');
+log(ok ? 'GLEICH — Teil-Aufbau, Uebernahme, Verstoesse und Abbrueche verhalten sich wie geplant' : 'NICHT GLEICH');
 process.exit(ok ? 0 : 1);

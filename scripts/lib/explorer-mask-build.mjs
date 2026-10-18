@@ -7,7 +7,12 @@
 // Reihenfolge Pflicht-Summen > fehlende Summen > Masken: der Schritt laeuft
 // erst nach aggStep und rechnet neue Tage nur im Rest des Teilsummen-Budgets
 // (gezaehlt ab deren Start), im Vollaufbau nie ueber den Laufzeit-Alarm
-// (capMs). Ein Masken-Fehler leert nur die Masken, nie die Summen.
+// (capMs). Ein Masken-Fehler leert nur die Masken, nie die Summen — und nur,
+// wenn danach Masken-Zeilen ohne Deckung liegen koennten (Schritte 1–5, 8).
+// Ein Fehler beim Rechnen neuer Tage (6) oder bei ui (7) haelt nur an: jede
+// Masken-Aenderung dort ist eine eigene Transaktion, die gedeckten Tage
+// bleiben gueltig (18.10.2026 warf ein Speicher-Abbruch in der Block-Kopie
+// alle 36 gedeckten Tage weg).
 //
 // DuckDB-Regeln wie in explorer-agg-build.mjs: jede Transaktion schreibt nur
 // in outdb, im Fehlerfall ausdrueckliches ROLLBACK. Invariante: Masken-Zeilen
@@ -78,6 +83,32 @@ export async function maskStep({
     return res;
   };
   const budgetS = aggBudgetS(budgetRaw);
+  // CHECKPOINT gibt die Loesch-Vermerke frei: DuckDB 1.5.6 haelt je teilweise
+  // geloeschtem 2048er-Block ein festes 16-KiB-Feld bis zum naechsten
+  // Checkpoint (row_version_manager.cpp; frei erst in CompressVersionInfo).
+  // mask_um/mask_uk sind nach (day, unit|item, mid) sortiert, ein
+  // Nachzug-DELETE nach mid trifft also fast jeden Block des Tages — 18.10.2026
+  // war der Speicher nach dem Nachzug voll und die erste Block-Kopie brach nach
+  // 2,4 s ab. Der automatische Checkpoint kommt erst ab 16 MB WAL. Kostet
+  // 0,2–0,6 s; scheitert er, geht es ohne weiter.
+  const checkpoint = async (where) => {
+    try { await exec(`CHECKPOINT ${o}`); } catch (e) { log(`Masken: CHECKPOINT ${where} gescheitert (${e.message})`); }
+  };
+  // Speicher-Zeile: die vier groessten Posten + WAL der Explorer-Datei.
+  const memLog = async (label) => {
+    try {
+      const top = await all('SELECT tag, memory_usage_bytes::DOUBLE AS b FROM duckdb_memory() ORDER BY memory_usage_bytes DESC LIMIT 4');
+      const wal = (await all(`SELECT wal_size::VARCHAR AS w FROM pragma_database_size() WHERE database_name = ${lit(o)}`))[0]?.w ?? '?';
+      log(`Masken: Speicher ${label}: ${top.map((r) => `${r.tag} ${Math.round(Number(r.b) / 2 ** 20)} MB`).join(', ')}, WAL ${wal}`);
+    } catch (e) {
+      log(`Masken: Speicher ${label} nicht messbar (${e.message})`);
+    }
+  };
+  const relieve = async (label) => {
+    await memLog(`${label}, vorher`);
+    await checkpoint(label);
+    await memLog(`${label}, nachher`);
+  };
 
   try {
     if (!maskEnabled(masksEnv)) {
@@ -142,6 +173,8 @@ export async function maskStep({
     log(`Masken: Tag ${d} nicht gedeckt — ${why}`);
   };
   try {
+    // Teilsummen davor loeschen ebenfalls (ohne eigenen CHECKPOINT).
+    await relieve('Start');
     // 1) Generation. Teil-Aufbau: Masken der Arbeitskopie nur, wenn
     //    Rechenweg und Kennung passen. Vollaufbau mit Uebernahme: Tage mit
     //    gleichem Fingerabdruck aus der vorigen Datei kopieren (nur im Budget).
@@ -226,8 +259,12 @@ export async function maskStep({
       const pdays = await col('SELECT DISTINCT day::VARCHAR AS v FROM mk_pm ORDER BY 1 DESC');
       const late = [];
       let stop = false;
+      let dirty = false;
       for (const d of pdays) {
         if (stop || now() >= hardMs) { late.push(d); continue; }
+        // Loesch-Vermerke des Vortags freigeben (siehe checkpoint).
+        if (dirty) await checkpoint('Nachzug');
+        dirty = true;
         const D = dLit(d);
         const oldFp = (await all(`SELECT fp FROM ${o}.mask_days WHERE day = ${D}`))[0]?.fp;
         const fullFp = maskFpAdd(oldFp, nfp.get(d) ?? MASK_FP_EMPTY);
@@ -256,6 +293,7 @@ export async function maskStep({
           stop = true;
         }
       }
+      if (dirty) await checkpoint('Nachzug');
       if (late.length) {
         await uncover(late);
         if (!stop) log(`Masken: Frist fuer das Nachziehen erreicht — ${late.length} Tage entdeckt (${late.join(', ')})`);
@@ -291,53 +329,70 @@ export async function maskStep({
         break;
       }
       const block = queue.splice(0, BLOCK_DAYS);
+      const span = `${block[block.length - 1]}..${block[0]}`;
+      await relieve(`vor Kopie ${span}`);
       const tb = now();
-      await exec('DETACH DATABASE IF EXISTS mw');
-      for (const f of [files.maskwork, `${files.maskwork}.wal`]) fs.rmSync(f, { force: true });
-      await exec(`ATTACH ${lit(files.maskwork)} AS mw`);
-      const IN = inList(block);
-      await exec(`CREATE TABLE mw.bd AS SELECT bid, mid, day, placement FROM ${o}.boards WHERE day IN (${IN}) ORDER BY day, mid`);
-      await exec(`CREATE TABLE mw.ud AS SELECT b.day, u.bid, ${cols(UNIT_COLS, 'u')}
-        FROM ${o}.units u JOIN mw.bd b USING (bid) ORDER BY b.day, u.bid`);
-      await exec(`CREATE TABLE mw.td AS SELECT b.day, t.bid, ${cols(TRAIT_COLS, 't')}
-        FROM ${o}.traits t JOIN mw.bd b USING (bid) ORDER BY b.day, t.bid`);
-      const copyS = (now() - tb) / 1000;
-      maxCopyS = Math.max(maxCopyS, copyS);
+      let copyS = null;
       const done = [];
-      for (const d of block) {
-        if (now() >= deadlineMs) { stop = true; break; }
-        const D = dLit(d);
-        for (const [view, src] of [['mk_b', 'mw.bd'], ['mk_u', 'mw.ud'], ['mk_t', 'mw.td']]) {
-          await exec(`CREATE OR REPLACE TEMP VIEW ${view} AS SELECT * FROM ${src} WHERE day = ${D}`);
+      // Kopie, Pruefungen, recordFail und Aufraeumen: ein anderer Fehler als
+      // ein Pruefungs-Verstoss beendet nur das Rechnen neuer Tage. Die Kopie
+      // schreibt nur in mw, jede Masken-Aenderung ist eine eigene Transaktion.
+      try {
+        await exec('DETACH DATABASE IF EXISTS mw');
+        for (const f of [files.maskwork, `${files.maskwork}.wal`]) fs.rmSync(f, { force: true });
+        await exec(`ATTACH ${lit(files.maskwork)} AS mw`);
+        const IN = inList(block);
+        await exec(`CREATE TABLE mw.bd AS SELECT bid, mid, day, placement FROM ${o}.boards WHERE day IN (${IN}) ORDER BY day, mid`);
+        await exec(`CREATE TABLE mw.ud AS SELECT b.day, u.bid, ${cols(UNIT_COLS, 'u')}
+          FROM ${o}.units u JOIN mw.bd b USING (bid) ORDER BY b.day, u.bid`);
+        await exec(`CREATE TABLE mw.td AS SELECT b.day, t.bid, ${cols(TRAIT_COLS, 't')}
+          FROM ${o}.traits t JOIN mw.bd b USING (bid) ORDER BY b.day, t.bid`);
+        copyS = (now() - tb) / 1000;
+        maxCopyS = Math.max(maxCopyS, copyS);
+        for (const d of block) {
+          if (now() >= deadlineMs) { stop = true; break; }
+          const D = dLit(d);
+          for (const [view, src] of [['mk_b', 'mw.bd'], ['mk_u', 'mw.ud'], ['mk_t', 'mw.td']]) {
+            await exec(`CREATE OR REPLACE TEMP VIEW ${view} AS SELECT * FROM ${src} WHERE day = ${D}`);
+          }
+          const fp = (await maskFp(all, names)).get(d) ?? MASK_FP_EMPTY;
+          const why = bad.get(d) ?? (await maskCheckG(all, names)).get(d);
+          if (why) { await recordFail(d, fp, why); continue; }
+          try {
+            await tx([
+              ...[...DAY_TABLES, 'mask_fail'].map((t) => `DELETE FROM ${o}.${t} WHERE day = ${D}`),
+              ...['mask_um', 'mask_uk', 'mask_ut'].map((t) => `INSERT INTO ${o}.${t} BY NAME ${maskSql(t, names)}`),
+              `INSERT INTO ${o}.mask_ui BY NAME ${maskSql('mask_ui', { uk: `(SELECT * FROM ${o}.mask_uk WHERE day = ${D})`, compList })}`,
+              `INSERT INTO ${o}.mask_days VALUES (${D}, ${lit(fp)}, ${lit(compHash)})`,
+            ], () => maskCheckH(all, { o, D, b: 'mk_b', u: 'mk_u', t: 'mk_t', compList }));
+            covered.add(d);
+            done.push(d);
+          } catch (e) {
+            if (e.check) { await recordFail(d, fp, e.message); continue; }
+            res.alarms.push(`Masken: Tag ${d} gescheitert: ${e.message}`);
+            log(`Masken: Tag ${d} gescheitert (${e.message}) — keine weiteren Tage in diesem Lauf`);
+            stop = true;
+            break;
+          }
         }
-        const fp = (await maskFp(all, names)).get(d) ?? MASK_FP_EMPTY;
-        const why = bad.get(d) ?? (await maskCheckG(all, names)).get(d);
-        if (why) { await recordFail(d, fp, why); continue; }
-        try {
-          await tx([
-            ...[...DAY_TABLES, 'mask_fail'].map((t) => `DELETE FROM ${o}.${t} WHERE day = ${D}`),
-            ...['mask_um', 'mask_uk', 'mask_ut'].map((t) => `INSERT INTO ${o}.${t} BY NAME ${maskSql(t, names)}`),
-            `INSERT INTO ${o}.mask_ui BY NAME ${maskSql('mask_ui', { uk: `(SELECT * FROM ${o}.mask_uk WHERE day = ${D})`, compList })}`,
-            `INSERT INTO ${o}.mask_days VALUES (${D}, ${lit(fp)}, ${lit(compHash)})`,
-          ], () => maskCheckH(all, { o, D, b: 'mk_b', u: 'mk_u', t: 'mk_t', compList }));
-          covered.add(d);
-          done.push(d);
-        } catch (e) {
-          if (e.check) { await recordFail(d, fp, e.message); continue; }
-          res.alarms.push(`Masken: Tag ${d} gescheitert: ${e.message}`);
-          log(`Masken: Tag ${d} gescheitert (${e.message}) — keine weiteren Tage in diesem Lauf`);
-          stop = true;
-          break;
+        for (const v of ['mk_b', 'mk_u', 'mk_t']) await exec(`DROP VIEW IF EXISTS ${v}`);
+        await exec('DETACH DATABASE IF EXISTS mw');
+        for (const f of [files.maskwork, `${files.maskwork}.wal`]) fs.rmSync(f, { force: true });
+      } catch (e) {
+        res.alarms.push(`Masken: Block ${span} gescheitert: ${e.message}`);
+        log(`Masken: Block ${span} gescheitert (${e.message}) — keine weiteren neuen Tage, gedeckte Tage bleiben`);
+        stop = true;
+        for (const v of ['mk_b', 'mk_u', 'mk_t']) {
+          try { await exec(`DROP VIEW IF EXISTS ${v}`); } catch { /* finally raeumt */ }
         }
+        try { await exec('DETACH DATABASE IF EXISTS mw'); } catch { /* finally raeumt */ }
       }
-      const calcS = (now() - tb) / 1000 - copyS;
+      const totalS = (now() - tb) / 1000;
+      const calcS = copyS == null ? 0 : totalS - copyS;
       res.newDays += done.length;
-      res.copyS += copyS;
+      res.copyS += copyS ?? totalS;
       res.calcS += calcS;
-      log(`Masken: ${done.length} Tage ${block[block.length - 1]}..${block[0]} (Kopie ${copyS.toFixed(1)} s, Rechnen ${calcS.toFixed(1)} s)`);
-      for (const v of ['mk_b', 'mk_u', 'mk_t']) await exec(`DROP VIEW IF EXISTS ${v}`);
-      await exec('DETACH DATABASE IF EXISTS mw');
-      for (const f of [files.maskwork, `${files.maskwork}.wal`]) fs.rmSync(f, { force: true });
+      log(`Masken: ${done.length} Tage ${span} (Kopie ${(copyS ?? totalS).toFixed(1)} s${copyS == null ? ' abgebrochen' : ''}, Rechnen ${calcS.toFixed(1)} s)`);
     }
 
     // 7) Komponenten-Wechsel (niedrigste Stufe): ui der Tage mit anderem
@@ -348,6 +403,7 @@ export async function maskStep({
     let uiBad = 0;
     for (const d of uiDays) {
       if (now() >= deadlineMs) { uiLate = uiDays.length - res.uiRedone - uiBad; break; }
+      await checkpoint('ui');
       const D = dLit(d);
       // Verstoss: Tag behaelt den alten Stand (ui zaehlt im Dienst nicht), Rest laeuft weiter.
       const redo = () => tx([
@@ -364,7 +420,14 @@ export async function maskStep({
         await redo();
         res.uiRedone++;
       } catch (e) {
-        if (!e.check) throw e;
+        if (!e.check) {
+          // Transaktion zurueckgerollt: der Tag und alle danach behalten den
+          // alten Stand (zaehlen im Dienst ohnehin nicht).
+          uiLate = uiDays.length - res.uiRedone - uiBad;
+          res.alarms.push(`Masken: ui ${d} gescheitert: ${e.message}`);
+          log(`Masken: ui ${d} gescheitert (${e.message}) — keine weiteren ui-Tage in diesem Lauf`);
+          break;
+        }
         uiBad++;
         res.alarms.push(`Masken: ui ${d} nicht nachgerechnet: ${e.message}`);
         log(`Masken: ui ${d} nicht nachgerechnet (${e.message})`);
@@ -372,7 +435,8 @@ export async function maskStep({
     }
     if (uiLate) log(`Masken: ui fuer ${uiLate} Tage mit altem Komponenten-Stand offen`);
 
-    // 8) Invariante, Kennung.
+    // 8) Invariante, Kennung. Scheitert sie, wird geleert — vorher Speicher frei.
+    await checkpoint('vor Pruefung');
     const tInv = now();
     const orphan = await n(`SELECT count(*) AS n FROM (${MASK_DATA_TABLES.map((t) => `SELECT DISTINCT day FROM ${o}.${t}`).join(' UNION ')}) x
       WHERE day NOT IN (SELECT day FROM ${o}.mask_days)`);

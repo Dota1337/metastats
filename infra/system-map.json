@@ -1390,6 +1390,9 @@
     "metastats-lol-builds-publish.service": [
       "lol-builds/blob-frische"
     ],
+    "metastats-meta-pulse-diffs.service": [
+      "meta-pulse/patch-diff-frische"
+    ],
     "metastats-mirror-rising.service": [
       "mirror/rising/index-frische"
     ],

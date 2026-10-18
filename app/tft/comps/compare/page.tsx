@@ -16,6 +16,7 @@ import type { CompareTrendPoint } from '../../../components/tft/CompareTrendChar
 import { familyKeyForMerge } from '../../../lib/tft-comp-family-merge';
 import { familyParts, MATCHUP_MIN_N, type MatchupVerdict } from '../../../lib/tft-comp-matchups';
 import { compPath } from '../../../lib/tft-comp-path';
+import { computeRoles, componentCheckFromItems, namedCarries, sortUnitsByImportance } from '../../../lib/tft-comp-roles';
 
 // Comp-Comparison-View — zwei Comps nebeneinander. Zugang via URL-Param
 // `?a=<slug>&b=<slug>` oder Compare-Button der Liste.
@@ -597,6 +598,16 @@ function CompPanel({
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
   const accentColor = side === 'a' ? COLOR_A : COLOR_B;
+  // Dieselben 9 Units wie bisher (und wie sharedIds), nach Wichtigkeit wie in
+  // der Comp-Liste (User 18.10.2026, sortUnitsByImportance).
+  const isComponent = componentCheckFromItems(assets?.items);
+  const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
+  const board = sortUnitsByImportance((comp.typicalUnits || []).slice(0, BOARD_UNITS), roles, namedCarries(roles, parts?.carry), {
+    set: assets?.set,
+    isComponent,
+    costOf: cid => assets?.champions[cid]?.cost ?? 1,
+    nameOf: cid => (assets?.champions[cid]?.name || cid).toLowerCase(),
+  });
   return (
     <div
       className="bg-surface-base border rounded p-4"
@@ -615,7 +626,7 @@ function CompPanel({
       </div>
       {comp.typicalUnits && comp.typicalUnits.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {comp.typicalUnits.slice(0, BOARD_UNITS).map((u: { characterId: string }) => {
+          {board.map((u: { characterId: string }) => {
             const ch = findChampion(assets, u.characterId);
             const url = tftChampionTileUrl(assets, ch);
             const cost = ch?.cost ?? 1;

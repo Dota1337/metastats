@@ -16,7 +16,7 @@ import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
 import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, type CompRoles } from '../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, sortUnitsByImportance, type CompRoles } from '../../lib/tft-comp-roles';
 import type { PatchDelta, PatchDeltaPair } from '../../lib/tft-patch-delta';
 import { deltaTooltip } from './PatchDeltaCell';
 
@@ -152,31 +152,6 @@ export default function CompRow({
   const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
   const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
 
-  const typicalUnits = (() => {
-    const all = [...(comp.typicalUnits || [])].map(u => ({
-      ...u,
-      _c: safeCount(u.count),
-      _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
-    }));
-    // Cost ASC + Name ASC (Alphabet erstes Zeichen) — User-Vorgabe
-    // 2026-06-20: „grundsätzlich die Units bei den Comps von links nach
-    // rechts nach der jeweiligen Cost hierarchisch abbilden, angefangen mit
-    // 1-cost, dann 2-cost usw. Bei 2 2-Cost gehen wir nach dem Alphabet".
-    // Seit 2026-10-10 gilt das INNERHALB der Core- und der Flex-Gruppe
-    // (User: „eine Umrandung für Core und eine für Flex"): erst alle Core-Units
-    // nach Kosten, dann alle Flex-Units nach Kosten — CoreFlexGroups.
-    // Carry-Differenzierung bleibt visuell über den lila Tile-Border erhalten.
-    const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
-    const nameOf = (cid: string) =>
-      (assets?.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
-    return all
-      .sort((a, b) => {
-        const costDelta = costOf(a.characterId) - costOf(b.characterId);
-        if (costDelta !== 0) return costDelta;
-        return nameOf(a.characterId).localeCompare(nameOf(b.characterId));
-      })
-      .slice(0, 9);
-  })();
   // Carries und Tank-Traeger an den Items erkannt (tft-comp-roles), nicht am
   // Cluster-Key — der traegt nur eine Unit und lag bei Zwei-Carry-Comps oft
   // daneben. Der Name nennt hoechstens zwei, staerkster zuerst.
@@ -184,6 +159,23 @@ export default function CompRow({
   const roles: CompRoles = rolesProp
     ?? computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
   const named = namedCarries(roles, parts?.carry);
+  const typicalUnits = (() => {
+    const all = [...(comp.typicalUnits || [])].map(u => ({
+      ...u,
+      _c: safeCount(u.count),
+      _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
+    }));
+    // Die 9 meistgespielten, nach Wichtigkeit (User 18.10.2026: „alle
+    // Champions nach Priorität“): genannte Carries wie im Namen → weitere
+    // Item-Traeger → Tanks → Rest nach Anteil, Gleichstand Kosten/Name.
+    // Bis dahin Kosten aufsteigend (User 2026-06-20). Die Core- und
+    // Flex-Rahmen (CoreFlexGroups) behalten die Reihenfolge je Gruppe.
+    const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
+    const nameOf = (cid: string) =>
+      (assets?.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
+    const top = all.sort((a, b) => b._c - a._c).slice(0, 9);
+    return sortUnitsByImportance(top, roles, named, { set: assets?.set, isComponent, costOf, nameOf });
+  })();
   // Guide nur bei passendem Brett (resolveGuideId), Carries wie im Namen.
   const guideMatch = parts
     ? findCompGuide(guideBundle, { trait: parts.trait, carry: parts.carry }, (comp.typicalUnits || []).map(u => u.characterId), named,

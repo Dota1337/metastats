@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   computeRoles, namedCarries, shownItems, sumUnits, resolveFamilies, roleItemSets, componentCheckFromItems,
-  coreFlexKind, coreFlexMap, unitPresence, splitCoreFlex, forcedCoreIds,
+  coreFlexKind, coreFlexMap, unitPresence, splitCoreFlex, forcedCoreIds, sortUnitsByImportance,
 } from './tft-comp-roles.ts';
 
 const opts = { set: 18, isComponent: (a) => a === 'DA_BFSword' };
@@ -220,4 +220,34 @@ test('forcedCoreIds: genannte Carries, Units mit gezeigten Items und 3★-Units 
     if (marked) assert.ok(forcedCoreIds(units, roles, [], opts.isComponent).includes(x.characterId), x.characterId);
   }
   assert.deepEqual(forcedCoreIds(null, roles, ['Azir']), ['Azir']);
+});
+
+test('sortUnitsByImportance: Carries wie im Namen, dann Item-Traeger, Tanks, Rest nach Anteil', () => {
+  const cost = { Veigar: 4, LeBlanc: 2, Lux: 3, Sion: 2, Rammus: 1, Ziggs: 1, Ahri: 2, Zed: 5 };
+  const units = [
+    u('Ziggs', 60, {}),
+    u('Rammus', 90, { DA_Warmogs: 70 }),                                // Tank ohne Item-Traeger-Rolle
+    u('Lux', 80, { DA_JeweledGauntlet: 50, DA_SpearOfShojin: 30 }),     // 1,0 Items je Spiel
+    u('Veigar', 100, { DA_JeweledGauntlet: 90, DA_RabadonsDeathcap: 80 }),
+    u('Sion', 95, { DA_Warmogs: 60, DA_DragonsClaw: 55, DA_Redemption: 40 }), // 1,63 Items je Spiel
+    u('LeBlanc', 100, { DA_JeweledGauntlet: 80 }),
+    u('Ahri', 60, {}),
+    u('Zed', 70, {}),
+  ];
+  const roles = { carries: ['Veigar', 'LeBlanc'], tanks: ['Rammus', 'Sion'], itemCarriers: ['Veigar', 'LeBlanc', 'Lux', 'Sion'] };
+  const order = sortUnitsByImportance(units, roles, ['Veigar', 'LeBlanc'], { ...opts, costOf: c => cost[c] });
+  // Sion traegt mehr fertige Items je Spiel als Lux; Rammus ist Tank ohne
+  // Item-Traeger-Rolle; Zed (70) vor Ahri/Ziggs (60), dort Kosten: Ziggs 1 vor Ahri 2.
+  assert.deepEqual(order.map(x => x.characterId), ['Veigar', 'LeBlanc', 'Sion', 'Lux', 'Rammus', 'Zed', 'Ziggs', 'Ahri']);
+  assert.equal(units[0].characterId, 'Ziggs', 'Eingabe bleibt unveraendert');
+});
+
+test('sortUnitsByImportance: Reihenfolge der genannten Carries folgt dem Namen, nicht den Items', () => {
+  const units = [u('A', 100, { DA_JeweledGauntlet: 100 }), u('B', 100, { DA_JeweledGauntlet: 50 })];
+  const roles = { carries: ['A', 'B'], tanks: [] };
+  assert.deepEqual(sortUnitsByImportance(units, roles, ['B', 'A'], opts).map(x => x.characterId), ['B', 'A']);
+  // Ohne itemCarriers-Feld zaehlen Carries + Tanks als Item-Traeger (wie shownItems).
+  const t = [u('T', 100, { DA_Warmogs: 50 }), u('R', 100, {}), u('A', 100, { DA_JeweledGauntlet: 100 })];
+  assert.deepEqual(sortUnitsByImportance(t, { carries: ['A'], tanks: ['T'] }, ['A'], opts).map(x => x.characterId), ['A', 'T', 'R']);
+  assert.deepEqual(sortUnitsByImportance([], roles, ['A'], opts), []);
 });

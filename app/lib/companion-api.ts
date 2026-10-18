@@ -11,7 +11,10 @@ import { NextResponse } from 'next/server';
 import type { CompFamily } from '../components/tft/CompFamilyRow';
 import { isThreeStarUnit, parseClusterKey, STAR3_MIN_GAMES, STAR3_SHARE_THRESHOLD } from './tft-cluster';
 import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBundle } from './tft-cdragon';
-import { componentCheckFromItems, namedCarries, shownItems } from './tft-comp-roles';
+import {
+  componentCheckFromItems, namedCarries, shownItems, sortUnitsByImportance,
+  type CompRoles, type IsComponent, type RoleUnit,
+} from './tft-comp-roles';
 import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
 import { plantIds, plantNames, plantRules } from './tft-elderwood-plants';
@@ -81,13 +84,24 @@ export function companionStats(r: {
   };
 }
 
-// Reihenfolge der Units wie auf /tft/comps: Kosten aufsteigend, dann Name.
-function sortUnits<T extends { characterId: string }>(units: T[], assets: TftAssetsBundle | null): T[] {
-  const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
-  const nameOf = (cid: string) => (assets?.champions[cid]?.name || cid).toLowerCase();
-  return [...units].sort((a, b) =>
-    costOf(a.characterId) - costOf(b.characterId) || nameOf(a.characterId).localeCompare(nameOf(b.characterId)));
+// Units wie auf /tft/comps: die 9 meistgespielten, nach Wichtigkeit
+// (User 18.10.2026, sortUnitsByImportance), Gleichstand Kosten, dann Name.
+function boardUnits<T extends RoleUnit>(
+  units: readonly T[],
+  roles: CompRoles,
+  named: readonly string[],
+  assets: TftAssetsBundle | null,
+  isComponent: IsComponent,
+): T[] {
+  const top = [...units].sort((a, b) => countOf(b) - countOf(a)).slice(0, 9);
+  return sortUnitsByImportance(top, roles, named, {
+    set: assets?.set,
+    isComponent,
+    costOf: cid => assets?.champions[cid]?.cost ?? 1,
+    nameOf: cid => (assets?.champions[cid]?.name || cid).toLowerCase(),
+  });
 }
+const countOf = (u: RoleUnit) => (typeof u.count === 'number' && Number.isFinite(u.count) ? u.count : 0);
 
 /** <trait>__<carry> eines cluster_key — dieselbe Regel wie familyKeyForMerge. */
 export function memberKeyOf(clusterKey: string): string | null {
@@ -223,7 +237,7 @@ export function toCompanionComp(
   const nameOf = (cid: string) => assets?.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   const traitName = tftTraitDisplayName(assets, family.trait);
   const isComponent = componentCheckFromItems(assets?.items);
-  const units = sortUnits(main.typicalUnits || [], assets).slice(0, 9).map(u => {
+  const units = boardUnits(main.typicalUnits || [], roles, named, assets, isComponent).map(u => {
     const items = shownItems(u, roles, isComponent, 3).map(it => it.apiName);
     const out: CompanionCompUnit = { id: u.characterId };
     if (items.length > 0) out.items = items;

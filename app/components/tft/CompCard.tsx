@@ -11,7 +11,7 @@ import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, splitCoreFlex } from '../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, splitCoreFlex, sortUnitsByImportance } from '../../lib/tft-comp-roles';
 import CoreFlexGroups from './CoreFlexGroups';
 
 interface CompVelocity {
@@ -115,19 +115,13 @@ export default function CompCard({
       _carry: typeof (u as any).carryItemGames === 'number' ? (u as any).carryItemGames : 0,
     }));
     // Die 9 meistgespielten, angezeigt wie in der Comp-Liste (User
-    // 2026-10-10, Board mit Core/Flex im Kopf): je Gruppe nach Kosten, bei
-    // gleichen Kosten nach Name. Der Carry bleibt am lila Rand erkennbar.
+    // 2026-10-10, Board mit Core/Flex im Kopf): je Gruppe nach Wichtigkeit
+    // (User 18.10.2026, sortUnitsByImportance), Gleichstand Kosten/Name.
     const costOf = (cid: string) => assets?.champions[cid]?.cost ?? 1;
     const nameOf = (cid: string) =>
       (assets?.champions[cid]?.name || prettyChar(cid)).toLowerCase();
-    return all
-      .sort((a, b) => b._c - a._c)
-      .slice(0, 9)
-      .sort((a, b) => {
-        const costDelta = costOf(a.characterId) - costOf(b.characterId);
-        if (costDelta !== 0) return costDelta;
-        return nameOf(a.characterId).localeCompare(nameOf(b.characterId));
-      });
+    const top = all.sort((a, b) => b._c - a._c).slice(0, 9);
+    return sortUnitsByImportance(top, roles, named, { set: assets?.set, isComponent, costOf, nameOf });
   })();
   // Core/Flex wie in der Liste: Anteil aus typicalUnits/games dieser Ansicht;
   // genannte Carries, Item-Traeger und 3★-Units stehen immer in Core.

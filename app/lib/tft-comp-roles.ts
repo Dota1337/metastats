@@ -258,6 +258,41 @@ export function forcedCoreIds(
   return [...out];
 }
 
+// Reihenfolge der Units einer Comp nach Wichtigkeit (User 18.10.2026: „bei
+// Comps grundsaetzlich alle Champions nach Prioritaet“): genannte Carries in
+// der Reihenfolge des Namens → weitere Item-Traeger, meiste fertige Items je
+// Spiel zuerst → Tank-Traeger → Rest nach Anteil. Gleichstand: Kosten, dann
+// Name. Die Gruppen-Rahmen (splitCoreFlex) behalten diese Reihenfolge.
+export function sortUnitsByImportance<T extends RoleUnit>(
+  units: readonly T[],
+  roles: CompRoles,
+  named: readonly string[],
+  opts: {
+    set?: number;
+    isComponent?: IsComponent;
+    costOf?: (cid: string) => number;
+    nameOf?: (cid: string) => string;
+  } = {},
+): T[] {
+  const holders = new Set([...roles.carries, ...(roles.itemCarriers ?? roles.tanks)]);
+  const tanks = new Set(roles.tanks);
+  const costOf = opts.costOf ?? (() => 1);
+  const nameOf = opts.nameOf ?? ((cid: string) => cid.toLowerCase());
+  const rows = units.map(u => {
+    const s = unitRoleStats(u, 0, { set: opts.set, isComponent: opts.isComponent });
+    const ni = named.indexOf(u.characterId);
+    const tier = ni >= 0 ? 0 : holders.has(u.characterId) ? 1 : tanks.has(u.characterId) ? 2 : 3;
+    return { u, tier, ni, load: s.itemLoad, games: s.games };
+  });
+  rows.sort((a, b) =>
+    a.tier - b.tier
+    || (a.tier === 0 ? a.ni - b.ni : 0)
+    || (a.tier === 1 ? b.load - a.load : b.games - a.games)
+    || costOf(a.u.characterId) - costOf(b.u.characterId)
+    || nameOf(a.u.characterId).localeCompare(nameOf(b.u.characterId)));
+  return rows.map(r => r.u);
+}
+
 // Units mehrerer Varianten zu einer Family-Sicht aufsummieren.
 export function sumUnits(lists: ReadonlyArray<readonly RoleUnit[] | null | undefined>): RoleUnit[] {
   const by = new Map<string, { count: number; gamesWithUnit: number; carryItemGames: number;

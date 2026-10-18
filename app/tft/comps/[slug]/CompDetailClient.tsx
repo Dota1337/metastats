@@ -60,7 +60,7 @@ import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../.
 import { loadCompGuidesBundle, findCompGuide, guideStyleFromUnits, compAugmentSections } from '../../../lib/tft-comp-guides';
 import { loadAugmentStages, type AugmentStagesOverride } from '../../../lib/tft-augment-stages';
 import { descriptorTag } from '../../../lib/tft-comp-descriptor';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems } from '../../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, sortUnitsByImportance } from '../../../lib/tft-comp-roles';
 import { compPath } from '../../../lib/tft-comp-path';
 import { TFT_HOME } from '../../../lib/games';
 
@@ -795,13 +795,13 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                           const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
                           const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                           const rowRoles = computeRoles(row.typicalUnits, row.games, { set: assets?.set, isComponent });
-                          const sortedUnits = [...row.typicalUnits].sort((a, b) => {
-                            const ca = assets?.champions[a.characterId]?.cost ?? 1;
-                            const cb = assets?.champions[b.characterId]?.cost ?? 1;
-                            if (ca !== cb) return ca - cb;
-                            const na = (assets?.champions[a.characterId]?.name || a.characterId).toLowerCase();
-                            const nb = (assets?.champions[b.characterId]?.name || b.characterId).toLowerCase();
-                            return na.localeCompare(nb);
+                          // Nach Wichtigkeit wie im Kopf (User 18.10.2026);
+                          // genannte Carries der Familie zuerst.
+                          const sortedUnits = sortUnitsByImportance(row.typicalUnits, rowRoles, namedCompCarries, {
+                            set: assets?.set,
+                            isComponent,
+                            costOf: cid => assets?.champions[cid]?.cost ?? 1,
+                            nameOf: cid => (assets?.champions[cid]?.name || cid).toLowerCase(),
                           });
                           return (
                             <div

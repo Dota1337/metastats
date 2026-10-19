@@ -26,17 +26,16 @@ export function starColor(star: number): string {
 // User 2026-10-10: „eine Umrandung für Core und eine für Flex"): durchgezogen =
 // Core, gestrichelt = Flex. Kein Rahmen ohne Einteilung. Die Boxen nutzen nur
 // die Linie oben (CoreFlexGroups).
-// Farbe: Core = helle Linie + Flaeche, Flex = grau gestrichelt ohne Flaeche.
-// Flaeche seit 19.10.2026 blasses Gold (User: „kannst du sie in einem blassen
-// gold darstellen?", vorher TFT-Lila). Fester Ton statt Gold mit Durchsicht:
-// durchsichtiges Gold wird auf dem blauen Grund grau. Kraeftig gesaettigt
-// (User: „ein bisschen goldener", das matte #423a26 wirkte oliv), aber nicht
-// heller: #4b3906 haelt alle Kachelraender ueber 3:1 (Blau 3,19, Grau 4,49,
-// Lila 5,01, Gold 6,62); heller (#52410f) faellt der blaue 3-Kosten-Rand darunter.
+// Farbe: Core = goldene Linie + leichte Lila-Flaeche, Flex = grau gestrichelt
+// ohne Flaeche. Das Lila steckt nur in der Flaeche (Variante 5, User
+// 2026-10-10), damit der lila Carry-/4-Kosten-Rand der Kacheln sichtbar bleibt.
+// Linie seit 19.10.2026 Gold #e0c75a, die Gold-Farbe der 5-Kosten-Raender
+// (User: „ändere jetzt nur die Core Linie in Gold"). Goldene Flaechen waren
+// verworfen: durchsichtig grau, fest gefaerbt „sieht nicht gut aus".
 export function coreFlexFrame(kind: 'core' | 'flex' | null | undefined): { border: string; background: string } | undefined {
   if (!kind) return undefined;
   return kind === 'core'
-    ? { border: '2px solid var(--fg-bright)', background: '#4b3906' }
+    ? { border: '2px solid #e0c75a', background: 'rgb(var(--accent-tft-rgb) / 12%)' }
     : { border: '1.5px dashed var(--fg-faint)', background: 'transparent' };
 }
 

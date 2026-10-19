@@ -5,6 +5,7 @@ import { lookupSnapshot } from './lib/snapshot-lookup';
 import { tftAssets } from './lib/og/data';
 import { withTimeout } from './lib/og/frame';
 import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
+import { listPayloadWithCatalog } from './lib/tft-comp-catalog-resolver';
 import { compPath } from './lib/tft-comp-path';
 import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
@@ -71,7 +72,11 @@ function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits', bucket =
 async function compEntries(): Promise<Entry[]> {
   const bucket = (await withTimeout(resolveDefaultBucket(), SOURCE_TIMEOUT_MS)) ?? 'diamond_plus';
   const hit = await listSnapshot('comps', bucket);
-  const rows = (hit?.payload as { comps?: CompApiRow[] } | undefined)?.comps;
+  // Comp-Katalog wie die Route, sonst verlinkte die Sitemap klassische Familien.
+  const payload = hit?.payload
+    ? await withTimeout(listPayloadWithCatalog(hit.payload as { comps?: unknown; filters?: unknown }), SOURCE_TIMEOUT_MS)
+    : null;
+  const rows = (payload as { comps?: CompApiRow[] } | null)?.comps;
   if (!Array.isArray(rows) || rows.length === 0) return [];
   return listFamilyTargets(rows, tftAssets()).map(t => ({
     path: compPath(t.slug),

@@ -16,6 +16,7 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 import { tftAssets } from '../../../../lib/og/data';
 import { resolveDefaultBucket } from '../../../../lib/tft-supabase-reader';
 import { listFamilyTargets, type CompApiRow } from '../../../../lib/tft-comp-families';
+import { listPayloadWithCatalog } from '../../../../lib/tft-comp-catalog-resolver';
 
 export const maxDuration = 60;
 
@@ -36,7 +37,8 @@ async function listBody(request: NextRequest, publisher: boolean): Promise<ListB
   const hit = await lookupSnapshot('comps', {
     patch: null, region: 'all', days: 3, bucket: await resolveDefaultBucket(), minGames: 0, setNumber: CURRENT_SET,
   });
-  return (hit?.payload as ListBody | undefined) ?? null;
+  // Comp-Katalog wie die Route (Staende von vor dem Katalog tragen kein compKey).
+  return hit?.payload ? listPayloadWithCatalog(hit.payload as ListBody) : null;
 }
 
 export async function GET(request: NextRequest) {

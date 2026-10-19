@@ -6,7 +6,7 @@
 // Lauf: npm test
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { addUnitCounts, buildGroupMembers, compBuildHash } from './tft-comp-build-group.ts';
+import { addUnitCounts, buildGroupMembers, buildGroups, compBuildHash } from './tft-comp-build-group.ts';
 
 test('Hash: nur Units ab 15 % (mind. 3), sortiert; leer → ~empty~', () => {
   const counts = new Map([['B', 20], ['A', 15], ['Tech', 14]]);
@@ -38,4 +38,17 @@ test('gleiche Units → eine Gruppe, eigene Kennung vorn; andere Units bleiben d
 
 test('Kennung ohne Zeile → nur sie selbst', () => {
   assert.deepEqual(members([row('T@3_C', 100, [['A', 90]])], 'T@9_C'), ['T@9_C']);
+});
+
+test('buildGroups: gleiche Gruppen wie buildGroupMembers, Anker = meiste Spiele', () => {
+  const u = ids => [ids.map(id => ({ characterId: id, count: 50 }))];
+  const rows = [
+    { key: 'x@5_A', games: 100, units: u(['A', 'B', 'C']) },
+    { key: 'y@4_D', games: 300, units: u(['A', 'B', 'C']) },
+    { key: 'x@7_A', games: 200, units: u(['A', 'B', 'E']) },
+  ];
+  const groups = buildGroups(rows, r => r.games, r => r.units).map(g => g.map(r => r.key));
+  assert.deepEqual(groups.sort((a, b) => a[0].localeCompare(b[0])), [['x@7_A'], ['y@4_D', 'x@5_A']]);
+  const viaMembers = buildGroupMembers(rows, 'x@5_A', r => r.key, r => r.games, r => r.units);
+  assert.deepEqual(new Set(viaMembers), new Set(['x@5_A', 'y@4_D']));
 });

@@ -119,3 +119,44 @@ test('Familien-Schluessel: eigener Unterordner, __ der Familie wird zu .', () =>
     'comps-detail/18.3/family/TFT18_Solar.TFT18_Xayah__all__3d__master_plus.json',
   );
 });
+
+// Comp-Katalog: Stand gilt nur fuer denselben Katalog-Stand und dieselbe Comp.
+const CAT = { id: '18.4:abc', compKey: 'TFT18_Solar__TFT18_Xayah' };
+const catPayload = () => ({
+  hasData: true,
+  comp: {
+    clusterKey: A, compKey: CAT.compKey, catalogId: CAT.id,
+    mergedFamilies: [CAT.compKey, 'TFT18_Lunar__TFT18_Kayle'],
+    aliasedFromFamily: { anchorSlug: A, mergedFrom: [A, B] },
+  },
+});
+
+test('Katalog: gleicher Stand + Comp → Kopie mit anchorSlug wie die Route', () => {
+  assert.equal(familyPayloadFor(catPayload(), B, CAT).comp.aliasedFromFamily.anchorSlug, B);
+  // Slug ohne eigene Zeile (oder Familien-Kennung) → Anker = erste Zeile
+  assert.equal(familyPayloadFor(catPayload(), 'TFT18_Lunar@4_TFT18_Kayle', CAT).comp.aliasedFromFamily.anchorSlug, A);
+  assert.equal(familyPayloadFor(catPayload(), 'TFT18_Lunar__TFT18_Kayle', CAT).comp.aliasedFromFamily.anchorSlug, A);
+});
+
+test('Katalog: anderer Stand, andere Comp oder alter Stand ohne Katalog → null; klassisch nie Katalog-Staende', () => {
+  assert.equal(familyPayloadFor(catPayload(), A, { ...CAT, id: '18.4:zzz' }), null);
+  assert.equal(familyPayloadFor(catPayload(), A, { ...CAT, compKey: 'X__Y' }), null);
+  assert.equal(familyPayloadFor(familyPayload(), A, CAT), null);
+  assert.equal(familyPayloadFor(catPayload(), A), null);
+});
+
+test('Katalog: erst Familie des Slugs, dann die Comp; kein Slug- oder Mitglieds-Rueckfall', async () => {
+  const lunar = 'TFT18_Lunar@4_TFT18_Kayle';
+  const { fn, calls } = fakeLookup({ [CAT.compKey]: catPayload() }, { [lunar]: catPayload() });
+  const hit = await lookupCompDetailSnapshot({ ...OPTS, slug: lunar, catalog: CAT }, fn, async () => assert.fail('kein Mitglieds-Rueckfall'));
+  assert.equal(hit.tag, 'comps-detail-family');
+  assert.deepEqual(calls.map(c => c.family), ['TFT18_Lunar__TFT18_Kayle', CAT.compKey]);
+  const miss = fakeLookup({}, { [lunar]: catPayload() });
+  assert.equal(await lookupCompDetailSnapshot({ ...OPTS, slug: lunar, catalog: CAT }, miss.fn), null);
+  assert.ok(miss.calls.every(c => c.family), 'kein Slug-Schluessel');
+});
+
+test('Notschalter: Slug-Eintrag aus dem Katalog-Modus wird nicht ausgeliefert', async () => {
+  const { fn } = fakeLookup({}, { [FOREIGN]: catPayload() });
+  assert.equal(await lookupCompDetailSnapshot({ ...OPTS, slug: FOREIGN }, fn), null);
+});

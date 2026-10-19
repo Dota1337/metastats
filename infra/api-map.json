@@ -8,10 +8,10 @@
   "counts": {
     "routes": 90,
     "groups": 30,
-    "tables": 42,
-    "rpcs": 32,
+    "tables": 43,
+    "rpcs": 33,
     "files": 14,
-    "edges": 624,
+    "edges": 617,
     "unused": 7,
     "unresolved": 1
   },
@@ -837,6 +837,7 @@
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-classify-comp.ts",
+        "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-comp-matchups-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -948,6 +949,7 @@
         "app/lib/regions.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-cdragon.ts",
+        "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-player-search-server.ts",
@@ -1882,9 +1884,15 @@
       "declared": true
     },
     {
-      "id": "db:tft_comp_list_precomputed",
+      "id": "db:tft_comp_catalog",
       "kind": "table",
-      "label": "tft_comp_list_precomputed",
+      "label": "tft_comp_catalog",
+      "declared": true
+    },
+    {
+      "id": "db:tft_comp_catalog_entry",
+      "kind": "table",
+      "label": "tft_comp_catalog_entry",
       "declared": true
     },
     {
@@ -2215,6 +2223,12 @@
       "id": "fn:get_tft_available_patches",
       "kind": "rpc",
       "label": "get_tft_available_patches",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_catalogs",
+      "kind": "rpc",
+      "label": "get_tft_comp_catalogs",
       "declared": true
     },
     {
@@ -3482,6 +3496,11 @@
     },
     {
       "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_catalogs",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_emblems",
       "kind": "calls"
     },
@@ -3688,6 +3707,11 @@
     {
       "from": "api:/api/tft/comps/families",
       "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:get_tft_comp_catalogs",
       "kind": "calls"
     },
     {
@@ -5261,6 +5285,16 @@
       "kind": "reads"
     },
     {
+      "from": "fn:get_tft_comp_catalogs",
+      "to": "db:tft_comp_catalog",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_catalogs",
+      "to": "db:tft_comp_catalog_entry",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_comp_daily_trend",
       "to": "db:tft_daily_comp_stats",
       "kind": "reads"
@@ -5307,62 +5341,7 @@
     },
     {
       "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_comp_list_precomputed",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_comp_matchups_all_days",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_comp_matchups",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_comp_matchups_all",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_comp_outcome",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_comp_pairs",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
       "to": "db:tft_daily_comp_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_item_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_trait_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_trait_unitcount_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_unit_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_comp_stats",
-      "to": "db:tft_daily_unit_top_items",
       "kind": "reads"
     },
     {

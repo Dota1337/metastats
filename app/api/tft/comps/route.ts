@@ -25,10 +25,19 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
-import { buildGroupMembers } from '../../../lib/tft-comp-build-group';
+import { buildGroupMembers, buildGroups } from '../../../lib/tft-comp-build-group';
 import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
-import { opponentsOf, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
+import { opponentsOf, remapMatchupRows, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
 import { compRepresentatives, fetchCompMatchups } from '../../../lib/tft-comp-matchups-server';
+import {
+  applyCompCatalog,
+  compCatalogForFilters,
+  compKeyOf,
+  listPayloadForCatalog,
+  membersOfComps,
+  traitsOfFamilies,
+  type CompCatalogView,
+} from '../../../lib/tft-comp-catalog-resolver';
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
@@ -214,6 +223,51 @@ interface CounterEdge {
   winRate: number;    // this comp's win-rate vs `opponent` (0–1)
 }
 
+// Varianten-Knopf, gleiche Form wie /api/tft/comps/variants.
+interface CompVariant {
+  clusterKey: string;
+  slug: string;
+  games: number;
+  avgPlacement: number;
+  top4Rate: number;
+  top1Rate: number;
+  carryStar: number;
+  augmentSlug: string | null;
+  secondary: string | null;
+  belowThreshold: boolean;
+}
+
+// Varianten einer Katalog-Comp: Build-Gruppen ueber alle ihre Zeilen, dieselbe
+// Regel wie die genaue Ansicht (buildGroupMembers). Schwellen wie die
+// variants-Route: ab 30 Spielen und 5 % der Comp, hoechstens 6, meistgespielte
+// zuerst. Die Knopf-Zahlen summieren sich so zur Comp (bis auf die
+// weggelassenen kleinen Gruppen).
+function compVariants(rows: CompRow[]): CompVariant[] {
+  const groups = buildGroups(rows, r => Number(r.games) || 0, r => r.typical_units_merged || []);
+  const total = rows.reduce((s, r) => s + (Number(r.games) || 0), 0);
+  const out: CompVariant[] = [];
+  for (const g of groups) {
+    const parts = parseClusterKey(g[0].cluster_key);
+    if (!parts) continue;
+    const sum = (k: 'games' | 'sum_placement' | 'top4' | 'top1') => g.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+    const games = sum('games');
+    if (games < 30 || games < 0.05 * total) continue;
+    out.push({
+      clusterKey: g[0].cluster_key,
+      slug: g[0].cluster_key,
+      games,
+      avgPlacement: sum('sum_placement') / games,
+      top4Rate: sum('top4') / games,
+      top1Rate: sum('top1') / games,
+      carryStar: parts.carryStar,
+      augmentSlug: parts.augmentSlug,
+      secondary: parts.secondary,
+      belowThreshold: false,
+    });
+  }
+  return out.sort((a, b) => b.games - a.games).slice(0, 6);
+}
+
 export async function GET(request: NextRequest) {
   const startedAt = Date.now();
   const { searchParams } = new URL(request.url);
@@ -278,6 +332,13 @@ export async function GET(request: NextRequest) {
       // skipt Snapshot (kein Pre-Render). Architect+perf-critic-Verdict siehe
       // reference_tft_comp_detail_snapshot.md.
       const detailVariantMode = searchParams.get('variant') === 'exact' ? 'exact' : 'family';
+      // Comp-Katalog (null = klassisch): die Seite zaehlt dann alle Spiele der
+      // Comp zusammen, mit derselben Zuordnung wie die Liste. Familien ohne
+      // Comp erscheinen dort nicht, also auch hier keine Daten.
+      const catalog = await compCatalogForFilters(filters);
+      const compKey = catalog ? compKeyOf(catalog, slug) : null;
+      if (catalog && !compKey) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
+      const compCtx: { view: CompCatalogView; key: string } | null = catalog && compKey ? { view: catalog, key: compKey } : null;
       // Vorrat je Familie (E2) mit Rueckfall auf den Slug-Schluessel, dieselbe
       // Funktion wie OG-Bild und Startdaten der Seite (comp-detail-snapshot.ts).
       const detailHit = await lookupCompDetailSnapshot({
@@ -291,6 +352,7 @@ export async function GET(request: NextRequest) {
         slug,
         skip: detailVariantMode === 'exact' || source === 'editorial'
           || isSnapshotPublisher(request),
+        catalog: compCtx ? { id: compCtx.view.id, compKey: compCtx.key } : null,
       });
       if (detailHit) {
         const resp = cachedJson(detailHit.payload, { cache: cacheControl });
@@ -321,7 +383,12 @@ export async function GET(request: NextRequest) {
       // laese die RPC alle Cluster mit allen Spalten (s. o.) und fande nichts.
       const familySlug = parseFamilyKey(slug);
       const detailTrait = (familySlug ?? parseClusterKey(slug))?.trait ?? null;
-      if (!detailTrait) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
+      if (!detailTrait && !compCtx) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
+      // Katalog-Modus: alle Familien der Comp, auch unter fremden Traits
+      // (fest zugeordnete Familien). Traits als billiger Vorfilter, die
+      // Familien als genaue Auswahl (Migration 0100) — Adaptor·Aphelios mit
+      // 25 Familien gemessen 18,1 MB / 6,9 s statt 107 MB nur ueber Traits.
+      const compFams = compCtx ? membersOfComps(compCtx.view, [compCtx.key]) : null;
       const rows = await callRpc<CompRow[]>('get_tft_comp_stats', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,
@@ -329,13 +396,27 @@ export async function GET(request: NextRequest) {
         p_patch: filters.patchFilter,
         p_set: filters.setNumber,
         p_min_games: minGames,
-        p_cluster_prefix: `${detailTrait}@`,
+        ...(compFams
+          ? { p_cluster_traits: traitsOfFamilies(compFams), p_cluster_families: compFams }
+          : { p_cluster_prefix: `${detailTrait}@` }),
       }, 20000);
       const participants = rows[0]?.participants || 0;
+      const byGames = (a: CompRow, b: CompRow) => Number(b.games) - Number(a.games);
+      // Zeilen der Comp; Anker = meistgespielte Zeile der namensgebenden
+      // Familie (Seitentitel und Carry kommen aus seinem cluster_key), ohne
+      // eigene Zeile die meistgespielte der Comp.
+      const compRows = compCtx
+        ? rows.filter(r => !isFragmentTraitClusterKey(r.cluster_key) && compKeyOf(compCtx.view, r.cluster_key) === compCtx.key).sort(byGames)
+        : null;
+      const compAnchor = compRows
+        ? compRows.find(r => familyKeyForMerge(r.cluster_key) === compCtx!.key) ?? compRows[0] ?? null
+        : null;
       // Familien-Kennung: die meistgespielte Zeile der Familie ist der Anker
       // (dieselbe Wahl wie mergeFamilyRows), der Familien-Modus unten legt die
       // uebrigen dazu; ?variant=exact zeigt genau diese Zeile.
-      let row = familySlug
+      let row = compRows
+        ? compRows.find(r => r.cluster_key === slug) ?? compAnchor ?? undefined
+        : familySlug
         ? rows
           .filter(r => familyKeyForMerge(r.cluster_key) === slug)
           .sort((a, b) => Number(b.games) - Number(a.games))[0]
@@ -347,8 +428,9 @@ export async function GET(request: NextRequest) {
       // mit identischem Trait-Root UND Carry — also `<trait>@<x>_<carry>` für
       // alle x — und nehmen den mit den meisten Games. Der Fallback gilt nur
       // wenn die ähnliche Variante ≥ 50 Spiele hat; sonst echt "noch keine
-      // Daten" und nicht aufdrängen.
-      if (!row) {
+      // Daten" und nicht aufdrängen. Im Katalog-Modus nicht: dort gilt schon
+      // die ganze Comp.
+      if (!row && !compRows) {
         const m = /^(.+)@(\d+)_(.+)$/.exec(slug);
         if (m) {
           const sameCore = rows
@@ -387,55 +469,101 @@ export async function GET(request: NextRequest) {
       // nur ueber Zeilen, die auch die Liste zeigt (Mindest-Spiele, keine
       // Fragment-Traits).
       const minForList = effectiveMinFor(Number(participants));
-      const roleSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
-      const selection = selectMergedFamilyMembers(
-        rows,
-        row.cluster_key,
-        listUnits,
-        r => Number(r.games) >= minForList && !isFragmentTraitClusterKey(r.cluster_key),
-        { set: roleSet, isComponent: loadComponentCheck(roleSet) },
-      );
+      // Varianten-Knoepfe im Katalog-Modus (aus den Zeilen hier, ohne eigene Abfrage).
+      let variants: CompVariant[] | null = null;
       // Familien fuer den Varianten-Umschalter — auch in der genauen Ansicht
       // alle zusammengelegten, sonst schrumpft die Knopfreihe nach dem Klick.
       // Konter und Seitentitel bleiben bei mergedFamilyKeys (genau: eigene).
-      const switchFamilies = selection.familyKeys;
-      if (variantMode === 'family') {
-        const { members, familyKeys } = selection;
-        mergedFamilyKeys = familyKeys;
-        familySlugs = members.map(m => m.cluster_key);
-        if (members.length > 1) {
-          familyAnchor = members[0];
-          mergedRow = mergeFamilyRows(members);
-          aliasedFromFamily = {
-            anchorSlug: row.cluster_key,
-            mergedFrom: familySlugs,
-          };
-          // levelOutcome aus Family-Member-Rows (User-Entscheid 2026-06-21):
-          // rekonstruiert Aktivierungs-Level-Splits, die durch den C-Merge in
-          // der Card-Aggregat-Avg verschwinden. data-skeptic F3 KRITISCH.
-          levelOutcome = buildLevelOutcome(members);
+      let switchFamilies: string[];
+      if (compRows && compAnchor && compCtx) {
+        // Katalog-Modus: eine Comp, kein Zwei-Carry-Zusammenlegen (die Comps
+        // des Katalogs sind schon die zusammengelegte Einheit). mergedFamilies
+        // = alle klassischen Familien der Comp, namensgebende zuerst, dann nach
+        // Spielen — Duelle, Vergleich, Companion und Vorrat lesen daraus.
+        const famGames = new Map<string, number>();
+        for (const r of compRows) {
+          const f = familyKeyForMerge(r.cluster_key);
+          famGames.set(f, (famGames.get(f) ?? 0) + Number(r.games));
+        }
+        mergedFamilyKeys = [compCtx.key, ...(compFams ?? []).filter(f => f !== compCtx.key)
+          .sort((a, b) => (famGames.get(b) ?? 0) - (famGames.get(a) ?? 0) || (a < b ? -1 : a > b ? 1 : 0))];
+        switchFamilies = [compCtx.key];
+        variants = compVariants(compRows);
+        if (variantMode === 'family') {
+          const members = [compAnchor, ...compRows.filter(r => r !== compAnchor && Number(r.games) >= minForList)];
+          familySlugs = members.map(m => m.cluster_key);
+          mergedRow = members[0];
+          if (members.length > 1) {
+            familyAnchor = compAnchor;
+            // mergeFamilyRows nimmt den cluster_key der meistgespielten Zeile;
+            // die kann aus einer fest zugeordneten Familie stammen.
+            mergedRow = { ...mergeFamilyRows(members), cluster_key: compAnchor.cluster_key };
+            aliasedFromFamily = { anchorSlug: row.cluster_key, mergedFrom: familySlugs };
+            // Stufen nur aus Zeilen des namensgebenden Traits — andere Traits
+            // haben andere Stufen.
+            const keyTrait = parseFamilyKey(compCtx.key)?.trait;
+            levelOutcome = buildLevelOutcome(members.filter(m => parseClusterKey(m.cluster_key)?.trait === keyTrait));
+          }
+        } else {
+          // Genaue Ansicht = Build-Gruppe innerhalb der Comp, dieselbe Regel
+          // wie die Knoepfe (compVariants).
+          const groupKeys = buildGroupMembers(compRows, row.cluster_key, r => r.cluster_key, r => Number(r.games), r => r.typical_units_merged || []);
+          const members = compRows.filter(r => groupKeys.includes(r.cluster_key));
+          mergedRow = members[0] ?? row;
+          familySlugs = members.length > 0 ? members.map(m => m.cluster_key) : [row.cluster_key];
+          if (members.length > 1) {
+            familyAnchor = members[0];
+            mergedRow = mergeFamilyRows(members);
+          }
         }
       } else {
-        // Genaue Ansicht = die Build-Gruppe der Kennung: Sub-Cluster derselben
-        // Familie mit denselben Units sind EINE Variante (User-Override C).
-        // Dieselbe Regel wie die Knopf-Zahlen (variants-Route), sonst springt
-        // die Spielzahl nach dem Klick. Zeilen unter minGames fehlen hier
-        // (RPC-Schwelle) — der Knopf zaehlt sie mit, Abstand klein.
-        const own = familyKeyForMerge(row.cluster_key);
-        const groupKeys = buildGroupMembers(
-          rows.filter(r => familyKeyForMerge(r.cluster_key) === own && !isFragmentTraitClusterKey(r.cluster_key)),
+        const roleSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
+        const selection = selectMergedFamilyMembers(
+          rows,
           row.cluster_key,
-          r => r.cluster_key,
-          r => Number(r.games),
-          r => r.typical_units_merged || [],
+          listUnits,
+          r => Number(r.games) >= minForList && !isFragmentTraitClusterKey(r.cluster_key),
+          { set: roleSet, isComponent: loadComponentCheck(roleSet) },
         );
-        if (groupKeys.length > 1) {
-          const members = rows
-            .filter(r => groupKeys.includes(r.cluster_key))
-            .sort((a, b) => Number(b.games) - Number(a.games));
-          familyAnchor = members[0];
-          mergedRow = mergeFamilyRows(members);
+        switchFamilies = selection.familyKeys;
+        if (variantMode === 'family') {
+          const { members, familyKeys } = selection;
+          mergedFamilyKeys = familyKeys;
           familySlugs = members.map(m => m.cluster_key);
+          if (members.length > 1) {
+            familyAnchor = members[0];
+            mergedRow = mergeFamilyRows(members);
+            aliasedFromFamily = {
+              anchorSlug: row.cluster_key,
+              mergedFrom: familySlugs,
+            };
+            // levelOutcome aus Family-Member-Rows (User-Entscheid 2026-06-21):
+            // rekonstruiert Aktivierungs-Level-Splits, die durch den C-Merge in
+            // der Card-Aggregat-Avg verschwinden. data-skeptic F3 KRITISCH.
+            levelOutcome = buildLevelOutcome(members);
+          }
+        } else {
+          // Genaue Ansicht = die Build-Gruppe der Kennung: Sub-Cluster derselben
+          // Familie mit denselben Units sind EINE Variante (User-Override C).
+          // Dieselbe Regel wie die Knopf-Zahlen (variants-Route), sonst springt
+          // die Spielzahl nach dem Klick. Zeilen unter minGames fehlen hier
+          // (RPC-Schwelle) — der Knopf zaehlt sie mit, Abstand klein.
+          const own = familyKeyForMerge(row.cluster_key);
+          const groupKeys = buildGroupMembers(
+            rows.filter(r => familyKeyForMerge(r.cluster_key) === own && !isFragmentTraitClusterKey(r.cluster_key)),
+            row.cluster_key,
+            r => r.cluster_key,
+            r => Number(r.games),
+            r => r.typical_units_merged || [],
+          );
+          if (groupKeys.length > 1) {
+            const members = rows
+              .filter(r => groupKeys.includes(r.cluster_key))
+              .sort((a, b) => Number(b.games) - Number(a.games));
+            familyAnchor = members[0];
+            mergedRow = mergeFamilyRows(members);
+            familySlugs = members.map(m => m.cluster_key);
+          }
         }
       }
       // Neue Bloecke (Migration 0078): Platzverteilung, Endlevel, Unit- und
@@ -469,7 +597,7 @@ export async function GET(request: NextRequest) {
           ? Promise.resolve(null)
           : callRpc<CompEmblemsRaw>('get_tft_comp_emblems', outcomeArgs, partMs),
         fetchCompMatchups(filters, mergedFamilyKeys, null, partMs),
-        compRepresentatives(filters, rows.map(r => ({ clusterKey: r.cluster_key, games: Number(r.games) }))),
+        compRepresentatives(filters, (compRows ?? rows).map(r => ({ clusterKey: r.cluster_key, games: Number(r.games) }))),
       ]);
       if (em.status === 'rejected') console.warn('[tft/comps] comp_emblems skipped:', (em.reason as Error)?.message);
       if (mu.status === 'rejected') console.warn('[tft/comps] comp_matchups skipped, old pairs:', (mu.reason as Error)?.message);
@@ -496,6 +624,9 @@ export async function GET(request: NextRequest) {
         // Familien des Varianten-Umschalters, in beiden Ansichten alle
         // zusammengelegten (genaue Ansicht: mergedFamilies = nur die eigene).
         switchFamilies,
+        // Katalog-Modus: Comp, Stand des Katalogs (Vorrat prueft ihn) und die
+        // Varianten-Knoepfe, die sonst die variants-Route liefert.
+        ...(compCtx ? { compKey: compCtx.key, catalogId: compCtx.view.id, variants } : {}),
       };
 
       // `multiplicity` kommt vom Anker statt vom Family-Mittel — Begruendung in
@@ -523,7 +654,12 @@ export async function GET(request: NextRequest) {
           const rep = reps.get(e.fam);
           return rep && !isFragmentTraitClusterKey(rep.key) ? [{ opponent: rep.key, games: e.games, winRate: e.rate }] : [];
         }).slice(0, 5);
-        const split = splitOpponents(opponentsOf(matchups.rows, mergedFamilyKeys));
+        // Katalog-Modus: Gegner ebenfalls als Comps (Familien umgelegt, Paare
+        // innerhalb derselben Comp fallen weg). Link-Ziel ist die Zeile der
+        // namensgebenden Familie, deren Name die Gegnerliste zeigt.
+        const split = compCtx
+          ? splitOpponents(opponentsOf(remapMatchupRows(matchups.rows, f => compCtx.view.lookup.get(f)), [compCtx.key]))
+          : splitOpponents(opponentsOf(matchups.rows, mergedFamilyKeys));
         counters = { beats: toCounters(split.strong), losesTo: toCounters(split.weak), even: toCounters(split.even), source: 'matchups' };
       } else {
         // Alter Weg, solange das Fenster keine neuen Tage hat (oder die neue
@@ -544,7 +680,8 @@ export async function GET(request: NextRequest) {
         }, pairsMs);
         // Set-Lookup statt Linear-Scan (perf-critic F6) — bei großen Familien
         // (10-15 Sub-Cluster) und 500-2000 Pairs deutlich günstiger.
-        const familySet = new Set(familySlugs);
+        // Katalog-Modus: die ganze Comp ist „eigen", auch in der genauen Ansicht.
+        const familySet = new Set(compRows ? compRows.map(r => r.cluster_key) : familySlugs);
         const beats: CounterEdge[] = [];
         const losesTo: CounterEdge[] = [];
         const even: CounterEdge[] = [];
@@ -557,6 +694,10 @@ export async function GET(request: NextRequest) {
           if (aInFamily && bInFamily) continue;
           const opponent = aInFamily ? p.b_key : p.a_key;
           if (isFragmentTraitClusterKey(opponent)) continue;
+          if (compCtx) {
+            const oppComp = compKeyOf(compCtx.view, opponent);
+            if (!oppComp || oppComp === compCtx.key) continue;
+          }
           const aWinRate = p.games > 0 ? Number(p.a_better) / Number(p.games) : 0.5;
           const edge: CounterEdge = {
             opponent,
@@ -570,17 +711,20 @@ export async function GET(request: NextRequest) {
         // Im Family-Mode: Opponent-Edges nach Opponent-Family-Key konsolidieren —
         // sonst sieht User dreimal "Mecha Fiora" mit unterschiedlichen Sub-
         // Cluster-Suffixen. Gewichteter Win-Rate (games-weighted) + Sum-Games.
+        // Katalog-Modus: immer nach Gegner-Comp, Anker bevorzugt aus deren
+        // namensgebender Familie (Name in der Gegnerliste).
         const consolidateByOpponentFamily = (edges: CounterEdge[]): CounterEdge[] => {
-          if (variantMode !== 'family') return edges;
-          const map = new Map<string, { games: number; weightedWin: number; sampleKey: string }>();
+          if (variantMode !== 'family' && !compCtx) return edges;
+          const map = new Map<string, { games: number; weightedWin: number; sampleKey: string; sampleRank: number }>();
           for (const e of edges) {
-            const k = familyKeyForMerge(e.opponent);
+            const k = compCtx ? compKeyOf(compCtx.view, e.opponent) ?? familyKeyForMerge(e.opponent) : familyKeyForMerge(e.opponent);
+            const rank = (compCtx && familyKeyForMerge(e.opponent) === k ? 1e12 : 0) + e.games;
             const cur = map.get(k);
             if (!cur) {
-              map.set(k, { games: e.games, weightedWin: e.games * e.winRate, sampleKey: e.opponent });
+              map.set(k, { games: e.games, weightedWin: e.games * e.winRate, sampleKey: e.opponent, sampleRank: rank });
             } else {
               // Anker bleibt der games-stärkste Sub-Cluster für UI-Label-Wahl.
-              if (e.games > cur.games) cur.sampleKey = e.opponent;
+              if (rank > cur.sampleRank) { cur.sampleKey = e.opponent; cur.sampleRank = rank; }
               cur.games += e.games;
               cur.weightedWin += e.games * e.winRate;
             }
@@ -622,6 +766,9 @@ export async function GET(request: NextRequest) {
     // hat, liefern wir den Blob direkt. Spart den Supabase-RPC-Roundtrip + die
     // jsonb-Merges (Vercel-Blob fetch ~30-80ms vs. 150-3000ms RPC). Wir
     // überspringen den Snapshot bei source=editorial — das ist nicht im Bundle.
+    // Comp-Katalog des Fensters (null = klassisch). Gilt fuer Vorrat und
+    // Live-Weg gleich: jede Zeile bekommt ihre Comp (compKey).
+    const catalog = await compCatalogForFilters(filters);
     if (source === 'data') {
       const lookup = (mg: number) => lookupSnapshot('comps', {
         patch: filters.patch,
@@ -652,7 +799,9 @@ export async function GET(request: NextRequest) {
       const snapParticipants = sample ? Number(sample.games) / Number(sample.pickRate) : 0;
       const snapshotComplete = !adaptiveMin || autoHit != null || effectiveMinFor(snapParticipants) >= minGames;
       if (hit && snapshotComplete && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
-        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        // Vorrat von vor dem Katalog (oder mit anderem Stand): Comp je Zeile
+        // hier nachtragen — billig, die Zeilen selbst bleiben gleich.
+        const resp = cachedJson(listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         // Die Comps-Liste laedt die volle Liste zu ihren Startdaten mit deren
         // Stand nach (?sv=, useTftCompsData). Eigene Adresse je Stand, damit
@@ -669,7 +818,7 @@ export async function GET(request: NextRequest) {
       // Gleicher Zeitraum, aber mit fester statt angepasster Schwelle: als
       // Antwort zweite Wahl, als Notreserve bei DB-Ausfall besser als nichts.
       if (hit && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
-        fallback = { payload: hit.payload, tag: `snapshot:${hit.tag}` };
+        fallback = { payload: listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), tag: `snapshot:${hit.tag}` };
       }
     }
 
@@ -721,10 +870,10 @@ export async function GET(request: NextRequest) {
     const participants = rows[0]?.participants || 0;
     const effectiveMinGames = effectiveMinFor(Number(participants));
 
-    const dataComps = rows
+    const dataComps = applyCompCatalog(rows
       .filter(r => Number(r.games) >= effectiveMinGames)
       .filter(r => !isFragmentTraitClusterKey(r.cluster_key))
-      .map(r => baseComp(r, participants));
+      .map(r => baseComp(r, participants)), catalog);
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const listResp = cachedJson({
@@ -745,6 +894,9 @@ export async function GET(request: NextRequest) {
       },
       patches,
       minGames: effectiveMinGames,
+      // Stand des Comp-Katalogs (null = klassisch). Vorrat-Leser erkennen
+      // daran, ob die Zeilen schon ihre Comp tragen.
+      catalogId: catalog?.id ?? null,
       source,
       comps: source === 'editorial' ? [] : dataComps,
     }, { cache: servedStale ? DEGRADED_CACHE_CONTROL : cacheControl });

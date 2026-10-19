@@ -76,6 +76,33 @@ export function opponentsOf(
 }
 
 /**
+ * Duell-Zeilen auf andere Namen umlegen (Comp-Katalog: klassische Familie →
+ * Comp). Zeilen mit einer Familie ohne Ziel fallen weg, ebenso Paare innerhalb
+ * desselben Ziels; gleiche Paare werden summiert. Jeder Spieler hat genau eine
+ * Familie, also zaehlt kein Vergleich doppelt.
+ */
+export function remapMatchupRows(
+  rows: ReadonlyArray<MatchupRow>,
+  map: (fam: string) => string | null | undefined,
+): MatchupRow[] {
+  const acc = new Map<string, MatchupRow>();
+  for (const [comp, opp, g, b] of rows) {
+    const c = map(comp);
+    const o = map(opp);
+    if (!c || !o || c === o) continue;
+    const k = `${c}\u0000${o}`;
+    const cur = acc.get(k);
+    if (cur) {
+      cur[2] += Number(g) || 0;
+      cur[3] += Number(b) || 0;
+    } else {
+      acc.set(k, [c, o, Number(g) || 0, Number(b) || 0]);
+    }
+  }
+  return [...acc.values()];
+}
+
+/**
  * A gegen B: alle Vergleiche zwischen einer Familie von A und einer von B.
  * Familien, die zu beiden gehoeren, zaehlen nicht (gleiche Comp).
  */

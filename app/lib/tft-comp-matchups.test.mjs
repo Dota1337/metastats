@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 import {
   MATCHUP_MIN_N, duelOf, familyParts, familyRepresentatives, matchupNoise, matchupVerdict, opponentsOf,
-  splitOpponents,
+  remapMatchupRows, splitOpponents,
 } from './tft-comp-matchups.ts';
 import { buildCompanionVsFromMatchups } from './companion-api.ts';
 
@@ -117,4 +117,21 @@ test('buildCompanionVsFromMatchups: Familien auf Comps, beide Richtungen getrenn
     X__a: { Y__c: [200, 0.65] },
     Y__c: { X__a: [200, 0.35] },
   });
+});
+
+test('remapMatchupRows: auf Comps umgelegt, summiert, ohne Ziel und innerhalb derselben Comp raus', () => {
+  const comp = { A__x: 'C1', B__y: 'C1', D__z: 'C2', E__w: 'C2' };
+  const rows = [
+    ['A__x', 'D__z', 100, 60],
+    ['B__y', 'E__w', 50, 20],
+    ['A__x', 'B__y', 80, 40],   // gleiche Comp
+    ['A__x', 'H__q', 30, 10],   // Gegner ohne Comp
+    ['D__z', 'A__x', 100, 40],
+  ];
+  const out = remapMatchupRows(rows, f => comp[f]);
+  assert.deepEqual(out.sort((a, b) => a[0].localeCompare(b[0])), [['C1', 'C2', 150, 80], ['C2', 'C1', 100, 40]]);
+  const opp = opponentsOf(out, ['C1']);
+  assert.equal(opp.length, 1);
+  assert.equal(opp[0].fam, 'C2');
+  assert.equal(opp[0].games, 150);
 });

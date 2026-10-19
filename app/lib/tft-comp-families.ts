@@ -2,7 +2,7 @@
 // Uebersicht (/tft/comps/atlas) rechnen damit dieselben Familien mit denselben
 // Zahlen — 1:1 aus app/tft/comps/page.tsx herausgezogen (2026-09-27).
 import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
-import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
+import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from './tft-cluster';
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
 import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
@@ -22,6 +22,17 @@ export interface CompApiRow extends FamilyComp {
   _clusterKeys?: string[];
   coreFlex?: Record<string, CoreFlexKind>;
   delta?: PatchDelta | null;
+  // Comp aus dem Katalog (tft-comp-catalog-resolver, gesetzt von der Comp-API):
+  // string = gehoert zu dieser Comp, null = ohne Comp (erscheint nicht),
+  // fehlt = klassisch (kein Katalog) → Familie aus dem Cluster-Schluessel.
+  compKey?: string | null;
+}
+
+// Gruppen-Schluessel einer Zeile: die Katalog-Comp, sonst die klassische
+// Familie <trait>__<carry>. Liste, Startdaten und Detail-Vorrat gruppieren
+// damit gleich.
+export function rowFamilyKey(c: { compKey?: string | null; slug?: string | null; clusterKey?: string | null }): string {
+  return c.compKey ?? compTraitFamilyKey(c.slug || c.clusterKey || '');
 }
 
 // Wie viele Comp-Familien die Liste hoechstens zeigt. Gemessen 2026-08-27:
@@ -40,6 +51,8 @@ export function buildCompFamilies(
   sortBy: CompSortBy,
   assets: TftAssetsBundle | null,
 ): CompFamily[] {
+  // Zeilen ohne Katalog-Comp erscheinen nicht (compKey === null).
+  filteredComps = filteredComps.filter(c => c.compKey !== null);
   if (filteredComps.length === 0) return [];
   // Sort-key Helper für Main-Pick + Family-Sort.
   const sortKey = (c: CompApiRow): number => {
@@ -109,7 +122,7 @@ export function buildCompFamilies(
 
   const rawGroups = new Map<string, CompApiRow[]>();
   for (const c of consolidatedList) {
-    const k = compTraitFamilyKey(c.slug || c.clusterKey);
+    const k = rowFamilyKey(c);
     if (!rawGroups.has(k)) rawGroups.set(k, []);
     rawGroups.get(k)!.push(c);
   }
@@ -121,15 +134,22 @@ export function buildCompFamilies(
   // daraus gerechnet waere die Praesenz jeder Unit zu klein.
   const rawByFamily = new Map<string, CompApiRow[]>();
   for (const c of filteredComps) {
-    const k = compTraitFamilyKey(c.slug || c.clusterKey);
+    const k = rowFamilyKey(c);
     if (!rawByFamily.has(k)) rawByFamily.set(k, []);
     rawByFamily.get(k)!.push(c);
   }
   const familyUnits = (keys: string[]) =>
     sumUnits(keys.flatMap(k => (rawByFamily.get(k) || []).map(v => v.typicalUnits)));
   const roleOpts = { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) };
-  const anchorOf = resolveFamilies([...rawGroups.entries()].map(([key, list]) => {
-    const p = parseClusterKey(list[0].slug || list[0].clusterKey);
+  // Katalog-Modus: die Comps des Katalogs sind schon die zusammengelegte
+  // Einheit, kein Zwei-Carry-Zusammenlegen (gemessen 20.10.2026: kein Paar von
+  // Katalog-Comps erfuellt gleichen Trait + Kern-Jaccard >= 0,7 + gegenseitig
+  // Carry; Aphelios + Nidalee und Soraka + Zyra liegen schon in je einer Comp).
+  const catalogMode = filteredComps.some(c => typeof c.compKey === 'string');
+  // Trait und Carry aus dem Gruppen-Schluessel, nicht aus der ersten Zeile: eine
+  // Katalog-Comp hat Zeilen mit verschiedenen Traits (architect 20.10.2026).
+  const anchorOf = catalogMode ? new Map<string, string>() : resolveFamilies([...rawGroups.entries()].map(([key, list]) => {
+    const p = parseFamilyKey(key) ?? parseClusterKey(list[0].slug || list[0].clusterKey);
     return {
       key,
       trait: p?.trait ?? key,
@@ -155,11 +175,17 @@ export function buildCompFamilies(
     // Trait + Carry aus dem Anker holen (architect F1: alter
     // `familyKey.split('@')[0]`-Pfad würde bei neuem Key-Format
     // `<trait>__<carry>` den Carry mit in den Trait-String packen).
+    // Katalog-Comp: Trait + Carry aus ihrem Namen, Stufe aus der ersten Zeile
+    // mit diesem Trait (Zeilen anderer Traits tragen deren Stufe).
     const anchorVariants = rawGroups.get(familyKey) ?? rawVariants;
+    const named = parseFamilyKey(familyKey);
     const parts = parseClusterKey(anchorVariants[0].slug || anchorVariants[0].clusterKey);
-    const trait = parts?.trait ?? familyKey;
-    const carry = parts?.carry ?? '';
-    const level = parts?.level ?? 0;
+    const trait = named?.trait ?? parts?.trait ?? familyKey;
+    const carry = named?.carry ?? parts?.carry ?? '';
+    const levelRow = named
+      ? anchorVariants.map(v => parseClusterKey(v.slug || v.clusterKey)).find(x => x?.trait === named.trait)
+      : parts;
+    const level = levelRow?.level ?? 0;
     // Build-Identity-Konsolidierung (User-Wortlaut 2026-06-21): „3x die
     // gleiche Comp (gleiche Units)" → Sub-Cluster mit IDENTISCHEM
     // typicalUnits-Set (Champion-IDs, Reihenfolge egal) werden zu EINER
@@ -286,7 +312,11 @@ export function buildCompFamilies(
       shownRows.reduce((s, v) => s + (v.games || 0), 0), roleOpts);
     out.push({
       familyKey,
-      memberKeys: membersOf.get(familyKey) || [familyKey],
+      // Katalog-Modus: alle klassischen Familien der Comp-Zeilen (der Δ-Vergleich
+      // summiert ueber sie, attachPatchDeltas), die Comp zuerst.
+      memberKeys: catalogMode
+        ? [...new Set([familyKey, ...(rawByFamily.get(familyKey) || []).map(v => compTraitFamilyKey(v.slug || v.clusterKey || ''))])]
+        : membersOf.get(familyKey) || [familyKey],
       trait,
       carry,
       carries: familyRoles.carries,
@@ -357,6 +387,9 @@ export function topFamilyKeys(families: CompFamily[]): Set<string> | null {
  * Name der Karte, und der Vorrat laege unter der falschen Haelfte (L2).
  */
 type LinkVariant = { slug?: string | null; clusterKey?: string | null; games?: number | null };
+// Katalog-Comp: bevorzugt eine Zeile, deren klassische Familie der Comp-Name
+// ist; sonst die Hauptvariante — ihre Familie fuehrt die Detail-Route ueber den
+// Katalog auf dieselbe Comp.
 export function familyLinkSlug(f: { familyKey: string; mainComp: LinkVariant; variants?: LinkVariant[] }): string {
   const slugOf = (v: LinkVariant) => v.slug || v.clusterKey || '';
   const main = slugOf(f.mainComp);
@@ -376,10 +409,12 @@ export function listFamilyTargets(
   rows: CompApiRow[],
   assets: TftAssetsBundle | null,
 ): { slug: string; familyKey: string }[] {
+  // Vorrat-Schluessel = Gruppen-Schluessel (Katalog-Comp oder klassische
+  // Familie), nicht die Familie des verlinkten Slugs — bei Katalog-Comps kann
+  // der Slug aus einem anderen Trait stammen.
   return standardListFamilies(rows, assets)
-    .map(f => familyLinkSlug(f))
-    .filter((slug): slug is string => typeof slug === 'string' && slug.length > 0)
-    .map(slug => ({ slug, familyKey: compTraitFamilyKey(slug) }));
+    .map(f => ({ slug: familyLinkSlug(f), familyKey: f.familyKey }))
+    .filter(t => typeof t.slug === 'string' && t.slug.length > 0);
 }
 
 // Die Standardansicht der Liste: laufendes Set, 40 meistgespielte Familien,
@@ -469,13 +504,10 @@ export function familyRowsFor<T extends CompApiRow>(
   transform: (row: T) => T = row => row,
 ): T[] | null {
   const shown = view(rows);
-  const keys = new Set<string>();
-  for (const f of shown) {
-    for (const v of f.variants as CompApiRow[]) {
-      for (const s of [v.slug, ...(v._mergedFrom ?? []), ...(v._mergedFromBuilds ?? [])]) keys.add(compTraitFamilyKey(s));
-    }
-  }
-  const subset = rows.filter(r => keys.has(compTraitFamilyKey(r.slug || r.clusterKey))).map(transform);
+  // Alle Zeilen der gezeigten Gruppen (inkl. Zwei-Carry-Mitglieder) — gleich,
+  // ob die Gruppe eine klassische Familie oder eine Katalog-Comp ist.
+  const keys = new Set<string>(shown.flatMap(f => f.memberKeys ?? [f.familyKey]));
+  const subset = rows.filter(r => keys.has(rowFamilyKey(r))).map(transform);
   return familiesSignature(view(subset)) === familiesSignature(shown) ? subset : null;
 }
 

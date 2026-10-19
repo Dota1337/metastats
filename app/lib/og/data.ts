@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { CURRENT_SET } from '../current-set';
 import { lookupCompDetailSnapshot } from '../comp-detail-snapshot';
+import { detailCatalogFor } from '../tft-comp-catalog-resolver';
 import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
 import { compTraitCarry } from '../tft-cluster';
 import { computeRoles, componentCheckFromItems, namedCarries, type RoleUnit } from '../tft-comp-roles';
@@ -83,10 +84,12 @@ export async function compOgData(slug: string): Promise<CompOg | null> {
   const bundle = tftAssets();
   // Dieselben Filter wie die Detailseite ohne Parameter
   // (CompDetailClient.tsx: all / master_plus / 3 Tage / DETAIL_MIN_GAMES Spiele).
-  const hit = await withTimeout(lookupCompDetailSnapshot({
+  // Comp-Katalog wie die Route (Slug ohne Comp oder keine Antwort: nur Name).
+  const cat = await withTimeout(detailCatalogFor({ patchFilter: null, setNumber: CURRENT_SET, startDay: null, endDay: null, days: 3 }, slug), DATA_TIMEOUT_MS);
+  const hit = cat && cat !== 'none' ? await withTimeout(lookupCompDetailSnapshot({
     patch: null, region: 'all', days: 3, bucket: 'master_plus', minGames: DETAIL_MIN_GAMES,
-    setNumber: CURRENT_SET, slug,
-  }), DATA_TIMEOUT_MS);
+    setNumber: CURRENT_SET, slug, catalog: cat === 'classic' ? null : cat,
+  }), DATA_TIMEOUT_MS) : null;
   const comp = (hit?.payload as { comp?: SnapComp } | undefined)?.comp ?? null;
 
   if (!comp) {

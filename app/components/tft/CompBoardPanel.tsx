@@ -263,10 +263,9 @@ export default function CompBoardPanel({
   const earlyCells = data?.earlyBoardsByLevel ?? {};
   const earlyTabs: BoardTab[] = EARLY_TAB_LEVELS
     .filter(l => (earlyCells[l]?.length ?? 0) > 0)
-    .map(l => {
-      const top = byGames(data?.early?.[l])[0];
-      return { key: `e${l}`, level: Number(l), sub: top?.avg != null ? `Ø ${top.avg.toFixed(2)}` : null };
-    });
+    // Ohne Ø: die Aufbau-Bretter kommen von MetaTFT (alle Raenge, eigener
+    // Zeitraum) und passen nicht zu unseren Filtern (User 19.10.2026).
+    .map(l => ({ key: `e${l}`, level: Number(l), sub: null }));
   const endLevels = (data?.levels ?? []).filter(l => !earlyTabs.some(e => e.level === l.level));
   const endTabs: BoardTab[] = endLevels.map(l => ({ key: String(l.level), level: l.level, sub: `${(l.share * 100).toFixed(1)}%` }));
   // Ohne Endstufe mit eigenem Brett bleibt das Gesamtbrett ueber einen eigenen Reiter erreichbar.
@@ -411,12 +410,6 @@ export default function CompBoardPanel({
                 <div key={i} className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
                   <div className="flex gap-1">
                     {o.units.map((u, j) => <EarlyUnitTile key={`${u}-${j}`} apiName={u} assets={assets} />)}
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-fg-muted tabular-nums whitespace-nowrap">
-                    {o.avg != null && (
-                      <span>{t('tft.comp.avgPlacement')} <span className="text-white font-semibold">{o.avg.toFixed(2)}</span></span>
-                    )}
-                    <span>{o.games.toLocaleString()} {t('tft.comp.games')}</span>
                   </div>
                 </div>
               ))}

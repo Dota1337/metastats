@@ -53,3 +53,26 @@ export function buildGroupMembers<T>(
   const h = hashOf(own);
   return [key, ...rows.filter(r => keyOf(r) !== key && hashOf(r) === h).map(keyOf)];
 }
+
+/**
+ * Alle Build-Gruppen unter `rows` nach derselben Regel wie buildGroupMembers,
+ * je Gruppe die Zeilen nach Spielen absteigend (die erste ist der Anker).
+ * Fuer die Varianten-Knoepfe im Katalog-Modus, die die Detail-Route aus ihren
+ * eigenen Zeilen bildet.
+ */
+export function buildGroups<T>(
+  rows: T[],
+  gamesOf: (r: T) => number,
+  unitDaysOf: (r: T) => unknown[],
+): T[][] {
+  const groups = new Map<string, T[]>();
+  for (const r of rows) {
+    const counts = new Map<string, number>();
+    for (const day of unitDaysOf(r)) addUnitCounts(counts, day);
+    const h = compBuildHash(counts, gamesOf(r));
+    const g = groups.get(h);
+    if (g) g.push(r);
+    else groups.set(h, [r]);
+  }
+  return [...groups.values()].map(g => g.sort((a, b) => gamesOf(b) - gamesOf(a)));
+}

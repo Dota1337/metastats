@@ -353,6 +353,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
       // zusammengelegten Familien, sonst schrumpft die Knopfreihe
       // nach dem Klick (mergedFamilies ist dort nur die eigene).
       families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
+      variants={comp?.variants ?? null}
       activeKey={variantMode === 'exact' ? slug : null}
       end={pageEnd}
       bare={bare}

@@ -120,6 +120,7 @@ export default function CompRow({
   compareSelected = false,
   onCompareToggle = null,
   roles: rolesProp = null,
+  nameTrait = null,
   boardToggle = null,
   onGuide,
 }: {
@@ -147,6 +148,11 @@ export default function CompRow({
   // durch, weil deren Spielzahl die Familien-Summe ist). Fehlt es, rechnet die
   // Zeile ihre Rollen aus den eigenen Units.
   roles?: CompRoles | null;
+  // Trait im Namen der Hauptzeile = Trait der Familie. Eine Katalog-Comp hat
+  // Zeilen mit verschiedenen Traits; ohne das hiesse die Zeile nach dem Trait
+  // ihrer Hauptvariante, die Detailseite aber nach der Comp. Fehlt es, der
+  // Trait der eigenen Kennung.
+  nameTrait?: string | null;
   // Knopf fuer das Aufstellungsbrett (CompBoardPanel). Das Brett selbst rendert
   // CompFamilyRow unter der Zeile — ausserhalb des role=link-Containers.
   // onPrefetch laedt beim Zeigen/Fokussieren vor (150 ms Verzoegerung).
@@ -158,9 +164,10 @@ export default function CompRow({
   const { t, withLang, lang } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
-  const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
-  const traitName = traitMeta?.name || (parts ? prettyTrait(parts.trait) : 'Unknown');
-  const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
+  const shownTrait = nameTrait ?? parts?.trait ?? null;
+  const traitMeta = shownTrait && assets ? assets.traits[shownTrait] : null;
+  const traitName = traitMeta?.name || (shownTrait ? prettyTrait(shownTrait) : 'Unknown');
+  const traitVariant = shownTrait ? extractTraitVariant(shownTrait, traitName) : null;
 
   // Curated guide indicator: tiny difficulty badge in the header when this
   // comp has an editorial slug-map entry pointing at a tftacademy guide.
@@ -176,8 +183,8 @@ export default function CompRow({
   // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
   // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
   // Beschreibung dieser Constellation zeigt.
-  const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
-  const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
+  const traitDisplay = shownTrait ? tftTraitDisplayName(assets, shownTrait) : traitName;
+  const traitTooltip = shownTrait ? tftTraitDescription(assets, shownTrait) : '';
 
   // Carries und Tank-Traeger an den Items erkannt (tft-comp-roles), nicht am
   // Cluster-Key — der traegt nur eine Unit und lag bei Zwei-Carry-Comps oft

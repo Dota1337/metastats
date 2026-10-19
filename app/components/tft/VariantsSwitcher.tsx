@@ -91,6 +91,7 @@ export default function VariantsSwitcher({
   activeKey = null,
   end = null,
   bare = false,
+  variants: givenVariants = null,
 }: {
   clusterKey: string;
   region: string;
@@ -115,6 +116,9 @@ export default function VariantsSwitcher({
   // bare: ohne eigene Box, oben in der Box „Items je Unit“ (User 18.10.2026),
   // mit Trennlinie zu den Items darunter.
   bare?: boolean;
+  // Comp-Katalog: die Detail-Antwort bringt die Varianten der ganzen Comp mit
+  // (Build-Gruppen ueber alle ihre Familien) — dann kein eigener Abruf.
+  variants?: Variant[] | null;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -129,9 +133,13 @@ export default function VariantsSwitcher({
   // Sortiert: Familien- und genaue Ansicht nennen dieselben Familien evtl. in
   // anderer Reihenfolge — das soll keinen neuen Abruf ausloesen.
   const familiesKey = [...familyList].sort().join(',');
-  const multiFamily = familyList.length > 1;
+  // Mit Katalog-Varianten zaehlt, ob sie verschiedene Carries haben.
+  const multiFamily = givenVariants
+    ? new Set(givenVariants.map(v => parseClusterKey(v.clusterKey)?.carry)).size > 1
+    : familyList.length > 1;
 
   useEffect(() => {
+    if (givenVariants) return;
     let cancelled = false;
     const load = (family: string) => {
       const params = new URLSearchParams({
@@ -161,9 +169,12 @@ export default function VariantsSwitcher({
       setData({ family: ok[0].family, familyTotal, variants });
     });
     return () => { cancelled = true; };
-  }, [familiesKey, region, bucket, days, patch, end]);
+  }, [familiesKey, region, bucket, days, patch, end, givenVariants]);
 
-  if (!data) return null;
+  const shown: VariantsResponse | null = givenVariants
+    ? { family: familyList[0], familyTotal: 0, variants: givenVariants }
+    : data;
+  if (!shown) return null;
 
   // Aktiv ist ein Knopf nur in der genauen Ansicht: die Familien-Ansicht zeigt
   // alle Varianten zusammen, dort oeffnet jeder Knopf seine Variante.
@@ -174,10 +185,10 @@ export default function VariantsSwitcher({
   // if the user navigated directly to a below-threshold variant, show it
   // alongside the threshold-passing ones with a sample-size flag.
   const activeParts = activeCluster ? parseClusterKey(activeCluster) : null;
-  const hasActive = !activeCluster || data.variants.some(v => v.clusterKey === activeCluster);
+  const hasActive = !activeCluster || shown.variants.some(v => v.clusterKey === activeCluster);
   const variants: Variant[] = (!hasActive && activeCluster && activeParts)
     ? [
-        ...data.variants,
+        ...shown.variants,
         {
           clusterKey: activeCluster,
           slug: activeCluster,
@@ -191,7 +202,7 @@ export default function VariantsSwitcher({
           belowThreshold: true,
         },
       ]
-    : data.variants;
+    : shown.variants;
 
   // Family-Mode-Banner: wenn die Detail-API gerade alle Sub-Cluster aggregiert,
   // braucht der User den Hinweis + Toggle zur Sub-Cluster-Sicht. Wenn nur 1

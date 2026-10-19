@@ -33,6 +33,7 @@ import { resolveCutoffs, type TierCutoffs, type TierCutoffsBundle } from '../tft
 import { sortUnitsRareLast } from '../tft-list-sort';
 import { parseClusterKey } from '../tft-cluster';
 import { leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
+import { listPayloadWithCatalog } from '../tft-comp-catalog-resolver';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
@@ -155,6 +156,8 @@ interface EndpointSpec<Row> {
    *  die Zeilen der gezeigten Familien). */
   prepare?: (rows: Row[], bundle: TftAssetsBundle) => Row[] | null;
   assets: (bundle: TftAssetsBundle, rows: Row[]) => TftAssetsBundle;
+  /** Gespeicherten Stand so umformen wie die Route (Comps: Comp-Katalog). */
+  adapt?: (payload: Record<string, unknown>) => Promise<Record<string, unknown>>;
   /** Ansicht, die die Startdaten nicht abbilden — der Browser laedt wie bisher. */
   skip?: boolean;
   partial?: boolean;
@@ -190,7 +193,9 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
     bucket: resolved.bucketLabel, minGames: 0, setNumber: resolved.setNumber,
     endDay: resolved.endDay,
   }), left());
-  const payload = hit?.payload as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[]; minGames?: unknown }) | undefined;
+  const stored = hit?.payload as Record<string, unknown> | undefined;
+  const adapted = stored && spec.adapt ? await withTimeout(spec.adapt(stored), left()) : stored;
+  const payload = adapted as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[]; minGames?: unknown }) | null | undefined;
   const raw = payload?.[spec.field];
   // Gleicher Schutz wie die Route: nie einen leeren Stand ausliefern.
   if (!payload?.hasData || !Array.isArray(raw) || raw.length === 0) return { filters, data: null };
@@ -290,6 +295,9 @@ export function compsStart<Row extends CompApiRow>(sp: URLSearchParams): Promise
     // doppelt uebertragen.
     skip: sp.has('adv') || sp.get('sort') === 'velocity' || sp.has('compareA'),
     partial: true,
+    // Wie die Route: jede Zeile bekommt ihre Comp (compKey), auch in Staenden
+    // von vor dem Katalog.
+    adapt: payload => listPayloadWithCatalog(payload),
     // /api/tft/comps liefert den Stand unveraendert; davon nur die Zeilen der
     // 40 gezeigten Familien (gemessen 14.10.2026: 111 von 293, gleiche Anzeige
     // in 48 Filter-Kombinationen x 5 Sortierungen). shownFamilyRows prueft das

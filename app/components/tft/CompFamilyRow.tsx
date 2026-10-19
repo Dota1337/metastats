@@ -131,6 +131,7 @@ export default function CompFamilyRow({
           compareSelected={compareSelected}
           onCompareToggle={onCompareToggle}
           roles={familyRoles}
+          nameTrait={family.trait}
           boardToggle={boardToggle}
           onGuide={setGuide}
         />
@@ -166,6 +167,7 @@ export default function CompFamilyRow({
         compareSelected={compareSelected}
         onCompareToggle={onCompareToggle}
         roles={familyRoles}
+        nameTrait={family.trait}
         boardToggle={boardToggle}
         onGuide={setGuide}
       />

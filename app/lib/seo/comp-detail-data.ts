@@ -9,6 +9,7 @@ import 'server-only';
 // Familien-Ansicht (Standard); ?variant=exact und der Pro-Vergleich
 // (bucket=pro_pool) sind nie vorgerechnet und kommen weiter aus dem Browser.
 import { lookupCompDetailSnapshot } from '../comp-detail-snapshot';
+import { detailCatalogFor } from '../tft-comp-catalog-resolver';
 import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
 import { compDetailKey, detailFiltersFrom } from '../tft-detail-filters';
 import { parseClusterKey } from '../tft-cluster';
@@ -96,9 +97,14 @@ export async function compDetailStart(routeKey: string, sp: URLSearchParams): Pr
   const left = deadline();
   const r = await resolveFor({ region: f.region, bucket: f.bucket, days: String(f.days) }, left);
   if (!r) return null;
+  // Comp-Katalog wie die Route: nur Staende desselben Katalogs und derselben
+  // Comp; Slug ohne Comp oder keine Antwort rechtzeitig → keine Startdaten.
+  const cat = await withTimeout(detailCatalogFor(r, slug), left());
+  if (!cat || cat === 'none') return null;
   const hit = await withTimeout(lookupCompDetailSnapshot({
     patch: r.patch, region: r.regionLabel, days: r.requestedDays, bucket: r.bucketLabel,
     minGames: DETAIL_MIN_GAMES, setNumber: r.setNumber, endDay: r.endDay, slug,
+    catalog: cat === 'classic' ? null : cat,
   }), left());
   if (!hit || !(hit.blobBytes <= MAX_BLOB_BYTES)) return null;
   const detail = hit.payload as CompDetailInitial['detail'] | null;

@@ -16,6 +16,7 @@ import { coreFlexFrame } from '../../lib/tft-ui';
 // jeweils mittig"): Linie nur oben, „Core"/„Flex" steht mittig ueber der Box.
 // Label und Box stecken in einer Huelle, damit sie gemeinsam umbrechen; die
 // Huelle benennt die Gruppe per aria-labelledby (vorher fieldset/legend).
+// 8 px zwischen Linie und Kacheln (User: „ein kleines bisschen größer").
 export default function CoreFlexGroups<T extends { characterId: string }>({
   units, kinds, forceCore = [], renderUnit, className = '',
 }: {
@@ -38,7 +39,7 @@ export default function CoreFlexGroups<T extends { characterId: string }>({
               {t(`tft.comp.board.${k}`)}
             </div>
             <div
-              className="flex flex-wrap items-start gap-1.5 px-[5px] pb-[5px] pt-1"
+              className="flex flex-wrap items-start gap-1.5 px-[5px] pb-[5px] pt-2"
               style={{ borderTop: frame.border, background: frame.background }}
             >
               {groups[k].map(renderUnit)}

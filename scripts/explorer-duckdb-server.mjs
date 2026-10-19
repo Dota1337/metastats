@@ -64,11 +64,11 @@ import { readComponents as readComponentsFrom, componentsHash } from './lib/expl
 import { AGG_SIG, aggEligible, aggDaysFor } from './lib/explorer-agg.mjs';
 import { AGG_SUM_COLS, AGG_HEAD_COLS } from './lib/explorer-agg-build.mjs';
 import { QUERY_TIMEOUT_MS, ROW_LIMIT, ROW_MIN_BOARDS, ROW_ORDER, bad, summarize, finishRows } from './lib/explorer-query.mjs';
-import { TABS, neededCaps, normalizeQuery } from './lib/explorer-normalize.mjs';
+import { LIMITS, TABS, neededCaps, normalizeQuery } from './lib/explorer-normalize.mjs';
 import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
-import { unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { coplayPairBodies, pickWarmBody, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -92,6 +92,17 @@ const COUNTS_ON = process.env.EXPLORER_BOARD_COUNTS !== '0';
 const GAMES_ON = process.env.EXPLORER_GAMES !== '0';
 // Unit-Detailseiten vorwaermen (warmUnits); 0 = aus.
 const UNIT_WARM_ON = process.env.EXPLORER_UNIT_WARM !== '0';
+// Explorer-Auswahl je Unit vorwaermen (warmUnits, Plan 19.10.2026 S1); 0 = aus.
+const PICK_WARM_ON = process.env.EXPLORER_PICK_WARM !== '0';
+// Vorschlags-Paare nach einer echten Auswahl im Leerlauf vorrechnen (S6); 0 = aus.
+const COPLAY_WARM_ON = process.env.EXPLORER_COPLAY_WARM !== '0';
+// Teurere Auswahl (z. B. alle Patches) hat ebenso teure Paare — dann keine.
+const COPLAY_MAX_ANCHOR_MS = 10_000;
+// Hoechstens so lange je Paar; laenger hielte es die einzige Spur fuer Besucher.
+const COPLAY_TIMEOUT_MS = QUERY_TIMEOUT_MS;
+// So lange auf eine freie Spur warten, danach ist die Auswahl vermutlich alt.
+const COPLAY_IDLE_MAX_MS = 20_000;
+const COPLAY_JOBS_MAX = 3;
 // Liegt waehrend eines Baus neben der Datei (build-explorer-store.mjs).
 const BUILD_LOCK = `${DB_PATH}.lock`;
 const UNIT_WARM_IDLE_MS = 2_000;
@@ -348,7 +359,7 @@ const pending = new Map();
 // oder ihr Fehler. Beim Vorwaermen (keine Besucher-Frist) nach WAIT_MS. Die
 // Rechnung selbst laeuft weiter. Wer in der Schlange aufgibt oder beim Platz
 // weniger als den Mindest-Rest hat, bekommt 503 „busy" (queued).
-function compute(holder, q, key, { warm = false } = {}) {
+function compute(holder, q, key, { warm = false, pin = warm, warmTimeoutMs = WARM_TIMEOUT_MS } = {}) {
   const inflight = pending.get(key);
   if (inflight) {
     if (warm) return inflight;
@@ -365,7 +376,7 @@ function compute(holder, q, key, { warm = false } = {}) {
     if (days) {
       await aggLane.acquire({ wait: warm });
       try {
-        return await execute(holder, q, key, warm, days);
+        return await execute(holder, q, key, warm, days, undefined, { pin, warmTimeoutMs });
       } catch (err) {
         if (err.message === 'swapped') throw err;
         log(`Teilsummen-Weg gescheitert, rechne live: ${err.message} bei ${JSON.stringify(q)}`);
@@ -391,7 +402,7 @@ function compute(holder, q, key, { warm = false } = {}) {
         if (budget.long) log(`lange Frist ${budget.timeoutMs} ms (Rest ${timeoutMs} ms): ${JSON.stringify(q)}`);
         else if (waited >= 2000) log(`kurz nach ${waited} ms Wartezeit dran (Rechnung bis ${timeoutMs} ms): ${JSON.stringify(q)}`);
       }
-      return await execute(holder, q, key, warm, null, timeoutMs);
+      return await execute(holder, q, key, warm, null, timeoutMs, { pin, warmTimeoutMs });
     } finally {
       liveLane.release();
     }
@@ -455,7 +466,11 @@ const server = http.createServer(async (req, res) => {
   const hit = holder.pinned.get(key) ?? cacheGet(key);
   // X-Explorer-Source bleibt auf der Box: refresh-api reicht nur Built-At und
   // Retry-After durch. Fuer Diagnose und den Abgleich agg gegen live.
-  if (hit) return send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, { ...headers, 'X-Explorer-Source': hit.src ?? 'live' });
+  if (hit) {
+    send(res, 200, { meta: holder.meta, query: q, ...hit, cached: true }, { ...headers, 'X-Explorer-Source': hit.src ?? 'live' });
+    scheduleCoplay(holder, q, hit);
+    return;
+  }
 
   const t0 = Date.now();
   // Die Datei schon ab hier halten, nicht erst ab execute: eine Anfrage, die
@@ -465,6 +480,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const result = await compute(holder, q, key);
     send(res, 200, { meta: holder.meta, query: q, ...result, cached: false }, { ...headers, 'X-Explorer-Source': result.src ?? 'live' });
+    scheduleCoplay(holder, q, result);
   } catch (err) {
     if (err.status === 503) {
       if (err.queued) log(`ausgelastet nach ${Date.now() - t0} ms in der Schlange, 503: ${JSON.stringify(q)}`);
@@ -488,19 +504,22 @@ function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
 // (runQueryWay). timeoutMs = Restfrist der Live-Spur (compute); fehlt sie,
 // gilt QUERY_TIMEOUT_MS. Der Rueckfall nach einem Strukturfehler bekommt
 // hoechstens QUERY_TIMEOUT_MS, auch bei langer Frist.
-async function execute(holder, q, key, warm = false, days = null, timeoutMs = undefined) {
+// pin: Ergebnis fest ablegen (Vorwaermen) statt im verdraengbaren Zwischenspeicher;
+// die Vorschlags-Paare rechnen wie das Vorwaermen, landen aber im Zwischenspeicher.
+async function execute(holder, q, key, warm = false, days = null, timeoutMs = undefined,
+  { pin = warm, warmTimeoutMs = WARM_TIMEOUT_MS } = {}) {
   holder.refs++;
   const t0 = Date.now();
   try {
     const { result, src } = days
       ? { result: await runAggQuery(holder, q, days, warm ? { timeoutMs: AGG_WARM_TIMEOUT_MS, warm: true } : {}), src: 'agg' }
       : await runQueryWay(holder, q, warm
-        ? { timeoutMs: WARM_TIMEOUT_MS, warm: true, log }
+        ? { timeoutMs: warmTimeoutMs, warm: true, log }
         : { timeoutMs, minLeftMs: LIVE_MIN_LEFT_MS, fallbackMaxMs: QUERY_TIMEOUT_MS, log });
     // Nicht aufzaehlbar: steht nicht im JSON, nur im Antwort-Kopf.
     Object.defineProperty(result, 'src', { value: src, enumerable: false });
     result.ms = Date.now() - t0;
-    if (warm) holder.pinned.set(key, result); else cacheSet(key, result);
+    if (pin) holder.pinned.set(key, result); else cacheSet(key, result);
     if (result.ms > 3000) log(`langsam ${result.ms} ms: ${JSON.stringify(q)}`);
     return result;
   } finally {
@@ -547,42 +566,111 @@ async function warmUp(holder) {
 // solange die Live-Spur belegt ist oder ein Bau laeuft (Speicher der Box).
 // Drei Fehler in Folge beenden den Durchgang. Ergebnisse liegen in der festen
 // Ablage der Datei wie die Startansichten.
+// Davor (S1, eine Abfrage je Unit, ~4 min): die Explorer-Auswahl je Unit — der
+// erste Klick auf einen Suchtreffer kostet sonst 3–8 s Rechnen.
 async function warmUnits(holder) {
-  if (!UNIT_WARM_ON || current !== holder) return;
+  if ((!UNIT_WARM_ON && !PICK_WARM_ON) || current !== holder) return;
   const start = normalizeQuery({ tab: 'units', patches: ['latest'] });
   resolveLatest(holder, start);
   const ids = unitsToWarm(holder.pinned.get(cacheKey(holder, start))?.rows);
   if (!ids.length) { log('Unit-Vorwaermen uebersprungen: keine Startansicht Units'); return; }
+  const steps = [
+    ...(PICK_WARM_ON ? ids.map(id => ({ id, body: pickWarmBody(id), pick: true })) : []),
+    ...(UNIT_WARM_ON ? ids.flatMap(id => unitWarmBodies(id).map(body => ({ id, body, pick: false }))) : []),
+  ];
   const t0 = Date.now();
   let n = 0;
+  let picks = 0;
   let fails = 0;
-  for (const id of ids) {
-    for (const body of unitWarmBodies(id)) {
-      if (!(await warmIdle(holder))) return;
-      const q = normalizeQuery(body);
-      resolveLatest(holder, q);
-      if (neededCaps(q).some(c => !holder.caps.has(c))) continue;
-      try {
-        await warmOne(holder, q, cacheKey(holder, q));
-        n++;
-        fails = 0;
-      } catch (err) {
-        if (current !== holder) return;
-        log(`Vorwaermen Unit ${id} (${q.tab}) fehlgeschlagen: ${err.message}`);
-        if (++fails >= 3) { log(`Unit-Vorwaermen nach 3 Fehlern in Folge beendet (${n} Abfragen fertig)`); return; }
-      }
+  for (const { id, body, pick } of steps) {
+    if (!(await warmIdle(holder))) return;
+    const q = normalizeQuery(body);
+    resolveLatest(holder, q);
+    if (neededCaps(q).some(c => !holder.caps.has(c))) continue;
+    try {
+      await warmOne(holder, q, cacheKey(holder, q));
+      n++;
+      fails = 0;
+      if (pick && ++picks === ids.length) log(`Explorer-Auswahl vorgewaermt: ${picks} Units in ${Date.now() - t0} ms`);
+    } catch (err) {
+      if (current !== holder) return;
+      log(`Vorwaermen Unit ${id} (${pick ? 'Auswahl' : q.tab}) fehlgeschlagen: ${err.message}`);
+      if (++fails >= 3) { log(`Unit-Vorwaermen nach 3 Fehlern in Folge beendet (${n} Abfragen fertig)`); return; }
     }
   }
   log(`Unit-Seiten vorgewaermt: ${n} Abfragen fuer ${ids.length} Units in ${Date.now() - t0} ms`);
 }
 
+// Vorschlags-Paare (Plan 19.10.2026, S6): nach jeder Antwort im Units-Reiter,
+// zu der die Seite „Oft zusammen mit …" zeigt, die Paar-Anfragen der
+// Vorschlaege im Leerlauf rechnen — meistgespielte zuerst, in den normalen
+// Zwischenspeicher. Gilt fuer jeden Rang, Patch und jede Region. Die juengste
+// Auswahl hat Vorrang: kommt eine neue, endet die laufende nach ihrem Paar.
+// Waehrend eines Baus nichts (Speicher der Box). Eine laufende Paar-Rechnung
+// laesst einen neuen Besucher hoechstens ihren Rest warten (~3 s gemessen).
+const coplayJobs = [];
+let coplayRunning = false;
+
+function scheduleCoplay(holder, q, result) {
+  if (!COPLAY_WARM_ON || current !== holder || !result?.rows) return;
+  if ((result.ms ?? 0) > COPLAY_MAX_ANCHOR_MS) return;
+  const bodies = coplayPairBodies(q, result.rows, { maxUnits: LIMITS.units, maxTotal: LIMITS.total });
+  if (!bodies.length) return;
+  const anchor = cacheKey(holder, q);
+  if (coplayJobs.some(j => j.anchor === anchor)) return;
+  coplayJobs.push({ holder, anchor, bodies });
+  while (coplayJobs.length > COPLAY_JOBS_MAX) coplayJobs.shift();
+  if (!coplayRunning) runCoplay().catch(err => log('Vorschlags-Paare abgebrochen:', err.message));
+}
+
+async function runCoplay() {
+  coplayRunning = true;
+  try {
+    while (coplayJobs.length) {
+      const { holder, bodies } = coplayJobs.pop();
+      const t0 = Date.now();
+      let n = 0;
+      for (const body of bodies) {
+        if (coplayJobs.length || current !== holder) break;
+        if (!(await coplayIdle(holder))) break;
+        let q;
+        try { q = normalizeQuery(body); } catch { continue; }
+        const key = cacheKey(holder, q);
+        if (holder.pinned.has(key) || cache.has(key) || pending.has(key)) continue;
+        try {
+          await compute(holder, q, key, { warm: true, pin: false, warmTimeoutMs: COPLAY_TIMEOUT_MS });
+          n++;
+        } catch (err) {
+          log(`Vorschlags-Paar fehlgeschlagen (${Date.now() - t0} ms): ${err.message}`);
+          break;
+        }
+      }
+      if (n) log(`Vorschlags-Paare vorgerechnet: ${n} in ${Date.now() - t0} ms`);
+    }
+  } finally {
+    coplayRunning = false;
+  }
+}
+
+// Wie warmIdle, aber mit Obergrenze und ohne Warten auf einen Bau.
+async function coplayIdle(holder) {
+  const until = Date.now() + COPLAY_IDLE_MAX_MS;
+  for (;;) {
+    if (current !== holder || fs.existsSync(BUILD_LOCK)) return false;
+    if (liveLane.running === 0 && liveLane.queue.length === 0) return true;
+    if (Date.now() >= until) return false;
+    await new Promise(r => setTimeout(r, 250));
+  }
+}
+
 // Wartet, bis die Live-Spur leer ist und kein Bau laeuft; false nach einem Tausch.
+// Vorschlags-Paare gehen vor: sie gehoeren zu einem Besucher, der gerade klickt.
 async function warmIdle(holder) {
   let told = false;
   for (;;) {
     if (current !== holder) return false;
     const building = fs.existsSync(BUILD_LOCK);
-    if (!building && liveLane.running === 0 && liveLane.queue.length === 0) return true;
+    if (!building && !coplayRunning && liveLane.running === 0 && liveLane.queue.length === 0) return true;
     if (building && !told) { log('Unit-Vorwaermen wartet: Bau laeuft'); told = true; }
     await new Promise(r => setTimeout(r, building ? UNIT_WARM_BUILD_MS : UNIT_WARM_IDLE_MS));
   }

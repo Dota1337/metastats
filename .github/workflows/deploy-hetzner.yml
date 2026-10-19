@@ -21,6 +21,8 @@ on:
       - 'app/lib/lol-builds-blob.mjs'
       # Route-Spiegel (scripts/publish-route-mirrors.mjs).
       - 'app/lib/route-mirror.mjs'
+      # Vorschlagsregel des Data Explorers (scripts/lib/explorer-unit-warm.mjs).
+      - 'app/lib/tft-explorer-coplay.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

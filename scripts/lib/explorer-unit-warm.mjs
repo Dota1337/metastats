@@ -4,6 +4,8 @@
 // unitExplorerQueries + UNIT_DEFAULT_FILTERS in app/components/tft/unit/useUnitExplorer.ts;
 // der Test legt beide nebeneinander (gleicher Schluessel = Treffer im Dienst).
 
+import { COPLAY_MAX, coplayChosen, coplayPick } from '../../app/lib/tft-explorer-coplay.mjs';
+
 // perf-critic 19.10.: 65 Units ueber 1.000 Brettern, je Abfrage ~4,5 s kalt.
 export const UNIT_WARM_MIN_BOARDS = 1000;
 // Obergrenze gegen Speicher: je Unit ~340 KB Antwort (gemessen Lux 19.10.).
@@ -20,6 +22,34 @@ export function unitWarmBodies(unitId) {
     { ...base, units: [unit], tab: 'items', focus: unitId },
     { ...base, units: [unit], tab: 'builds', focus: unitId },
   ];
+}
+
+// Explorer-Auswahl einer Unit (Plan 19.10.2026, S1): Units-Reiter mit genau
+// dieser Unit, alle Regionen/Raenge, neuester Patch — die Anfrage nach einem
+// Klick auf einen Suchtreffer in der Standardansicht.
+export function pickWarmBody(unitId) {
+  return { region: 'all', ranks: [], patches: ['latest'], units: [{ id: unitId }], tab: 'units' };
+}
+
+// Vorschlags-Paare (S6): die Seite laesst nur spielbare Units zu
+// (tftPlayableChampions), der Dienst kennt die Liste nicht und rechnet deshalb
+// ein paar Partner mehr — eine Obermenge der Seiten-Auswahl.
+export const COPLAY_WARM_SLACK = 2;
+
+/**
+ * Paar-Anfragen zu einer Antwort im Units-Reiter: genau die Anfrage, die ein
+ * Klick auf einen Vorschlag ausloest (Hauptliste + Partner). [] wenn die Seite
+ * dort keine Vorschlaege zeigt oder der Partner nicht mehr hineinpasst.
+ * q = kanonische Anfrage des Dienstes (normalizeQuery).
+ */
+export function coplayPairBodies(q, rows, { maxUnits, maxTotal }) {
+  if (q.tab !== 'units' || q.split != null || q.focus != null) return [];
+  if (!q.units.some(u => !u.x)) return [];
+  const total = q.units.length + q.items.length + q.traits.length
+    + q.groups.reduce((a, g) => a + g.units.length + g.items.length + g.traits.length, 0);
+  if (q.units.length >= maxUnits || total >= maxTotal) return [];
+  return coplayPick(rows, { chosen: coplayChosen(q), max: COPLAY_MAX + COPLAY_WARM_SLACK })
+    .map(r => ({ ...q, units: [...q.units, { id: r.key }] }));
 }
 
 /** Units aus der Startansicht des Units-Reiters, meistgespielte zuerst. */

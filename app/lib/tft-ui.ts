@@ -28,11 +28,14 @@ export function starColor(star: number): string {
 // damit sie wie der Rahmen aussehen. Kein Rahmen ohne Einteilung.
 // Farbe (User 2026-10-10, Variante 5): Core = helle Linie + Flaeche in TFT-Lila,
 // Flex = grau gestrichelt ohne Flaeche. Das Lila steckt nur in der Flaeche, damit
-// der lila Carry-/4-Kosten-Rand der Kacheln sichtbar bleibt.
+// der lila Carry-/4-Kosten-Rand der Kacheln sichtbar bleibt. Seit 19.10.2026
+// 20 % statt 12 % (User: „damit das noch klarer raussticht"); mehr nicht, sonst
+// faellt der blaue 3-Kosten-Rand beim Zeigen unter 3:1 Kontrast (22 % = 2,93).
+// Die Boxen nutzen nur die Linie oben, das Zaehler-Quadrat den vollen Rand.
 export function coreFlexFrame(kind: 'core' | 'flex' | null | undefined): { border: string; background: string } | undefined {
   if (!kind) return undefined;
   return kind === 'core'
-    ? { border: '2px solid var(--fg-bright)', background: 'rgb(var(--accent-tft-rgb) / 12%)' }
+    ? { border: '2px solid var(--fg-bright)', background: 'rgb(var(--accent-tft-rgb) / 20%)' }
     : { border: '1.5px dashed var(--fg-faint)', background: 'transparent' };
 }
 

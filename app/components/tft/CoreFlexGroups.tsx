@@ -12,6 +12,10 @@ import { coreFlexFrame } from '../../lib/tft-ui';
 // um. 5 px Innenabstand, damit 3★-/×2-Badges und das Vergroessern beim Zeigen
 // nicht auf der Linie liegen. Rahmen ohne Klick-Handler: in der role=link-Zeile
 // fuehrt ein Klick aufs Polster zur Detailseite wie die Luecken bisher.
+// Seit 19.10.2026 (User: „entferne die untere Linie … Core + Flex Beschreibung
+// über jede Box"): Linie nur oben/links/rechts, „Core"/„Flex" sitzt als legend
+// in der oberen Linie (fieldset benennt die Gruppe, daher kein aria-label).
+// Das Label steht im fieldset, damit es mit seinem Rahmen umbricht.
 export default function CoreFlexGroups<T extends { characterId: string }>({
   units, kinds, forceCore = [], renderUnit, className = '',
 }: {
@@ -25,17 +29,23 @@ export default function CoreFlexGroups<T extends { characterId: string }>({
   const groups = splitCoreFlex(units, kinds, forceCore);
   return (
     <div className={`flex flex-wrap items-start gap-1.5 ${className}`}>
-      {(['core', 'flex'] as const).map(k => groups[k].length > 0 && (
-        <div
-          key={k}
-          role="group"
-          aria-label={t(`tft.comp.board.${k}`)}
-          className="flex flex-wrap items-start gap-1.5 rounded-lg p-[5px]"
-          style={coreFlexFrame(k)}
-        >
-          {groups[k].map(renderUnit)}
-        </div>
-      ))}
+      {(['core', 'flex'] as const).map(k => {
+        const frame = coreFlexFrame(k);
+        return groups[k].length > 0 && frame && (
+          <fieldset
+            key={k}
+            className="min-w-0 rounded-t-lg px-[5px] pb-[5px] pt-1"
+            style={{ borderTop: frame.border, borderLeft: frame.border, borderRight: frame.border, background: frame.background }}
+          >
+            <legend className="ml-1 px-1 text-[10px] leading-3 text-fg-muted whitespace-nowrap">
+              {t(`tft.comp.board.${k}`)}
+            </legend>
+            <div className="flex flex-wrap items-start gap-1.5">
+              {groups[k].map(renderUnit)}
+            </div>
+          </fieldset>
+        );
+      })}
       {groups.rest.map(renderUnit)}
     </div>
   );

@@ -29,6 +29,33 @@ import { deltaTooltip } from './PatchDeltaCell';
 // (dann bleibt die Zelle leer). null = Spalte aus.
 export interface DeltaView { pair: PatchDeltaPair; loading: boolean }
 
+// Spaltenraster der Comp-Liste, gemeinsam fuer Zeile und Kopf
+// (CompFamilyListHeader) — nur mit denselben Klassen stehen die Spaltennamen
+// ueber den Werten. Woertliche Strings, sonst erzeugt Tailwind die Klassen nicht.
+// Drei Stufen (User 19.10.2026, Liste bei mittlerer Breite repariert): unter
+// 768 px Handy-Aufbau (Kopf aus); ab 768 px zwei Zeilen — Name und Werte oben,
+// Units links und Knoepfe rechts darunter; ab 1366 px eine Zeile. Mit Δ-Spalte
+// passt die eine Zeile nie in den Seitenrahmen (gemessen bis 1920 px: 28 von 56
+// Zeilen umgebrochen), dann bleibt es bei zwei Zeilen. Umschaltpunkte in rem:
+// px-Werte sortiert Tailwind 4 vor die Standard-Stufen.
+export function compListGrid(delta: boolean) {
+  return delta
+    ? {
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem]',
+        // Units eine Spalte breiter als ohne Δ: die Δ-Spalte nimmt dem Namen
+        // Platz, sonst bricht Flex bei 768 px um (gemessen 38 von 56 Zeilen).
+        units: 'md:col-[1/7] md:row-start-2',
+        actions: 'md:col-[7/-1] md:row-start-2',
+        oneLineOnly: 'hidden',
+      }
+    : {
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.5rem] min-[85.375rem]:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]',
+        units: 'md:col-[1/6] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
+        actions: 'md:col-[6/-1] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
+        oneLineOnly: 'hidden min-[85.375rem]:block',
+      };
+}
+
 interface Comp {
   source?: 'data' | 'editorial';
   slug: string;
@@ -226,6 +253,68 @@ export default function CompRow({
   // Aufstellungs-Knopf: Desktop in der Aktions-Leiste, mobil links in der
   // Werte-Zeile. Tastatur-Ereignisse nicht an die Zeile weiterreichen, sonst
   // oeffnet Enter auf dem Knopf die Detailseite.
+  const grid = compListGrid(!!deltaView);
+  // Δ-Wert einmal gebaut: eigene Spalte ab 768 px, Werte-Zeile bei 640–767 px.
+  const deltaValue = (() => {
+    // Waehrend des Ladens leer: die Zeile steht schon, die Spalte fuellt sich.
+    if (!deltaView || deltaView.loading) return null;
+    const v = comp.delta ?? null;
+    const tooltip = deltaTooltip(v, deltaView.pair, t, lang);
+    // Kein „NEU" bei Comps (tft-patch-delta.ts deltaFromSums).
+    if (v?.deltaAvgPlace == null) {
+      return <span className="text-fg-faint" title={tooltip}>—</span>;
+    }
+    // Lower placement = improvement → green ▲; higher = regression → red ▼.
+    const better = v.deltaAvgPlace < 0;
+    return (
+      <span style={{ color: better ? '#3ecf8e' : '#e44040' }} className="font-medium" title={tooltip}>
+        {better ? '▲' : '▼'} {Math.abs(v.deltaAvgPlace).toFixed(2)}
+      </span>
+    );
+  })();
+  // Vergleich, Vorplanen, Merken — in der Aktions-Leiste und bei 640–767 px in
+  // der Werte-Zeile (dort sonst nur der Brett-Knopf).
+  const extraButtons = (
+    <>
+      {onCompareToggle && (
+        <button
+          type="button"
+          onClick={e => { e.stopPropagation(); onCompareToggle(); }}
+          className="w-8 h-8 flex items-center justify-center rounded-md transition-colors flex-shrink-0"
+          style={{
+            color: compareSelected ? 'var(--accent)' : 'var(--fg-secondary)',
+            backgroundColor: compareSelected ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-overlay)',
+            border: `1px solid ${compareSelected ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--fg-faint)'}`,
+          }}
+          title={
+            compareSelected
+              ? t('tft.compare.tooltip.selected')
+              : t('tft.compare.tooltip.toggle')
+          }
+          aria-pressed={compareSelected}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="17 1 21 5 17 9" />
+            <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <polyline points="7 23 3 19 7 15" />
+            <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+        </button>
+      )}
+      <PlanAheadButton
+        characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
+        setNumber={assets?.set ?? CURRENT_SET}
+        assets={assets}
+        size="lg"
+      />
+      <BookmarkButton
+        type="comp"
+        bookmarkKey={comp.slug}
+        label={`${traitDisplay}${named.length ? ` · ${named.map(carryNameOf).join(' & ')}` : ''}`}
+        size="lg"
+      />
+    </>
+  );
   const boardButton = (mobile: boolean) => {
     if (!boardToggle) return null;
     const label = t(boardToggle.expanded ? 'tft.comps.positioning.hide' : 'tft.comps.positioning.show');
@@ -302,11 +391,7 @@ export default function CompRow({
           Augen-Lärm + verwirrend (Identifikation einmal über Portrait,
           einmal über Tile in Reihe). Grid-Spalte (vormals 2.5rem)
           entsprechend entfernt. */}
-      <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${
-        deltaView
-          ? 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem_9.125rem]'
-          : 'sm:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]'
-      } items-center gap-2.5 sm:gap-3`}>
+      <div className={`grid grid-cols-[1.5rem_1.75rem_minmax(7rem,1fr)_minmax(0,auto)_auto] ${grid.cols} items-center gap-2.5 md:gap-3`}>
         {/* Rang ist eine Ordnungszahl, kein Messwert — vorher trug er als
             einzige Zahl der Zeile font-medium, während top4/top1 in Regular
             standen. Die Hierarchie zeigte also auf die unwichtigste Zahl. */}
@@ -440,9 +525,10 @@ export default function CompRow({
         </div>
         {/* Handy: Units als eigene Zeile ueber die volle Breite, unter Name und
             Werten (User 2026-10-10) — in der schmalen Spalte neben dem Namen
-            passte mit Rahmen nur noch eine Unit je Zeile. */}
+            passte mit Rahmen nur noch eine Unit je Zeile. Ab 768 px zweite
+            Zeile links, ab 1366 px eigene Spalte (compListGrid). */}
         <CoreFlexGroups
-          className="col-span-full order-last sm:col-span-1 sm:order-none"
+          className={`col-span-full order-last md:order-none ${grid.units}`}
           units={typicalUnits}
           kinds={comp.coreFlex}
           forceCore={forcedCoreIds(typicalUnits, roles, named, isComponent)}
@@ -505,7 +591,7 @@ export default function CompRow({
         />
 
         {/* Stats: mobile = single column on the right; desktop = 4-5 columns */}
-        <div className="hidden sm:block text-center tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
+        <div className="hidden md:block text-center tabular-nums font-semibold text-lg" style={{ color: tier.color }}>
           {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
         </div>
         {/* Drei Stufen statt vier fast gleicher Grautöne, alle in identischer
@@ -513,37 +599,21 @@ export default function CompRow({
             Entscheidungswerte (Top4/Top1) hell + semibold,
             Kontextwert (Pickrate) sekundär + medium,
             Stichprobe (Games) gedämpft + regular. */}
-        <div className="hidden sm:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={top4ShareTip}>
+        <div className="hidden md:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={top4ShareTip}>
           {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
+        <div className="hidden md:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
+        <div className="hidden md:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
           {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
         </div>
-        <div className="hidden sm:block text-right tabular-nums text-fg-bright text-[13px]">
+        <div className="hidden md:block text-right tabular-nums text-fg-bright text-[13px]">
           {comp.games}
         </div>
         {deltaView && (
-          <div className="hidden sm:block text-right tabular-nums">
-            {(() => {
-              // Waehrend des Ladens leer: die Zeile steht schon, die Spalte fuellt sich.
-              if (deltaView.loading) return null;
-              const v = comp.delta ?? null;
-              const tooltip = deltaTooltip(v, deltaView.pair, t, lang);
-              // Kein „NEU" bei Comps (tft-patch-delta.ts deltaFromSums).
-              if (v?.deltaAvgPlace == null) {
-                return <span className="text-fg-faint" title={tooltip}>—</span>;
-              }
-              // Lower placement = improvement → green ▲; higher = regression → red ▼.
-              const better = v.deltaAvgPlace < 0;
-              return (
-                <span style={{ color: better ? '#3ecf8e' : '#e44040' }} className="font-medium" title={tooltip}>
-                  {better ? '▲' : '▼'} {Math.abs(v.deltaAvgPlace).toFixed(2)}
-                </span>
-              );
-            })()}
+          <div className="hidden md:block text-right tabular-nums">
+            {deltaValue}
           </div>
         )}
         {/* Aktions-Leiste: alle drei Buttons gleich gross (32px) und mit
@@ -552,49 +622,14 @@ export default function CompRow({
             Die gefuellte Accent-Flaeche bleibt allein dem Compare-Zustand
             "ausgewaehlt" vorbehalten; Copy traegt Accent nur als Kontur, sonst
             saehe es aus wie ein aktivierter Toggle. */}
-        <div className="hidden sm:flex items-center justify-end gap-1.5">
+        <div className={`hidden md:flex items-center justify-end gap-1.5 ${grid.actions}`}>
           {boardButton(false)}
-          {onCompareToggle && (
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onCompareToggle(); }}
-              className="w-8 h-8 flex items-center justify-center rounded-md transition-colors flex-shrink-0"
-              style={{
-                color: compareSelected ? 'var(--accent)' : 'var(--fg-secondary)',
-                backgroundColor: compareSelected ? 'rgb(var(--accent-rgb) / 14%)' : 'var(--surface-overlay)',
-                border: `1px solid ${compareSelected ? 'rgb(var(--accent-rgb) / 60%)' : 'var(--fg-faint)'}`,
-              }}
-              title={
-                compareSelected
-                  ? t('tft.compare.tooltip.selected')
-                  : t('tft.compare.tooltip.toggle')
-              }
-              aria-pressed={compareSelected}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="17 1 21 5 17 9" />
-                <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-                <polyline points="7 23 3 19 7 15" />
-                <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-              </svg>
-            </button>
-          )}
-          <PlanAheadButton
-            characterIds={typicalUnits.slice(0, 10).map(u => u.characterId)}
-            setNumber={assets?.set ?? CURRENT_SET}
-            assets={assets}
-            size="lg"
-          />
-          <BookmarkButton
-            type="comp"
-            bookmarkKey={comp.slug}
-            label={`${traitDisplay}${named.length ? ` · ${named.map(carryNameOf).join(' & ')}` : ''}`}
-            size="lg"
-          />
+          {extraButtons}
         </div>
 
-        {/* Mobile-only inline stats */}
-        <div className="sm:hidden flex items-center gap-2.5 col-span-full justify-end tabular-nums">
+        {/* Mobile-only inline stats; bei 640–767 px zusaetzlich Δ und die
+            drei Knoepfe, die sonst nur in der Aktions-Leiste stehen. */}
+        <div className="md:hidden flex items-center gap-2.5 col-span-full justify-end tabular-nums">
           {boardButton(true)}
           <span className="font-semibold text-lg" style={{ color: tier.color }}>
             {comp.avgPlacement != null ? comp.avgPlacement.toFixed(2) : '—'}
@@ -608,6 +643,8 @@ export default function CompRow({
             {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(1)}%` : '—'}
           </span>
           <span className="text-fg-muted">{comp.games}</span>
+          {deltaView && <span className="hidden sm:inline">{deltaValue}</span>}
+          <div className="hidden sm:flex items-center gap-1.5">{extraButtons}</div>
         </div>
       </div>
     </div>

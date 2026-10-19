@@ -4,14 +4,14 @@ import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
-import { costColor as costColorOf, coreFlexFrame } from '../../lib/tft-ui';
+import { costColor as costColorOf } from '../../lib/tft-ui';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
 import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, splitCoreFlex, sortUnitsByImportance } from '../../lib/tft-comp-roles';
+import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, sortUnitsByImportance } from '../../lib/tft-comp-roles';
 import CoreFlexGroups from './CoreFlexGroups';
 
 interface CompVelocity {
@@ -126,15 +126,9 @@ export default function CompCard({
   // Core/Flex wie in der Liste: Anteil aus typicalUnits/games dieser Ansicht;
   // genannte Carries, Item-Traeger und 3★-Units stehen immer in Core.
   const coreFlexKinds = coreFlexMap(comp.typicalUnits, comp.games);
+  // Kein Zaehler „6 Core / 3 Flex" mehr (User 19.10.2026): jede Box traegt
+  // ihre Beschriftung selbst, der Zaehler sagte dasselbe doppelt.
   const coreForced = forcedCoreIds(typicalUnits, roles, named, isComponent);
-  const coreFlexCounts = splitCoreFlex(typicalUnits, coreFlexKinds, coreForced);
-  const hasLegend = coreFlexCounts.core.length > 0 || coreFlexCounts.flex.length > 0;
-  const legendItems = (['core', 'flex'] as const).map(k => coreFlexCounts[k].length > 0 && (
-    <span key={k} className="inline-flex items-center gap-1.5">
-      <span className="inline-block w-3 h-3 rounded-[3px]" style={coreFlexFrame(k)} aria-hidden="true" />
-      {coreFlexCounts[k].length} {t(`tft.comp.board.${k}`)}
-    </span>
-  ));
 
   // Sub-Cluster: zweiter damage-carry aus dem clusterKey-Suffix (#<unitId>).
   // Wird im Comp-Header als „(mit <Name>)" hinter den Carries angezeigt,
@@ -185,7 +179,7 @@ export default function CompCard({
           Desktop: original 3-column grid keeps it dense. Ab 1440 px (User
           2026-10-10): Core/Flex untereinander und die Werte direkt rechts
           neben dem Board, rechts davon die Comp-DNA (Rest der Breite). */}
-      <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] min-[90rem]:grid-cols-[auto_auto_auto_auto_minmax(0,1fr)] gap-3 sm:gap-4 sm:items-center">
+      <div className="flex flex-col sm:grid sm:grid-cols-[auto_1fr_auto] min-[90rem]:grid-cols-[auto_auto_auto_minmax(0,1fr)] gap-3 sm:gap-4 sm:items-center">
         <div className="flex items-center gap-3">
           {rank != null && <div className="text-fg-muted text-sm font-medium w-6 text-center">{rank}</div>}
           <div className="flex items-center justify-center w-10 h-10 rounded-lg font-bold text-base"
@@ -344,20 +338,10 @@ export default function CompCard({
               );
             }}
           />
-          {hasLegend && (
-            <div className="flex items-center gap-3 text-xs tabular-nums text-fg-secondary min-[90rem]:hidden">
-              {legendItems}
-            </div>
-          )}
 
           {/* typicalAugments-Block entfernt — Riot hat Augment-Stats untersagt.
               Daten kommen weiter in der API an (RPC unverändert), werden aber
               nicht mehr UI-seitig dargestellt. */}
-        </div>
-
-        {/* Ab 1440 px: Core/Flex untereinander neben dem Board. */}
-        <div className="hidden min-[90rem]:flex flex-col gap-1.5 text-xs tabular-nums text-fg-secondary">
-          {hasLegend && legendItems}
         </div>
 
         {/* Stats: horizontal pills on mobile (wraps if needed),

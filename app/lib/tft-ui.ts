@@ -24,18 +24,18 @@ export function starColor(star: number): string {
 
 // Core/Flex-Rahmen um eine Gruppe von Unit-Kacheln (Comp-Liste + Comp-DNA,
 // User 2026-10-10: „eine Umrandung für Core und eine für Flex"): durchgezogen =
-// Core, gestrichelt = Flex. Auch fuer die Mini-Symbole in Legende und Zaehler,
-// damit sie wie der Rahmen aussehen. Kein Rahmen ohne Einteilung.
-// Farbe (User 2026-10-10, Variante 5): Core = helle Linie + Flaeche in TFT-Lila,
-// Flex = grau gestrichelt ohne Flaeche. Das Lila steckt nur in der Flaeche, damit
-// der lila Carry-/4-Kosten-Rand der Kacheln sichtbar bleibt. Seit 19.10.2026
-// 20 % statt 12 % (User: „damit das noch klarer raussticht"); mehr nicht, sonst
-// faellt der blaue 3-Kosten-Rand beim Zeigen unter 3:1 Kontrast (22 % = 2,93).
-// Die Boxen nutzen nur die Linie oben, das Zaehler-Quadrat den vollen Rand.
+// Core, gestrichelt = Flex. Kein Rahmen ohne Einteilung. Die Boxen nutzen nur
+// die Linie oben (CoreFlexGroups).
+// Farbe: Core = helle Linie + Flaeche, Flex = grau gestrichelt ohne Flaeche.
+// Flaeche seit 19.10.2026 blasses Gold (User: „kannst du sie in einem blassen
+// gold darstellen?", vorher TFT-Lila). Fester Ton statt Gold mit Durchsicht:
+// durchsichtiges Gold wird auf dem blauen Grund grau. #423a26 haelt alle
+// Kachelraender ueber 3:1 (Blau 3,23, Grau 4,54, Lila 5,07, Gold 6,70);
+// heller (#4a4128) faellt der blaue 3-Kosten-Rand darunter.
 export function coreFlexFrame(kind: 'core' | 'flex' | null | undefined): { border: string; background: string } | undefined {
   if (!kind) return undefined;
   return kind === 'core'
-    ? { border: '2px solid var(--fg-bright)', background: 'rgb(var(--accent-tft-rgb) / 20%)' }
+    ? { border: '2px solid var(--fg-bright)', background: '#423a26' }
     : { border: '1.5px dashed var(--fg-faint)', background: 'transparent' };
 }
 

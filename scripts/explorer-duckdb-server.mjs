@@ -610,6 +610,9 @@ async function warmUnits(holder) {
 // laesst einen neuen Besucher hoechstens ihren Rest warten (~3 s gemessen).
 const coplayJobs = [];
 let coplayRunning = false;
+// Zaehlt jede neue Auswahl. Die laufende Rechnung endet nur, wenn danach eine
+// neue kam — nicht wegen aelterer, die noch in der Schlange warten.
+let coplaySeq = 0;
 
 function scheduleCoplay(holder, q, result) {
   if (!COPLAY_WARM_ON || current !== holder || !result?.rows) return;
@@ -619,6 +622,7 @@ function scheduleCoplay(holder, q, result) {
   const anchor = cacheKey(holder, q);
   if (coplayJobs.some(j => j.anchor === anchor)) return;
   coplayJobs.push({ holder, anchor, bodies });
+  coplaySeq++;
   while (coplayJobs.length > COPLAY_JOBS_MAX) coplayJobs.shift();
   if (!coplayRunning) runCoplay().catch(err => log('Vorschlags-Paare abgebrochen:', err.message));
 }
@@ -628,10 +632,11 @@ async function runCoplay() {
   try {
     while (coplayJobs.length) {
       const { holder, bodies } = coplayJobs.pop();
+      const seq = coplaySeq;
       const t0 = Date.now();
       let n = 0;
       for (const body of bodies) {
-        if (coplayJobs.length || current !== holder) break;
+        if (coplaySeq !== seq || current !== holder) break;
         if (!(await coplayIdle(holder))) break;
         let q;
         try { q = normalizeQuery(body); } catch { continue; }

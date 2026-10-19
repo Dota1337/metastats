@@ -877,7 +877,8 @@
       "name": "Deploy crawler to Hetzner",
       "schedule": [],
       "scripts": [
-        "scripts/publish-route-mirrors.mjs"
+        "scripts/publish-route-mirrors.mjs",
+        "scripts/lib/explorer-unit-warm.mjs"
       ],
       "manualDispatch": true,
       "onPush": true

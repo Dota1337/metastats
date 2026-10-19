@@ -1,23 +1,26 @@
 'use client';
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
-  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, filterCount,
-  type BoardCountKey, type BoardTag, type ExplorerQuery, type FilterGroup, type ItemFilter, type ItemKind, type TraitFilter, type UnitFilter,
+  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, filterCount, serializeExplorerQuery,
+  type BoardCountKey, type BoardTag, type ExplorerQuery, type ExplorerResponse, type FilterGroup, type ItemFilter, type ItemKind,
+  type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
 import {
   itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
 } from './explorer-options';
+import { applyPhrase, applyPick, normText, type LastRef, type Op, type PhraseTerm, type Pick } from './explorer-search';
+import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
 
-// Filter-Chips (mit/ohne, Sterne, Items, Trait-Stufe), Level und Platz,
-// Kaesten „eins davon" / „keins davon" plus Auswahl zum Hinzufuegen. Grenzen
-// wie in parseExplorerParams (EXPLORER_LIMITS): 9 Units, 6 Items, 6 Traits,
-// 3 Kaesten mit je 6 Gliedern, 15 Bedingungen insgesamt.
+// Filterleiste (Plan 19.10.2026, Teil C1): eine Suchzeile fuer Units, Items und
+// Synergien (ExplorerSearchBox), darunter die Bausteine — Hauptliste mit „und",
+// Kaesten mit „oder" (Kasten = eins davon). Level, Platz und Brett bleiben eigene
+// Knoepfe. „ohne" und „keins davon" gibt es nur noch aus alten Links: sie werden
+// angezeigt und lassen sich entfernen, aber nicht mehr neu anlegen. Grenzen wie
+// in parseExplorerParams (EXPLORER_LIMITS).
 
-type Kind = 'units' | 'items' | 'traits';
-const LIMIT: Record<Kind, number> = { units: EXPLORER_LIMITS.units, items: EXPLORER_LIMITS.items, traits: EXPLORER_LIMITS.traits };
 const LEVELS = [6, 7, 8, 9, 10];
 const PLACES = [1, 2, 3, 4, 5, 6, 7, 8];
 const KIND_LABEL: Record<ItemKind, TranslationKey> = {
@@ -57,13 +60,8 @@ function boardLabel(t: (k: TranslationKey) => string, k: BoardCountKey): string 
   }
 }
 
-// Wohin die Auswahl hinzufuegt: Hauptleiste, Kasten Nr. g oder ein neuer Kasten.
-type Target = 'main' | number | 'any' | 'none';
-
 const seg = (on: boolean) =>
   `px-2 py-0.5 rounded text-xs border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
-const addBtn = (on: boolean) =>
-  `px-3 py-1.5 rounded-md text-xs border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'bg-surface-base border-border-subtle text-fg-primary hover:border-accent-a40'}`;
 
 const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
 
@@ -95,31 +93,65 @@ function spanText(lo: number | undefined, hi: number | undefined, min: number, u
   return lo != null && hi != null ? `${lo}–${unit(hi)}` : null;
 }
 
+// Liegt der zuletzt eingefuegte Baustein noch dort? Sonst haengt „oder" an nichts.
+function refAlive(q: ExplorerQuery, r: LastRef): boolean {
+  const list = (x: { units: UnitFilter[]; items: ItemFilter[]; traits: TraitFilter[] }) => (x[r.kind] as { id: string }[]).some(f => f.id === r.id);
+  if (r.where === 'main') return list(q);
+  const g = q.groups[r.where];
+  return !!g && g.m === 'any' && list(g);
+}
+function firstRef(gr: FilterGroup, g: number): LastRef | null {
+  if (gr.units[0]) return { kind: 'units', id: gr.units[0].id, where: g };
+  if (gr.items[0]) return { kind: 'items', id: gr.items[0].id, where: g };
+  if (gr.traits[0]) return { kind: 'traits', id: gr.traits[0].id, where: g };
+  return null;
+}
+
 export default function ExplorerFilters({
-  query, setQuery, options, assets,
+  query, setQuery, options, assets, data, dataQuery,
 }: {
   query: ExplorerQuery;
   setQuery: (q: ExplorerQuery) => void;
   options: ExplorerOptions;
   assets: TftAssetsBundle | null;
+  data: ExplorerResponse | null;
+  dataQuery: ExplorerQuery | null;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState<string | null>(null);   // "m:u:ID" | "0:i:ID" | "lv" | "pl"
-  const [rawTarget, setTarget] = useState<Target | null>(null);
-  // Kasten verschwunden (entfernt, letzter Eintrag weg): Auswahl zu.
-  const target = typeof rawTarget === 'number' && !query.groups[rawTarget] ? null : rawTarget;
+  const [open, setOpen] = useState<string | null>(null);   // "m:u:ID" | "0:i:ID" | "lv" | "pl" | "bc"
+  const [mode, setMode] = useState<Op>('and');
+  const [rawLast, setLast] = useState<LastRef | null>(null);
+  const [focusKey, setFocusKey] = useState(0);
+  const last = rawLast && refAlive(query, rawLast) ? rawLast : null;
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Klick ausserhalb schliesst das offene Einstellfenster.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => { if (!wrapRef.current?.contains(e.target as Node)) setOpen(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(null); };
     document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
 
-  const total = filterCount(query);
-  const full = total >= EXPLORER_LIMITS.total;
+  // Suchzeile: Begriffe davor als Satz, dann der gewaehlte Treffer.
+  const onApply = (prefix: PhraseTerm[], pick: Pick | null, pickOp: Op | null): string[] => {
+    let next = query;
+    let ref = last;
+    let missed: string[] = [];
+    if (prefix.length) {
+      const r = applyPhrase(next, prefix, options, mode, ref);
+      next = r.query; ref = r.last; missed = r.missed;
+    }
+    if (pick) {
+      const r = applyPick(next, pick, pickOp ?? (prefix.length ? 'and' : mode), ref);
+      next = r.query; ref = r.last;
+    }
+    if (next !== query) setQuery(next);
+    setLast(ref);
+    return missed;
+  };
 
   const setGroup = (g: number, fn: (gr: FilterGroup) => FilterGroup) => setQuery({
     ...query, groups: query.groups.map((gr, i) => (i === g ? fn(gr) : gr)).filter(gr => groupSize(gr) > 0),
@@ -134,85 +166,91 @@ export default function ExplorerFilters({
     ? setQuery({ ...query, traits: patchList(query.traits, id, p) })
     : setGroup(g, gr => ({ ...gr, traits: patchList(gr.traits, id, p) })));
 
-  const add = (kind: Kind, id: string) => {
-    if (full || target == null) return;
-    if (target === 'main') {
-      if (query[kind].some(f => f.id === id) || query[kind].length >= LIMIT[kind]) return;
-      setQuery({ ...query, [kind]: [...query[kind], { id }] });
-    } else if (typeof target === 'number') {
-      const gr = query.groups[target];
-      if (!gr || gr[kind].some(f => f.id === id) || groupSize(gr) >= EXPLORER_LIMITS.groupMembers) return;
-      setGroup(target, x => ({ ...x, [kind]: [...x[kind], { id }] }));
-    } else {
-      if (query.groups.length >= EXPLORER_LIMITS.groups) return;
-      const gr: FilterGroup = { m: target, units: [], items: [], traits: [], [kind]: [{ id }] };
-      setQuery({ ...query, groups: [...query.groups, gr] });
-      setTarget(query.groups.length);
-    }
-  };
-  const toggleTarget = (next: Target) => setTarget(target === next ? null : next);
+  const toggle = (key: string) => setOpen(open === key ? null : key);
+  const pre = (g: number | null) => (g == null ? 'm' : String(g));
 
-  // Chips einer Liste (Hauptleiste g = null, sonst Kasten g).
-  const chips = (g: number | null, units: UnitFilter[], items: ItemFilter[], traits: TraitFilter[]) => {
-    const pre = g == null ? 'm' : String(g);
-    const inGroup = g != null;
-    const toggle = (key: string) => setOpen(open === key ? null : key);
-    return <>
-      {units.map(u => {
-        const key = `${pre}:u:${u.id}`;
-        const stars = spanText(u.s, u.sx, 1, v => '★'.repeat(v));
-        const cnt = spanText(u.n, u.nx, 0, v => `${v}i`);
-        return (
-          <Chip key={key} excluded={!!u.x} open={open === key} onToggle={() => toggle(key)}
-            onRemove={() => setUnit(g, u.id, null)} removeLabel={t('tft.explorer.x.remove')}
-            label={<>
-              <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={costColor(options.unitById.get(u.id)?.cost ?? 1)} />
-              <span className="truncate max-w-[9rem]">{unitName(options, assets, u.id)}</span>
-              {stars && <span className="text-gold-earnings">{stars}</span>}
-              {cnt && <span className="text-fg-muted">{cnt}</span>}
-              {u.c ? <span className="text-fg-muted">{'≥'}{u.c}{'×'}</span> : null}
-              {(u.k ?? []).map(e => <span key={e.b} className="text-fg-muted">{'≥'}{e.n} {t(KIND_LABEL[e.b])}</span>)}
-              {(u.it ?? []).map((i, n) => <Icon key={`${i}${n}`} src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />)}
-              {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-xs font-bold">{'∕'}</span></span>)}
-            </>}>
-            <UnitEditor u={u} set={p => setUnit(g, u.id, p)} options={options} assets={assets} inGroup={inGroup} />
-          </Chip>
-        );
-      })}
-      {items.map(i => {
-        const key = `${pre}:i:${i.id}`;
-        return (
-          <Chip key={key} excluded={!!i.x} open={open === key} onToggle={() => toggle(key)}
-            onRemove={() => setItem(g, i.id, null)} removeLabel={t('tft.explorer.x.remove')}
-            label={<>
-              <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} />
-              <span className="truncate max-w-[9rem]">{itemName(options, assets, i.id)}</span>
-              {i.n ? <span className="text-fg-muted">{'≥'}{i.n}{'×'}</span> : null}
-            </>}>
-            <ItemEditor i={i} set={p => setItem(g, i.id, p)} inGroup={inGroup} />
-          </Chip>
-        );
-      })}
-      {traits.map(tr => {
-        const key = `${pre}:t:${tr.id}`;
-        const min = tr.l ? traitMin(options, assets, tr.id, tr.l) : null;
-        const mins = options.traitById.get(tr.id)?.mins ?? [];
-        return (
-          <Chip key={key} excluded={!!tr.x} open={open === key} onToggle={() => toggle(key)}
-            onRemove={() => setTrait(g, tr.id, null)} removeLabel={t('tft.explorer.x.remove')}
-            label={<>
-              <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-5 h-5" />
-              <span className="truncate max-w-[9rem]">{traitName(options, assets, tr.id)}</span>
-              {min != null && <span className="text-fg-muted">{tr.le ? '' : '≥'}{min}</span>}
-            </>}>
-            {(!inGroup || mins.length > 1) ? <TraitEditor tr={tr} set={p => setTrait(g, tr.id, p)} mins={mins} inGroup={inGroup} /> : null}
-          </Chip>
-        );
-      })}
-    </>;
+  const unitChip = (g: number | null, u: UnitFilter) => {
+    const key = `${pre(g)}:u:${u.id}`;
+    const stars = spanText(u.s, u.sx, 1, v => '★'.repeat(v));
+    const cnt = spanText(u.n, u.nx, 0, v => `${v}i`);
+    return (
+      <Chip key={key} excluded={!!u.x} open={open === key} onToggle={() => toggle(key)} wide
+        onRemove={() => setUnit(g, u.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        label={<>
+          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={costColor(options.unitById.get(u.id)?.cost ?? 1)} />
+          <span className="truncate max-w-[9rem]">{unitName(options, assets, u.id)}</span>
+          {stars && <span className="text-gold-earnings">{stars}</span>}
+          {cnt && <span className="text-fg-muted">{cnt}</span>}
+          {u.c ? <span className="text-fg-muted">{'≥'}{u.c}{'×'}</span> : null}
+          {(u.k ?? []).map(e => <span key={e.b} className="text-fg-muted">{'≥'}{e.n} {t(KIND_LABEL[e.b])}</span>)}
+          {(u.it ?? []).map((i, n) => <Icon key={`${i}${n}`} src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />)}
+          {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-xs font-bold">{'∕'}</span></span>)}
+        </>}>
+        <UnitEditor u={u} set={p => setUnit(g, u.id, p)} options={options} assets={assets} inGroup={g != null} />
+      </Chip>
+    );
+  };
+  const itemChip = (g: number | null, i: ItemFilter) => {
+    const key = `${pre(g)}:i:${i.id}`;
+    return (
+      <Chip key={key} excluded={!!i.x} open={open === key} onToggle={() => toggle(key)}
+        onRemove={() => setItem(g, i.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        label={<>
+          <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} />
+          <span className="truncate max-w-[9rem]">{itemName(options, assets, i.id)}</span>
+          {i.n ? <span className="text-fg-muted">{'≥'}{i.n}{'×'}</span> : null}
+        </>}>
+        <ItemEditor i={i} set={p => setItem(g, i.id, p)} inGroup={g != null} />
+      </Chip>
+    );
+  };
+  const traitChip = (g: number | null, tr: TraitFilter) => {
+    const key = `${pre(g)}:t:${tr.id}`;
+    const min = tr.l ? traitMin(options, assets, tr.id, tr.l) : null;
+    const mins = options.traitById.get(tr.id)?.mins ?? [];
+    return (
+      <Chip key={key} excluded={!!tr.x} open={open === key} onToggle={() => toggle(key)}
+        onRemove={() => setTrait(g, tr.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        label={<>
+          <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-5 h-5" />
+          <span className="truncate max-w-[9rem]">{traitName(options, assets, tr.id)}</span>
+          {min != null && <span className="text-fg-muted">{tr.le ? '' : '≥'}{min}</span>}
+        </>}>
+        {(mins.length > 1 || tr.x) ? <TraitEditor tr={tr} set={p => setTrait(g, tr.id, p)} mins={mins} inGroup={g != null} /> : null}
+      </Chip>
+    );
   };
 
-  const hasAny = total > 0 || query.levels.length > 0 || query.place != null || query.bc.length > 0 || query.tags.length > 0;
+  // Kasten: Glieder mit „oder"; „+" haengt die naechste Suche an diesen Kasten.
+  const box = (gr: FilterGroup, g: number) => {
+    const none = gr.m === 'none';
+    const members = [...gr.units.map(u => unitChip(g, u)), ...gr.items.map(i => itemChip(g, i)), ...gr.traits.map(x => traitChip(g, x))];
+    const active = !none && mode === 'or' && last?.where === g;
+    return (
+      <div key={`g${g}`} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed px-1.5 py-1 ${
+        none ? 'border-pos-loss' : 'border-accent-a50'} ${active ? 'bg-accent-a8' : ''}`}>
+        {none && <span className="text-[11px] text-pos-loss">{t('tft.explorer.x.noneOf')}</span>}
+        {members.map((m, i) => <Fragment key={i}>{i > 0 && !none && <Sep op="or" />}{m}</Fragment>)}
+        {!none && groupSize(gr) < EXPLORER_LIMITS.groupMembers && (
+          <button type="button" onClick={() => { setMode('or'); setLast(firstRef(gr, g)); setFocusKey(k => k + 1); }}
+            aria-label={`+ ${t('tft.explorer.x.or')}`} title={`+ ${t('tft.explorer.x.or')}`}
+            className="px-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-secondary hover:border-accent-a50 hover:text-fg-bright">+</button>
+        )}
+        <button type="button" onClick={() => setQuery({ ...query, groups: query.groups.filter((_, i) => i !== g) })}
+          aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
+          className="px-1 text-fg-muted hover:text-fg-primary">{'×'}</button>
+      </div>
+    );
+  };
+
+  const conds = [
+    ...query.units.map(u => unitChip(null, u)),
+    ...query.items.map(i => itemChip(null, i)),
+    ...query.traits.map(tr => traitChip(null, tr)),
+    ...query.groups.map((gr, g) => box(gr, g)),
+  ];
+
+  const hasAny = filterCount(query) > 0 || query.levels.length > 0 || query.place != null || query.bc.length > 0 || query.tags.length > 0;
   const place = query.place ?? [1, 8];
   const setPlace = (lo: number, hi: number) => setQuery({ ...query, place: lo === 1 && hi === 8 ? null : [lo, hi] });
   const setCount = (k: BoardCountKey, n: number | undefined, nx: number | undefined) => setQuery({
@@ -226,28 +264,12 @@ export default function ExplorerFilters({
     ...query.tags.map(x => t(TAG_LABEL[x])),
   ].join(', ') || null;
 
-  // Auswahl: was ist im Ziel schon gewaehlt, ist es voll?
-  const tgtGroup = typeof target === 'number' ? query.groups[target] : null;
-  const chosen = (kind: Kind) => new Set((target === 'main' ? query[kind] : tgtGroup ? tgtGroup[kind] : []).map(f => f.id));
-  const isFull = (kind: Kind) => full || (target === 'main' ? query[kind].length >= LIMIT[kind]
-    : tgtGroup ? groupSize(tgtGroup) >= EXPLORER_LIMITS.groupMembers : query.groups.length >= EXPLORER_LIMITS.groups);
-  const canNewGroup = !full && query.groups.length < EXPLORER_LIMITS.groups;
-
   return (
-    <div ref={wrapRef} className="space-y-3">
+    <div ref={wrapRef} className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        {chips(null, query.units, query.items, query.traits)}
-        <button type="button" onClick={() => toggleTarget('main')} className={addBtn(target === 'main')}>
-          + {t('tft.explorer.units')} / {t('tft.explorer.items')} / {t('tft.explorer.traits')}
-        </button>
-        {(['any', 'none'] as const).map(m => (
-          <button key={m} type="button" disabled={!canNewGroup && target !== m} onClick={() => toggleTarget(m)}
-            className={`${addBtn(target === m)} disabled:opacity-40 disabled:pointer-events-none`}>
-            + {t(m === 'any' ? 'tft.explorer.x.anyOf' : 'tft.explorer.x.noneOf')}
-          </button>
-        ))}
+        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)} />
         <PlainChip label={t('tft.explorer.x.playerLevel')} value={query.levels.length ? query.levels.join(', ') : null}
-          open={open === 'lv'} onToggle={() => setOpen(open === 'lv' ? null : 'lv')} onClear={() => setQuery({ ...query, levels: [] })}>
+          open={open === 'lv'} onToggle={() => toggle('lv')} onClear={() => setQuery({ ...query, levels: [] })}>
           <Row label={t('tft.explorer.x.playerLevel')}>
             <button type="button" className={seg(query.levels.length === 0)} onClick={() => setQuery({ ...query, levels: [] })}>{t('tft.explorer.x.any')}</button>
             {LEVELS.map(l => {
@@ -262,7 +284,7 @@ export default function ExplorerFilters({
           </Row>
         </PlainChip>
         <PlainChip label={t('tft.explorer.x.place')} value={query.place ? (place[0] === place[1] ? String(place[0]) : `${place[0]}–${place[1]}`) : null}
-          open={open === 'pl'} onToggle={() => setOpen(open === 'pl' ? null : 'pl')} onClear={() => setQuery({ ...query, place: null })}>
+          open={open === 'pl'} onToggle={() => toggle('pl')} onClear={() => setQuery({ ...query, place: null })}>
           <Row label={t('tft.explorer.x.from')}>
             {PLACES.map(p => (
               <button key={p} type="button" className={seg(place[0] === p)} onClick={() => setPlace(p, Math.max(p, place[1]))}>{p}</button>
@@ -275,7 +297,7 @@ export default function ExplorerFilters({
           </Row>
         </PlainChip>
         <PlainChip label={t('tft.explorer.x.board')} value={boardValue} wide
-          open={open === 'bc'} onToggle={() => setOpen(open === 'bc' ? null : 'bc')} onClear={() => setQuery({ ...query, bc: [], tags: [] })}>
+          open={open === 'bc'} onToggle={() => toggle('bc')} onClear={() => setQuery({ ...query, bc: [], tags: [] })}>
           {BOARD_ROWS.map(sec => (
             <div key={sec.head} className="space-y-2">
               <div className="text-xs font-medium text-fg-secondary">{t(sec.head)}</div>
@@ -306,7 +328,8 @@ export default function ExplorerFilters({
         </PlainChip>
         {hasAny && (
           <button type="button" onClick={() => {
-            setTarget(null);
+            setLast(null);
+            setMode('and');
             setQuery({ ...query, units: [], items: [], traits: [], groups: [], levels: [], place: null, bc: [], tags: [], focus: null });
           }}
             className="text-xs text-fg-muted hover:text-fg-primary underline-offset-2 hover:underline">
@@ -315,39 +338,28 @@ export default function ExplorerFilters({
         )}
       </div>
 
-      {query.groups.length > 0 && (
-        <div className="flex flex-wrap items-start gap-2">
-          {query.groups.map((gr, g) => (
-            <div key={g}
-              className={`flex flex-wrap items-center gap-2 rounded-lg border border-dashed p-2 ${gr.m === 'none' ? 'border-pos-loss' : 'border-accent-a50'} ${target === g ? 'bg-accent-a8' : ''}`}>
-              <span className={`text-[11px] ${gr.m === 'none' ? 'text-pos-loss' : 'text-fg-muted'}`}>
-                {t(gr.m === 'any' ? 'tft.explorer.x.anyOf' : 'tft.explorer.x.noneOf')}
-              </span>
-              {chips(g, gr.units, gr.items, gr.traits)}
-              <button type="button" onClick={() => toggleTarget(g)} aria-pressed={target === g}
-                disabled={target !== g && (full || groupSize(gr) >= EXPLORER_LIMITS.groupMembers)}
-                className={`${seg(target === g)} disabled:opacity-40 disabled:pointer-events-none`}>{'+'}</button>
-              <button type="button" onClick={() => { setTarget(null); setQuery({ ...query, groups: query.groups.filter((_, i) => i !== g) }); }}
-                aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
-                className="px-1 text-fg-muted hover:text-fg-primary">{'×'}</button>
-            </div>
-          ))}
+      {conds.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {conds.map((c, i) => <Fragment key={i}>{i > 0 && <Sep op="and" />}{c}</Fragment>)}
         </div>
       )}
 
-      {target != null && (
-        <Picker options={options} onAdd={add} chosen={chosen} isFull={isFull}
-          counts={target === 'main' ? (k => `${query[k].length}/${LIMIT[k]}`) : null} />
-      )}
+      <CoplayRow query={query} data={data} dataQuery={dataQuery} options={options} assets={assets}
+        onAdd={id => onApply([], { kind: 'units', f: { id } }, 'and')} />
     </div>
   );
 }
 
+function Sep({ op }: { op: Op }) {
+  const { t } = useI18n();
+  return <span className="text-[11px] text-fg-faint">{t(op === 'and' ? 'tft.explorer.x.and' : 'tft.explorer.x.or')}</span>;
+}
+
 function Chip({
-  label, excluded, open, onToggle, onRemove, removeLabel, children,
+  label, excluded, open, onToggle, onRemove, removeLabel, children, wide = false,
 }: {
   label: React.ReactNode; excluded: boolean; open: boolean; onToggle: () => void; onRemove: () => void; removeLabel: string;
-  children: React.ReactNode;
+  children: React.ReactNode; wide?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -361,15 +373,16 @@ function Chip({
         <button type="button" onClick={onRemove} aria-label={removeLabel} title={removeLabel}
           className="px-1.5 py-1 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
       </div>
-      {open && children && <Popover>{children}</Popover>}
+      {open && children && <Popover wide={wide}>{children}</Popover>}
     </div>
   );
 }
 
 function Popover({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return (
-    <div className={`absolute z-30 left-0 top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 ${
-      wide ? 'w-[min(26rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto' : 'w-[min(20rem,calc(100vw-2rem))]'}`}>
+    // Handy: als Blatt am unteren Rand, sonst ragt es neben einem rechten Baustein aus dem Bild.
+    <div className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${
+      wide ? 'sm:w-[26rem] sm:max-h-[70vh] sm:overflow-y-auto' : 'sm:w-[20rem]'}`}>
       {children}
     </div>
   );
@@ -464,7 +477,6 @@ function UnitEditor({
   u, set, options, assets, inGroup,
 }: { u: UnitFilter; set: (p: Partial<UnitFilter>) => void; options: ExplorerOptions; assets: TftAssetsBundle | null; inGroup: boolean }) {
   const { t } = useI18n();
-  const withItems = u.it ?? [];
   const withoutItems = u.nit ?? [];
   const setKind = (b: ItemKind, n: number | undefined) => {
     const k = (u.k ?? []).filter(e => e.b !== b);
@@ -472,54 +484,32 @@ function UnitEditor({
   };
   return (
     <>
-      {!inGroup && <WithWithout x={!!u.x} set={x => set({ x })} />}
+      {/* „ohne" nur noch aus alten Links: zurueck auf „mit" stellen geht. */}
+      {!inGroup && u.x && <WithWithout x set={x => set({ x })} />}
       <SpanRow label={t('tft.explorer.starLevel')} lo={u.s} hi={u.sx} min={1} values={[1, 2, 3, 4]} fmt={v => `${v}★`}
         set={(s, sx) => set({ s, sx })} />
       <SpanRow label={t('tft.explorer.itemsCount')} lo={u.n} hi={u.nx} min={0} values={[0, 1, 2, 3]} fmt={String}
         set={(n, nx) => set({ n, nx })} />
+      <Row label={t('tft.explorer.x.withItem')}>
+        <ItemIconPicker chosen={u.it ?? []} max={3} options={options} assets={assets} onChange={it => set({ it })} />
+      </Row>
+      {withoutItems.length > 0 && (
+        <Row label={t('tft.explorer.x.withoutItem')}>
+          {withoutItems.map(i => (
+            <button key={i} type="button" onClick={() => set({ nit: withoutItems.filter(x => x !== i) })}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-primary hover:border-pos-loss">
+              <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />
+              <span className="truncate max-w-[7rem]">{itemName(options, assets, i)}</span>
+              <span className="text-fg-muted">{'×'}</span>
+            </button>
+          ))}
+        </Row>
+      )}
       <Row label={t('tft.explorer.x.copies')}>
         <button type="button" className={seg(!u.c)} onClick={() => set({ c: undefined })}>{t('tft.explorer.x.any')}</button>
         {[2, 3].map(c => (
           <button key={c} type="button" className={seg(u.c === c)} onClick={() => set({ c })}>{'≥'}{c}</button>
         ))}
-      </Row>
-      <Row label={t('tft.explorer.x.withItem')}>
-        {withItems.map((i, n) => (
-          <button key={`${i}${n}`} type="button" onClick={() => set({ it: withItems.filter((_, j) => j !== n) })}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-primary hover:border-pos-loss">
-            <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />
-            <span className="truncate max-w-[7rem]">{itemName(options, assets, i)}</span>
-            <span className="text-fg-muted">{'×'}</span>
-          </button>
-        ))}
-        {withItems.length < 3 && (
-          <select value="" onChange={e => e.target.value && set({ it: [...withItems, e.target.value] })}
-            className="bg-surface-base border border-border-subtle rounded text-xs text-fg-primary px-1.5 py-0.5 max-w-[11rem]">
-            <option value="">+</option>
-            {options.items.filter(i => !withoutItems.includes(i.id)).map(i => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </select>
-        )}
-      </Row>
-      <Row label={t('tft.explorer.x.withoutItem')}>
-        {withoutItems.map(i => (
-          <button key={i} type="button" onClick={() => set({ nit: withoutItems.filter(x => x !== i) })}
-            className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-primary hover:border-pos-loss">
-            <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />
-            <span className="truncate max-w-[7rem]">{itemName(options, assets, i)}</span>
-            <span className="text-fg-muted">{'×'}</span>
-          </button>
-        ))}
-        {withoutItems.length < 3 && (
-          <select value="" onChange={e => e.target.value && set({ nit: [...withoutItems, e.target.value] })}
-            className="bg-surface-base border border-border-subtle rounded text-xs text-fg-primary px-1.5 py-0.5 max-w-[11rem]">
-            <option value="">+</option>
-            {options.items.filter(i => !withItems.includes(i.id) && !withoutItems.includes(i.id)).map(i => (
-              <option key={i.id} value={i.id}>{i.name}</option>
-            ))}
-          </select>
-        )}
       </Row>
       <Row label={t('tft.explorer.x.itemKind')}>
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1">
@@ -543,11 +533,65 @@ function UnitEditor({
   );
 }
 
+// Items an der Unit als Bilder waehlen (bis zu max), nach Art gruppiert.
+function ItemIconPicker({
+  chosen, max, options, assets, onChange,
+}: { chosen: string[]; max: number; options: ExplorerOptions; assets: TftAssetsBundle | null; onChange: (it: string[]) => void }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const needle = normText(q);
+  const groups = ITEM_GROUPS
+    .map(g => ({ ...g, list: options.items.filter(i => itemGroupOf(i) === g.b && (!needle || normText(i.name).includes(needle))) }))
+    .filter(g => g.list.length);
+  const full = chosen.length >= max;
+  return (
+    <div className="w-full space-y-1.5">
+      <div className="flex flex-wrap items-center gap-1">
+        {chosen.map((i, n) => (
+          <button key={`${i}${n}`} type="button" onClick={() => onChange(chosen.filter((_, j) => j !== n))}
+            title={`${itemName(options, assets, i)} — ${t('tft.explorer.x.remove')}`}
+            className="flex items-center gap-1 pl-0.5 pr-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-primary hover:border-pos-loss">
+            <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-6 h-6" />
+            <span className="text-fg-muted">{'×'}</span>
+          </button>
+        ))}
+        {!full && (
+          <button type="button" className={seg(open)} aria-expanded={open} onClick={() => setOpen(!open)}>+ {t('tft.explorer.items')}</button>
+        )}
+      </div>
+      {open && !full && (
+        <div className="rounded-md border border-border-subtle bg-surface-base p-2 space-y-2">
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('tft.explorer.x.search')} aria-label={t('tft.explorer.x.search')}
+            className="w-full bg-surface-page border border-border-subtle rounded text-xs text-fg-primary px-2 py-1" />
+          <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
+            {groups.map(g => (
+              <div key={g.b}>
+                <div className="text-[10px] uppercase tracking-wide text-fg-faint mb-1">{t(g.label)}</div>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(2rem,1fr))] gap-1">
+                  {g.list.map(i => (
+                    <button key={i.id} type="button" title={i.name} aria-label={i.name}
+                      onClick={() => { onChange([...chosen, i.id]); if (chosen.length + 1 >= max) setOpen(false); }}
+                      className="rounded p-0.5 hover:bg-surface-overlay">
+                      <OptIcon src={i.img} alt={i.name} className="w-8 h-8" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {groups.length === 0 && <div className="text-xs text-fg-muted">{t('tft.explorer.x.notFound')}</div>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ItemEditor({ i, set, inGroup }: { i: ItemFilter; set: (p: Partial<ItemFilter>) => void; inGroup: boolean }) {
   const { t } = useI18n();
   return (
     <>
-      {!inGroup && <WithWithout x={!!i.x} set={x => set({ x })} />}
+      {!inGroup && i.x && <WithWithout x set={x => set({ x })} />}
       <Row label={t('tft.explorer.x.onBoard')}>
         {[1, 2, 3].map(n => (
           <button key={n} type="button" className={seg((i.n ?? 1) === n)} onClick={() => set({ n: n === 1 ? undefined : n })}>{'≥'}{n}</button>
@@ -561,7 +605,7 @@ function TraitEditor({ tr, set, mins, inGroup }: { tr: TraitFilter; set: (p: Par
   const { t } = useI18n();
   return (
     <>
-      {!inGroup && <WithWithout x={!!tr.x} set={x => set({ x })} />}
+      {!inGroup && tr.x && <WithWithout x set={x => set({ x })} />}
       {mins.length > 1 && (
         <Row label={t('tft.explorer.x.level')}>
           <button type="button" className={seg(!tr.l)} onClick={() => set({ l: undefined, le: undefined })}>{t('tft.explorer.x.any')}</button>
@@ -576,59 +620,66 @@ function TraitEditor({ tr, set, mins, inGroup }: { tr: TraitFilter; set: (p: Par
   );
 }
 
-function Picker({
-  options, onAdd, chosen, isFull, counts,
+// „Oft zusammen mit …": Units des Units-Reiters fuer die aktuelle Auswahl,
+// meistgespielte zuerst. Steht der Explorer schon auf diesem Reiter, kommen
+// die Zeilen aus seiner Antwort, sonst aus einer eigenen Abfrage (gleiche
+// Adresse wie der Reiter, also derselbe Zwischenspeicher).
+const COPLAY_MAX = 8;
+const coplayCache = new Map<string, Promise<ExplorerResponse | null>>();
+const coplayQuery = (q: ExplorerQuery): ExplorerQuery => ({ ...q, tab: 'units', stars: [], focus: null, split: null, combo: 1 });
+
+function CoplayRow({
+  query, data, dataQuery, options, assets, onAdd,
 }: {
-  options: ExplorerOptions; onAdd: (k: Kind, id: string) => void;
-  chosen: (k: Kind) => Set<string>; isFull: (k: Kind) => boolean; counts: ((k: Kind) => string) | null;
+  query: ExplorerQuery; data: ExplorerResponse | null; dataQuery: ExplorerQuery | null;
+  options: ExplorerOptions; assets: TftAssetsBundle | null; onAdd: (id: string) => void;
 }) {
   const { t } = useI18n();
-  const [kind, setKind] = useState<Kind>('units');
-  const [q, setQ] = useState('');
-  const needle = q.trim().toLowerCase();
-  const picked = chosen(kind);
-  const full = isFull(kind);
+  const anchor = query.units.find(u => !u.x) ?? null;
+  const qs = anchor ? serializeExplorerQuery(coplayQuery(query), { forApi: true }) : null;
+  const own = qs && data && dataQuery && dataQuery.tab === 'units' && !dataQuery.stars.length
+    && serializeExplorerQuery(coplayQuery(dataQuery), { forApi: true }) === qs ? data : null;
+  const [fetched, setFetched] = useState<{ qs: string; data: ExplorerResponse | null } | null>(null);
+  useEffect(() => {
+    if (!qs || own) return;
+    let alive = true;
+    const timer = setTimeout(() => {
+      let p = coplayCache.get(qs);
+      if (!p) {
+        p = fetch(`/api/tft/explorer?${qs}`).then(r => (r.ok ? r.json() as Promise<ExplorerResponse> : null)).catch(() => null);
+        coplayCache.set(qs, p);
+        p.then(v => { if (!v) coplayCache.delete(qs); });
+      }
+      p.then(v => { if (alive) setFetched({ qs, data: v }); });
+    }, 600);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [qs, own]);
 
-  const list = useMemo(() => {
-    const src: { id: string; name: string; img: string | null; border?: string }[] =
-      kind === 'units' ? options.units.map(u => ({ id: u.id, name: u.name, img: u.img, border: costColor(u.cost) }))
-      : kind === 'items' ? options.items
-      : options.traits;
-    return needle ? src.filter(x => x.name.toLowerCase().includes(needle)) : src;
-  }, [kind, options, needle]);
-
+  const src = own ?? (fetched && fetched.qs === qs ? fetched.data : null);
+  if (!anchor || !src?.rows || !src.summary?.games) return null;
+  const chosen = new Set([...query.units.map(u => u.id), ...query.groups.flatMap(g => g.units.map(u => u.id))]);
+  const rows = src.rows
+    .filter(r => r.sub == null && !chosen.has(r.key) && options.unitById.has(r.key))
+    .sort((a, b) => b.games - a.games)
+    .slice(0, COPLAY_MAX);
+  if (!rows.length) return null;
+  const label = filterCount(query) === 1
+    ? t('tft.explorer.x.coplayWith').replace('{unit}', unitName(options, assets, anchor.id))
+    : t('tft.explorer.x.coplaySel');
   return (
-    <div className="rounded-lg border border-border-subtle bg-surface-base p-3 space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {(['units', 'items', 'traits'] as const).map(k => (
-          <button key={k} type="button" className={seg(kind === k)} onClick={() => setKind(k)}>
-            {t(k === 'units' ? 'tft.explorer.units' : k === 'items' ? 'tft.explorer.items' : 'tft.explorer.traits')}
-            {counts && <span className="text-fg-muted ml-1">{counts(k)}</span>}
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <span className="text-[11px] text-fg-muted">{label}</span>
+      {rows.map(r => {
+        const u = options.unitById.get(r.key)!;
+        return (
+          <button key={r.key} type="button" onClick={() => onAdd(r.key)} title={u.name}
+            className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-md border border-border-subtle bg-surface-base text-xs text-fg-primary hover:border-accent-a50">
+            <OptIcon src={u.img} alt={u.name} className="w-6 h-6" border={costColor(u.cost)} />
+            <span className="truncate max-w-[6rem]">{u.name}</span>
+            <span className="text-fg-muted tabular-nums">{Math.round((r.games / src.summary.games) * 100)}%</span>
           </button>
-        ))}
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder={t('tft.explorer.x.search')} aria-label={t('tft.explorer.x.search')}
-          className="flex-1 min-w-[10rem] bg-surface-page border border-border-subtle rounded-md text-xs text-fg-primary px-2 py-1" />
-      </div>
-      <div className={`grid gap-1.5 max-h-72 overflow-y-auto ${kind === 'units' ? 'grid-cols-[repeat(auto-fill,minmax(3.25rem,1fr))]' : 'grid-cols-[repeat(auto-fill,minmax(10rem,1fr))]'}`}>
-        {list.map(x => {
-          const on = picked.has(x.id);
-          const disabled = on || full;
-          return kind === 'units' ? (
-            <button key={x.id} type="button" disabled={disabled} onClick={() => onAdd(kind, x.id)} title={x.name}
-              className={`flex flex-col items-center gap-0.5 p-0.5 rounded ${on ? 'opacity-30' : disabled ? 'opacity-50' : 'hover:bg-surface-overlay'}`}>
-              <Icon src={x.img} alt={x.name} className="w-10 h-10" border={x.border} />
-              <span className="text-[10px] text-fg-secondary truncate w-full text-center">{x.name}</span>
-            </button>
-          ) : (
-            <button key={x.id} type="button" disabled={disabled} onClick={() => onAdd(kind, x.id)}
-              className={`flex items-center gap-2 px-1.5 py-1 rounded text-left text-xs text-fg-primary ${on ? 'opacity-30' : disabled ? 'opacity-50' : 'hover:bg-surface-overlay'}`}>
-              <Icon src={x.img} alt={x.name} className="w-6 h-6" />
-              <span className="truncate">{x.name}</span>
-            </button>
-          );
-        })}
-        {list.length === 0 && <div className="text-xs text-fg-muted col-span-full">{t('tft.explorer.noResults')}</div>}
-      </div>
+        );
+      })}
     </div>
   );
 }

@@ -40,6 +40,7 @@ export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOp
       items.push({ id, name: meta.name, bucket, img: tftIconUrl(assets, meta.icon) });
     }
     items.sort((a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket) || a.name.localeCompare(b.name));
+    dedupeItems(items, Number(assets.set) || 0);
   }
 
   const traits: TraitOption[] = [];
@@ -61,6 +62,27 @@ export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOp
     itemById: new Map(items.map(i => [i.id, i])),
     traitById: new Map(traits.map(t => [t.id, t])),
   };
+}
+
+// Doppelte Namen in der Auswahl (gemessen 19.10.2026: 38 von 169): Strahlende
+// Items alter Sets (TFT5_*Radiant) neben denen des Sets, Embleme aus Augmenten
+// und Phantom-Gegenstaende. Augment-/Phantom-Embleme fallen ganz weg (Augment-
+// Statistik, gleiche Regel wie isCompEmblem); sonst bleibt je Name und Art die
+// Kennung des laufenden Sets. Aeltere Links mit der anderen Kennung zeigen
+// weiter Namen und Bild (itemName/itemImg greifen aufs Bundle zurueck).
+const SKIP_ITEM = /Augment|Phantom/i;
+const setOfId = (id: string) => { const m = /^TFT(\d+)_/.exec(id); return m ? Number(m[1]) : null; };
+function dedupeItems(items: ItemOption[], set: number): void {
+  const keep = new Map<string, ItemOption>();
+  const older = (x: ItemOption) => { const n = setOfId(x.id); return n != null && n < set; };
+  for (const it of items) {
+    if (SKIP_ITEM.test(it.id)) continue;
+    const k = `${it.bucket}|${it.name.toLowerCase()}`;
+    const prev = keep.get(k);
+    if (!prev || (older(prev) && !older(it))) keep.set(k, it);
+  }
+  const ids = new Set([...keep.values()].map(x => x.id));
+  for (let i = items.length - 1; i >= 0; i--) if (!ids.has(items[i].id)) items.splice(i, 1);
 }
 
 // Namen auch fuer Kennungen, die nicht in den Auswahllisten stehen

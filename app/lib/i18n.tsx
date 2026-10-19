@@ -3321,6 +3321,14 @@ const translations = {
   'tft.explorer.x.to': t6('bis', 'to', '\uAE4C\uC9C0', '\u5230', 'hasta', '\u00E0'),
   'tft.explorer.x.anyOf': t6('eins davon', 'any of', '\uD558\uB098 \uC774\uC0C1', '\u4EFB\u4E00', 'alguno de', 'l\'un de'),
   'tft.explorer.x.noneOf': t6('keins davon', 'none of', '\uBAA8\uB450 \uC5C6\uC74C', '\u5747\u4E0D\u542B', 'ninguno de', 'aucun de'),
+  'tft.explorer.x.and': t6('und', 'and', '\uADF8\uB9AC\uACE0', '\u4E14', 'y', 'et'),
+  'tft.explorer.x.or': t6('oder', 'or', '\uB610\uB294', '\u6216', 'o', 'ou'),
+  'tft.explorer.x.searchAll': t6('Unit, Item oder Synergie suchen', 'Search unit, item or trait', '\uC720\uB2DB, \uC544\uC774\uD15C, \uC2DC\uB108\uC9C0 \uAC80\uC0C9', '\u641C\u7D22\u5F08\u5B50\u3001\u88C5\u5907\u6216\u7F81\u7ECA', 'Buscar unidad, objeto o sinergia', 'Rechercher une unit\u00E9, un objet ou une synergie'),
+  'tft.explorer.x.apply': t6('\u00DCbernehmen', 'Apply', '\uC801\uC6A9', '\u5E94\u7528', 'Aplicar', 'Appliquer'),
+  'tft.explorer.x.notFound': t6('Nicht gefunden', 'Not found', '\uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230', 'No encontrado', 'Introuvable'),
+  'tft.explorer.x.threeItems': t6('3 Items', '3 items', '\uC544\uC774\uD15C 3\uAC1C', '3\u4EF6\u88C5\u5907', '3 objetos', '3 objets'),
+  'tft.explorer.x.coplayWith': t6('Oft zusammen mit {unit}', 'Often played with {unit}', '{unit}\uC640 \uC790\uC8FC \uD568\uAED8', '\u5E38\u4E0E{unit}\u540C\u573A', 'Suele jugarse con {unit}', 'Souvent jou\u00E9 avec {unit}'),
+  'tft.explorer.x.coplaySel': t6('Oft zusammen mit deiner Auswahl', 'Often played with your selection', '\uC120\uD0DD\uACFC \uC790\uC8FC \uD568\uAED8', '\u5E38\u4E0E\u6240\u9009\u540C\u573A', 'Suele jugarse con tu selecci\u00F3n', 'Souvent jou\u00E9 avec ta s\u00E9lection'),
 
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)
   'tft.item.bucket.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),

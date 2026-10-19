@@ -38,7 +38,7 @@ export default function ExplorerView() {
       </div>
 
       <ExplorerScope query={query} setQuery={setQuery} meta={data?.meta ?? null} resolvedPatch={resolvedPatch} />
-      <ExplorerFilters query={query} setQuery={setQuery} options={options} assets={assets} />
+      <ExplorerFilters query={query} setQuery={setQuery} options={options} assets={assets} data={data} dataQuery={dataQuery} />
 
       {error ? (
         <div className="rounded-xl border border-border-subtle bg-surface-base p-6 flex flex-col items-center gap-3 text-center">

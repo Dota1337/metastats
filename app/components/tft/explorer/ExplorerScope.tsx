@@ -2,7 +2,8 @@
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { regionShortLabel } from '../StatsFilterBar';
 import {
-  EXPLORER_RANKS, LATEST_PATCH, type ExplorerMeta, type ExplorerQuery, type ExplorerRank,
+  EXPLORER_RANKS, EXPLORER_RANK_STAGES, LATEST_PATCH, rankStageOf, stageRanks,
+  type ExplorerMeta, type ExplorerQuery, type ExplorerRank, type ExplorerRankStage,
 } from '../../../lib/tft-explorer-query';
 
 // Grundmenge: Patch, Region, Rang. Die Auswahl kommt aus dem, was im
@@ -14,6 +15,15 @@ export const RANK_LABEL: Record<ExplorerRank, TranslationKey> = {
   MASTER: 'tft.bucket.master',
   DIAMOND: 'tft.bucket.diamond',
   EMERALD: 'tft.bucket.emerald',
+};
+
+// Gleiche Beschriftung wie die Rang-Auswahl der uebrigen TFT-Seiten (StatsFilterBar).
+const STAGE_LABEL: Record<ExplorerRankStage, TranslationKey> = {
+  challenger: 'tft.bucket.challenger',
+  grandmaster_plus: 'tft.filter.grandmasterPlus',
+  master_plus: 'tft.filter.masterPlus',
+  diamond_plus: 'tft.filter.diamondPlus',
+  emerald_plus: 'tft.filter.emeraldPlus',
 };
 
 const chip = (on: boolean) =>
@@ -39,10 +49,12 @@ export default function ExplorerScope({
     const next = cur.includes(p) ? cur.filter(x => x !== p) : [...cur, p];
     setQuery({ ...query, patches: next.length ? next.sort() : [LATEST_PATCH] });
   };
-  const toggleRank = (r: ExplorerRank) => {
-    const next = query.ranks.includes(r) ? query.ranks.filter(x => x !== r) : [...query.ranks, r];
-    setQuery({ ...query, ranks: next.length === EXPLORER_RANKS.length ? [] : next.sort() });
-  };
+  // Stufen statt Einzelraenge. Eine Auswahl, die keine Stufe ist (alter Link,
+  // Klick im Reiter Rang), steht als eigener Knopf daneben und laesst sich entfernen.
+  const stage = rankStageOf(query.ranks);
+  const looseRanks = stage === null
+    ? EXPLORER_RANKS.filter(r => query.ranks.includes(r)).map(r => t(RANK_LABEL[r])).join(', ')
+    : null;
 
   return (
     <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
@@ -82,14 +94,23 @@ export default function ExplorerScope({
       </label>
 
       <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
-        <button type="button" className={chip(query.ranks.length === 0)} onClick={() => setQuery({ ...query, ranks: [] })}>
+        <button type="button" className={chip(stage === 'all')} aria-pressed={stage === 'all'} onClick={() => setQuery({ ...query, ranks: [] })}>
           {t('tft.filter.allRanks')}
         </button>
-        {EXPLORER_RANKS.map(r => (
-          <button key={r} type="button" className={chip(query.ranks.includes(r))} onClick={() => toggleRank(r)}>
-            {t(RANK_LABEL[r])}
+        {EXPLORER_RANK_STAGES.map(s => (
+          <button key={s} type="button" className={chip(stage === s)} aria-pressed={stage === s}
+            onClick={() => setQuery({ ...query, ranks: stageRanks(s) })}>
+            {t(STAGE_LABEL[s])}
           </button>
         ))}
+        {looseRanks && (
+          <span className={`${chip(true)} inline-flex items-center gap-1.5 pr-1.5`}>
+            {looseRanks}
+            <button type="button" onClick={() => setQuery({ ...query, ranks: [] })}
+              aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
+              className="text-fg-muted hover:text-fg-primary">{'×'}</button>
+          </span>
+        )}
       </div>
     </div>
   );

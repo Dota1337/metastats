@@ -3,8 +3,6 @@ import { useI18n } from '../../../lib/i18n';
 import { showTop1, showTop4, type ExplorerResponse } from '../../../lib/tft-explorer-query';
 import { fmtAvg, fmtDelta, fmtPct } from './explorer-options';
 
-export type DeltaMode = 'base' | 'out';
-
 // Farbe einer Abweichung beim Platz: kleiner = besser. Schliesst der
 // Vertrauensbereich die Null ein, bleibt sie neutral.
 export function deltaClass(d: number | null, half: number | null): string {
@@ -14,20 +12,22 @@ export function deltaClass(d: number | null, half: number | null): string {
 }
 
 export default function ExplorerSummary({
-  data, deltaMode, setDeltaMode, hasFilters, place,
+  data, hasFilters, place,
 }: {
   data: ExplorerResponse;
-  deltaMode: DeltaMode;
-  setDeltaMode: (m: DeltaMode) => void;
   hasFilters: boolean;
   /** Platzspanne der geladenen Daten; macht Top 4 / Sieg ggf. bedeutungslos. */
   place: [number, number] | null;
 }) {
   const { t, lang } = useI18n();
   const s = data.summary;
-  const hd = data.headDelta;
-  const d = hd ? (deltaMode === 'base' ? hd.dBase : hd.dOut) : null;
-  const dh = hd ? (deltaMode === 'base' ? hd.dBaseHalf : hd.dOutHalf) : null;
+  // Δ = Auswahl gegen die Boards der Grundmenge OHNE sie (Plan 19.10.2026, C3);
+  // daneben steht genau dieser Rest, damit sich die Zahl nachrechnen laesst.
+  const d = data.headDelta?.dOut ?? null;
+  const dh = data.headDelta?.dOutHalf ?? null;
+  const restGames = data.base.games - s.games;
+  const restAvg = restGames > 0 && data.base.avg != null && s.avg != null
+    ? (data.base.avg * data.base.games - s.avg * s.games) / restGames : null;
   const maxH = Math.max(1, ...s.hist);
   const num = (v: number) => v.toLocaleString(lang === 'de' ? 'de-DE' : lang);
 
@@ -54,9 +54,8 @@ export default function ExplorerSummary({
               <span className={`text-lg font-semibold tabular-nums ${deltaClass(d, dh)}`}>{fmtDelta(d)}</span>
               {dh != null && <span className="text-[11px] text-fg-faint tabular-nums ml-1">{'±'}{dh.toFixed(2)}</span>}
             </div>
-            <DeltaToggle mode={deltaMode} set={setDeltaMode} />
             <span className="text-[11px] text-fg-muted tabular-nums">
-              {t('tft.explorer.x.base')}: {fmtAvg(data.base.avg)} {'·'} {num(data.base.games)}
+              {t('tft.explorer.x.rest')}: {restAvg != null ? `${fmtAvg(restAvg)} · ${num(restGames)}` : '—'}
             </span>
           </div>
         )}
@@ -73,18 +72,6 @@ export default function ExplorerSummary({
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-export function DeltaToggle({ mode, set }: { mode: DeltaMode; set: (m: DeltaMode) => void }) {
-  const { t } = useI18n();
-  const seg = (on: boolean) =>
-    `px-2 py-0.5 text-[11px] ${on ? 'bg-accent-a20 text-fg-bright' : 'text-fg-secondary hover:text-fg-primary'}`;
-  return (
-    <div className="inline-flex rounded-md border border-border-subtle overflow-hidden">
-      <button type="button" className={seg(mode === 'base')} onClick={() => set('base')}>{t('tft.explorer.x.deltaMode.base')}</button>
-      <button type="button" className={seg(mode === 'out')} onClick={() => set('out')}>{t('tft.explorer.x.deltaMode.out')}</button>
     </div>
   );
 }

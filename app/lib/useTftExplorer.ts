@@ -25,9 +25,14 @@ export function useTftExplorer() {
   // Hat diese Sitzung selbst einen Verlaufseintrag angelegt? Dann darf der
   // Zurueck-Button router.back() nehmen, sonst (geteilter Link) nicht.
   const pushed = useRef(false);
+  // now: die naechste Anfrage ohne Verzoegerung schicken (Klick auf einen
+  // Suchtreffer oder Vorschlag — ein einzelner Klick, kein Durchklicken).
+  const nowRef = useRef(false);
 
-  const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { push?: boolean }) => {
+  const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { push?: boolean; now?: boolean }) => {
     const q = typeof next === 'function' ? next(query) : next;
+    // Nur wenn sich die Anfrage aendert — sonst bliebe der Merker fuer einen spaeteren Klick stehen.
+    if (opts?.now && serializeExplorerQuery(q, { forApi: true }) !== serializeExplorerQuery(query, { forApi: true })) nowRef.current = true;
     const qs = serializeExplorerQuery(q);
     const url = qs ? `${pathname}?${qs}` : pathname;
     if (opts?.push) { pushed.current = true; router.push(url, { scroll: false }); }
@@ -49,6 +54,8 @@ export function useTftExplorer() {
   useEffect(() => {
     const controller = new AbortController();
     // Kurze Verzoegerung: mehrere schnelle Klicks loesen eine Anfrage aus.
+    const delay = nowRef.current ? 0 : 250;
+    nowRef.current = false;
     const timer = setTimeout(() => {
       setLoading(true);
       setError(null);
@@ -75,7 +82,7 @@ export function useTftExplorer() {
           setError((err?.code as ExplorerError) || 'failed');
           setLoading(false);
         });
-    }, 250);
+    }, delay);
     return () => { controller.abort(); clearTimeout(timer); };
   }, [apiQs, retry]);
 

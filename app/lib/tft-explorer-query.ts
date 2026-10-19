@@ -27,6 +27,8 @@
 // Alte Links (?units=&items=&traits=&bucket=&region=) von den Unit-, Item-
 // und Trait-Seiten werden beim Lesen uebernommen.
 
+import type { TierBucket } from './tft-tier-bucket';
+
 export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'] as const;
 export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
 
@@ -292,18 +294,33 @@ const uniqBy = <T extends { id: string }>(arr: (T | null)[]) => {
   return arr.filter((a): a is T => !!a && !seen.has(a.id) && (seen.add(a.id), true));
 };
 
+// Rang-Stufen der Explorer-Leiste (Plan 19.10.2026, B1): X+ = Rang X bis
+// Challenger. Eine Tabelle fuer beide Richtungen (Stufe → Raenge, Raenge →
+// Stufe), damit Knopf, alte Links und Vorwaermen nicht auseinanderlaufen.
+export type ExplorerRankStage = Exclude<TierBucket, 'all' | 'platinum_plus'>;
+export const EXPLORER_RANK_STAGES: readonly ExplorerRankStage[] = [
+  'challenger', 'grandmaster_plus', 'master_plus', 'diamond_plus', 'emerald_plus',
+];
+
+/** Raenge einer Stufe, von oben (EXPLORER_RANKS ist absteigend sortiert). */
+export const stageRanks = (stage: ExplorerRankStage): ExplorerRank[] =>
+  EXPLORER_RANKS.slice(0, EXPLORER_RANK_STAGES.indexOf(stage) + 1);
+
+/** Welche Stufe ist gewaehlt? 'all' ohne Rang, null bei einer Auswahl, die keine Stufe ist (alter Link, Reiter Rang). */
+export function rankStageOf(ranks: readonly ExplorerRank[]): ExplorerRankStage | 'all' | null {
+  if (!ranks.length) return 'all';
+  const set = new Set(ranks);
+  return EXPLORER_RANK_STAGES.find(s => {
+    const r = stageRanks(s);
+    return r.length === set.size && r.every(x => set.has(x));
+  }) ?? null;
+}
+
 // Alte Rang-Stufen (TierFilter) auf die Raenge im Speicher abbilden. Unter
 // Smaragd gibt es im Speicher nichts, daher "emerald_plus oder tiefer" = alle fuenf.
 export function legacyBucketToRanks(bucket: string | null): ExplorerRank[] {
-  switch (bucket) {
-    case 'challenger': return ['CHALLENGER'];
-    case 'grandmaster_plus': return ['CHALLENGER', 'GRANDMASTER'];
-    case 'master_plus': return ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
-    case 'diamond_plus': return ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND'];
-    case 'emerald_plus': case 'platinum_plus':
-      return ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'];
-    default: return [];
-  }
+  if (bucket === 'platinum_plus') return stageRanks('emerald_plus');
+  return (EXPLORER_RANK_STAGES as readonly string[]).includes(bucket ?? '') ? stageRanks(bucket as ExplorerRankStage) : [];
 }
 
 export function parseExplorerParams(sp: Params): ExplorerQuery {

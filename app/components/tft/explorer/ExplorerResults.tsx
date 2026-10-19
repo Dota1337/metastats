@@ -12,7 +12,7 @@ import {
   fmtAvg, fmtDelta, fmtPct, itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName,
   type ExplorerOptions,
 } from './explorer-options';
-import { DeltaToggle, deltaClass, type DeltaMode } from './ExplorerSummary';
+import { deltaClass } from './ExplorerSummary';
 import { RANK_LABEL } from './ExplorerScope';
 import ExplorerGames from './ExplorerGames';
 
@@ -46,7 +46,7 @@ const NUMERIC_TABS: ExplorerTab[] = ['level', 'round', 'gold', 'rank'];
 const NO_DELTA_TABS: ExplorerTab[] = ['round', 'region', 'level', 'games'];
 
 export default function ExplorerResults({
-  query, setQuery, backToUnits, data, dataQuery, options, assets, deltaMode, setDeltaMode,
+  query, setQuery, backToUnits, data, dataQuery, options, assets,
 }: {
   query: ExplorerQuery;
   /** Auswahl, zu der data gehoert (null = noch nichts geladen). */
@@ -56,8 +56,6 @@ export default function ExplorerResults({
   data: ExplorerResponse | null;
   options: ExplorerOptions;
   assets: TftAssetsBundle | null;
-  deltaMode: DeltaMode;
-  setDeltaMode: (m: DeltaMode) => void;
 }) {
   const { t, lang } = useI18n();
   const tab = query.tab;
@@ -83,8 +81,9 @@ export default function ExplorerResults({
   // Ab zwei Sternstufen: je Unit eine Gesamt-Zeile, darunter die Stufen.
   const grouped = stars.length > 1;
 
-  const dOf = (r: ExplorerRow) => (deltaMode === 'base' ? r.dBase : r.dOut);
-  const dhOf = (r: ExplorerRow) => (deltaMode === 'base' ? r.dBaseHalf : r.dOutHalf);
+  // Δ = Boards mit der Zeile gegen die Boards der Auswahl ohne sie (Plan 19.10.2026, C3).
+  const dOf = (r: ExplorerRow) => r.dOut;
+  const dhOf = (r: ExplorerRow) => r.dOutHalf;
 
   // Anzeigename je Zeile.
   const labelOf = (r: ExplorerRow): string => {
@@ -148,9 +147,9 @@ export default function ExplorerResults({
     const coll = new Intl.Collator(lang);
     heads.sort(s.key === 'key' ? (a, b) => coll.compare(labelOf(a), labelOf(b)) * s.dir : cmp);
     return heads.flatMap(h => [h, ...members.get(h.key)!.sort((a, b) => a.sub! - b.sub!)]);
-    // dOf haengt nur an deltaMode, labelOf an options/assets/lang
+    // labelOf haengt an options/assets/lang
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, rowsFit, stars.join(), minGames, sort, tab, deltaMode, options, assets, lang, t4, t1]);
+  }, [data, rowsFit, stars.join(), minGames, sort, tab, options, assets, lang, t4, t1]);
 
   // Builds brauchen einen Traeger: ohne Auswahl die erste Unit aus den Filtern.
   const setTab = (next: ExplorerTab) => setQuery({
@@ -320,7 +319,6 @@ export default function ExplorerResults({
             ))}
           </div>
         )}
-        {showDelta && <DeltaToggle mode={deltaMode} set={setDeltaMode} />}
         <label className="flex items-center gap-2">
           <span className="text-xs text-fg-muted">{t('tft.explorer.minGames')}</span>
           <select value={minGames} onChange={e => setMinGames(Number(e.target.value))}

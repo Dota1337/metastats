@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import {
   parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1,
   BOARD_COUNT_KEYS, BOARD_COUNT_MAX, BOARD_TAGS, EXPLORER_TABS,
+  EXPLORER_RANK_STAGES, stageRanks, rankStageOf, legacyBucketToRanks,
 } from './tft-explorer-query.ts';
 import { normalizeQuery, TABS } from '../../scripts/lib/explorer-normalize.mjs';
 import { COUNT_KEYS, COUNT_MAX, TAGS } from '../../scripts/lib/explorer-counts.mjs';
@@ -128,4 +129,27 @@ test('Brett-Filter und Top-4-/Sieg-Spalten', () => {
   assert.equal(showTop1([1, 4]), true);
   assert.equal(showTop1([2, 8]), false);
   assert.equal(showTop1([1, 1]), false);
+});
+
+test('Rang-Stufen: Hin und zurueck, Adresse, alte Links', () => {
+  assert.deepEqual(stageRanks('challenger'), ['CHALLENGER']);
+  assert.deepEqual(stageRanks('master_plus'), ['CHALLENGER', 'GRANDMASTER', 'MASTER']);
+  for (const s of EXPLORER_RANK_STAGES) {
+    assert.equal(rankStageOf(stageRanks(s)), s, s);
+    assert.deepEqual(legacyBucketToRanks(s), stageRanks(s), s);
+    // Ueber die Adresse: gespeichert wird alphabetisch, die Stufe bleibt erkennbar.
+    const qs = serializeExplorerQuery({ ...parse(''), ranks: stageRanks(s) });
+    assert.equal(rankStageOf(parse(qs).ranks), s, qs);
+  }
+  assert.equal(new URLSearchParams(serializeExplorerQuery({ ...parse(''), ranks: stageRanks('master_plus') })).get('k'),
+    'challenger,grandmaster,master');
+  // Emerald+ bleibt fuenf Raenge und faellt nicht auf „Alle" zurueck.
+  assert.equal(rankStageOf(parse(serializeExplorerQuery({ ...parse(''), ranks: stageRanks('emerald_plus') })).ranks), 'emerald_plus');
+  assert.equal(rankStageOf([]), 'all');
+  assert.equal(rankStageOf(['DIAMOND']), null);
+  assert.equal(rankStageOf(['CHALLENGER', 'MASTER']), null);
+  assert.equal(rankStageOf(parse('k=diamond').ranks), null);
+  assert.equal(rankStageOf(parse('bucket=master_plus').ranks), 'master_plus');
+  assert.equal(rankStageOf(parse('bucket=platinum_plus').ranks), 'emerald_plus');
+  assert.equal(rankStageOf(parse('bucket=gold').ranks), 'all');
 });

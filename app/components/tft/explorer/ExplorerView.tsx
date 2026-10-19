@@ -7,7 +7,7 @@ import { hasBoardFilters } from '../../../lib/tft-explorer-query';
 import { buildExplorerOptions } from './explorer-options';
 import ExplorerScope from './ExplorerScope';
 import ExplorerFilters from './ExplorerFilters';
-import ExplorerSummary, { type DeltaMode } from './ExplorerSummary';
+import ExplorerSummary from './ExplorerSummary';
 import ExplorerResults from './ExplorerResults';
 
 export default function ExplorerView() {
@@ -19,8 +19,7 @@ export default function ExplorerView() {
     return () => { alive = false; };
   }, []);
   const options = useMemo(() => buildExplorerOptions(assets), [assets]);
-  const { query, setQuery, backToUnits, data, dataQuery, loading, error, reload } = useTftExplorer();
-  const [deltaMode, setDeltaMode] = useState<DeltaMode>('base');
+  const { query, setQuery, backToUnits, data, dataQuery, loading, stale, error, reload } = useTftExplorer();
 
   const hasFilters = hasBoardFilters(query);
   const resolvedPatch = data?.query?.patches?.length === 1 ? data.query.patches[0] : null;
@@ -57,11 +56,12 @@ export default function ExplorerView() {
           <div className="h-96 rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4" aria-busy={loading}>
-          <ExplorerSummary data={data} deltaMode={deltaMode} setDeltaMode={setDeltaMode} hasFilters={hasFilters}
+        // Neue Auswahl laedt: alte Zahlen bleiben stehen, gedimmt, mit Ladebalken.
+        <div className={`relative flex flex-col gap-4 transition-opacity duration-150 ${stale ? 'opacity-60' : ''}`} aria-busy={loading}>
+          {stale && <div className="absolute -top-2 inset-x-0 h-0.5 rounded-full bg-accent-a60 animate-pulse" aria-hidden="true" />}
+          <ExplorerSummary data={data} hasFilters={hasFilters}
             place={(dataQuery ?? query).place} />
-          <ExplorerResults query={query} setQuery={setQuery} backToUnits={backToUnits} data={data} dataQuery={dataQuery} options={options} assets={assets}
-            deltaMode={deltaMode} setDeltaMode={setDeltaMode} />
+          <ExplorerResults query={query} setQuery={setQuery} backToUnits={backToUnits} data={data} dataQuery={dataQuery} options={options} assets={assets} />
         </div>
       )}
     </div>

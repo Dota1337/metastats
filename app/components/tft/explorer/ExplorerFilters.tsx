@@ -1,11 +1,11 @@
 'use client';
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
   BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, filterCount, serializeExplorerQuery,
-  type BoardCountKey, type BoardTag, type ExplorerQuery, type ExplorerResponse, type FilterGroup, type ItemFilter, type ItemKind,
+  type BoardCountKey, type BoardTag, type ExplorerQuery, type ExplorerResponse, type ExplorerRow, type FilterGroup, type ItemFilter, type ItemKind,
   type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
 import {
@@ -13,6 +13,7 @@ import {
 } from './explorer-options';
 import { applyPhrase, applyPick, normText, type LastRef, type Op, type PhraseTerm, type Pick } from './explorer-search';
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
+import { COPLAY_MAX, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
 
 // Filterleiste (Plan 19.10.2026, Teil C1): eine Suchzeile fuer Units, Items und
 // Synergien (ExplorerSearchBox), darunter die Bausteine — Hauptliste mit „und",
@@ -111,7 +112,8 @@ export default function ExplorerFilters({
   query, setQuery, options, assets, data, dataQuery,
 }: {
   query: ExplorerQuery;
-  setQuery: (q: ExplorerQuery) => void;
+  /** now: Anfrage ohne die kurze Verzoegerung (einzelner Klick auf Treffer/Vorschlag). */
+  setQuery: (q: ExplorerQuery, opts?: { now?: boolean }) => void;
   options: ExplorerOptions;
   assets: TftAssetsBundle | null;
   data: ExplorerResponse | null;
@@ -148,7 +150,7 @@ export default function ExplorerFilters({
       const r = applyPick(next, pick, pickOp ?? (prefix.length ? 'and' : mode), ref);
       next = r.query; ref = r.last;
     }
-    if (next !== query) setQuery(next);
+    if (next !== query) setQuery(next, { now: true });
     setLast(ref);
     return missed;
   };
@@ -267,7 +269,6 @@ export default function ExplorerFilters({
   return (
     <div ref={wrapRef} className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)} />
         <PlainChip label={t('tft.explorer.x.playerLevel')} value={query.levels.length ? query.levels.join(', ') : null}
           open={open === 'lv'} onToggle={() => toggle('lv')} onClear={() => setQuery({ ...query, levels: [] })}>
           <Row label={t('tft.explorer.x.playerLevel')}>
@@ -326,6 +327,7 @@ export default function ExplorerFilters({
             ))}
           </Row>
         </PlainChip>
+        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)} />
         {hasAny && (
           <button type="button" onClick={() => {
             setLast(null);
@@ -378,10 +380,37 @@ function Chip({
   );
 }
 
+// Abstand zum Fensterrand, wenn ein Einstellfenster nach links ausweicht.
+const POPOVER_EDGE = 8;
+
+// Ab sm haengt das Fenster links am Baustein. Ragt es rechts ueber den Rand,
+// rueckt es um den Ueberstand nach links, nie ueber den linken Rand hinaus.
+// Handy: Blatt unten, kein Versatz. Direkt am Element statt ueber den Zustand,
+// damit Messen und Verschieben in derselben Darstellung passieren.
+function placePopover(el: HTMLDivElement | null) {
+  if (!el) return;
+  el.style.transform = '';
+  if (!window.matchMedia('(min-width: 640px)').matches) return;
+  const r = el.getBoundingClientRect();
+  const over = r.right - (document.documentElement.clientWidth - POPOVER_EDGE);
+  const shift = Math.max(0, Math.min(over, r.left - POPOVER_EDGE));
+  if (shift > 0.5) el.style.transform = `translateX(-${shift}px)`;
+}
+
 function Popover({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Nach jeder Darstellung messen: der Baustein waechst beim Bearbeiten
+  // (Item-Bilder im Namen) und kann umbrechen.
+  useLayoutEffect(() => placePopover(ref.current));
+  useEffect(() => {
+    const onResize = () => placePopover(ref.current);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   return (
     // Handy: als Blatt am unteren Rand, sonst ragt es neben einem rechten Baustein aus dem Bild.
-    <div className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${
+    <div ref={ref}
+      className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${
       wide ? 'sm:w-[26rem] sm:max-h-[70vh] sm:overflow-y-auto' : 'sm:w-[20rem]'}`}>
       {children}
     </div>
@@ -621,10 +650,10 @@ function TraitEditor({ tr, set, mins, inGroup }: { tr: TraitFilter; set: (p: Par
 }
 
 // „Oft zusammen mit …": Units des Units-Reiters fuer die aktuelle Auswahl,
-// meistgespielte zuerst. Steht der Explorer schon auf diesem Reiter, kommen
-// die Zeilen aus seiner Antwort, sonst aus einer eigenen Abfrage (gleiche
-// Adresse wie der Reiter, also derselbe Zwischenspeicher).
-const COPLAY_MAX = 8;
+// meistgespielte zuerst (Regel in app/lib/tft-explorer-coplay.mjs, die auch der
+// Dienst zum Vorrechnen der Paare liest). Steht der Explorer schon auf diesem
+// Reiter, kommen die Zeilen aus seiner Antwort, sonst aus einer eigenen Abfrage
+// (gleiche Adresse wie der Reiter, also derselbe Zwischenspeicher).
 const coplayCache = new Map<string, Promise<ExplorerResponse | null>>();
 const coplayQuery = (q: ExplorerQuery): ExplorerQuery => ({ ...q, tab: 'units', stars: [], focus: null, split: null, combo: 1 });
 
@@ -639,9 +668,12 @@ function CoplayRow({
   const qs = anchor ? serializeExplorerQuery(coplayQuery(query), { forApi: true }) : null;
   const own = qs && data && dataQuery && dataQuery.tab === 'units' && !dataQuery.stars.length
     && serializeExplorerQuery(coplayQuery(dataQuery), { forApi: true }) === qs ? data : null;
+  // Ist die Hauptabfrage selbst schon diese Abfrage, auf ihre Antwort warten
+  // statt dieselbe Anfrage ein zweites Mal zu schicken.
+  const mainIsCoplay = qs != null && serializeExplorerQuery(query, { forApi: true }) === qs;
   const [fetched, setFetched] = useState<{ qs: string; data: ExplorerResponse | null } | null>(null);
   useEffect(() => {
-    if (!qs || own) return;
+    if (!qs || own || mainIsCoplay) return;
     let alive = true;
     const timer = setTimeout(() => {
       let p = coplayCache.get(qs);
@@ -653,15 +685,13 @@ function CoplayRow({
       p.then(v => { if (alive) setFetched({ qs, data: v }); });
     }, 600);
     return () => { alive = false; clearTimeout(timer); };
-  }, [qs, own]);
+  }, [qs, own, mainIsCoplay]);
 
   const src = own ?? (fetched && fetched.qs === qs ? fetched.data : null);
   if (!anchor || !src?.rows || !src.summary?.games) return null;
-  const chosen = new Set([...query.units.map(u => u.id), ...query.groups.flatMap(g => g.units.map(u => u.id))]);
-  const rows = src.rows
-    .filter(r => r.sub == null && !chosen.has(r.key) && options.unitById.has(r.key))
-    .sort((a, b) => b.games - a.games)
-    .slice(0, COPLAY_MAX);
+  const rows: ExplorerRow[] = coplayPick(src.rows, {
+    chosen: coplayChosen(query), allow: (id: string) => options.unitById.has(id), max: COPLAY_MAX,
+  });
   if (!rows.length) return null;
   const label = filterCount(query) === 1
     ? t('tft.explorer.x.coplayWith').replace('{unit}', unitName(options, assets, anchor.id))

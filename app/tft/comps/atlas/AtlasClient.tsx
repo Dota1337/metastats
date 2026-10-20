@@ -118,15 +118,15 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
           showDelta={false}
         />
 
-        <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs flex-wrap">
-          <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-0.5 mr-1" role="group" aria-label={t('tft.comps.atlas.groupAria')}>
+        <div className="flex items-center justify-between gap-2 mb-3 -mt-1 text-xs flex-wrap">
+          <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-0.5" role="group" aria-label={t('tft.comps.atlas.groupAria')}>
             {(['cost', 'tier'] as const).map(g => (
               <button
                 key={g}
                 type="button"
                 aria-pressed={group === g}
                 onClick={() => setGroup(g)}
-                className={`px-2.5 py-0.5 text-xs rounded ${
+                className={`px-3.5 py-1 text-sm rounded ${
                   group === g
                     ? 'bg-accent text-white'
                     : 'text-fg-secondary hover:text-white'
@@ -136,21 +136,23 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
               </button>
             ))}
           </div>
-          <span className="text-fg-muted">{t('tft.sortBy')}:</span>
-          <select
-            value={sortBy}
-            onChange={e => chooseSort(e.target.value as CompSortBy)}
-            className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
-          >
-            <option value="avg">{t('tft.avgPlacement')}</option>
-            <option value="top4">{t('tft.top4')}</option>
-            <option value="win">{t('tft.top1')}</option>
-            <option value="pick">{t('tft.pickRate')}</option>
-            <option value="games">{t('tft.gamesShort')}</option>
-            {deltaView && (
-              <option value="velocity">{t('tft.velocity.trending')}</option>
-            )}
-          </select>
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-fg-muted">{t('tft.sortBy')}:</span>
+            <select
+              value={sortBy}
+              onChange={e => chooseSort(e.target.value as CompSortBy)}
+              className="bg-surface-raised border border-border-subtle rounded px-2.5 py-1 text-xs text-white focus:outline-none focus:border-accent-a60"
+            >
+              <option value="avg">{t('tft.avgPlacement')}</option>
+              <option value="top4">{t('tft.top4')}</option>
+              <option value="win">{t('tft.top1')}</option>
+              <option value="pick">{t('tft.pickRate')}</option>
+              <option value="games">{t('tft.gamesShort')}</option>
+              {deltaView && (
+                <option value="velocity">{t('tft.velocity.trending')}</option>
+              )}
+            </select>
+          </div>
         </div>
 
         {/* Immer im HTML: das <style> der Server-Seite blendet die Ladeanzeige
@@ -243,7 +245,7 @@ function AtlasTile({
           </div>
         </div>
         {avg != null && (
-          <span className="absolute -top-1 -right-2 px-1 rounded bg-surface-base/90 border border-border-subtle text-[10px] font-semibold text-white tabular-nums">
+          <span className="absolute -top-1 -right-2 px-1 rounded bg-surface-base/90 border border-border-subtle text-xs font-semibold text-white tabular-nums">
             {avg.toFixed(2)}
           </span>
         )}

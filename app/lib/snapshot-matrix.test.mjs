@@ -45,6 +45,8 @@ import {
   sumPatchDiffLevels,
   isValidPatchDiff,
   RUNNING_PATCH_GRACE_MS,
+  compDeltaAssign,
+  compFileAssign,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -658,4 +660,49 @@ test('Eintrag volle Tage: nur mit gleichem Fenster-Ende', () => {
   // Ohne endDay der bisherige Vergleich ueber last_day.
   assert.equal(precomputedEntryUsable(e, { ...o, endDay: null }), true);
   assert.equal(precomputedEntryUsable(e, { ...o, endDay: null, latestDay: '2026-09-11' }), false);
+});
+
+// Comp-Katalog Phase 3 (Migration 0102): Comps vergleichen nur gleich
+// gezaehlte Patches. Route, Startdaten und Box muessen dieselbe Datei waehlen.
+test('Zaehlart: Vergleich nur zwischen gleich gezaehlten Patches (D2 streng)', () => {
+  assert.equal(compDeltaAssign(0, 0), 'classic');
+  assert.equal(compDeltaAssign(9, 140), 'catalog');
+  assert.equal(compDeltaAssign(9, 0), null); // erster Katalog-Patch gegen klassischen Vorpatch
+  assert.equal(compDeltaAssign(0, 140), null); // Anlauf-Tage des neuen Patches
+  assert.equal(compFileAssign(0), 'classic');
+  assert.equal(compFileAssign(1), 'catalog');
+});
+
+test('Zaehlart: Katalog-Dateien liegen in eigenem Ordner, nur Comps', () => {
+  assert.equal(metaPulseDiffPath('18.5', 'all'), 'tft/meta-pulse/diff/18.5/all__all.json');
+  assert.equal(metaPulseDiffPath('18.5', 'all', 'catalog'), 'tft/meta-pulse/diff/18.5/catalog/all__all.json');
+  assert.equal(patchDiffPath('18.5', 'comp', 'all', 'catalog'), 'tft/patch-diff/18.5/comp/catalog/all__all.json');
+  assert.equal(patchDiffPath('18.5', 'comp', 'all'), 'tft/patch-diff/18.5/comp/all__all.json');
+  assert.equal(patchDiffPath('18.5', 'unit', 'all', 'catalog'), 'tft/patch-diff/18.5/unit/all__all.json');
+});
+
+test('Zaehlart: Datei ohne Feld gilt als klassisch, andere Zaehlart faellt durch', () => {
+  const pdComp = { ...PD_SNAP, entity: 'comp' };
+  const pdWant = { ...PD_WANT, entity: 'comp' };
+  assert.equal(isValidPatchDiff(pdComp, pdWant), true);
+  assert.equal(isValidPatchDiff(pdComp, { ...pdWant, assign: 'classic', markedDays: 0 }), true);
+  assert.equal(isValidPatchDiff(pdComp, { ...pdWant, assign: 'catalog', markedDays: 9 }), false);
+  assert.equal(isValidPatchDiff({ ...pdComp, assign: 'catalog', markedDays: 9 }, pdWant), false);
+  assert.equal(isValidPatchDiff({ ...pdComp, assign: 'catalog', markedDays: 9 }, { ...pdWant, assign: 'catalog', markedDays: 9 }), true);
+  // Units kennen keine Zaehlart.
+  assert.equal(isValidPatchDiff({ ...PD_SNAP, assign: 'catalog' }, { ...PD_WANT, assign: 'classic' }), true);
+  assert.equal(isValidMetaPulseDiff(MP_SNAP, { ...MP_WANT, assign: 'catalog', markedDays: 9 }), false);
+  assert.equal(isValidMetaPulseDiff({ ...MP_SNAP, assign: 'catalog', markedDays: 9 }, { ...MP_WANT, assign: 'catalog', markedDays: 9 }), true);
+});
+
+test('Zaehlart: weniger Katalog-Tage als bekannt = veraltet (Kulanz wie bei Spielen)', () => {
+  const G = RUNNING_PATCH_GRACE_MS;
+  const cat = { ...MP_SNAP, assign: 'catalog', markedDays: 9 };
+  const want = { ...MP_WANT, assign: 'catalog', markedDays: 18 };
+  assert.equal(isValidMetaPulseDiff(cat, want), false);
+  assert.equal(isValidMetaPulseDiff(cat, { ...want, graceMs: G }), true);
+  assert.equal(isValidMetaPulseDiff(cat, { ...want, markedDays: 9 }), true);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, markedDays: 9 }, { ...V_WANT, markedDays: 18 }), false);
+  assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, markedDays: 18 }, { ...V_WANT, markedDays: 18 }), true);
+  assert.equal(isValidMetaPulseVelocity(V_SNAP, V_WANT), true); // alte Datei ohne Feld, kein Katalog
 });

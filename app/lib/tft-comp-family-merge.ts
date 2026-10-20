@@ -25,8 +25,9 @@
 
 import { compTraitFamilyKey, parseClusterKey } from './tft-cluster';
 import { resolveFamilies, sumUnits, type RoleOptions, type RoleUnit } from './tft-comp-roles';
+import type { CompPerfectSums } from './tft-comp-perfect';
 
-export interface CompRowLike {
+export interface CompRowLike extends CompPerfectSums {
   cluster_key: string;
   games: number;
   sum_placement: number;
@@ -203,6 +204,12 @@ export function mergeFamilyRows(members: CompRowLike[]): CompRowLike {
     return any ? out : null;
   };
 
+  // Perfekt-Zaehler (0102) nur ueber bewertete Zeilen; keine bewertet → null
+  // (auch bei alter DB-Fassung ohne die Spalten).
+  const evaluated = sorted.filter(r => r.perfect_games != null);
+  const sumPerfectKey = (key: keyof CompPerfectSums): number | null =>
+    evaluated.length > 0 ? evaluated.reduce((s, r) => s + (Number(r[key]) || 0), 0) : null;
+
   return {
     cluster_key: anchor.cluster_key,
     games: sumNum('games'),
@@ -225,6 +232,11 @@ export function mergeFamilyRows(members: CompRowLike[]): CompRowLike {
     carry_star_dist_merged: concatDictArrays('carry_star_dist_merged'),
     contested_dist_merged: concatDictArrays('contested_dist_merged'),
     bucket_breakdown: mergeBucketBreakdown(),
+    perfect_games: sumPerfectKey('perfect_games'),
+    perfect_sum_placement: sumPerfectKey('perfect_sum_placement'),
+    perfect_top4: sumPerfectKey('perfect_top4'),
+    perfect_top1: sumPerfectKey('perfect_top1'),
+    perfect_base_games: sumPerfectKey('perfect_base_games'),
   };
 }
 

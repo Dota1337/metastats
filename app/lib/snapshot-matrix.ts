@@ -609,6 +609,47 @@ export function precomputedEntryUsable(
 }
 
 // ---------------------------------------------------------------------------
+// Zaehlart der Comp-Zeilen (Comp-Katalog Phase 3, Migration 0102)
+// ---------------------------------------------------------------------------
+// Ab dem ersten Katalog-Tag ordnet der Sammler jedes Brett seiner Comp zu
+// (Marker crawl_meta.catalog_id je Region×Tag), davor zaehlten die Comp-Zeilen
+// klassisch. Ein Vergleich ueber beide Arten waere Schein-Bewegung: gemessen
+// 20.10.2026 an denselben 43.648 Brettern verschiebt allein der Wechsel einzelne
+// Comps um −0,24…+0,34 Plaetze (10–90 %). Comp-Vergleiche nehmen deshalb beide
+// Seiten in derselben Zaehlart; die Katalog-Tage je Patch liefert
+// get_tft_comp_marked_days, die Funktionen filtern per p_assign.
+export type CompAssign = 'catalog' | 'classic';
+
+/**
+ * Zaehlart eines Comp-Vergleichs aus den Katalog-Tagen (Region×Tage) beider
+ * Seiten; null = kein Vergleich. Hat die neuere Seite Katalog-Tage, zaehlen
+ * beide nur Katalog-Tage — ohne solche im Vorpatch gibt es keinen. Hat nur die
+ * aeltere welche (Anlauftage eines neuen Patches nach dem Einschalten: klassisch,
+ * aber mit Mindestspielen 3 statt 8), ebenfalls keinen.
+ */
+export function compDeltaAssign(markedCurrent: number, markedPrevious: number): CompAssign | null {
+  if (markedCurrent > 0) return markedPrevious > 0 ? 'catalog' : null;
+  return markedPrevious > 0 ? null : 'classic';
+}
+
+/** Zaehlart, in der die Box die Comp-Datei eines Patches rechnet. */
+export function compFileAssign(markedDays: number): CompAssign {
+  return markedDays > 0 ? 'catalog' : 'classic';
+}
+
+// Gemeinsame Pruefung der Comp-Dateien: Zaehlart muss passen (Dateien von vor
+// 0102 tragen keine und gelten als klassisch — fuer einen Patch ohne
+// Katalog-Tage war „alle Tage“ genau das). Katalog-Dateien muessen mindestens
+// so viele Katalog-Tage kennen wie die Anfrage, sonst sind sie hinter dem
+// Stand (der Marker kommt nach den Spielzahlen).
+function compAssignMatches(s: { assign?: unknown }, want: { assign?: CompAssign }): boolean {
+  return (s.assign ?? 'classic') === (want.assign ?? 'classic');
+}
+function compMarkedBehind(s: { markedDays?: unknown }, want: { markedDays?: number }): boolean {
+  return Number(s.markedDays ?? 0) < Number(want.markedDays ?? 0);
+}
+
+// ---------------------------------------------------------------------------
 // Meta-Pulse: vorgerechnete Patch-Vergleiche (2026-10-01)
 // ---------------------------------------------------------------------------
 // Der Patch-Vergleich ueber alle Regionen braucht live 7-20 s und laeuft dabei
@@ -649,8 +690,8 @@ function withinRunningGrace(
   return Number.isFinite(lag) && lag <= 1;
 }
 
-export function metaPulseDiffPath(patch: string, bucketLabel: string): string {
-  return `tft/meta-pulse/diff/${patch}/all__${bucketLabel}.json`;
+export function metaPulseDiffPath(patch: string, bucketLabel: string, assign: CompAssign = 'classic'): string {
+  return `tft/meta-pulse/diff/${patch}/${assign === 'catalog' ? 'catalog/' : ''}all__${bucketLabel}.json`;
 }
 
 export interface MetaPulseDiffRow {
@@ -672,6 +713,10 @@ export interface MetaPulseDiffSnapshot {
   regions: string[];
   buckets: string[];
   minGames: number;
+  /** Zaehlart (seit 0102); fehlt = klassisch. */
+  assign?: CompAssign;
+  /** Katalog-Tage (Region×Tage) des Patches zum Rechenzeitpunkt. */
+  markedDays?: number;
   rows: MetaPulseDiffRow[];
 }
 
@@ -687,6 +732,10 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   closed?: boolean;
   /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
   graceMs?: number;
+  /** Zaehlart der Anfrage (compDeltaAssign); fehlt = klassisch. */
+  assign?: CompAssign;
+  /** Katalog-Tage des Patches laut get_tft_comp_marked_days. */
+  markedDays?: number;
 }): snap is MetaPulseDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseDiffSnapshot>;
@@ -694,10 +743,12 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   if (Number(s.set) !== want.set || s.patch !== want.patch) return false;
   if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
   if (Number(s.minGames) !== META_PULSE_DIFF_MIN_GAMES) return false;
+  if (!compAssignMatches(s, want)) return false;
   // Kennt der Blob weniger Tage oder Spiele als die Patch-Liste der Route,
   // sind seither Daten dazugekommen → live rechnen (ausser Kulanz, s. o.).
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
-    || !(Number(s.totalMatches) >= Number(want.totalMatches))) {
+    || !(Number(s.totalMatches) >= Number(want.totalMatches))
+    || compMarkedBehind(s, want)) {
     return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
   }
   const age = want.now - Date.parse(String(s.generatedAt));
@@ -778,8 +829,10 @@ export const PATCH_DIFF_BUCKETS: Record<string, readonly string[]> = {
 // uebrigen danach — eine Notbremse in den neuen haelt die alten nicht auf.
 export const PATCH_DIFF_CORE_BUCKETS: readonly string[] = ['all', 'diamond', 'master_plus', 'grandmaster_plus', 'challenger'];
 
-export function patchDiffPath(patch: string, entity: PatchDiffEntity, bucketLabel: string): string {
-  return `tft/patch-diff/${patch}/${entity}/all__${bucketLabel}.json`;
+// Comp-Dateien in Katalog-Zaehlart liegen eine Ebene tiefer: dieselbe Datei
+// dient als „jetzt“ eines Vergleichs und als Vorpatch des naechsten.
+export function patchDiffPath(patch: string, entity: PatchDiffEntity, bucketLabel: string, assign: CompAssign = 'classic'): string {
+  return `tft/patch-diff/${patch}/${entity}/${entity === 'comp' && assign === 'catalog' ? 'catalog/' : ''}all__${bucketLabel}.json`;
 }
 
 export interface PatchDiffRow {
@@ -806,6 +859,10 @@ export interface PatchDiffSnapshot {
   minGames: number;
   /** 'patch' = genau der Patch (seit 18.10.2026); fehlt = letzte 30 Tage. */
   window?: typeof PATCH_DIFF_WINDOW;
+  /** Nur Comps: Zaehlart (seit 0102); fehlt = klassisch. */
+  assign?: CompAssign;
+  /** Nur Comps: Katalog-Tage (Region×Tage) des Patches zum Rechenzeitpunkt. */
+  markedDays?: number;
   rows: PatchDiffRow[];
 }
 
@@ -879,6 +936,10 @@ export function isValidPatchDiff(snap: unknown, want: {
   graceMs?: number;
   /** Box: nur Blobs mit Patch-Fenster gelten, alte werden neu gerechnet. */
   requireWindow?: boolean;
+  /** Nur Comps: Zaehlart der Anfrage (compDeltaAssign); fehlt = klassisch. */
+  assign?: CompAssign;
+  /** Nur Comps: Katalog-Tage des Patches laut get_tft_comp_marked_days. */
+  markedDays?: number;
 }): snap is PatchDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<PatchDiffSnapshot>;
@@ -891,8 +952,13 @@ export function isValidPatchDiff(snap: unknown, want: {
     return false;
   }
   if (Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
+  const comp = want.entity === 'comp';
+  if (comp && !compAssignMatches(s, want)) return false;
+  // Katalog-Tage kommen auch bei abgeschlossenen Patches noch dazu (der Marker
+  // eines Nachzueglers), deshalb hier nicht nur fuer den laufenden Patch.
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
-    || (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches)))) {
+    || (!want.closed && !(Number(s.totalMatches) >= Number(want.totalMatches)))
+    || (comp && compMarkedBehind(s, want))) {
     return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
   }
   const age = want.now - Date.parse(String(s.generatedAt));
@@ -1052,6 +1118,10 @@ export interface MetaPulseVelocitySnapshot {
   anchorDay: string;
   effDays: number;
   effShift: number;
+  /** Katalog-Tage beider Patches zum Rechenzeitpunkt (seit 0102; fehlt = 0) —
+   *  die Velocity-Funktion waehlt die Zaehlart selbst, die Zahl haelt nur fest,
+   *  auf welchem Stand. */
+  markedDays?: number;
   rows: MetaPulseVelocityRow[];
 }
 
@@ -1068,6 +1138,8 @@ export function isValidMetaPulseVelocity(snap: unknown, want: {
   now: number;
   /** Nur Leser: Kulanz fuer den laufenden Patch (RUNNING_PATCH_GRACE_MS). */
   graceMs?: number;
+  /** Katalog-Tage von Patch + Vergleichspatch (get_tft_comp_marked_days). */
+  markedDays?: number;
 }): snap is MetaPulseVelocitySnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseVelocitySnapshot>;
@@ -1082,6 +1154,7 @@ export function isValidMetaPulseVelocity(snap: unknown, want: {
   // rechnen (ausser Kulanz, s. RUNNING_PATCH_GRACE_MS).
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
     || !(Number(s.totalMatches) >= Number(want.totalMatches))
+    || compMarkedBehind(s, want)
     || (w.mode === 'crossPatch'
       && !(Number(s.compareTotalMatches) >= Number(want.compareTotalMatches ?? Infinity)))) {
     return withinRunningGrace(s, want.lastDay, want.now, want.graceMs);

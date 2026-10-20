@@ -25,6 +25,7 @@ import {
   applyAnchorMultiplicity,
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
+import { sumPerfect, type CompPerfect, type CompPerfectSums } from '../../../lib/tft-comp-perfect';
 import { buildGroupMembers, buildGroups } from '../../../lib/tft-comp-build-group';
 import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
 import { opponentsOf, remapMatchupRows, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
@@ -181,7 +182,8 @@ function compPairsMemo(args: Record<string, unknown>, timeoutMs = 20000): Promis
   return rows;
 }
 
-interface CompRow {
+// perfect_* (Migration 0102): nur an Katalog-Tagen, sonst null (tft-comp-perfect.ts).
+interface CompRow extends CompPerfectSums {
   cluster_key: string;
   games: number;
   sum_placement: number;
@@ -235,6 +237,8 @@ interface CompVariant {
   augmentSlug: string | null;
   secondary: string | null;
   belowThreshold: boolean;
+  // Perfekt getroffen (nur Katalog-Comps, null ohne bewertete Spiele).
+  perfect?: CompPerfect | null;
 }
 
 // Varianten einer Katalog-Comp: Build-Gruppen ueber alle ihre Zeilen, dieselbe
@@ -263,6 +267,7 @@ function compVariants(rows: CompRow[]): CompVariant[] {
       augmentSlug: parts.augmentSlug,
       secondary: parts.secondary,
       belowThreshold: false,
+      perfect: sumPerfect(g),
     });
   }
   return out.sort((a, b) => b.games - a.games).slice(0, 6);
@@ -617,6 +622,9 @@ export async function GET(request: NextRequest) {
         aliasedFromFamily,
         levelOutcome,
         outcome,
+        // Perfekt getroffen ueber die Zeilen des Kopfs (nicht in baseComp —
+        // das baut auch die Listenzeilen). null ohne bewertete Spiele.
+        perfect: sumPerfect([mergedRow]),
         variantMode,
         // Alle Familien (<trait>__<carry>), die hier zusammengelegt sind —
         // Seitentitel und Konter lesen daraus. Anker zuerst.

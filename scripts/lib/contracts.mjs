@@ -453,6 +453,7 @@ async function runCheck(c) {
     if (c.type === 'patch-axis') return await checkPatchAxis(c, r);
     if (c.type === 'lol-patch-shift') return await checkLolPatchShift(c, r);
     if (c.type === 'box-main') return await checkBoxMain(c, r);
+    if (c.type === 'comp-catalog-days') return await checkCompCatalogDays(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -612,6 +613,59 @@ async function checkSetAxis(c, r) {
     return r('broken', `keine Zeilen fuer Set ${set} (min ${minRows}) — die Seite zeigt Daten des Vorsets oder nichts`);
   }
   return r('ok', `${current} Zeilen im Set ${set}, 0 ohne ${col}`);
+}
+
+/**
+ * Vertrag comp-catalog-days (Comp-Katalog Phase 3, Migration 0102): ist der
+ * neueste Crawl-Tag ein Katalog-Tag, muessen alle Regionen des Tages markiert
+ * sein (crawl_meta.catalog_id) und ihre Comp-Zeilen Perfekt-Zaehler tragen.
+ * Eine unmarkierte Region (klassischer Wiederholungslauf) faellt aus jedem
+ * Katalog-Vergleich zum Vorpatch heraus (p_assign) → gelb. Eine markierte
+ * Region ohne einen einzigen Perfekt-Zaehler heisst: der Sammler bewertet
+ * nichts, der Schalter „Perfekt getroffen“ verschwindet → rot. Ohne
+ * Katalog-Tag (Schalter aus, Anlauf eines Patches) gruen.
+ *
+ * @param {{ day: string|null, metaRows: {region: string, catalog_id: unknown}[],
+ *   perfectByRegion: Map<string, number> }} o
+ * @returns {{ status: 'ok'|'warn'|'broken'|'skipped', detail: string }}
+ */
+export function evaluateCompCatalogDays({ day, metaRows, perfectByRegion }) {
+  if (!day) return { status: 'skipped', detail: 'kein Crawl-Tag im laufenden Set' };
+  // crawl_meta hat je Region×Tag eine Zeile je Rang; die Datenbank wertet
+  // bool_or aus (get_tft_comp_marked_days), hier genauso.
+  const markedOf = new Map();
+  for (const m of metaRows) markedOf.set(m.region, (markedOf.get(m.region) ?? false) || m.catalog_id != null);
+  const marked = [...markedOf].filter(([, v]) => v).map(([k]) => k).sort();
+  const unmarked = [...markedOf].filter(([, v]) => !v).map(([k]) => k).sort();
+  if (marked.length === 0) return { status: 'ok', detail: `${day}: noch kein Katalog-Tag (${unmarked.length} Regionen klassisch gezaehlt)` };
+  const noPerfect = marked.filter(rg => !((perfectByRegion.get(rg) ?? 0) > 0));
+  if (noPerfect.length > 0) {
+    return { status: 'broken', detail: `${day} Katalog-Tag, aber ohne Perfekt-Zaehler: ${noPerfect.join(', ')}` };
+  }
+  if (unmarked.length > 0) {
+    return { status: 'warn', detail: `${day} Katalog-Tag, klassisch gezaehlt: ${unmarked.join(', ')} — fehlt im Vergleich zum Vorpatch` };
+  }
+  return { status: 'ok', detail: `${day} Katalog-Tag: ${marked.length} Regionen markiert, Perfekt-Zaehler in allen` };
+}
+
+async function checkCompCatalogDays(c, r) {
+  const set = readCurrentSet();
+  if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+  if (c.backend !== 'supabase') return r('error', 'comp-catalog-days prueft nur Supabase');
+  const day = await supaMaxDate('tft_daily_crawl_meta', 'day', `&set_number=eq.${set}`);
+  let metaRows = [];
+  const perfectByRegion = new Map();
+  if (day) {
+    metaRows = await (await supaGet(`tft_daily_crawl_meta?select=region,catalog_id&set_number=eq.${set}&day=eq.${day}`)).json();
+    const marked = [...new Set(metaRows.filter(m => m.catalog_id != null).map(m => m.region))];
+    for (const rg of marked) {
+      if (!/^[a-z0-9]+$/.test(rg)) throw new Error(`Region ungueltig: ${JSON.stringify(rg)}`);
+      perfectByRegion.set(rg, await supaCount('tft_daily_comp_stats',
+        `&set_number=eq.${set}&day=eq.${day}&region=eq.${rg}&perfect_games=not.is.null`));
+    }
+  }
+  const res = evaluateCompCatalogDays({ day, metaRows, perfectByRegion });
+  return r(res.status, res.detail);
 }
 
 /**

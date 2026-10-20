@@ -8,7 +8,9 @@ import {
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { loadMetaPulseDiff, loadMetaPulseVelocity } from '../../../lib/meta-pulse-diff-snapshot';
+import { compMarkedDays } from '../../../lib/comp-assign-server';
 import {
+  compDeltaAssign,
   META_PULSE_COMPLETE_LOOKBACK_DAYS,
   META_PULSE_DIFF_MIN_GAMES,
   META_PULSE_VELOCITY_DEFAULT_SHIFT,
@@ -141,8 +143,16 @@ export async function GET(request: NextRequest) {
     let degraded = selIdx === 0 && !crawlMeta;
     let snapshotHits = 0;
     let velocityHit = false;
+    // Zaehlart der Comp-Zeilen (Comp-Katalog Phase 3): Patch-Beweger nur
+    // zwischen gleich gezaehlten Patches (compDeltaAssign), sonst leer. Die
+    // Velocity-Funktion waehlt selbst; die Katalog-Tage halten nur fest, auf
+    // welchem Stand eine vorgerechnete Velocity-Datei steht.
+    const marked = sel ? await compMarkedDays(Number(setNumber), filters.regions) : null;
+    if (sel && !marked) degraded = true;
+    const markedOf = (patch: string | null | undefined) => (patch ? marked?.get(patch) ?? 0 : 0);
+    const compAssign = marked && sel && previousPatch ? compDeltaAssign(markedOf(sel.patch), markedOf(previousPatch)) : null;
     const diffRows = async (p: typeof sel | undefined, days: number): Promise<CompStatsRow[]> => {
-      if (!p) return [];
+      if (!p || !compAssign) return [];
       const pre = await loadMetaPulseDiff({
         patch: p,
         closed: p.patch !== patches[0]?.patch,
@@ -150,6 +160,8 @@ export async function GET(request: NextRequest) {
         regions: filters.regions,
         bucketLabel: filters.bucketLabel,
         buckets,
+        assign: compAssign,
+        markedDays: markedOf(p.patch),
       });
       if (pre) { snapshotHits++; return pre; }
       return callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
@@ -159,6 +171,7 @@ export async function GET(request: NextRequest) {
         p_patch: p.patch,
         p_set: setNumber,
         p_min_games: META_PULSE_DIFF_MIN_GAMES,
+        p_assign: compAssign,
       }, 20000).catch(() => { degraded = true; return [] as CompStatsRow[]; });
     };
 
@@ -167,10 +180,11 @@ export async function GET(request: NextRequest) {
     const [velocityRows, currentTopComps, prevTopComps] = await Promise.all([
       (async (): Promise<VelocityRow[]> => {
         // Velocity: vorgerechnet von der Box (nur region=all), sonst live.
-        const pre = sel ? await loadMetaPulseVelocity({
+        const pre = sel && marked ? await loadMetaPulseVelocity({
           sel, cmp, previousPatch, window: win,
           regionLabel: filters.regionLabel, regions: filters.regions,
           bucketLabel: filters.bucketLabel, buckets,
+          markedDays: markedOf(sel.patch) + markedOf(previousPatch),
         }) : null;
         if (pre) { velocityHit = true; return pre; }
         return callRpc<VelocityRow[]>('get_tft_comp_velocity', {

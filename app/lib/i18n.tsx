@@ -3140,6 +3140,27 @@ const translations = {
     '전체', '全部',
     'Todas', 'Toutes'
   ),
+  // Schalter ueber den Kopfzahlen der Comp-Detailseite (Comp-Katalog Phase 3).
+  'tft.comp.perfect.all': t6(
+    'Alle Spiele', 'All games',
+    '모든 게임', '全部对局',
+    'Todas las partidas', 'Toutes les parties'
+  ),
+  'tft.comp.perfect.on': t6(
+    'Perfekt getroffen', 'Perfect match',
+    '완벽히 일치', '完美匹配',
+    'Coincidencia perfecta', 'Correspondance parfaite'
+  ),
+  'tft.comp.perfect.share': t6(
+    'in {n} % der Spiele', 'in {n}% of games',
+    '전체 게임의 {n}%', '占对局的 {n}%',
+    'en el {n} % de las partidas', 'dans {n} % des parties'
+  ),
+  'tft.comp.perfect.aria': t6(
+    'Spiele zählen: alle oder perfekt getroffen', 'Count games: all or perfect match',
+    '게임 집계: 전체 또는 완벽히 일치', '对局统计：全部或完美匹配',
+    'Contar partidas: todas o coincidencia perfecta', 'Compter les parties : toutes ou correspondance parfaite'
+  ),
   'tft.comp.variant.allTitle': t6(
     'Alle Varianten', 'All variants',
     '모든 변형', '全部变体',

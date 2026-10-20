@@ -51,6 +51,13 @@
       "note": "Seit Migration 0101 (erster Tag 21.10.2026): Schattenzaehlung der klassischen Familien je Region und Tag, Raenge zusammengelegt, ab 2 Spielen. Aus ihr baut der Tagestreiber die Comp-Katalog-Versionen (scripts/lib/comp-catalog-day.mjs); fehlt sie an einem Katalog-Tag, fehlt dem naechsten Katalog dieser Tag. Mit Katalog bricht der Writer die Region ab, wenn sie fehlt; klassisch nur Logzeile — daher maxLagDays 1."
     },
     {
+      "id": "daily-crawl/comp-catalog-days",
+      "owner": "metastats-daily-crawl.service",
+      "type": "comp-catalog-days",
+      "backend": "supabase",
+      "note": "Comp-Katalog Phase 3 (Migration 0102): ist der neueste Crawl-Tag des laufenden Sets ein Katalog-Tag (crawl_meta.catalog_id), muessen alle Regionen des Tages markiert sein und ihre Comp-Zeilen Perfekt-Zaehler tragen. Gelb: eine Region klassisch gezaehlt (Wiederholungslauf) — sie fehlt im Vergleich zum Vorpatch, der nur gleich gezaehlte Tage nimmt. Rot: markierte Region ohne einen einzigen Perfekt-Zaehler — der Schalter 'Perfekt getroffen' der Detailseite verschwindet. Ohne Katalog-Tag (Schalter COMP_CATALOG_COLLECT aus, die 3 Anlauftage eines Patches) gruen."
+    },
+    {
       "id": "daily-crawl/comp-outcome",
       "owner": "metastats-daily-crawl.service",
       "backend": "supabase",

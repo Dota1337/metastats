@@ -609,8 +609,11 @@ export function attachPatchDeltas(
     const list = byFamily.get(fk);
     if (list) list.push(k); else byFamily.set(fk, [k]);
   }
+  // Beide Seiten je Katalog-Comp gezaehlt: ihre Zeilen tragen schon den
+  // Comp-Schluessel, die klassischen Mitglieder wuerden fremde Comps mitzaehlen.
+  const keysOf = (f: CompFamily) => (index.assign === 'catalog' ? [f.familyKey] : (f.memberKeys ?? [f.familyKey]));
   const out = families.map(f => {
-    const delta = sumDeltaKeys(index, (f.memberKeys ?? [f.familyKey]).flatMap(m => byFamily.get(m) ?? []));
+    const delta = sumDeltaKeys(index, keysOf(f).flatMap(m => byFamily.get(m) ?? []));
     return {
       ...f,
       delta,

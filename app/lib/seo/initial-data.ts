@@ -366,11 +366,16 @@ export async function compDeltaStart(
     const current = all.find(p => p.patch === pair.patch);
     const previous = all.find(p => p.patch === pair.prev);
     if (!current || !previous || !all[0]) return null;
-    const sides = await loadPatchDeltaBlobs({
+    const blobs = await loadPatchDeltaBlobs({
       entity: 'comp', regions: ALL_REGIONS, bucketLabel: filters.bucket,
       current, previous, newestPatch: all[0].patch,
     });
-    if (!sides) return null;
+    if (!blobs) return null;
+    // Seiten zaehlen verschieden (compDeltaAssign): dieselbe Antwort wie die
+    // Route, der Browser fragt dann nicht nach.
+    if (blobs.kind === 'assign') {
+      return { url, res: { hasData: false, currentPatch: pair.patch, previousPatch: pair.prev, reason: 'assign' } };
+    }
     const own = (rows: PatchDeltaRow[]) => rows.filter(r => families.has(compTraitFamilyKey(r.k)));
     return {
       url,
@@ -378,8 +383,9 @@ export async function compDeltaStart(
         hasData: true,
         currentPatch: pair.patch,
         previousPatch: pair.prev,
-        current: own(compactDeltaRows(sides[0])),
-        previous: own(compactDeltaRows(sides[1])),
+        ...(blobs.assign ? { assign: blobs.assign } : {}),
+        current: own(compactDeltaRows(blobs.current)),
+        previous: own(compactDeltaRows(blobs.previous)),
       },
     };
   })().catch(() => null), DELTA_BUDGET_MS);

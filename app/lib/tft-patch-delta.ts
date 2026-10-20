@@ -8,7 +8,7 @@
 // Ohne 'use client': die Server-Seite der Uebersicht rechnet das Patch-Paar mit
 // derselben Funktion wie der Browser (seo/initial-data.ts), sonst fragte der
 // Browser nach dem ersten Zeichnen ein anderes Paar ab und die Pfeile sprangen.
-import { previousPatchOf, patchDayCount, PREVIOUS_PATCH_MIN_DAYS } from './snapshot-matrix';
+import { previousPatchOf, patchDayCount, PREVIOUS_PATCH_MIN_DAYS, type CompAssign } from './snapshot-matrix';
 import type { PatchInfo } from './tft-filters';
 
 // Ab so vielen Spielen je Patch-Seite zeigt eine Zeile ein Δ, darunter „—"
@@ -25,6 +25,8 @@ export interface PatchDeltaResponse {
   reason?: string;
   currentPatch?: string | null;
   previousPatch?: string | null;
+  /** Nur Comps: Zaehlart beider Seiten (fehlt = klassisch). */
+  assign?: CompAssign;
   current?: PatchDeltaRow[];
   previous?: PatchDeltaRow[];
 }
@@ -78,6 +80,8 @@ export interface PatchDeltaSum { g: number; s: number }
 export interface PatchDeltaIndex {
   entity: PatchDeltaEntity;
   pair: PatchDeltaPair;
+  /** Nur Comps: 'catalog' = beide Seiten je Katalog-Comp gezaehlt. */
+  assign?: CompAssign;
   now: Map<string, PatchDeltaSum>;
   prev: Map<string, PatchDeltaSum>;
 }
@@ -108,7 +112,11 @@ export function buildPatchDeltaIndex(
 ): PatchDeltaIndex | null {
   if (!res?.hasData || !Array.isArray(res.current) || !Array.isArray(res.previous)) return null;
   if (res.currentPatch !== pair.patch || res.previousPatch !== pair.prev) return null;
-  return { entity, pair, now: sumSide(entity, res.current), prev: sumSide(entity, res.previous) };
+  return {
+    entity, pair,
+    ...(res.assign ? { assign: res.assign } : {}),
+    now: sumSide(entity, res.current), prev: sumSide(entity, res.previous),
+  };
 }
 
 /** Δ aus den Summen beider Seiten. `allowNew`: „NEU", wenn die Zeile im

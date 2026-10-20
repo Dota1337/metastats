@@ -55,7 +55,7 @@ function tierBadge(avgPlacement: number | null): { label: string; color: string;
 }
 
 export default function CompCard({
-  comp, rank, assets, href, showVelocity = false, velocityShift = 0, dna,
+  comp, rank, assets, href, showVelocity = false, velocityShift = 0, dna, stats,
 }: {
   comp: Comp;
   rank?: number;
@@ -69,6 +69,9 @@ export default function CompCard({
   // Comp-DNA rechts neben den Werten, nur ab 1440 px (User 2026-10-10);
   // darunter zeigt die Detailseite sie in der Analyse.
   dna?: React.ReactNode;
+  // Detailseite „Perfekt getroffen“: Spiele, Avg, Top 4 und Sieg aus diesen
+  // Zahlen. Rollen, Core/Flex, Pick und Tier-Farbe bleiben bei `comp`.
+  stats?: { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null } | null;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -103,6 +106,7 @@ export default function CompCard({
   const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
   const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
   const tier = tierBadge(comp.avgPlacement);
+  const shown = stats ?? comp;
 
   const typicalUnits = (() => {
     const all = [...(comp.typicalUnits || [])].map(u => ({
@@ -347,13 +351,13 @@ export default function CompCard({
         {/* Stats: horizontal pills on mobile (wraps if needed),
             right-aligned column on desktop. */}
         <div className="flex items-stretch gap-2 sm:text-right flex-wrap sm:flex-nowrap">
-          <Stat label="Avg" value={comp.avgPlacement?.toFixed(2) ?? '—'} accent={tier.color} />
-          <Stat label="Top 4" value={comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'} />
-          <Stat label={t('tft.win')} value={comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'} />
+          <Stat label="Avg" value={shown.avgPlacement?.toFixed(2) ?? '—'} accent={tier.color} />
+          <Stat label="Top 4" value={shown.top4Rate != null ? `${(shown.top4Rate * 100).toFixed(0)}%` : '—'} />
+          <Stat label={t('tft.win')} value={shown.top1Rate != null ? `${(shown.top1Rate * 100).toFixed(0)}%` : '—'} />
           <Stat label="Pick" value={comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'} />
           <div className="flex flex-col items-end justify-center pl-2 border-l border-border-subtle">
             <div className="text-fg-muted text-[11px] uppercase tracking-widest">{t('tft.games')}</div>
-            <div className="text-fg-secondary text-sm">{comp.games}</div>
+            <div className="text-fg-secondary text-sm">{shown.games}</div>
           </div>
           {showVelocity && <VelocityStat velocity={comp.velocity} shift={velocityShift} t={t} />}
           <div className="flex items-center pl-2 border-l border-border-subtle">

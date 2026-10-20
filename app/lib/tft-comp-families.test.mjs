@@ -42,6 +42,15 @@ test('attachPatchDeltas: zusammengelegte Familien zaehlen mit, fremde nicht', ()
   assert.equal(solo.delta.deltaAvgPlace, 0);
   const merged = attachPatchDeltas([famOf(K1, { memberKeys: [compTraitFamilyKey(K1), compTraitFamilyKey(K3)] })], idx, false)[0];
   assert.equal(merged.delta.deltaAvgPlace, -1);
+  // Beide Seiten je Katalog-Comp gezaehlt: nur die Comp selbst, keine Mitglieder.
+  const catIdx = buildPatchDeltaIndex('comp', { patch: '18.4', prev: '18.3' }, {
+    hasData: true, currentPatch: '18.4', previousPatch: '18.3', assign: 'catalog',
+    current: [{ k: K1, g: 200, a: 4.0 }, { k: K3, g: 200, a: 2.0 }],
+    previous: [{ k: K1, g: 200, a: 4.0 }, { k: K3, g: 200, a: 4.0 }],
+  });
+  assert.equal(catIdx.assign, 'catalog');
+  const cat = attachPatchDeltas([famOf(K1, { memberKeys: [compTraitFamilyKey(K1), compTraitFamilyKey(K3)] })], catIdx, false)[0];
+  assert.equal(cat.delta.deltaAvgPlace, 0);
 });
 
 test('attachPatchDeltas: ohne Daten kein erfundener Pfeil, Sortierung nach Δ mit Luecken hinten', () => {

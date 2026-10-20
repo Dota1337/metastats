@@ -17,6 +17,7 @@ import {
   type MetaPulseDiffRow,
   type MetaPulseVelocityRow,
   type MetaPulseVelocityWindow,
+  type CompAssign,
   type PatchDiffEntity,
   type PatchDiffRow,
 } from './snapshot-matrix';
@@ -72,9 +73,15 @@ export async function fetchBlob(path: string): Promise<unknown | null> {
   }
 }
 
-export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo; closed: boolean }): Promise<MetaPulseDiffRow[] | null> {
+// assign/markedDays: Zaehlart der Comp-Zeilen (compDeltaAssign, comp-assign-server.ts).
+export async function loadMetaPulseDiff(o: Scope & {
+  patch: MetaPulsePatchInfo;
+  closed: boolean;
+  assign?: CompAssign;
+  markedDays?: number;
+}): Promise<MetaPulseDiffRow[] | null> {
   if (!inScope(o)) return null;
-  const snap = await fetchBlob(metaPulseDiffPath(o.patch.patch, o.bucketLabel));
+  const snap = await fetchBlob(metaPulseDiffPath(o.patch.patch, o.bucketLabel, o.assign));
   const ok = isValidMetaPulseDiff(snap, {
     set: Number(o.patch.set_number),
     patch: o.patch.patch,
@@ -85,6 +92,8 @@ export async function loadMetaPulseDiff(o: Scope & { patch: MetaPulsePatchInfo; 
     now: Date.now(),
     closed: o.closed,
     graceMs: RUNNING_PATCH_GRACE_MS,
+    assign: o.assign,
+    markedDays: o.markedDays,
   });
   return ok ? snap.rows : null;
 }
@@ -99,10 +108,13 @@ export async function loadPatchDiff(o: {
   patch: MetaPulsePatchInfo;
   set: number;
   closed: boolean;
+  /** Nur Comps: Zaehlart und Katalog-Tage des Patches. */
+  assign?: CompAssign;
+  markedDays?: number;
 }): Promise<PatchDiffRow[] | null> {
   const groupBuckets = PATCH_DIFF_BUCKETS[o.bucketLabel];
   if (!groupBuckets || listKey(groupBuckets) !== listKey(o.buckets)) return null;
-  const snap = await fetchBlob(patchDiffPath(o.patch.patch, o.entity, o.bucketLabel));
+  const snap = await fetchBlob(patchDiffPath(o.patch.patch, o.entity, o.bucketLabel, o.assign));
   const ok = isValidPatchDiff(snap, {
     set: o.set,
     patch: o.patch.patch,
@@ -114,6 +126,8 @@ export async function loadPatchDiff(o: {
     now: Date.now(),
     closed: o.closed,
     graceMs: RUNNING_PATCH_GRACE_MS,
+    assign: o.assign,
+    markedDays: o.markedDays,
   });
   return ok ? snap.rows : null;
 }
@@ -123,6 +137,8 @@ export async function loadMetaPulseVelocity(o: Scope & {
   cmp: MetaPulsePatchInfo | undefined;
   previousPatch: string | null;
   window: MetaPulseVelocityWindow;
+  /** Katalog-Tage von Patch + Vergleichspatch; fehlt = keine Pruefung darauf. */
+  markedDays?: number;
 }): Promise<MetaPulseVelocityRow[] | null> {
   if (!inScope(o)) return null;
   const snap = await fetchBlob(metaPulseVelocityPath(o.sel.patch, o.bucketLabel, o.window));
@@ -138,6 +154,7 @@ export async function loadMetaPulseVelocity(o: Scope & {
     window: o.window,
     now: Date.now(),
     graceMs: RUNNING_PATCH_GRACE_MS,
+    markedDays: o.markedDays,
   });
   return ok ? snap.rows : null;
 }

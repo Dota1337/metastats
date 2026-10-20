@@ -12,11 +12,13 @@ import {
   PATCH_DIFF_MIN_GAMES,
   PATCH_DIFF_P_DAYS,
   PREVIOUS_PATCH_MIN_DAYS,
+  type CompAssign,
   type PatchDiffEntity,
   type PatchDiffRow,
 } from '../../../lib/snapshot-matrix';
 import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
 import { compactDeltaRows, loadPatchDeltaBlobs } from '../../../lib/patch-delta-server';
+import { compAssignForPair } from '../../../lib/comp-assign-server';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -116,6 +118,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Comps: beide Seiten in derselben Zaehlart (Comp-Katalog Phase 3,
+    // compDeltaAssign); zaehlen sie verschieden, gibt es keinen Vergleich.
+    let comp: { assign: CompAssign; marked: Record<string, number> } | null = null;
+    if (entity === 'comp') {
+      const pair = await compAssignForPair(Number(setNumber), regions, currentPatch, previousPatch);
+      if (!pair) throw new Error('Katalog-Tage nicht lesbar');
+      if (!pair.assign) {
+        return cachedJson({ hasData: false, currentPatch, previousPatch, entity, patches, winners: [], losers: [], reason: 'assign' });
+      }
+      comp = { assign: pair.assign, marked: { [currentPatch]: pair.markedCurrent, [previousPatch]: pair.markedPrevious } };
+    }
     // Je Seite zuerst der vorgerechnete Blob (nur alle Regionen), sonst live.
     let fromBlob = 0;
     const side = async (patch: string): Promise<PatchDiffRow[]> => {
@@ -124,10 +137,11 @@ export async function GET(request: NextRequest) {
         const rows = await loadPatchDiff({
           entity, regions, bucketLabel: bucketParam, buckets,
           patch: info, set: Number(setNumber), closed: patch !== patches[0].patch,
+          ...(comp ? { assign: comp.assign, markedDays: comp.marked[patch] ?? 0 } : {}),
         });
         if (rows) { fromBlob++; return rows; }
       }
-      return fetchEntityRows(entity, info ?? patch, setNumber, regions, buckets, LIVE_TIMEOUT_MS);
+      return fetchEntityRows(entity, info ?? patch, setNumber, regions, buckets, LIVE_TIMEOUT_MS, comp?.assign);
     };
     // Patch-Gewinner fragt nach der Eigenschaft, nicht nach ihrer Stufe.
     const [curr, prev] = (await Promise.all([side(currentPatch), side(previousPatch)])).map(sumPatchDiffLevels);
@@ -212,6 +226,8 @@ async function fetchEntityRows(
   regions: string[],
   buckets: string[],
   timeoutMs: number,
+  /** Nur Comps: Zaehlart beider Seiten (Migration 0102). */
+  assign?: CompAssign,
 ): Promise<PatchDiffRow[]> {
   const info = typeof patch === 'string' ? null : patch;
   const win = info ? patchDiffWindowArgs(info) : null;
@@ -221,6 +237,7 @@ async function fetchEntityRows(
     ...(win ?? { p_days: PATCH_DIFF_P_DAYS }),
     p_patch: info ? info.patch : patch,
     p_set: setNumber,
+    ...(entity === 'comp' && assign ? { p_assign: assign } : {}),
   }, timeoutMs);
   return normalizePatchDiffRows(entity, rows);
 }
@@ -248,17 +265,29 @@ async function fullRows(o: {
   }
   const set = Number(current.set_number);
   const source = o.allRegions ? 'blob' : 'live';
+  // Comps vergleichen nur gleich gezaehlte Seiten (compDeltaAssign); 'assign'
+  // = sie zaehlen verschieden, die Liste zeigt dann kein Δ.
+  const noPair = () => cachedJson({ hasData: false, ...head, reason: 'assign' });
   let sides: [PatchDiffRow[], PatchDiffRow[]] | null = null;
+  let assign: CompAssign | undefined;
   try {
     if (o.allRegions) {
       if (!PATCH_DIFF_BUCKETS[o.bucketParam]) return cachedJson({ hasData: false, ...head, reason: 'bucket' });
-      sides = await loadPatchDeltaBlobs({
+      const blobs = await loadPatchDeltaBlobs({
         entity, regions: o.regions, bucketLabel: o.bucketParam,
         current, previous, newestPatch: o.patches[0].patch,
       });
+      if (blobs?.kind === 'assign') return noPair();
+      if (blobs) { sides = [blobs.current, blobs.previous]; assign = blobs.assign; }
     } else {
+      if (entity === 'comp') {
+        const pair = await compAssignForPair(set, o.regions, current.patch, previous.patch);
+        if (!pair) throw new Error('Katalog-Tage nicht lesbar');
+        if (!pair.assign) return noPair();
+        assign = pair.assign;
+      }
       sides = await Promise.all([current, previous].map(info =>
-        fetchEntityRows(entity, info, set, o.regions, o.buckets, FULL_LIVE_TIMEOUT_MS))) as [PatchDiffRow[], PatchDiffRow[]];
+        fetchEntityRows(entity, info, set, o.regions, o.buckets, FULL_LIVE_TIMEOUT_MS, assign))) as [PatchDiffRow[], PatchDiffRow[]];
     }
   } catch {
     sides = null;
@@ -272,6 +301,7 @@ async function fullRows(o: {
     hasData: true,
     ...head,
     minGames: PATCH_DIFF_MIN_GAMES,
+    ...(assign ? { assign } : {}),
     current: compactDeltaRows(sides[0]),
     previous: compactDeltaRows(sides[1]),
   });

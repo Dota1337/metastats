@@ -25,6 +25,7 @@ import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
 import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect, hasItemsPerUnit } from '../../../components/tft/CompOutcome';
 import CompDna, { hasCompDna } from '../../../components/tft/CompDna';
+import { perfectShare, perfectStats, readPerfectMode, writePerfectMode, type CompPerfect } from '../../../lib/tft-comp-perfect';
 import { computeActiveTraits } from '../../../lib/tft-active-traits';
 
 // Recharts-Komponenten lazy via next/dynamic — sparen ~95 KB Bundle aus
@@ -146,6 +147,11 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   const [compFilters, setCompFilters] = useState<{ slug: string; region: string; bucket: string; days: number } | null>(
     () => (start ? { slug, region, bucket, days } : null));
   const [proComp, setProComp] = useState<any | null>(null);
+  // Schalter „Alle Spiele | Perfekt getroffen“ (Comp-Katalog Phase 3). Erst
+  // nach dem ersten Zeichnen aus dem Tab-Speicher, sonst wiche der Browser
+  // von der Server-Seite ab.
+  const [perfectMode, setPerfectMode] = useState(false);
+  useEffect(() => { setPerfectMode(readPerfectMode()); }, []);
   // Drei Zustaende statt boolean: 'empty' heisst "es gibt wirklich keine Daten",
   // 'error' heisst "die Antwort ist ausgeblieben" (RPC-Timeout, 5xx). Vorher
   // wurde beides zu hasData:false und die Seite behauptete "Keine Daten",
@@ -339,6 +345,12 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   // Units, Items usw. — vorher stand er unter diesen Werten). Ohne Items-Box
   // an seinem alten Platz, sonst fehlte der Rueckweg „Alle“.
   const hasItemsBox: boolean = hasOutcomeItems || (comp?.carryItems?.length ?? 0) > 0;
+  // Nur mit bewerteten Spielen (Katalog-Tage im Fenster), sonst kein Schalter.
+  const perfect: CompPerfect | null = comp?.perfect ?? null;
+  const hasPerfect = !!perfect && perfect.base > 0;
+  const perfectOn = perfectMode && hasPerfect;
+  const share = perfectShare(perfect);
+  const choosePerfect = (on: boolean) => { setPerfectMode(on); writePerfectMode(on); };
   const variantsSwitcher = (bare: boolean) => comp ? (
     <VariantsSwitcher
       clusterKey={comp.clusterKey}
@@ -357,6 +369,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
       activeKey={variantMode === 'exact' ? slug : null}
       end={pageEnd}
       bare={bare}
+      perfectMode={perfectOn}
     />
   ) : null;
   // Detail-Analyse bei drei Spalten: die Boxen ohne Unit-Wirkung nebeneinander,
@@ -629,7 +642,38 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                 Am Handy erst links, dann rechts — das 3★-Ergebnis steht dort
                 deshalb zusaetzlich vor dem Raster.
                 ═══════════════════════════════════════════════════════════ */}
-            <CompCard comp={comp} assets={assets} dna={hasCompDna(comp) ? <CompDna comp={comp} variant="header" /> : undefined} />
+            {hasPerfect && (
+              <div className="flex items-center justify-end gap-2 mb-2 flex-wrap">
+                {share != null && (
+                  <span className="text-xs text-fg-muted tabular-nums">
+                    {t('tft.comp.perfect.share').replace('{n}', String(Math.round(share * 100)))}
+                  </span>
+                )}
+                <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-0.5" role="group" aria-label={t('tft.comp.perfect.aria')}>
+                  {[false, true].map(on => (
+                    <button
+                      key={on ? 'perfect' : 'all'}
+                      type="button"
+                      aria-pressed={perfectOn === on}
+                      onClick={() => choosePerfect(on)}
+                      className={`px-2.5 py-0.5 text-xs rounded ${
+                        perfectOn === on
+                          ? 'bg-accent text-white'
+                          : 'text-fg-secondary hover:text-white'
+                      }`}
+                    >
+                      {t(on ? 'tft.comp.perfect.on' : 'tft.comp.perfect.all')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <CompCard
+              comp={comp}
+              assets={assets}
+              dna={hasCompDna(comp) ? <CompDna comp={comp} variant="header" /> : undefined}
+              stats={perfectOn ? perfectStats(perfect) : null}
+            />
 
             <CompJumpBar rootId="cj-root" />
 

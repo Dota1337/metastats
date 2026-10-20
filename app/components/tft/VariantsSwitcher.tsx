@@ -6,6 +6,7 @@ import { findChampion, traitTierLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
 import { compPath } from '../../lib/tft-comp-path';
+import { perfectStats, type CompPerfect } from '../../lib/tft-comp-perfect';
 
 // Variants-Switcher: surfaces all sub-cluster variants of a comp family on
 // the Comp-Detail page. Family = (trait, level, carry) without *N / ~aug /
@@ -31,6 +32,8 @@ interface Variant {
   augmentSlug: string | null;
   secondary: string | null;
   belowThreshold: boolean;
+  // Perfekt getroffen (nur Knoepfe der Detail-API im Katalog-Modus).
+  perfect?: CompPerfect | null;
 }
 
 interface VariantsResponse {
@@ -92,6 +95,7 @@ export default function VariantsSwitcher({
   end = null,
   bare = false,
   variants: givenVariants = null,
+  perfectMode = false,
 }: {
   clusterKey: string;
   region: string;
@@ -119,6 +123,10 @@ export default function VariantsSwitcher({
   // Comp-Katalog: die Detail-Antwort bringt die Varianten der ganzen Comp mit
   // (Build-Gruppen ueber alle ihre Familien) — dann kein eigener Abruf.
   variants?: Variant[] | null;
+  // Schalter „Perfekt getroffen“ der Detailseite: Knoepfe mit Perfekt-Werten
+  // zeigen dann diese (Ø erst ab 100 perfekten Spielen); Knoepfe ohne
+  // Perfekt-Werte (variants-Route, klassische Sicht) bleiben bei allen Spielen.
+  perfectMode?: boolean;
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
@@ -292,6 +300,9 @@ export default function VariantsSwitcher({
         {variants.map(v => {
           const isActive = v.clusterKey === activeCluster;
           const label = variantLabel(v, t, assets, multiFamily);
+          const p = perfectMode && v.perfect !== undefined ? perfectStats(v.perfect) : null;
+          const avgText = p ? (p.avgPlacement != null ? p.avgPlacement.toFixed(2) : '—') : v.avgPlacement.toFixed(2);
+          const gamesShown = p ? p.games : v.games;
           return (
             <button
               key={v.clusterKey}
@@ -304,13 +315,13 @@ export default function VariantsSwitcher({
               title={
                 v.belowThreshold
                   ? `${label} — ${t('tft.comp.variant.lowSample')}`
-                  : `${label} · Avg ${v.avgPlacement.toFixed(2)} · ${v.games} games`
+                  : `${label} · Avg ${avgText} · ${gamesShown} games`
               }
             >
               <span className="font-medium">{label}</span>
               {!v.belowThreshold && (
                 <span className="ml-2 text-fg-muted tabular-nums">
-                  {v.avgPlacement.toFixed(2)} · {v.games}
+                  {avgText} · {gamesShown}
                 </span>
               )}
               {v.belowThreshold && (

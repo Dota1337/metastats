@@ -21,6 +21,13 @@
  * auf (unter seiner Sperre) — das korrigiert Tage, deren B-Patch Riot erst
  * nachtraeglich angekuendigt hat. Regeln: scripts/lib/daily-crawl-post.mjs.
  *
+ * Comp-Katalog (Phase 2, 0101): vor der Schleife entscheidet der Treiber einmal
+ * je Tag, ob klassisch oder mit Katalog gesammelt wird (Cursor-Datei haelt den
+ * Entscheid), und gibt den Kindern die Katalog-Datei mit. Nach der Schleife
+ * schreibt er an klassischen Tagen die naechste Katalog-Version fort. Regeln:
+ * scripts/lib/comp-catalog-day.mjs. Schalter (Box-Env): COMP_CATALOG_COLLECT=1
+ * sammelt mit Katalog (Standard aus), COMP_CATALOG_BUILD=0 baut keine Versionen.
+ *
  * Usage:
  *   node scripts/crawl-allranks-all-regions.mjs                  # all regions, mode=auto (last finished day: D-1 after 05:00 UTC)
  *   node scripts/crawl-allranks-all-regions.mjs --resume-gaps    # oldest incomplete day in last K (watchdog)
@@ -32,7 +39,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, unlinkSync } from 'node:fs';
+import { readFileSync, unlinkSync, writeFileSync, renameSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
@@ -53,8 +60,10 @@ import {
 import {
   DEFAULT_K, DEFAULT_MAX_ATTEMPTS, cursorPath, startSeed, readCursor,
   markCompleted, recordAttempt, isSettled, selectTodo, selectGapDay,
-  migrateLegacyCursor, pruneOldCursors,
+  migrateLegacyCursor, pruneOldCursors, setCatalogDecision, CURSOR_DIR,
 } from './lib/daily-crawl-cursor.mjs';
+import { decideDay, buildAfterLoop, catalogFileBody } from './lib/comp-catalog-day.mjs';
+import { createCatalogStore, unitCheckForSet } from './lib/comp-catalog-store.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k) => {
@@ -281,7 +290,7 @@ function runChild(cmd, cmdArgs, label, { env, timeoutMs } = {}) {
       const elapsed = ((Date.now() - t0) / 1000).toFixed(0);
       if (killed) reject(new Error(`${label} killed after ${elapsed}s (limit ${Math.round(timeoutMs / 1000)}s)`));
       else if (code === 0) resolve({ label, elapsed });
-      else reject(new Error(`${label} exited ${code} after ${elapsed}s`));
+      else reject(Object.assign(new Error(`${label} exited ${code} after ${elapsed}s`), { exitCode: code }));
     });
   });
 }
@@ -300,6 +309,89 @@ async function crawlLabelFor(day) {
     if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
   }
   return { set: null, patch: null, warnings: [], error: `tft-set.json nicht lesbar: ${lastErr?.message}` };
+}
+
+// ── Comp-Katalog (0101) ─────────────────────────────────────────────────────
+const CATALOG_COLLECT = process.env.COMP_CATALOG_COLLECT === '1';
+const CATALOG_BUILD = process.env.COMP_CATALOG_BUILD !== '0';
+
+async function withCatalogStore(fn) {
+  const client = new pg.Client({
+    connectionString: supabasePgUrl(process.env),
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15_000,
+  });
+  await client.connect();
+  try {
+    await client.query('SET statement_timeout = 240000');
+    return await fn(createCatalogStore(client));
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+function writeCatalogFile(path, body) {
+  const tmp = `${path}.tmp`;
+  writeFileSync(tmp, JSON.stringify(body));
+  renameSync(tmp, path);
+}
+
+// Tagesentscheid unter der Sperre. Steht er schon in der Cursor-Datei, gilt er
+// weiter (alle Regionen eines Tages gleich). Wirft nie: jeder Fehler → klassisch.
+async function prepareCatalogDay(targetDay, label, cursor) {
+  const classic = reason => ({ decision: { mode: 'classic', reason, set: label.set, patch: label.patch }, args: [], file: null });
+  const minArgs = CATALOG_COLLECT ? ['--min-comp-games', '3'] : [];
+  if (label.error) return { ...classic('no-label'), args: minArgs };
+  try {
+    let decision = cursor.catalogDecision;
+    if (decision && (decision.set !== label.set || decision.patch !== label.patch)) {
+      console.log(`    [comp-catalog] Entscheid aus der Cursor-Datei gilt fuer ${decision.set}/${decision.patch}, Lauf ${label.set}/${label.patch} — klassisch`);
+      return { ...classic('label-changed'), args: minArgs };
+    }
+    let catalog = null;
+    if (decision?.mode === 'catalog') {
+      const v = await withCatalogStore(store => store.versionById(decision.catalogId));
+      if (!v || v.hash !== decision.hash) {
+        console.error(`    [comp-catalog] Katalog ${decision.catalogId} aus der Cursor-Datei nicht lesbar — Regionen dieses Laufs klassisch`);
+        return { ...classic('cursor-catalog-missing'), args: minArgs };
+      }
+      catalog = v.catalog;
+    } else if (!decision) {
+      const d = await withCatalogStore(store => decideDay({
+        day: targetDay, set: label.set, patch: label.patch, switchOn: CATALOG_COLLECT, store,
+        isUnit: unitCheckForSet(label.set), log: msg => console.log(`    ${msg}`),
+      }));
+      catalog = d.catalog ?? null;
+      decision = setCatalogDecision(cursor, d);
+    }
+    console.log(`    [comp-catalog] ${targetDay}: ${decision.mode}${decision.catalogId ? ` (Katalog ${decision.catalogId})` : ''}, Grund ${decision.reason}`);
+    if (decision.mode !== 'catalog') return { decision, args: minArgs, file: null };
+    const file = `${CURSOR_DIR}/comp-catalog-${targetDay}.json`;
+    const body = catalogFileBody({ day: targetDay, decision: { ...decision, catalog } });
+    writeCatalogFile(file, body);
+    return { decision, args: ['--catalog', file, ...minArgs], file, body };
+  } catch (err) {
+    console.error(`    [comp-catalog] Tagesentscheid fehlgeschlagen: ${err.message} — klassisch`);
+    return { ...classic('error'), args: minArgs };
+  }
+}
+
+// Nach der Schleife (nach der Umbenennung, vor Sperre/Publisher): Version D an
+// klassischen Tagen fortschreiben. Wirft nie.
+async function runCatalogAfterLoop(targetDay, label, decision) {
+  if (!CATALOG_BUILD || label.error) return;
+  try {
+    const res = await withCatalogStore(async store => {
+      const patch = (await store.dayPatch(label.set, targetDay)) ?? label.patch;
+      return buildAfterLoop({
+        day: targetDay, set: label.set, patch, decision, store,
+        isUnit: unitCheckForSet(label.set), log: msg => console.log(`    ${msg}`),
+      });
+    });
+    if (!res.built) console.log(`    [comp-catalog] nach dem Lauf keine neue Version (${res.reason})`);
+  } catch (err) {
+    console.error(`    [comp-catalog] Version nach dem Lauf fehlgeschlagen: ${err.message}`);
+  }
 }
 
 // Schluss-Umbenennung als Kind. Gibt die Zahl der umbenannten Tage zurueck;
@@ -436,12 +528,39 @@ async function main() {
   if (todo.length === 0) console.log(`=== ${targetDay} already complete — nothing to crawl ===`);
   else console.log(`    regions to crawl: ${todo.join(',')}`);
 
+  const catalogDay = todo.length > 0 ? await prepareCatalogDay(targetDay, label, cursor) : null;
+  const childArgs = region => ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--day', targetDay,
+    ...labelArgs, ...(catalogDay?.args ?? [])];
+
   let done = 0, failed = 0;
+  let catalogRetries = 0;
   for (const region of todo) {
     console.log(`\n[${region}] start`);
     try {
-      const { elapsed } = await runChild('node', ['scripts/collect-tft-allranks.mjs', '--region', region, '--no-json', '--day', targetDay, ...labelArgs], region);
-      console.log(`[${region}] done in ${elapsed}s`);
+      let res;
+      try {
+        res = await runChild('node', childArgs(region), region);
+      } catch (err) {
+        // Exit 3 = Katalog-Datei abgelehnt (kein Versuch): einmal neu schreiben
+        // und wiederholen; beim zweiten Mal Schleife beenden, catchup holt nach.
+        if (err.exitCode !== 3 || !catalogDay?.file) throw err;
+        if (catalogRetries++ > 0) {
+          console.error(`[${region}] Katalog-Datei erneut abgelehnt — Schleife endet ohne Fehlversuch`);
+          break;
+        }
+        console.error(`[${region}] Katalog-Datei abgelehnt — neu geschrieben, einmal wiederholt`);
+        writeCatalogFile(catalogDay.file, catalogDay.body);
+        try {
+          res = await runChild('node', childArgs(region), region);
+        } catch (err2) {
+          if (err2.exitCode === 3) {
+            console.error(`[${region}] Katalog-Datei erneut abgelehnt — Schleife endet ohne Fehlversuch`);
+            break;
+          }
+          throw err2;
+        }
+      }
+      console.log(`[${region}] done in ${res.elapsed}s`);
       done++;
       markCompleted(cursor, region); // exit-0 = done, persisted before revalidate
       await revalidateEdge(STATS_EDGE_PATHS, [], { label: `${region}/revalidate` });
@@ -470,6 +589,8 @@ async function main() {
   // fetches (and the next morning's user reads) hit fresh index-only-scans
   // instead of the cold-map heap-fetch degradation. Best-effort, never blocks.
   if (shouldPostCrawl({ done, relabelChanged })) {
+    // Nach der Umbenennung (Patch aus der DB), vor VACUUM, Sperre und Publisher.
+    await runCatalogAfterLoop(targetDay, label, catalogDay?.decision ?? cursor.catalogDecision ?? null);
     await runMaintenanceVacuum();
     await runMatchupRollup(targetDay);
     // Ab hier wird nichts mehr bei Riot oder in die Tagestabellen geschrieben;
@@ -494,6 +615,7 @@ async function main() {
       'daily-crawl/trait-stats',
       'daily-crawl/comp-matchups',
       'daily-crawl/comp-matchups-all',
+      'daily-crawl/comp-classic',
       'daily-crawl/patch-axis',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }

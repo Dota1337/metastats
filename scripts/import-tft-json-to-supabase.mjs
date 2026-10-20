@@ -10,7 +10,7 @@
 //   node scripts/import-tft-json-to-supabase.mjs --region euw1 --day 2026-05-11
 
 import { readFileSync, existsSync } from 'node:fs';
-import { writeTftStatsToSupabase } from './lib/tft-supabase-writer.mjs';
+import { writeTftStatsToSupabase, dayHasCatalogMarker } from './lib/tft-supabase-writer.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -35,12 +35,17 @@ console.log(`Importing ${file}`);
 console.log(`  region=${region}  day=${day}  patch=${payload.patch}  set=${payload.set}`);
 console.log(`  matches=${payload.matchesAnalyzed}  units=${Object.keys(payload.byUnit || {}).length}  items=${Object.keys(payload.byItem || {}).length}`);
 
-writeTftStatsToSupabase({
-  region,
-  day,
-  patch: payload.patch,
-  setNumber: payload.set,
-  payload,
+// Tage mit Katalog-Marker (0101) sind je Brett zugeordnet; die JSON-Datei hat
+// keine Schattenzaehlung und wuerde sie mit klassischen Zeilen ueberschreiben.
+dayHasCatalogMarker({ region, day, setNumber: payload.set }).then((marked) => {
+  if (marked) throw new Error(`${region} ${day} ist mit Katalog gesammelt — Import verweigert`);
+  return writeTftStatsToSupabase({
+    region,
+    day,
+    patch: payload.patch,
+    setNumber: payload.set,
+    payload,
+  });
 }).then(() => {
   console.log('Done.');
 }).catch(err => {

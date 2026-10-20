@@ -38,7 +38,17 @@
       "dateColumn": "day",
       "maxLagDays": 2,
       "minRows": 3000,
-      "note": "Normalrate 5000-6500/Tag. Speist /tft/comps."
+      "note": "Normalrate 9.300-10.800/Tag ohne pro_pool (Okt. 2026, klassisch). Mit Comp-Katalog (0101) je Comp und Trait-Stufe. Speist /tft/comps."
+    },
+    {
+      "id": "daily-crawl/comp-classic",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_comp_classic",
+      "dateColumn": "day",
+      "maxLagDays": 1,
+      "minRows": 1500,
+      "note": "Seit Migration 0101 (erster Tag 21.10.2026): Schattenzaehlung der klassischen Familien je Region und Tag, Raenge zusammengelegt, ab 2 Spielen. Aus ihr baut der Tagestreiber die Comp-Katalog-Versionen (scripts/lib/comp-catalog-day.mjs); fehlt sie an einem Katalog-Tag, fehlt dem naechsten Katalog dieser Tag. Mit Katalog bricht der Writer die Region ab, wenn sie fehlt; klassisch nur Logzeile — daher maxLagDays 1."
     },
     {
       "id": "daily-crawl/comp-outcome",

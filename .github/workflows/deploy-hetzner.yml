@@ -23,6 +23,8 @@ on:
       - 'app/lib/route-mirror.mjs'
       # Vorschlagsregel des Data Explorers (scripts/lib/explorer-unit-warm.mjs).
       - 'app/lib/tft-explorer-coplay.mjs'
+      # Comp-Katalog-Regeln (Sammler, Tagestreiber, build-comp-catalog.mjs).
+      - 'app/lib/tft-comp-catalog.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

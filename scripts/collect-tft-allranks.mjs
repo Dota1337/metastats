@@ -20,6 +20,12 @@
  * --set/--patch, so a tft-set.json deploy mid-run can't split the regions.
  * Without a usable label the run aborts before the first Riot call.
  *
+ * Comp-Katalog (Phase 2): mit --catalog <datei> ordnet der Lauf jedes Brett
+ * seiner Katalog-Comp zu (statt klassisch nach dem staerksten Trait). Passt die
+ * Datei nicht zu Tag/Set/Patch/Pruefsumme → Exit 3, nichts geschrieben; der
+ * Treiber schreibt sie neu und wiederholt. --min-comp-games: Mindestspiele je
+ * Comp-Zeile (Standard 8; der Treiber gibt 3, sobald der Schalter an ist).
+ *
  * Usage:
  *   node scripts/collect-tft-allranks.mjs --region euw1
  *   node scripts/collect-tft-allranks.mjs --region kr --day 2026-09-24
@@ -33,6 +39,7 @@ import { createRiotClient } from './lib/riot-client.mjs';
 import { writeTftStatsToSupabase } from './lib/tft-supabase-writer.mjs';
 import { computeWindow } from './lib/tft-crawl-window.mjs';
 import { crawlPatch, isDay } from './lib/tft-patch-day.mjs';
+import { checkCatalogFile } from './lib/comp-catalog-day.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -139,6 +146,28 @@ const PATCH = LABEL.patch;
 if (hasFlag('--label-only')) {
   console.log(`[label] day=${DAY} set=${CURRENT_SET} patch=${PATCH}`);
   process.exit(0);
+}
+
+const MIN_COMP_GAMES_RAW = flagValue('--min-comp-games');
+const MIN_COMP_GAMES = MIN_COMP_GAMES_RAW === undefined ? 8 : Number(MIN_COMP_GAMES_RAW);
+if (!Number.isInteger(MIN_COMP_GAMES) || MIN_COMP_GAMES < 1) {
+  console.error(`Invalid --min-comp-games '${MIN_COMP_GAMES_RAW}'`);
+  process.exit(1);
+}
+// Katalog-Datei vor dem ersten Riot-Aufruf pruefen: eine falsche Datei kostet
+// sonst einen ganzen Regionen-Lauf.
+const CATALOG_FILE = flagValue('--catalog');
+let CATALOG = null;
+if (CATALOG_FILE !== undefined) {
+  let body = null;
+  try { body = JSON.parse(readFileSync(CATALOG_FILE, 'utf8')); } catch (err) { body = null; console.error(`[catalog] ${err.message}`); }
+  const chk = checkCatalogFile(body, { set: CURRENT_SET, patch: PATCH, day: DAY });
+  if (!chk.ok) {
+    console.error(`[catalog] ${chk.error} — Exit 3, nichts geschrieben`);
+    process.exit(3);
+  }
+  CATALOG = chk;
+  console.log(`[catalog] Katalog ${chk.catalogId} (${chk.catalog.comps.length} Comps, Pruefsumme ${chk.hash})`);
 }
 
 const API_KEY = process.env.RIOT_API_KEY_TFT;
@@ -376,15 +405,21 @@ async function main() {
     const raw = await rl(`https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/${id}`);
     if (!raw || raw._status) { totalSkipped++; continue; }
     agg ??= emptyAggregate();
-    aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET, proPuuids });
+    aggregateMatch(raw, agg, { tierBucket: matchTier[id], currentSet: CURRENT_SET, proPuuids, catalog: CATALOG?.catalog ?? null });
     collectNames(raw, namesByPuuid);
     if ((j + 1) % 100 === 0 || j === ids.length - 1) {
       console.log(`  ${j+1}/${ids.length} (${agg.matchesAnalyzed} aggregated, ${totalSkipped} skipped)`);
     }
   }
 
+  // Mit Katalog keine Teilzahlen: ein abgebrochener Tag bliebe sonst mit
+  // Marker und halben Comp-Zeilen stehen (catchup holt ihn vollstaendig nach).
+  if (agg && aborting && CATALOG) {
+    console.log('  [signal] Katalog-Lauf abgebrochen — nichts geschrieben');
+    agg = null;
+  }
   if (agg) {
-    const finalized = finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5 });
+    const finalized = finalize(agg, { minUnitGames: 5, minItemGames: 5, minAugmentGames: 5, minCompGames: MIN_COMP_GAMES });
     const payload = {
       set: CURRENT_SET,
       // Only when it names the set we collected — a --set override may differ.
@@ -397,12 +432,13 @@ async function main() {
       day: DAY,
       sampledPlayers: uniquePlayers.length,
       ...finalized,
+      catalog: CATALOG ? { id: CATALOG.catalogId, hash: CATALOG.hash } : null,
     };
 
     if (!SKIP_JSON) {
       const file = `public/tft-stats-${REGION}.json`;
       // persistTopItems (0069), persistBuilds (0096), persistExtras (0097), outcome (0078) und compMatchups (0092) sind nur fuer die DB — die JSON bleibt wie sie war.
-      writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'persistBuilds' || k === 'persistExtras' || k === 'outcome' || k === 'compMatchups' ? undefined : v)));
+      writeFileSync(file, JSON.stringify(payload, (k, v) => (k === 'persistTopItems' || k === 'persistBuilds' || k === 'persistExtras' || k === 'outcome' || k === 'compMatchups' || k === 'compClassic' ? undefined : v)));
       console.log(`\n  -> ${file} (patch=${PATCH}, ${payload.matchesAnalyzed} matches, ${Object.keys(payload.byUnit).length} units, ${Object.keys(payload.byItem).length} items)`);
     }
 
@@ -414,6 +450,8 @@ async function main() {
         patch: PATCH,
         setNumber: CURRENT_SET,
         payload,
+        catalogId: CATALOG?.catalogId ?? null,
+        partial: aborting,
       });
     }
   }

@@ -14,10 +14,16 @@
 // tft-supabase-reader.ts): alle Kataloge im Fenster, der neuere gewinnt —
 // gleiche Comps tragen dank Namensuebernahme (carryNames) denselben Namen.
 //
+// Versionen (0101): der Tagestreiber schreibt Kataloge „gueltig ab Tag D“. Je
+// Patch im Fenster gilt die neueste Version mit Tag ≤ Fensterende (genauer
+// Patch, sonst Grund-Patch 18.5b → 18.5, sonst neuester Katalog des Sets) —
+// get_tft_comp_catalog_window. Fensterende = filters.endDay, sonst das
+// Besucher-Ende (resolveDataEnd), sonst heute.
+//
 // Notschalter COMP_CATALOG_READ=0 → kein Katalog, alles klassisch wie vorher.
 // Ohne Katalog fuer das Fenster (Set ohne Kataloge, RPC-Fehler) ebenfalls
 // klassisch; `catalogId` in den Antworten verraet, welcher Stand gilt.
-import { callRpc, getAvailablePatches, type ResolvedFilters } from './tft-supabase-reader';
+import { callRpc, resolveDataEnd, type ResolvedFilters } from './tft-supabase-reader';
 import { compTraitFamilyKey, parseFamilyKey } from './tft-cluster';
 import { mergedAliasMap, type CatalogComp, type Catalog } from './tft-comp-catalog.mjs';
 
@@ -31,14 +37,14 @@ export interface CompCatalogView {
 }
 
 interface CatalogRow {
-  catalog_id: number | string;
   patch: string;
-  scope: string;
-  scope_key: string;
-  rules_version: number;
-  hash: string;
-  built_at: string;
-  comps: CatalogComp[];
+  catalog_id: number | string | null;
+  catalog_patch: string | null;
+  scope: string | null;
+  scope_key: string | null;
+  rules_version: number | null;
+  hash: string | null;
+  comps: CatalogComp[] | null;
 }
 
 const TTL_MS = 10 * 60_000;
@@ -49,18 +55,30 @@ export function compCatalogReadEnabled(): boolean {
   return process.env.COMP_CATALOG_READ !== '0';
 }
 
-async function loadView(set: number, patches: string[]): Promise<CompCatalogView | null> {
-  const rows = await callRpc<CatalogRow[]>('get_tft_comp_catalogs', { p_set: set, p_patches: patches }, 8000);
+// 18.4 < 18.5 < 18.5b < 18.10 — aelteste zuerst, der neuere gewinnt.
+export function comparePatchLabels(a: string, b: string): number {
+  const pa = /^(\d+)\.(\d+)([a-z]?)$/.exec(a);
+  const pb = /^(\d+)\.(\d+)([a-z]?)$/.exec(b);
+  if (!pa || !pb) return a < b ? -1 : a > b ? 1 : 0;
+  return Number(pa[1]) - Number(pb[1]) || Number(pa[2]) - Number(pb[2]) || (pa[3] < pb[3] ? -1 : pa[3] > pb[3] ? 1 : 0);
+}
+
+async function loadView(set: number, start: string, end: string, patches: string[] | null): Promise<CompCatalogView | null> {
+  const rows = await callRpc<CatalogRow[]>('get_tft_comp_catalog_window',
+    { p_set: set, p_start: start, p_end: end, p_patches: patches }, 8000);
   if (!Array.isArray(rows) || rows.length === 0) return null;
-  // Nur mit einem Katalog fuer JEDEN Patch im Fenster: sonst fielen Familien,
-  // die es erst im neuen Patch gibt, als „ohne Comp" aus der Liste (erste Tage
-  // nach dem Patchwechsel, bevor dessen Katalog steht). Dann klassisch.
-  const have = new Set(rows.map(r => r.patch));
-  if (patches.some(p => !have.has(p))) return null;
-  // Reihenfolge der Patches = aelteste zuerst (Aufrufer), der neuere gewinnt.
-  const order = new Map(patches.map((p, i) => [p, i]));
-  const sorted = [...rows].sort((a, b) => (order.get(a.patch) ?? 0) - (order.get(b.patch) ?? 0));
-  const catalogs: Catalog[] = sorted.map(r => ({ version: r.rules_version, comps: r.comps || [] }));
+  // Ohne Katalog steht ein Patch nur, wenn das Set gar keinen hat → klassisch.
+  if (rows.some(r => r.catalog_id == null)) return null;
+  const sorted = [...rows].sort((a, b) => comparePatchLabels(a.patch, b.patch));
+  // 18.5 und 18.5b koennen dieselbe Version nutzen: einmal zusammenlegen.
+  const seen = new Set<string>();
+  const catalogs: Catalog[] = [];
+  for (const r of sorted) {
+    const id = String(r.catalog_id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    catalogs.push({ version: r.rules_version ?? 0, comps: r.comps || [] });
+  }
   const comps = new Map<string, CatalogComp>();
   for (const cat of catalogs) for (const c of cat.comps) comps.set(c.key, c);
   return {
@@ -70,14 +88,22 @@ async function loadView(set: number, patches: string[]): Promise<CompCatalogView
   };
 }
 
-/** Kataloge fuer Set + Patches (aelteste zuerst), 10 min je Instanz gemerkt. */
-export function compCatalogFor(set: number | null, patches: string[]): Promise<CompCatalogView | null> {
-  if (!compCatalogReadEnabled() || set == null || patches.length === 0) return Promise.resolve(null);
-  const key = `${set}|${patches.join(',')}`;
+/**
+ * Kataloge fuer Set + Fenster, 10 min je Instanz gemerkt (leere Sicht und
+ * Fehler 60 s). `fresh`: Publisher-Anfragen laden neu, damit der Vorrat nie
+ * einen Stand von vor dem Lauf einbaeckt.
+ */
+function compCatalogFor(set: number, start: string, end: string, patches: string[] | null, fresh: boolean): Promise<CompCatalogView | null> {
+  const key = `${set}|${start}|${end}|${patches ? patches.join(',') : '*'}`;
   const now = Date.now();
   const hit = cache.get(key);
-  if (hit && now - hit.at < TTL_MS) return hit.view;
-  const view = loadView(set, patches).catch(err => {
+  if (!fresh && hit && now - hit.at < TTL_MS) return hit.view;
+  const view = loadView(set, start, end, patches).then(v => {
+    // Leere Sicht nur kurz merken: die erste Version eines neuen Patches kommt
+    // nach dem Lauf dazu.
+    if (!v) cache.set(key, { at: now - TTL_MS + NEGATIVE_TTL_MS, view: Promise.resolve(null) });
+    return v;
+  }, err => {
     console.error('[comp-catalog] Laden fehlgeschlagen, klassisch:', (err as Error)?.message ?? err);
     // Fehler kurz merken, damit nicht jede Anfrage erneut wartet.
     cache.set(key, { at: now - TTL_MS + NEGATIVE_TTL_MS, view: Promise.resolve(null) });
@@ -90,20 +116,6 @@ export function compCatalogFor(set: number | null, patches: string[]): Promise<C
   return view;
 }
 
-/** Patches, deren Tage im Fenster der Abfrage liegen, aelteste zuerst. */
-export async function windowPatches(filters: Pick<ResolvedFilters, 'patchFilter' | 'setNumber' | 'startDay' | 'endDay' | 'days'>): Promise<string[]> {
-  if (filters.patchFilter) return [filters.patchFilter];
-  const patches = (await getAvailablePatches()).filter(p => filters.setNumber == null || p.set_number === filters.setNumber);
-  if (patches.length === 0) return [];
-  const latest = patches.reduce((m, p) => (p.last_day > m ? p.last_day : m), patches[0].last_day);
-  const end = filters.endDay ?? latest;
-  const start = filters.startDay ?? isoAddDays(end, -(Math.max(1, filters.days) - 1));
-  return patches
-    .filter(p => p.first_day <= end && p.last_day >= start)
-    .sort((a, b) => (a.first_day < b.first_day ? -1 : a.first_day > b.first_day ? 1 : 0))
-    .map(p => p.patch);
-}
-
 function isoAddDays(day: string, n: number): string {
   const d = new Date(`${day.slice(0, 10)}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
@@ -113,10 +125,13 @@ function isoAddDays(day: string, n: number): string {
 /** Katalog-Sicht fuer die gefilterte Abfrage (null = klassisch). */
 export async function compCatalogForFilters(
   filters: Pick<ResolvedFilters, 'patchFilter' | 'setNumber' | 'startDay' | 'endDay' | 'days'>,
+  opts: { fresh?: boolean } = {},
 ): Promise<CompCatalogView | null> {
   if (!compCatalogReadEnabled() || filters.setNumber == null) return null;
   try {
-    return await compCatalogFor(filters.setNumber, await windowPatches(filters));
+    const end = filters.endDay ?? (await resolveDataEnd(null)) ?? new Date().toISOString().slice(0, 10);
+    const start = filters.startDay ?? isoAddDays(end, -(Math.max(1, filters.days) - 1));
+    return await compCatalogFor(filters.setNumber, start, end, filters.patchFilter ? [filters.patchFilter] : null, opts.fresh === true);
   } catch (err) {
     console.error('[comp-catalog] Fenster nicht bestimmbar, klassisch:', (err as Error)?.message ?? err);
     return null;

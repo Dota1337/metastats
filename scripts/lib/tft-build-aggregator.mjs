@@ -18,6 +18,10 @@
 
 const TIER_BUCKETS = ['iron','bronze','silver','gold','platinum','emerald','diamond','master','grandmaster','challenger'];
 const APEX_BUCKETS = ['master','grandmaster','challenger'];
+// Schattenzaehlung (tft_daily_comp_classic, 0101): die neun gespeicherten Raenge.
+const SHADOW_BUCKETS = new Set(TIER_BUCKETS.filter(b => b !== 'iron'));
+const SHADOW_MIN_GAMES = 2;
+const SHADOW_UNITS = 20;
 
 // Items that are unambiguous damage-carry items. We tag a unit in a comp as
 // the DMG-carry if it disproportionately holds these — independent of the
@@ -32,6 +36,7 @@ const APEX_BUCKETS = ['master','grandmaster','challenger'];
 import { damageCarryItemsForSet, defensiveItemsForSet } from './tft-item-classes.mjs';
 import { classifyComp as classifyCompUnified } from './tft-classify-comp.mjs';
 import { familyKeyFromCluster } from './companion-positions.mjs';
+import { assignBoard, compClusterKey, isPerfect, keyCarryOf, perfectEvaluable } from '../../app/lib/tft-comp-catalog.mjs';
 
 // Fertige Items fuer persistTopItems (DB-Tabelle tft_daily_unit_top_items,
 // Item-Reihe auf /tft/units). Raus: Bauteile, Embleme, Thief's Gloves und
@@ -251,6 +256,7 @@ export function emptyAggregate() {
     byComp: new Map(),     // clusterKey -> Map<bucket, CompBucket>
     byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
     byFamilyPair: new Map(), // "bucket\0famLo\0famHi" -> Duelle je Familie und Rang (0092)
+    classic: new Map(),    // klassische Familie -> Schattenzaehlung (0101), Raenge zusammengelegt
     participantsByBucket: new Map(), // bucket -> count (matches × 8). Exact denominator
                                      //   for pickRate; bypasses minCompGames filter
                                      //   that byComp roll-ups would impose.
@@ -367,6 +373,9 @@ function newCompBucket() {
     ocUnitSets: new Map(),    // cid -> Map<"a|b|c", {c,s,t4}>
     ocEmblems: new Map(),     // Emblem -> {n,s,q,t4,t1}, je Spiel einmal (0091)
     ocEmblemHolders: new Map(), // Emblem -> Map<cid, Spiele>
+    // „Perfekt getroffen“ (0101, nur mit Katalog): perfectN = bewertete Spiele,
+    // 0 heisst nicht bewertbar (Comp ohne Reroll-Satz und ohne Zielstufe).
+    perfectN: 0, perfectGames: 0, perfectSum: 0, perfectTop4: 0, perfectTop1: 0,
   };
 }
 
@@ -376,6 +385,29 @@ function newCompBucket() {
 function classifyComp(participant, opts = {}) {
   return classifyCompUnified(participant, { currentSet: opts.currentSet, withAugmentSuffix: true });
 }
+
+// Comp-Zeile eines Bretts ueber den Katalog (Phase 2): Schluessel
+// `<Comp-Trait>@<Stufe auf dem Brett>_<Namens-Carry>`, Carry-Stern und
+// Carry-Items vom Namens-Carry (bei Doppel-Units die Kopie mit den meisten
+// Items). Ohne Comp → null, das Brett bekommt keine Zeile.
+function catalogRowOf(participant, catalog) {
+  const units = new Set();
+  for (const u of participant.units || []) if (isPlayableUnitId(u.character_id)) units.add(u.character_id);
+  const comp = assignBoard(units, catalog);
+  if (!comp) return null;
+  const carry = keyCarryOf(comp);
+  let carryItems = [];
+  for (const u of participant.units || []) {
+    if (u.character_id !== carry) continue;
+    const items = (u.itemNames || u.items || []).filter(Boolean);
+    if (items.length > carryItems.length) carryItems = items;
+  }
+  return { clusterKey: compClusterKey(comp, participant.traits), countKey: comp.key, carryUnit: carry, carryItems: [...carryItems].sort(), comp };
+}
+
+// Zwei Bretter derselben Comp: klassisch gleicher Schluessel, mit Katalog
+// gleiche Comp (auch bei verschiedener Trait-Stufe).
+const sameCompKey = c => c.countKey ?? c.clusterKey;
 
 /**
  * Update `agg` in-place with one match. The match is expected to be the raw
@@ -451,19 +483,27 @@ export function aggregateMatch(rawMatch, agg, opts) {
 
   // Pre-classify each participant's comp for the comp + pair aggregations.
   const compClass = participants.map(p => classifyComp(p, { currentSet }));
+  // Mit Katalog (opts.catalog) bestimmt er Comp-Zeile, Paare, Duelle und
+  // „umkaempft“; die klassische Einteilung bleibt fuer den Schaden-Atlas und
+  // die Schattenzaehlung (aus ihr wird der naechste Katalog gebaut).
+  const catalog = opts.catalog ?? null;
+  const rowClass = catalog ? participants.map(p => catalogRowOf(p, catalog)) : compClass;
+
+  if (agg.classic && SHADOW_BUCKETS.has(tierBucket)) addClassicShadow(agg.classic, participants, compClass);
 
   // W4-B: count cluster_key occurrences in this lobby so we can attribute a
   // contested-level (1 / 2 / 3+) to every participant when we hit the comp
   // bucket below. Done once per match, lookups are O(1) inside the loop.
   const clusterCounts = new Map();
-  for (const c of compClass) {
+  for (const c of rowClass) {
     if (!c?.clusterKey) continue;
-    clusterCounts.set(c.clusterKey, (clusterCounts.get(c.clusterKey) || 0) + 1);
+    clusterCounts.set(sameCompKey(c), (clusterCounts.get(sameCompKey(c)) || 0) + 1);
   }
 
   for (let pIdx = 0; pIdx < participants.length; pIdx++) {
     const p = participants[pIdx];
     const compInfo = compClass[pIdx];
+    const rowInfo = rowClass[pIdx];
     const placement = p.placement ?? 9;
     const top4 = placement <= 4;
     const top1 = placement === 1;
@@ -667,14 +707,34 @@ export function aggregateMatch(rawMatch, agg, opts) {
 
     // Per comp cluster — same dual-bucket pattern. typicalUnits / augments /
     // carryItems Maps live on each bucket entry; they accumulate independently.
-    if (compInfo) {
-      const compBuckets = getOrCreate(agg.byComp, compInfo.clusterKey, () => new Map());
+    if (rowInfo) {
+      const compBuckets = getOrCreate(agg.byComp, rowInfo.clusterKey, () => new Map());
       // Nur echte Platzierungen 1-8; pro_pool doppelt Tier-Spiele und bleibt
       // aus der Outcome-Tabelle raus.
       const outcomeInput = placement >= 1 && placement <= 8 ? readOutcomeInput(p) : null;
+      // Perfekt getroffen: null = nicht bewertbar (klassisch oder Comp ohne
+      // Reroll-Satz und Zielstufe), sonst true/false.
+      let perfect = null;
+      if (rowInfo.comp && perfectEvaluable(rowInfo.comp)) {
+        const stars = new Map();
+        for (const u of p.units || []) {
+          if (!isPlayableUnitId(u.character_id)) continue;
+          stars.set(u.character_id, Math.max(stars.get(u.character_id) || 0, Number(u.tier ?? 0)));
+        }
+        perfect = isPerfect(stars, Number(p.level ?? 0), rowInfo.comp);
+      }
       for (const bucket of buckets) {
         const cb = getOrCreate(compBuckets, bucket, newCompBucket);
         if (outcomeInput && bucket !== 'pro_pool') addOutcome(cb, outcomeInput, placement, top4, top1);
+        if (perfect != null) {
+          cb.perfectN++;
+          if (perfect) {
+            cb.perfectGames++;
+            cb.perfectSum += placement;
+            if (top4) cb.perfectTop4++;
+            if (top1) cb.perfectTop1++;
+          }
+        }
         cb.games++;
         cb.sumPlacement += placement;
         cb.sumLevel += Number(p.level ?? 0);
@@ -769,8 +829,8 @@ export function aggregateMatch(rawMatch, agg, opts) {
           ae.count++;
           ae.sumPlacement += placement;
         }
-        if (compInfo.carryItems.length === 3) {
-          const ckey = compInfo.carryItems.join('|');
+        if (rowInfo.carryItems.length === 3) {
+          const ckey = rowInfo.carryItems.join('|');
           cb.carryItems.set(ckey, (cb.carryItems.get(ckey) || 0) + 1);
         }
         // Death-round histogram. Skip round 0 (sentinel for no-data).
@@ -791,7 +851,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
         // carry can't be located (defensive — shouldn't happen since classifyComp
         // returned compInfo from the same units list).
         {
-          const cu = (p.units || []).find(u => u.character_id === compInfo.carryUnit);
+          const cu = (p.units || []).find(u => u.character_id === rowInfo.carryUnit);
           const carryStar = cu?.tier ?? 0;
           if (carryStar > 0) {
             const csKey = String(carryStar);
@@ -808,7 +868,7 @@ export function aggregateMatch(rawMatch, agg, opts) {
         // loop, so reading it here is O(1). Cap at 3 so the UI never has to
         // deal with a long tail of "5-contested" outliers.
         {
-          const contested = Math.min(3, clusterCounts.get(compInfo.clusterKey) || 1);
+          const contested = Math.min(3, clusterCounts.get(sameCompKey(rowInfo)) || 1);
           const ckey = String(contested);
           const ce = getOrCreate(cb.contestedDist, ckey, () => ({
             games: 0, sumPlacement: 0, top4: 0, top1: 0,
@@ -835,12 +895,12 @@ export function aggregateMatch(rawMatch, agg, opts) {
   // the lobby (8 players → up to 28 pairs). Used downstream for counter
   // edges. Sorted-key ensures (A,B) and (B,A) collapse.
   for (let i = 0; i < participants.length; i++) {
-    const a = compClass[i];
+    const a = rowClass[i];
     if (!a) continue;
     const aPlace = participants[i].placement ?? 9;
     for (let j = i + 1; j < participants.length; j++) {
-      const b = compClass[j];
-      if (!b || a.clusterKey === b.clusterKey) continue;
+      const b = rowClass[j];
+      if (!b || sameCompKey(a) === sameCompKey(b)) continue;
       const sorted = [a.clusterKey, b.clusterKey].sort();
       const key = sorted.join('||');
       const bPlace = participants[j].placement ?? 9;
@@ -855,10 +915,63 @@ export function aggregateMatch(rawMatch, agg, opts) {
   // Duelle je Familie, nur im Rang des Matches (pro_pool nicht: doppelt gezaehlt).
   if (agg.byFamilyPair) {
     addFamilyPairs(agg.byFamilyPair, tierBucket,
-      compClass.map(c => c?.clusterKey ?? null), participants.map(p => p.placement));
+      rowClass.map(c => c?.clusterKey ?? null), participants.map(p => p.placement));
   }
 
   return true;
+}
+
+// Schattenzaehlung: klassische Familie je Brett, Raenge zusammengelegt. Units
+// je Spiel einmal (g) und ob auf 3★ oder hoeher (s3, hoechster Stern bei
+// Doppel-Units) — dieselbe Zaehlung wie gamesWithUnit/star3Games, aus denen
+// der Katalog bisher gebaut wurde. Top-4-Bretter je Spielerstufe → Zielstufe.
+function addClassicShadow(map, participants, compClass) {
+  for (let i = 0; i < participants.length; i++) {
+    const c = compClass[i];
+    if (!c?.clusterKey) continue;
+    const fam = familyKeyFromCluster(c.clusterKey);
+    if (!fam) continue;
+    const p = participants[i];
+    const placement = p.placement ?? 9;
+    let e = map.get(fam);
+    if (!e) {
+      e = { games: 0, sumPlacement: 0, top4: 0, units: new Map(), top4ByLevel: new Map() };
+      map.set(fam, e);
+    }
+    e.games++;
+    e.sumPlacement += placement;
+    const stars = new Map();
+    for (const u of p.units || []) {
+      if (!isPlayableUnitId(u.character_id)) continue;
+      stars.set(u.character_id, Math.max(stars.get(u.character_id) || 0, Number(u.tier ?? 0)));
+    }
+    for (const [cid, star] of stars) {
+      let ue = e.units.get(cid);
+      if (!ue) { ue = { g: 0, s3: 0 }; e.units.set(cid, ue); }
+      ue.g++;
+      if (star >= 3) ue.s3++;
+    }
+    if (placement <= 4) {
+      e.top4++;
+      const lvl = Number(p.level ?? 0);
+      if (lvl > 0) e.top4ByLevel.set(lvl, (e.top4ByLevel.get(lvl) || 0) + 1);
+    }
+  }
+}
+
+// Zeilen fuer tft_daily_comp_classic: Familien ab 2 Spielen, Top 20 Units.
+export function classicShadowRows(map) {
+  const rows = [];
+  for (const [fam, e] of map || []) {
+    if (e.games < SHADOW_MIN_GAMES) continue;
+    const units = {};
+    [...e.units.entries()]
+      .sort((a, b) => b[1].g - a[1].g || (a[0] < b[0] ? -1 : 1))
+      .slice(0, SHADOW_UNITS)
+      .forEach(([cid, u]) => { units[cid] = [u.g, u.s3]; });
+    rows.push({ family: fam, games: e.games, sumPlacement: e.sumPlacement, top4: e.top4, units, top4ByLevel: Object.fromEntries(e.top4ByLevel) });
+  }
+  return rows.sort((a, b) => (a.family < b.family ? -1 : 1));
 }
 
 // Comp-Duelle je Familie und Rang (Tabelle tft_daily_comp_matchups, 0092).
@@ -1099,6 +1212,8 @@ export function finalize(agg, opts = {}) {
     compPairs: [],
     // Nur fuer die DB (Writer Block 10), nicht fuer die JSON-Datei.
     compMatchups: agg.byFamilyPair ? familyPairRows(agg.byFamilyPair) : [],
+    // Nur fuer die DB (Schattentabelle 0101), nicht fuer die JSON-Datei.
+    compClassic: classicShadowRows(agg.classic),
   };
 
   for (const [cid, buckets] of agg.byUnit) {
@@ -1427,6 +1542,10 @@ export function finalize(agg, opts = {}) {
         levelDist, levelSumLastRound,
         carryStarDist,
         contestedDist,
+        // null = nicht bewertet (klassisch oder Comp ohne Reroll und Zielstufe).
+        perfect: b.perfectN > 0
+          ? { games: b.perfectGames, sumPlacement: b.perfectSum, top4: b.perfectTop4, top1: b.perfectTop1 }
+          : null,
       };
       // Nur fuer Buckets, die der Writer speichert: keine Roll-ups, kein pro_pool.
       // collect-tft-allranks laesst `outcome` aus der JSON-Datei.

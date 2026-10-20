@@ -61,6 +61,18 @@ function defaultIsUnit(id) {
   return PLAYABLE_UNIT_ID_RE.test(String(id || ''));
 }
 
+/**
+ * Mindestspiele je Familie fuer einen Katalog aus wenig Daten (Anlauftage eines
+ * neuen Patches). Geeicht ist 200 bei ~1 Mio. Brettern (3 Tage, alle Regionen
+ * und Raenge); ein Katalog nur aus Tag 1 haette mit fester 200 nur 44 statt
+ * ~80 Comps (data-skeptic 20.10.2026). Skaliert, 60 bis 200.
+ * @param {number} totalGames Bretter der Eingabe
+ */
+export function scaledMinGames(totalGames) {
+  const n = Math.round(CATALOG_RULES.minGames * (Number(totalGames) || 0) / 1_000_000);
+  return Math.max(60, Math.min(CATALOG_RULES.minGames, n));
+}
+
 // Haeufigste Stufe der Top-4-Bretter; liegen die zwei haeufigsten weniger als
 // 10 Prozentpunkte auseinander, die niedrigere (data-skeptic 20.10.2026: bei
 // 2 von 31 Comps knapp, je Tag kippte sonst die Zielstufe).
@@ -78,14 +90,15 @@ function targetLevelOf(top4ByLevel) {
 /**
  * Kandidaten aus den klassischen Familien: Core, Reroll-Units, Zielstufe.
  * @param {ClassicFamily[]} families
- * @param {{ isUnit?: (id: string) => boolean }} opts
+ * @param {{ isUnit?: (id: string) => boolean, minGames?: number }} opts
  */
 function candidates(families, opts) {
   const isUnit = opts.isUnit ?? defaultIsUnit;
   const R = CATALOG_RULES;
+  const minGames = opts.minGames ?? R.minGames;
   const out = [];
   for (const f of families) {
-    if (!f?.fam || !(f.games >= R.minGames)) continue;
+    if (!f?.fam || !(f.games >= minGames)) continue;
     const pres = Object.entries(f.units || {})
       .filter(([id]) => isUnit(id))
       .map(([id, x]) => ({ id, p: (x.g || 0) / f.games, g: x.g || 0, s3: x.s3 || 0 }))
@@ -116,7 +129,8 @@ const isSubset = (a, b) => a.every(x => b.has(x));
  * @param {ClassicFamily[]} families
  * `names` (Katalog des Vorpatches oder Vortags, ohne Einfrieren): Namen per
  * Kern-Ueberschneidung uebernehmen (carryNames).
- * @param {{ isUnit?: (id: string) => boolean, prev?: Catalog | null, freeze?: boolean, names?: Catalog | null }} [opts]
+ * `minGames`: Mindestspiele je Familie (Standard 200, Anlauftage: scaledMinGames).
+ * @param {{ isUnit?: (id: string) => boolean, prev?: Catalog | null, freeze?: boolean, names?: Catalog | null, minGames?: number }} [opts]
  * @returns {Catalog}
  */
 export function buildCatalog(families, opts = {}) {
@@ -126,9 +140,16 @@ export function buildCatalog(families, opts = {}) {
   if (opts.freeze && opts.prev?.comps?.length) {
     comps = opts.prev.comps.map(c => ({ ...c, core: [...c.core], reroll: [...c.reroll], carries: [...c.carries], members: [...c.members], adopted: [] }));
     // Zielstufe darf nachgefuellt werden: klassische Tageszeilen haben kein
-    // Top-4 je Stufe, ein Katalog aus ihnen startet mit null.
+    // Top-4 je Stufe, ein Katalog aus ihnen startet mit null. Aus der
+    // meistgespielten Mitglieds-Familie mit Zielstufe — der Name der Comp ist
+    // nach carryNames nicht immer selbst ein Kandidat (data-skeptic 20.10.2026).
     const candByFam = new Map(cand.map(a => [a.fam, a]));
-    for (const c of comps) if (c.targetLevel == null) c.targetLevel = candByFam.get(c.key)?.targetLevel ?? null;
+    for (const c of comps) {
+      if (c.targetLevel != null) continue;
+      const src = [c.key, ...c.members].map(f => candByFam.get(f)).filter(a => a?.targetLevel != null)
+        .sort((x, y) => y.games - x.games || x.fam.localeCompare(y.fam))[0];
+      c.targetLevel = src?.targetLevel ?? null;
+    }
     const known = new Set(comps.flatMap(c => c.members));
     const added = [];
     const frozen = new Set(comps);
@@ -298,10 +319,22 @@ export function assignBoard(units, catalog) {
  * @param {CatalogComp} comp
  */
 export function isPerfect(stars, level, comp) {
+  // Ohne Reroll-Satz und ohne Zielstufe laesst sich „perfekt" nicht bewerten:
+  // Aufrufer pruefen perfectEvaluable und speichern dann null statt 0.
   if (!comp) return false;
   if (comp.reroll.length > 0) return comp.reroll.every(id => (stars.get(id) || 0) >= 3);
   if (comp.targetLevel == null || !(level >= comp.targetLevel)) return false;
   return comp.core.every(id => stars.has(id)) && comp.carries.every(id => (stars.get(id) || 0) >= 2);
+}
+
+/** Laesst sich „perfekt getroffen" fuer diese Comp bewerten? */
+export function perfectEvaluable(comp) {
+  return !!comp && (comp.reroll.length > 0 || comp.targetLevel != null);
+}
+
+/** Carry im Namen der Comp (`<trait>__<carry>`). */
+export function keyCarryOf(comp) {
+  return splitFamilyKey(comp?.key)[1];
 }
 
 /**

@@ -21,7 +21,8 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import { CURRENT_SET } from './lib/current-set.mjs';
 import { supabasePgUrl } from './lib/pg-url.mjs';
-import { buildCatalog, catalogHash, familyOfCluster, aliasMap, CATALOG_RULES } from '../app/lib/tft-comp-catalog.mjs';
+import { buildCatalog, catalogHash, aliasMap, CATALOG_RULES } from '../app/lib/tft-comp-catalog.mjs';
+import { createCatalogStore, unitCheckForSet } from './lib/comp-catalog-store.mjs';
 
 const args = process.argv.slice(2);
 const argOf = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : null; };
@@ -44,39 +45,19 @@ function loadEnv() {
   }
 }
 
-// Pflanzen (Elderwood) und Beschwoerungen haben Kosten 0 und sind keine Units.
-function unitCheck(set) {
-  const path = resolve(process.cwd(), `public/tft-assets-${set}.json`);
-  if (!existsSync(path)) throw new Error(`${path} fehlt`);
-  const champs = JSON.parse(readFileSync(path, 'utf8')).champions || {};
-  const re = /^(?:TFT\d+|Set\d+|DA)_(?:\d+_)?[A-Z]/;
-  return id => re.test(id) && (champs[id]?.cost ?? 0) > 0;
-}
-
+// Patches aus crawl_meta (nach der Umbenennung), aelteste zuerst.
 async function patchesOf(client, set) {
   const r = await client.query(
     `select patch, min(day)::text as first_day, max(day)::text as last_day
-       from public.tft_daily_comp_stats where set_number = $1 group by patch order by min(day)`, [set]);
+       from public.tft_daily_crawl_meta where set_number = $1 group by patch order by min(day)`, [set]);
   return r.rows;
 }
 
-async function classicFamilies(client, set, patch) {
-  const r = await client.query('select * from public.get_tft_comp_classic_units($1, $2)', [set, patch]);
-  const fams = new Map();
-  for (const row of r.rows) {
-    const fam = familyOfCluster(row.cluster_key);
-    const e = fams.get(fam) ?? { fam, games: 0, sumPlacement: 0, units: {} };
-    e.games += Number(row.games) || 0;
-    e.sumPlacement += Number(row.sum_placement) || 0;
-    for (const [id, [g, s3]] of Object.entries(row.units || {})) {
-      const x = e.units[id] ?? { g: 0, s3: 0 };
-      x.g += Number(g) || 0;
-      x.s3 += Number(s3) || 0;
-      e.units[id] = x;
-    }
-    fams.set(fam, e);
-  }
-  return [...fams.values()];
+// Eingabe wie der Tagestreiber (get_tft_comp_classic_input, 0101): Schatten-
+// zaehlung, fuer Tage ohne Schatten und ohne Marker die klassischen Zeilen.
+async function classicFamilies(client, set, p) {
+  const { families } = await createCatalogStore(client).loadFamilies(set, [p.patch], p.first_day, p.last_day);
+  return families;
 }
 
 async function loadCatalog(client, set, patch) {
@@ -127,7 +108,7 @@ async function main() {
   const client = new pg.Client({ connectionString: supabasePgUrl(process.env), ssl: { rejectUnauthorized: false }, statement_timeout: 240_000 });
   await client.connect();
   try {
-    const isUnit = unitCheck(SET);
+    const isUnit = unitCheckForSet(SET);
     const all = await patchesOf(client, SET);
     const todo = ALL ? all : all.filter(p => p.patch === ONE_PATCH);
     if (todo.length === 0) throw new Error(`Patch ${ONE_PATCH} hat in Set ${SET} keine Tageszeilen`);
@@ -139,7 +120,7 @@ async function main() {
       const names = !prevPatch ? null
         : lastBuilt?.patch === prevPatch ? lastBuilt.catalog : await loadCatalog(client, SET, prevPatch);
       const t0 = Date.now();
-      const families = await classicFamilies(client, SET, p.patch);
+      const families = await classicFamilies(client, SET, p);
       const catalog = buildCatalog(families, { isUnit, names });
       lastBuilt = { patch: p.patch, catalog };
       const am = aliasMap(catalog);

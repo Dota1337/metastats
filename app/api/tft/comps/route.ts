@@ -335,7 +335,7 @@ export async function GET(request: NextRequest) {
       // Comp-Katalog (null = klassisch): die Seite zaehlt dann alle Spiele der
       // Comp zusammen, mit derselben Zuordnung wie die Liste. Familien ohne
       // Comp erscheinen dort nicht, also auch hier keine Daten.
-      const catalog = await compCatalogForFilters(filters);
+      const catalog = await compCatalogForFilters(filters, { fresh: publisher });
       const compKey = catalog ? compKeyOf(catalog, slug) : null;
       if (catalog && !compKey) return cachedJson({ filters, hasData: false, comp: null }, { cache: cacheControl });
       const compCtx: { view: CompCatalogView; key: string } | null = catalog && compKey ? { view: catalog, key: compKey } : null;
@@ -768,7 +768,7 @@ export async function GET(request: NextRequest) {
     // überspringen den Snapshot bei source=editorial — das ist nicht im Bundle.
     // Comp-Katalog des Fensters (null = klassisch). Gilt fuer Vorrat und
     // Live-Weg gleich: jede Zeile bekommt ihre Comp (compKey).
-    const catalog = await compCatalogForFilters(filters);
+    const catalog = await compCatalogForFilters(filters, { fresh: publisher });
     if (source === 'data') {
       const lookup = (mg: number) => lookupSnapshot('comps', {
         patch: filters.patch,

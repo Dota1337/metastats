@@ -36,6 +36,7 @@ export function readCursor(day) {
       completed: Array.isArray(raw.completed) ? raw.completed : [],
       attempts: (raw.attempts && typeof raw.attempts === 'object') ? raw.attempts : {},
       startedAt: raw.startedAt,
+      catalogDecision: (raw.catalogDecision && typeof raw.catalogDecision === 'object') ? raw.catalogDecision : null,
       present: true,
     };
   } catch {
@@ -54,6 +55,7 @@ export function writeCursor(cursor) {
       startedAt: cursor.startedAt,
       completed: cursor.completed,
       attempts: cursor.attempts,
+      ...(cursor.catalogDecision ? { catalogDecision: cursor.catalogDecision } : {}),
       updatedAt: new Date().toISOString(),
     }, null, 2));
     renameSync(tmp, path); // atomic
@@ -81,6 +83,16 @@ export function markCompleted(cursor, region) {
 export function recordAttempt(cursor, region) {
   cursor.attempts[region] = (cursor.attempts[region] || 0) + 1;
   writeCursor(cursor);
+}
+
+// Comp-Katalog-Tagesentscheid (0101): einmal je Tag festgehalten, damit alle
+// Regionen eines Tages gleich gesammelt werden — auch ueber Wiederholungslaeufe.
+// Nur --reset-cursor (Datei weg) loescht ihn.
+export function setCatalogDecision(cursor, decision) {
+  const { mode, reason, catalogId = null, hash = null, set = null, patch = null } = decision || {};
+  cursor.catalogDecision = { mode, reason, catalogId, hash, set, patch, decidedAt: new Date().toISOString() };
+  writeCursor(cursor);
+  return cursor.catalogDecision;
 }
 
 // A region is settled if it completed (exit 0) OR was given up after maxAttempts

@@ -6,6 +6,8 @@
 // Uses the REST API + Service Role Key (no direct Postgres connection), so
 // it works from GitHub Actions runners without any extra secret.
 
+import { randomUUID } from 'node:crypto';
+
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://bwawxwgxxfafbruebixa.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -42,7 +44,15 @@ export const DAILY_TABLES = [
   'tft_daily_crawl_meta',
   'tft_daily_comp_outcome',
   'tft_daily_comp_matchups',
+  'tft_daily_comp_classic',
 ];
+
+// Schattenzaehlung (0101): 40 Tage — reicht fuer den laengsten Patch plus den
+// Vorpatch, aus dem ein neuer Patch seine Namen holt.
+const SHADOW_KEEP_DAYS = 40;
+// Raenge der Comp-Zeilen (Aufraeumen nach run_id mit Rang-Filter: ohne ihn
+// 0,2-0,7 s je Tabelle statt 3-8 ms, perf-critic 20.10.2026).
+const COMP_TIER_BUCKETS = PERSIST_BUCKETS.filter(b => b !== 'pro_pool');
 
 // tft_daily_comp_matchups (0092): 17k (me1) bis 188k (kr) schmale Zeilen je
 // Region und Tag (gemessen am 10.10.2026) — 200er-Pakete waeren bis zu 940
@@ -160,6 +170,34 @@ async function deleteRows(table, filters, log = console.log) {
   await requestWithRetry(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'DELETE', headers }, `delete ${table}`, log);
 }
 
+async function patchRows(table, filters, body, log = console.log) {
+  const qs = new URLSearchParams(filters).toString();
+  if (!qs) throw new Error(`patchRows ${table}: kein Filter`);
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' };
+  await requestWithRetry(`${SUPA_URL}/rest/v1/${table}?${qs}`, { method: 'PATCH', headers, body: JSON.stringify(body) }, `patch ${table}`, log);
+}
+
+// Zeilen eines frueheren Laufs fuer Region×Tag×Set wegraeumen (0101): erst
+// upsert mit neuer run_id, dann alles mit anderer oder ohne run_id loeschen —
+// kein Loch fuer Leser wie bei Loeschen-dann-Schreiben.
+function staleFilter({ region, day, setNumber, runId, buckets }) {
+  const f = { region: `eq.${region}`, day: `eq.${day}`, set_number: `eq.${setNumber}`, or: `(run_id.is.null,run_id.neq.${runId})` };
+  if (buckets) f.bucket = `in.(${buckets.join(',')})`;
+  return f;
+}
+
+/** Hat Region×Tag×Set einen Katalog-Marker (Comp-Zeilen je Brett zugeordnet)? */
+export async function dayHasCatalogMarker({ region, day, setNumber }) {
+  if (!SUPA_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  const qs = new URLSearchParams({ select: 'catalog_id', region: `eq.${region}`, day: `eq.${day}`, set_number: `eq.${setNumber}`, catalog_id: 'not.is.null', limit: '1' });
+  const res = await fetch(`${SUPA_URL}/rest/v1/tft_daily_crawl_meta?${qs}`, {
+    headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` },
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (!res.ok) throw new Error(`crawl_meta HTTP ${res.status}`);
+  return (await res.json()).length > 0;
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.region        platform routing value ('euw1','kr',…)
@@ -167,10 +205,16 @@ async function deleteRows(table, filters, log = console.log) {
  * @param {string} opts.patch         e.g. '17.2b'
  * @param {number} opts.setNumber     e.g. 17
  * @param {object} opts.payload       finalize() output from tft-build-aggregator
+ * @param {number | null} [opts.catalogId] Katalog, mit dem die Comp-Zeilen je Brett zugeordnet wurden (0101)
+ * @param {boolean} [opts.partial]   Teilzahlen nach SIGTERM: Zeilen frueherer Laeufe bleiben stehen
+ * @param {string} [opts.runId]
  * @param {(msg: string) => void} [opts.log]
  */
 export async function writeTftStatsToSupabase(opts) {
   const { region, day, patch, setNumber, payload, log = console.log } = opts;
+  const catalogId = opts.catalogId ?? null;
+  const partial = opts.partial === true;
+  const runId = opts.runId ?? randomUUID();
   if (!SUPA_KEY) {
     log('  [supabase] SUPABASE_SERVICE_ROLE_KEY missing, skipping DB write');
     return;
@@ -194,10 +238,38 @@ export async function writeTftStatsToSupabase(opts) {
       matches_skipped: payload.matchesSkipped || 0,
       participants,
       finished_at: new Date().toISOString(),
+      // Klassisch: Marker sofort weg. Mit Katalog bleibt er bis zum Schluss
+      // unberuehrt und wird erst nach allen Comp-Zeilen gesetzt (unten).
+      ...(catalogId ? {} : { catalog_id: null }),
     });
   }
   log(`  [supabase] crawl_meta: ${metaRows.length} rows`);
   await upsertRows('tft_daily_crawl_meta', metaRows, 'region,bucket,day,set_number');
+  if (!catalogId) {
+    await patchRows('tft_daily_crawl_meta',
+      { region: `eq.${region}`, day: `eq.${day}`, set_number: `eq.${setNumber}`, catalog_id: 'not.is.null' }, { catalog_id: null }, log);
+  }
+
+  // 1b) Schattenzaehlung (0101): klassische Familien je Region×Tag, Raenge
+  // zusammengelegt. Der Katalog wird nur aus ihr gebaut. Mit Katalog fatal —
+  // ohne Schatten waeren die zugeordneten Comp-Zeilen die einzige Spur des Tags,
+  // und die duerfen nie als klassische Familien zaehlen.
+  try {
+    const shadowRows = (payload.compClassic || []).map(r => ({
+      ...baseRow, family_key: r.family, games: r.games, sum_placement: r.sumPlacement, top4: r.top4,
+      units: r.units, top4_by_level: r.top4ByLevel, run_id: runId,
+    }));
+    log(`  [supabase] comp_classic: ${shadowRows.length} rows`);
+    await upsertRows('tft_daily_comp_classic', shadowRows, 'region,set_number,day,family_key', log);
+    if (shadowRows.length > 0 && !partial) {
+      await deleteRows('tft_daily_comp_classic', staleFilter({ region, day, setNumber, runId }), log);
+    }
+    await deleteRows('tft_daily_comp_classic',
+      { region: `eq.${region}`, day: `lt.${matchupKeepFrom(day, SHADOW_KEEP_DAYS)}` }, log);
+  } catch (e) {
+    if (catalogId) throw e;
+    log(`  [supabase] comp_classic FAILED (non-fatal): ${e.message}`);
+  }
 
   // 2) Units
   const unitRows = [];
@@ -315,12 +387,24 @@ export async function writeTftStatsToSupabase(opts) {
         level_sum_last_round: b.levelSumLastRound || {},
         carry_star_dist: b.carryStarDist || {},
         contested_dist: b.contestedDist || {},
+        // 0101: null = nicht bewertet. Immer mitschicken (gleiche Schluessel je Paket).
+        perfect_games: b.perfect?.games ?? null,
+        perfect_sum_placement: b.perfect?.sumPlacement ?? null,
+        perfect_top4: b.perfect?.top4 ?? null,
+        perfect_top1: b.perfect?.top1 ?? null,
+        run_id: runId,
       });
     }
   }
   log(`  [supabase] comp_stats: ${compRows.length} rows`);
   await upsertRows('tft_daily_comp_stats', compRows,
     'region,bucket,patch,set_number,day,cluster_key');
+  // Direkt nach dem Schreiben aufraeumen: so kurz wie moeglich stehen alte und
+  // neue Zeilen nebeneinander (Wechsel klassisch ↔ Katalog am selben Tag).
+  const cleanComps = compRows.length > 0 && !partial;
+  if (cleanComps) {
+    await deleteRows('tft_daily_comp_stats', staleFilter({ region, day, setNumber, runId, buckets: PERSIST_BUCKETS }), log);
+  }
 
   // 7) Comp pairs (not bucket-stratified in the aggregator; persisted as
   // bucket='all' so the reader can grab counter edges without join gymnastics)
@@ -328,10 +412,14 @@ export async function writeTftStatsToSupabase(opts) {
     ...baseRow, bucket: 'all',
     a_key: e.a, b_key: e.b,
     games: e.games, a_better: e.aBetter,
+    run_id: runId,
   }));
   log(`  [supabase] comp_pairs: ${pairRows.length} rows`);
   await upsertRows('tft_daily_comp_pairs', pairRows,
     'region,bucket,patch,set_number,day,a_key,b_key');
+  if (cleanComps) {
+    await deleteRows('tft_daily_comp_pairs', staleFilter({ region, day, setNumber, runId, buckets: ['all'] }), log);
+  }
 
   // 8) Unit-Top-Items (migration 0069) — die 15 meistgespielten fertigen Items
   // je Unit x Bucket fuer die Item-Reihe auf /tft/units. Bewusst als letzter
@@ -433,6 +521,7 @@ export async function writeTftStatsToSupabase(opts) {
           // 0091. Immer mitschicken (auch null): PostgREST verlangt in einem
           // Paket dieselben Schluessel in jeder Zeile.
           emblems: o.emblems ?? null,
+          run_id: runId,
         });
       }
     }
@@ -442,6 +531,9 @@ export async function writeTftStatsToSupabase(opts) {
     for (const chunk of chunks) {
       await upsertRows('tft_daily_comp_outcome', chunk,
         'region,bucket,patch,set_number,day,cluster_key', log);
+    }
+    if (cleanComps && outcomeRows.length > 0) {
+      await deleteRows('tft_daily_comp_outcome', staleFilter({ region, day, setNumber, runId, buckets: COMP_TIER_BUCKETS }), log);
     }
   } catch (e) {
     log(`  [supabase] comp_outcome FAILED (non-fatal): ${e.message}`);
@@ -454,6 +546,14 @@ export async function writeTftStatsToSupabase(opts) {
     await writeCompMatchups({ region, day, patch, setNumber, compMatchups: payload.compMatchups, log });
   } catch (e) {
     log(`  [supabase] comp_matchups FAILED (non-fatal): ${e.message}`);
+  }
+
+  // 11) Katalog-Marker zuletzt (0101): erst wenn Schatten und alle Comp-Zeilen
+  // stehen, gilt der Tag als „je Brett zugeordnet“ — fuer alle Rang-Zeilen.
+  if (catalogId) {
+    await patchRows('tft_daily_crawl_meta',
+      { region: `eq.${region}`, day: `eq.${day}`, set_number: `eq.${setNumber}` }, { catalog_id: catalogId }, log);
+    log(`  [supabase] crawl_meta: Katalog ${catalogId} gesetzt`);
   }
 
   log(`  [supabase] write complete for ${region} ${day}`);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildCatalog, assignBoard, isPerfect, compClusterKey, aliasMap, mergedAliasMap, splitFamilyKey, familyOfCluster, catalogHash } from './tft-comp-catalog.mjs';
+import { buildCatalog, assignBoard, isPerfect, perfectEvaluable, keyCarryOf, scaledMinGames, compClusterKey, aliasMap, mergedAliasMap, splitFamilyKey, familyOfCluster, catalogHash } from './tft-comp-catalog.mjs';
 
 // Familie mit `games` Spielen; units: id → [Anwesenheit 0..1, 3★-Anteil 0..1].
 const fam = (key, games, units, top4ByLevel) => ({
@@ -174,4 +174,32 @@ test('Schluessel nutzt Trait und Carry der Comp mit der Stufe auf diesem Brett',
   assert.equal(familyOfCluster('TFT17_Stargazer_Mountain@8_TFT17_Lulu*3#TFT17_Milio'), 'TFT17_Stargazer_Mountain__TFT17_Lulu');
   assert.equal(familyOfCluster('TFT17_SpaceGroove@3_TFT17_Samira~TwoTanky'), 'TFT17_SpaceGroove__TFT17_Samira');
   assert.equal(familyOfCluster('DA_18_Spellweaver__DA_18_Veigar'), 'DA_18_Spellweaver__DA_18_Veigar');
+});
+
+test('Anlauftage: Mindestspiele skaliert mit der Datenmenge, 60 bis 200', () => {
+  assert.equal(scaledMinGames(1_000_000), 200);
+  assert.equal(scaledMinGames(5_000_000), 200);
+  assert.equal(scaledMinGames(450_000), 90);
+  assert.equal(scaledMinGames(100_000), 60);
+  assert.equal(scaledMinGames(0), 60);
+  const f = fam('A__X', 120, { A1: [1], A2: [1], A3: [1], A4: [1] });
+  assert.equal(buildCatalog([f], { isUnit: () => true }).comps.length, 0);
+  assert.equal(buildCatalog([f], { isUnit: () => true, minGames: 90 }).comps.length, 1);
+});
+
+test('Einfrieren: Zielstufe kommt aus der meistgespielten Mitglieds-Familie, wenn der Name keine hat', () => {
+  const units = { a: [1], b: [1], c: [1], d: [1] };
+  const prev = { version: 1, comps: [{ key: 'T__a', core: ['a', 'b', 'c', 'd'], reroll: [], carries: ['a'], targetLevel: null, members: ['T__a', 'U__a', 'V__a'], adopted: [], games: 1 }] };
+  // Die Namens-Familie fehlt am Tag, die Mitglieder haben Top-4 je Stufe.
+  const cat = buildCatalog([fam('U__a', 600, units, { 8: 500 }), fam('V__a', 900, units, { 9: 800 })], { isUnit: () => true, prev, freeze: true });
+  assert.equal(cat.comps[0].targetLevel, 9);
+});
+
+test('Perfekt nur bewertbar mit Reroll-Satz oder Zielstufe; Carry im Namen', () => {
+  const base = { key: 'DA_18_Adaptor__DA_18_Aphelios', core: ['a'], reroll: [], carries: [], targetLevel: null, members: [], adopted: [], games: 0 };
+  assert.equal(perfectEvaluable(base), false);
+  assert.equal(perfectEvaluable({ ...base, targetLevel: 8 }), true);
+  assert.equal(perfectEvaluable({ ...base, reroll: ['a'] }), true);
+  assert.equal(perfectEvaluable(null), false);
+  assert.equal(keyCarryOf(base), 'DA_18_Aphelios');
 });

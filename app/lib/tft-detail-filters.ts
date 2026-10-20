@@ -78,11 +78,14 @@ interface CompRow {
   clusterKey?: string;
   typicalUnits?: { characterId?: string }[];
   carryItems?: { items?: string[] }[];
+  // Volle Zeile unter der Listen-Schwelle (nur fuer das Brett ihrer Comp,
+  // tft-comp-minor-rows) — keine eigene Comp fuer diese Seiten.
+  listFill?: boolean;
 }
 
 /** Item-Detail: ALLE Comps, deren Carry-Items das Item enthalten (die Seite rechnet daraus Combos). */
 export function compsWithItem<T extends CompRow>(rows: T[], id: string): T[] {
-  return rows.filter(c => (c.carryItems || []).some(ci => (ci.items || []).includes(id)));
+  return rows.filter(c => !c.listFill && (c.carryItems || []).some(ci => (ci.items || []).includes(id)));
 }
 
 /**
@@ -91,7 +94,7 @@ export function compsWithItem<T extends CompRow>(rows: T[], id: string): T[] {
  */
 export function compsOfTrait<T extends CompRow>(rows: T[], ids: string[]): T[] {
   const idSet = new Set(ids);
-  return rows.filter(c => idSet.has(parseClusterKey(c.clusterKey || '')?.trait ?? '')).slice(0, 6);
+  return rows.filter(c => !c.listFill && idSet.has(parseClusterKey(c.clusterKey || '')?.trait ?? '')).slice(0, 6);
 }
 
 /**

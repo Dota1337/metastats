@@ -253,5 +253,15 @@ export function listPayloadForCatalog<P extends { comps?: unknown; catalogId?: s
 ): P {
   const want = view?.id ?? null;
   if (!Array.isArray(payload.comps) || ((payload.catalogId ?? null) === want && 'catalogId' in payload)) return payload;
-  return { ...payload, catalogId: want, comps: applyCompCatalog(payload.comps as Array<{ clusterKey?: string | null }>, view) };
+  // Kleine Zeilen (minorRows) hat der Server nach dem Katalog SEINES Stands
+  // einer Comp zugeordnet — mit anderem Katalog lieber ohne sie (Summen wie
+  // vor 0103) als in einer womoeglich fremden Comp.
+  const comps = applyCompCatalog(payload.comps as Array<{ clusterKey?: string | null; minorRows?: unknown }>, view)
+    .map(c => {
+      if (!('minorRows' in c)) return c;
+      const rest = { ...c };
+      delete rest.minorRows;
+      return rest;
+    });
+  return { ...payload, catalogId: want, comps };
 }

@@ -6,6 +6,7 @@ import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from './tft-clust
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
 import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
+import { sumMinorRows, type MinorCompRow } from './tft-comp-minor-rows';
 
 // 'velocity' = „Trending": nach dem Vorpatch-Vergleich der Familie
 // (attachPatchDeltas); die Familienbildung selbst rechnet dann wie bei 'avg'.
@@ -26,6 +27,13 @@ export interface CompApiRow extends FamilyComp {
   // string = gehoert zu dieser Comp, null = ohne Comp (erscheint nicht),
   // fehlt = klassisch (kein Katalog) → Familie aus dem Cluster-Schluessel.
   compKey?: string | null;
+  // Kleine Zeilen der Comp (unter der Listen-Schwelle, ab COMP_ROW_FLOOR), nur
+  // an der meistgespielten Zeile der Comp. Zaehlen nur in die Familien-Summen.
+  minorRows?: MinorCompRow[];
+  // Volle Zeile unter der Listen-Schwelle: Brett einer Comp, deren Zeilen alle
+  // darunter liegen, deren Summe aber nicht. Seiten, die einzelne Zeilen
+  // zeigen, lassen sie weg (tft-detail-filters.ts).
+  listFill?: boolean;
 }
 
 // Gruppen-Schluessel einer Zeile: die Katalog-Comp, sonst die klassische
@@ -140,6 +148,14 @@ export function buildCompFamilies(
   }
   const familyUnits = (keys: string[]) =>
     sumUnits(keys.flatMap(k => (rawByFamily.get(k) || []).map(v => v.typicalUnits)));
+  // Kleine Zeilen (tft-comp-minor-rows) je Gruppen-Schluessel ihrer Anker-Zeile.
+  const minorByGroup = new Map<string, MinorCompRow[]>();
+  for (const c of filteredComps) {
+    if (!c.minorRows?.length) continue;
+    const k = rowFamilyKey(c);
+    if (!minorByGroup.has(k)) minorByGroup.set(k, []);
+    minorByGroup.get(k)!.push(...c.minorRows);
+  }
   const roleOpts = { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) };
   // Katalog-Modus: die Comps des Katalogs sind schon die zusammengelegte
   // Einheit, kein Zwei-Carry-Zusammenlegen (gemessen 20.10.2026: kein Paar von
@@ -244,18 +260,25 @@ export function buildCompFamilies(
     // nächste Aggregation nutzen (Cascade-Drift).
     const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
     const mainComp = { ...variantsBySort[0] };
-    // Weighted Family-Stats über alle Variants.
-    const totalGames = variants.reduce((s, v) => s + (v.games || 0), 0);
+    // Weighted Family-Stats über alle Variants plus die kleinen Zeilen der
+    // Gruppe (tft-comp-minor-rows) — die zaehlen nur hier, nicht in Varianten,
+    // Brett oder Rollen. Rollen rechnen deshalb mit den Spielen der vollen
+    // Zeilen (boardGames): Zaehler und Nenner aus denselben Zeilen.
+    const groupKeys = membersOf.get(familyKey) || [familyKey];
+    const fullKeys = new Set(groupKeys.flatMap(k => (rawByFamily.get(k) || []).map(v => v.slug || v.clusterKey)));
+    const minor = sumMinorRows(groupKeys.flatMap(k => minorByGroup.get(k) || []), fullKeys);
+    const boardGames = variants.reduce((s, v) => s + (v.games || 0), 0);
+    const totalGames = boardGames + minor.games;
     const weightedAvgPlacement = totalGames > 0
-      ? variants.reduce((s, v) => s + (v.avgPlacement ?? 0) * (v.games || 0), 0) / totalGames
+      ? (variants.reduce((s, v) => s + (v.avgPlacement ?? 0) * (v.games || 0), 0) + minor.place) / totalGames
       : null;
     const weightedTop4Rate = totalGames > 0
-      ? variants.reduce((s, v) => s + (v.top4Rate ?? 0) * (v.games || 0), 0) / totalGames
+      ? (variants.reduce((s, v) => s + (v.top4Rate ?? 0) * (v.games || 0), 0) + minor.top4) / totalGames
       : null;
     const weightedTop1Rate = totalGames > 0
-      ? variants.reduce((s, v) => s + (v.top1Rate ?? 0) * (v.games || 0), 0) / totalGames
+      ? (variants.reduce((s, v) => s + (v.top1Rate ?? 0) * (v.games || 0), 0) + minor.top1) / totalGames
       : null;
-    const familyPickRate = variants.reduce((s, v) => s + (v.pickRate ?? 0), 0);
+    const familyPickRate = variants.reduce((s, v) => s + (v.pickRate ?? 0), 0) + minor.pick;
     // Emblem-Aggregation aus typicalUnits[].topItems aller Variants. Set-aware
     // Pattern (tftIsEmblem) gegen public/tft-assets-N.json verifiziert.
     const emblemMap = new Map<string, number>();
@@ -290,15 +313,15 @@ export function buildCompFamilies(
     // mainComp damit CompRow die Aggregat-Werte rendert (Listing↔Detail-
     // Konsistenz). Single-Variant-Family: weighted = mainComp.avgPlacement
     // → keine sichtbare Änderung.
-    if (variants.length > 1) {
+    if (variants.length > 1 || minor.games > 0) {
       mainComp.avgPlacement = weightedAvgPlacement;
       mainComp.top4Rate = weightedTop4Rate;
       mainComp.top1Rate = weightedTop1Rate;
       mainComp.games = totalGames;
       mainComp.pickRate = familyPickRate;
     }
-    const famUnits = familyUnits(membersOf.get(familyKey) || [familyKey]);
-    const familyRoles = computeRoles(famUnits, totalGames, { ...roleOpts, keyCarry: carry });
+    const famUnits = familyUnits(groupKeys);
+    const familyRoles = computeRoles(famUnits, boardGames, { ...roleOpts, keyCarry: carry });
     // Core/Flex der Hauptzeile: die Einteilung ihrer Build-Gruppe (oben), also
     // des gezeigten Boards — User 2026-10-10 „Gezeigtes Board" statt Familie,
     // nachdem 23 von 40 Zeilen nach Familie dem Board widersprachen. Die
@@ -315,7 +338,8 @@ export function buildCompFamilies(
       // Katalog-Modus: alle klassischen Familien der Comp-Zeilen (der Δ-Vergleich
       // summiert ueber sie, attachPatchDeltas), die Comp zuerst.
       memberKeys: catalogMode
-        ? [...new Set([familyKey, ...(rawByFamily.get(familyKey) || []).map(v => compTraitFamilyKey(v.slug || v.clusterKey || ''))])]
+        ? [...new Set([familyKey, ...(rawByFamily.get(familyKey) || []).map(v => compTraitFamilyKey(v.slug || v.clusterKey || '')),
+          ...minor.keys.map(k => compTraitFamilyKey(k))])]
         : membersOf.get(familyKey) || [familyKey],
       trait,
       carry,

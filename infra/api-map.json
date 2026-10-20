@@ -11,7 +11,7 @@
     "tables": 43,
     "rpcs": 34,
     "files": 14,
-    "edges": 623,
+    "edges": 624,
     "unused": 7,
     "unresolved": 1
   },
@@ -3535,6 +3535,11 @@
     {
       "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_stats",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_stats_for_diff",
       "kind": "calls"
     },
     {

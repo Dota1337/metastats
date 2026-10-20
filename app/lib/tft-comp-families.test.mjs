@@ -142,3 +142,38 @@ test('familyShowsUnit: nur die meistgespielten Units des gezeigten Bretts zaehle
   assert.equal(familyShowsUnit(fam, 'U' + SHOWN_BOARD_UNITS), false);
   assert.equal(familyShowsUnit({ mainComp: {} }, 'U0'), false);
 });
+
+// Kleine Zeilen (tft-comp-minor-rows, 0103): zaehlen in die Summen der Familie,
+// nicht in Varianten, Brett oder Rollen.
+test('buildCompFamilies: minorRows zaehlen in die Familien-Summen, Brett und Varianten bleiben', () => {
+  const units = (o) => Object.entries(o).map(([characterId, g]) => ({ characterId, count: g, gamesWithUnit: g }));
+  const minor = (clusterKey, games, avgPlacement) => ({ clusterKey, games, avgPlacement, top4Rate: 0.25, top1Rate: 0, pickRate: games / 1000 });
+  const COMP = 'DA_J__DA_Ashe';
+  const anchor = {
+    slug: 'DA_J@3_DA_Ashe', clusterKey: 'DA_J@3_DA_Ashe', compKey: COMP, games: 200, avgPlacement: 3.5, top4Rate: 0.6, top1Rate: 0.2, pickRate: 0.2,
+    typicalUnits: units({ DA_Ashe: 200, DA_Vi: 200 }),
+    minorRows: [minor('DA_J@2_DA_Ashe', 150, 5), minor('DA_H@2_DA_Ashe', 50, 5), minor('DA_J@3_DA_Ashe', 999, 8)],
+  };
+  const without = buildCompFamilies([{ ...anchor, minorRows: undefined }], 'avg', null)[0];
+  const [f] = buildCompFamilies([anchor], 'avg', null);
+  // Die Zusatzzeile mit der Kennung der vollen Zeile zaehlt nicht doppelt.
+  assert.equal(f.totalGames, 400);
+  assert.equal(f.mainComp.games, 400, 'auch bei nur einer Variante die Familien-Summe');
+  assert.ok(Math.abs(f.weightedAvgPlacement - (3.5 * 200 + 5 * 200) / 400) < 1e-9);
+  assert.equal(f.mainComp.avgPlacement, f.weightedAvgPlacement);
+  assert.ok(Math.abs(f.weightedTop4Rate - (0.6 * 200 + 0.25 * 200) / 400) < 1e-9);
+  assert.ok(Math.abs(f.familyPickRate - 0.4) < 1e-9);
+  assert.equal(f.variants.length, 1);
+  assert.equal(f.mainComp.slug, without.mainComp.slug);
+  assert.deepEqual(f.carries, without.carries);
+  assert.deepEqual(f.mainComp.coreFlex, without.mainComp.coreFlex);
+  // Comp-Name = klassische Familie der Anker-Zeile, dazu die Familie der Hunter-Zeile.
+  assert.deepEqual(f.memberKeys, [COMP, 'DA_H__DA_Ashe']);
+});
+
+test('buildCompFamilies: ohne minorRows unveraendert (eine Variante behaelt ihre Werte)', () => {
+  const r = { slug: 'DA_T@3_DA_C', clusterKey: 'DA_T@3_DA_C', games: 300, avgPlacement: 4.2, top4Rate: 0.5, top1Rate: 0.1, pickRate: 0.03, typicalUnits: [] };
+  const [f] = buildCompFamilies([r], 'avg', null);
+  assert.equal(f.totalGames, 300);
+  assert.equal(f.mainComp.avgPlacement, 4.2);
+});

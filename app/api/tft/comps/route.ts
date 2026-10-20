@@ -15,7 +15,8 @@ import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupCompDetailSnapshot } from '../../../lib/comp-detail-snapshot';
-import { parseClusterKey, parseFamilyKey } from '../../../lib/tft-cluster';
+import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from '../../../lib/tft-cluster';
+import { COMP_ROW_FLOOR, minorCompRow, planCompTotals, type CompTotalsRow } from '../../../lib/tft-comp-minor-rows';
 import { isFragmentTraitName } from '../../../lib/tft-classify-comp';
 import { computeShares } from '../../../lib/tft-shares';
 import {
@@ -296,7 +297,7 @@ export async function GET(request: NextRequest) {
   // partien)). Der Publisher holt genau diese Antwort ohne ?minGames
   // (Snapshot-Key mg0); der alte Key mit fester Schwelle ist nur Rueckfall.
   const adaptiveMin = minGamesParam == null;
-  const ADAPTIVE_FLOOR = 30;
+  const ADAPTIVE_FLOOR = COMP_ROW_FLOOR;
   const ADAPTIVE_SHARE = 0.002;
   const effectiveMinFor = (participants: number) => adaptiveMin
     ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(ADAPTIVE_SHARE * participants)))
@@ -843,18 +844,43 @@ export async function GET(request: NextRequest) {
     const listMinGames = adaptiveMin ? ADAPTIVE_FLOOR : minGames;
     let staleRows: CompRow[] | null = null;
     let servedStale = false;
-    const liveList = () => callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
+    // Kleine Zeilen in der Comp-Summe (tft-comp-minor-rows, 0103): die Schwelle
+    // gilt fuer die Comp, nicht fuer die einzelne Zeile. Die Live-Liste kommt
+    // weiter mit Schwelle je Zeile (0083, Tempo); Spiele und Platzierungen ALLER
+    // Zeilen ab COMP_ROW_FLOOR holt parallel die schlanke for_diff-Abfrage
+    // (gemessen 84–125 ms je Region, keine Units/Items). Notschalter
+    // COMP_LIST_MINOR_ROWS=0 → Antwort wie vor 0103.
+    const minorWanted = source === 'data' && process.env.COMP_LIST_MINOR_ROWS !== '0'
+      && (adaptiveMin || minGames > COMP_ROW_FLOOR);
+    let lightRows: Promise<CompTotalsRow[] | null> | null = null;
+    const lightList = () => callRpc<CompTotalsRow[]>('get_tft_comp_stats_for_diff', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
       ...rpcWindowArgs(filters),
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
-      p_min_games: listMinGames,
-      // Angepasste Schwelle schon in der Abfrage (Migration 0083): die teure
-      // Zerlegung der Einheiten- und Item-Daten laeuft nur noch fuer Comps,
-      // die der Filter unten behaelt. euw1/7 Tage/Diamant+ 12,7 s → 2,4 s.
-      ...(adaptiveMin ? { p_min_share: ADAPTIVE_SHARE, p_min_cap: defaultMinGames } : {}),
-    }, publisherRpcTimeoutMs);
+      p_min_games: COMP_ROW_FLOOR,
+    }, publisherRpcTimeoutMs).catch((err: unknown) => {
+      // Publisher: lieber scheitern als den Vorrat mit den alten Summen fuellen.
+      if (publisher) throw err;
+      console.error('[api/tft/comps] Kleine Zeilen nicht geladen, Summen ohne sie:', (err as Error)?.message ?? err);
+      return null;
+    });
+    const liveList = () => {
+      if (minorWanted && !lightRows) lightRows = lightList();
+      return callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        ...rpcWindowArgs(filters),
+        p_patch: filters.patchFilter,
+        p_set: filters.setNumber,
+        p_min_games: listMinGames,
+        // Angepasste Schwelle schon in der Abfrage (Migration 0083): die teure
+        // Zerlegung der Einheiten- und Item-Daten laeuft nur noch fuer Comps,
+        // die der Filter unten behaelt. euw1/7 Tage/Diamant+ 12,7 s → 2,4 s.
+        ...(adaptiveMin ? { p_min_share: ADAPTIVE_SHARE, p_min_cap: defaultMinGames } : {}),
+      }, publisherRpcTimeoutMs);
+    };
 
     // Vorab gerechnete Liste (Migration 0070) zuerst, sonst live.
       // _v2 (Migration 0058) merged die drei jsonb-Spalten SQL-seitig statt
@@ -875,13 +901,57 @@ export async function GET(request: NextRequest) {
       return staleRows;
     });
 
-    const participants = rows[0]?.participants || 0;
+    // Ohne vollen Treffer kennt nur die schlanke Abfrage die Teilnahmen.
+    const pendingLight = (lightRows as Promise<CompTotalsRow[] | null> | null);
+    const lightLoaded = pendingLight ? await pendingLight : null;
+    const participants = rows[0]?.participants
+      || (lightLoaded as Array<CompTotalsRow & { participants?: number }> | null)?.[0]?.participants || 0;
     const effectiveMinGames = effectiveMinFor(Number(participants));
 
-    const dataComps = applyCompCatalog(rows
-      .filter(r => Number(r.games) >= effectiveMinGames)
+    // Vorgerechnete Liste (auch als Notreserve): enthaelt schon alle Zeilen ab
+    // COMP_ROW_FLOOR mit Units — dann reicht die Aufteilung hier.
+    const rowsComplete = servedStale || !pendingLight;
+    const light: CompTotalsRow[] | null = !minorWanted ? null : rowsComplete ? rows : lightLoaded;
+    const plan = light
+      ? planCompTotals(light, key => (isFragmentTraitClusterKey(key) ? null
+        : catalog ? compKeyOf(catalog, key) : compTraitFamilyKey(key)), effectiveMinGames)
+      : null;
+    const fillSet = new Set(plan?.fillKeys ?? []);
+    let fillRows: CompRow[] = [];
+    if (plan && plan.fillKeys.length > 0 && !rowsComplete) {
+      // Brett der Comps, deren Zeilen alle unter der Schwelle liegen: genau
+      // diese Zeilen voll nachladen (0103 p_cluster_keys).
+      fillRows = await callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
+        p_regions: filters.regions,
+        p_buckets: filters.buckets,
+        ...rpcWindowArgs(filters),
+        p_patch: filters.patchFilter,
+        p_set: filters.setNumber,
+        p_min_games: COMP_ROW_FLOOR,
+        p_cluster_keys: plan.fillKeys,
+      }, publisherRpcTimeoutMs).catch((err: unknown) => {
+        if (publisher) throw err;
+        console.error('[api/tft/comps] Bretter kleiner Comps nicht geladen:', (err as Error)?.message ?? err);
+        return [];
+      });
+    }
+    const fullRows = [
+      ...rows.filter(r => Number(r.games) >= effectiveMinGames || (rowsComplete && fillSet.has(r.cluster_key))),
+      ...fillRows.filter(r => fillSet.has(r.cluster_key) && Number(r.games) < effectiveMinGames),
+    ];
+    const shownAnchors = new Set(fullRows.map(r => r.cluster_key));
+
+    const dataComps = applyCompCatalog(fullRows
       .filter(r => !isFragmentTraitClusterKey(r.cluster_key))
-      .map(r => baseComp(r, participants)), catalog);
+      .map(r => {
+        const comp = baseComp(r, participants);
+        const minor = shownAnchors.has(r.cluster_key) ? plan?.minorByAnchor.get(r.cluster_key) : undefined;
+        return {
+          ...comp,
+          ...(fillSet.has(r.cluster_key) ? { listFill: true } : {}),
+          ...(minor ? { minorRows: minor.map(m => minorCompRow(m, Number(participants))) } : {}),
+        };
+      }), catalog);
     dataComps.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
     const listResp = cachedJson({
@@ -902,6 +972,9 @@ export async function GET(request: NextRequest) {
       },
       patches,
       minGames: effectiveMinGames,
+      // Gesetzt = die Schwelle gilt je Comp; kleine Zeilen ab diesem Wert
+      // stecken als minorRows in den Summen (fehlt in Staenden vor 0103).
+      ...(plan ? { rowMinGames: COMP_ROW_FLOOR } : {}),
       // Stand des Comp-Katalogs (null = klassisch). Vorrat-Leser erkennen
       // daran, ob die Zeilen schon ihre Comp tragen.
       catalogId: catalog?.id ?? null,

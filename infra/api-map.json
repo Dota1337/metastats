@@ -11,7 +11,7 @@
     "tables": 43,
     "rpcs": 33,
     "files": 14,
-    "edges": 617,
+    "edges": 618,
     "unused": 7,
     "unresolved": 1
   },
@@ -2226,9 +2226,9 @@
       "declared": true
     },
     {
-      "id": "fn:get_tft_comp_catalogs",
+      "id": "fn:get_tft_comp_catalog_window",
       "kind": "rpc",
-      "label": "get_tft_comp_catalogs",
+      "label": "get_tft_comp_catalog_window",
       "declared": true
     },
     {
@@ -3496,7 +3496,7 @@
     },
     {
       "from": "api:/api/tft/comps",
-      "to": "fn:get_tft_comp_catalogs",
+      "to": "fn:get_tft_comp_catalog_window",
       "kind": "calls"
     },
     {
@@ -3711,7 +3711,7 @@
     },
     {
       "from": "api:/api/tft/comps/families",
-      "to": "fn:get_tft_comp_catalogs",
+      "to": "fn:get_tft_comp_catalog_window",
       "kind": "calls"
     },
     {
@@ -5285,13 +5285,18 @@
       "kind": "reads"
     },
     {
-      "from": "fn:get_tft_comp_catalogs",
+      "from": "fn:get_tft_comp_catalog_window",
       "to": "db:tft_comp_catalog",
       "kind": "reads"
     },
     {
-      "from": "fn:get_tft_comp_catalogs",
+      "from": "fn:get_tft_comp_catalog_window",
       "to": "db:tft_comp_catalog_entry",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_catalog_window",
+      "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
     },
     {

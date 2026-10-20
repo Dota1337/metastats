@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion, traitTierLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
@@ -17,8 +17,9 @@ import { perfectStats, type CompPerfect } from '../../lib/tft-comp-perfect';
 //     (server-side enforced, see /api/tft/comps/variants)
 //   - active variant always included even when below threshold
 //   - Knopf „Alle" vorne = Familien-Ansicht; immer genau ein Knopf markiert
-//   - Knopfreihe in der Familien-Ansicht erst ab 2 Varianten, in der genauen
-//     Ansicht immer („Alle" ist der Rueckweg)
+//   - Knopfreihe in beiden Ansichten erst ab 2 Varianten (User 20.10.2026);
+//     eine genaue Ansicht mit weniger wechselt selbst zur Familien-Ansicht
+//     („bei einer Variante nur Gesamtansicht"). Kein Familien-Balken mehr.
 //   - max 4 variants visible (server-capped)
 
 interface Variant {
@@ -89,7 +90,6 @@ function variantLabel(
 export default function VariantsSwitcher({
   clusterKey, region, bucket, days, patch, assets,
   familyMergeActive = false,
-  familySize = 1,
   families = null,
   activeKey = null,
   end = null,
@@ -103,11 +103,9 @@ export default function VariantsSwitcher({
   days: number;
   patch: string | null;
   assets: TftAssetsBundle | null;
-  // Family-Mode-Info vom Detail-Page-Parent: ob die Detail-API gerade alle
-  // Sub-Cluster zur Familie aggregiert (Default ab Familien-Merge-Spec) und
-  // wie viele Sub-Cluster im Aggregat sitzen. familySize > 1 → Family-Banner.
+  // Vom Detail-Page-Parent: ob die Detail-API gerade alle Sub-Cluster zur
+  // Familie aggregiert (Familien-Ansicht) oder eine Variante zeigt.
   familyMergeActive?: boolean;
-  familySize?: number;
   // Alle zusammengelegten Familien (<trait>__<carry>) aus der Detail-API,
   // Anker zuerst. Fehlt es (alter Snapshot), gilt nur die eigene Familie.
   families?: string[] | null;
@@ -130,8 +128,6 @@ export default function VariantsSwitcher({
 }) {
   const { t, withLang } = useI18n();
   const router = useRouter();
-  const pathname = usePathname();
-  const search = useSearchParams();
   const [data, setData] = useState<VariantsResponse | null>(null);
   // C-Konsolidierung (User-Entscheid 2026-06-21): compTraitFamilyKey statt
   // compFamilyKey — Family umfasst alle Sub-Cluster derselben Trait+Carry-
@@ -182,7 +178,39 @@ export default function VariantsSwitcher({
   const shown: VariantsResponse | null = givenVariants
     ? { family: familyList[0], familyTotal: 0, variants: givenVariants }
     : data;
-  if (!shown) return null;
+  // Echte Varianten = Knoepfe der Antwort, ohne den Platzhalter unten. Die
+  // Knopfreihe und der Wechsel zur Familien-Ansicht zaehlen dieselbe Zahl.
+  const realCount = shown?.variants.length ?? 0;
+
+  // Familien-Ansicht = Adresse der Anker-Familie ohne ?variant („Alle" und der
+  // Wechsel unten). Bei Zwei-Carry-Familien fuehrt das zurueck auf die
+  // Adresse, die auch die Liste verlinkt: die Adresse des anderen Carries
+  // zeigt dieselbe Familie, wird aber live gerechnet und kann eine andere
+  // Spielzahl zeigen (gemessen 15.10.2026: Soraka 9733, Zyra-Adresse 7996).
+  // replace: ohne eigenen Verlaufseintrag.
+  const openFamily = (replace: boolean) => {
+    const next = new URLSearchParams(window.location.search);
+    next.delete('variant');
+    const target = withLang(compPath(familyList[0]));
+    const q = next.toString();
+    const url = q ? `${target}?${q}` : target;
+    if (samePath(target, window.location.pathname)) {
+      if (replace) window.history.replaceState(null, '', url);
+      else window.history.pushState(null, '', url);
+    } else if (replace) router.replace(url, { scroll: false });
+    else router.push(url, { scroll: false });
+  };
+
+  // Genaue Ansicht mit weniger als 2 Varianten → Familien-Ansicht, ohne
+  // Verlaufseintrag (Zurueck verlaesst die Seite, statt wieder hierher zu
+  // fuehren). Erst mit geladenen Knoepfen; scheitert das Laden, bleibt sie.
+  const toFamily = !familyMergeActive && !!shown && realCount < 2;
+  useEffect(() => {
+    if (toFamily) openFamily(true);
+    // openFamily liest Adresse und Familie beim Aufruf; ausloesen nur toFamily.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toFamily]);
+  if (!shown || toFamily) return null;
 
   // Aktiv ist ein Knopf nur in der genauen Ansicht: die Familien-Ansicht zeigt
   // alle Varianten zusammen, dort oeffnet jeder Knopf seine Variante.
@@ -212,35 +240,6 @@ export default function VariantsSwitcher({
       ]
     : shown.variants;
 
-  // Family-Mode-Banner: wenn die Detail-API gerade alle Sub-Cluster aggregiert,
-  // braucht der User den Hinweis + Toggle zur Sub-Cluster-Sicht. Wenn nur 1
-  // Sub-Cluster in der Family ist, gibt es nichts zu aggregieren — Banner aus.
-  const showFamilyBanner = familyMergeActive && familySize > 1;
-  // Familien-Ansicht = Adresse der Anker-Familie ohne ?variant („Alle" und
-  // „→ Familien-Ansicht"). Bei Zwei-Carry-Familien fuehrt das zurueck auf die
-  // Adresse, die auch die Liste verlinkt: die Adresse des anderen Carries
-  // zeigt dieselbe Familie, wird aber live gerechnet und kann eine andere
-  // Spielzahl zeigen (gemessen 15.10.2026: Soraka 9733, Zyra-Adresse 7996).
-  const openFamily = () => {
-    const next = new URLSearchParams(window.location.search);
-    next.delete('variant');
-    const target = withLang(compPath(familyList[0]));
-    const q = next.toString();
-    const url = q ? `${target}?${q}` : target;
-    if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
-    else router.push(url, { scroll: false });
-  };
-  // Nur noch vom Familien-Hinweis genutzt: Familie → genaue Ansicht.
-  const toggleVariantMode = () => {
-    if (!pathname) return;
-    const next = new URLSearchParams(search?.toString() || '');
-    next.set('variant', 'exact');
-    // history.pushState statt router.push: Next haelt useSearchParams
-    // synchron, rechnet die Server-Huelle der Detailseite aber nicht neu (die
-    // genaue Ansicht hat ohnehin keine Startdaten). Eigener Verlaufseintrag
-    // wie bei den Varianten-Knoepfen, sonst fuehrt Zurueck scheinbar nirgends hin.
-    window.history.pushState(null, '', `${pathname}?${next.toString()}`);
-  };
   // Knopf → genaue Ansicht genau dieser Variante (?variant=<Kennung>, siehe
   // compDetailTarget). Varianten einer Familie teilen sich die lesbare Adresse:
   // dann nur die Abfrage tauschen (kein Server-Umweg, Position bleibt, Zurueck
@@ -254,31 +253,13 @@ export default function VariantsSwitcher({
     if (samePath(target, window.location.pathname)) window.history.pushState(null, '', url);
     else router.push(url, { scroll: false });
   };
-  // Knopfreihe: in der Familien-Ansicht erst ab 2 Varianten (sonst stuende
-  // „Alle" neben seiner einzigen Variante), in der genauen Ansicht immer —
-  // „Alle" ist dort der Rueckweg zur Familie.
-  const showRow = !familyMergeActive || variants.length >= 2;
-  if (!showRow && !showFamilyBanner) return null;
+  // Knopfreihe erst ab 2 Varianten, sonst stuende „Alle" neben seiner
+  // einzigen Variante (die genaue Ansicht wechselt dann oben zur Familie).
+  if (realCount < 2) return null;
 
   const Wrap = bare ? 'div' : 'section';
   return (
     <Wrap className={bare ? 'mb-4 pb-3 border-b border-border-subtle' : 'mt-3 bg-surface-base border border-border-subtle rounded p-3'}>
-      {showFamilyBanner && (
-        <div className="mb-3 flex items-center justify-between gap-2 px-3 py-2 bg-accent-a8 border border-accent-a30 rounded">
-          <div className="text-xs text-fg-bright">
-            {t('tft.comp.familyMode.banner')}
-          </div>
-          <button
-            onClick={toggleVariantMode}
-            className="text-[11px] uppercase tracking-widest px-2 py-1 bg-surface-sunken border border-accent-a40 text-fg-bright hover:text-white hover:border-accent rounded transition-colors"
-          >
-            {t('tft.comp.familyMode.toggleToExact')}
-          </button>
-        </div>
-      )}
-      {/* Hinweis „nur diese eine Sub-Variante“ entfernt (User 18.10.2026):
-          „Alle“ ist in der genauen Ansicht der Rueckweg. */}
-      {showRow && (<>
       <div className="flex items-center gap-2 mb-2">
         <h2 className="text-fg-secondary text-xs uppercase tracking-widest">{t('tft.comp.variants')}</h2>
       </div>
@@ -286,7 +267,7 @@ export default function VariantsSwitcher({
         {/* „Alle" = Familien-Ansicht; markiert, solange keine einzelne
             Variante offen ist — so ist immer genau ein Knopf hervorgehoben. */}
         <button
-          onClick={() => { if (!familyMergeActive) openFamily(); }}
+          onClick={() => { if (!familyMergeActive) openFamily(false); }}
           className={`px-3 py-1.5 rounded border text-xs transition-colors ${
             familyMergeActive
               ? 'bg-accent-a15 border-accent text-white cursor-default'
@@ -333,7 +314,6 @@ export default function VariantsSwitcher({
           );
         })}
       </div>
-      </>)}
     </Wrap>
   );
 }

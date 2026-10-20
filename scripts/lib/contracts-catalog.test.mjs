@@ -17,6 +17,16 @@ test('comp-catalog-days: ohne Katalog-Tag gruen, ohne Tag uebersprungen', () => 
   assert.equal(evaluateCompCatalogDays({ day: null, metaRows: [], perfectByRegion: new Map() }).status, 'skipped');
 });
 
+test('comp-catalog-days: Katalog-Tag erwartet, aber alles klassisch = rot; nicht erwartet = gruen', () => {
+  const r = evaluateCompCatalogDays({ day: DAY, metaRows: meta(['euw1', 'kr'], null), perfectByRegion: new Map(), expected: { patch: '18.5', priorDays: 3 } });
+  assert.equal(r.status, 'broken');
+  assert.match(r.detail, /Katalog-Tag erwartet \(Patch 18\.5, 3 fruehere Tage.*alle 2 Regionen klassisch/);
+  assert.equal(evaluateCompCatalogDays({ day: DAY, metaRows: meta(['euw1'], null), perfectByRegion: new Map(), expected: null }).status, 'ok');
+  // Markiert ist er gelaufen: die Erwartung aendert dann nichts.
+  const done = evaluateCompCatalogDays({ day: DAY, metaRows: meta(['euw1'], 7), perfectByRegion: new Map([['euw1', 9]]), expected: { patch: '18.5', priorDays: 3 } });
+  assert.equal(done.status, 'ok');
+});
+
 test('comp-catalog-days: alle markiert mit Perfekt-Zaehlern = gruen', () => {
   const r = evaluateCompCatalogDays({ day: DAY, metaRows: meta(['euw1', 'kr'], 7), perfectByRegion: new Map([['euw1', 900], ['kr', 1200]]) });
   assert.equal(r.status, 'ok');

@@ -2611,22 +2611,6 @@ const translations = {
   'tft.comp.outcome.level': t6('Level', 'Level', '\uB808\uBCA8', '\u7B49\u7EA7', 'Nivel', 'Niveau'),
   'tft.comp.outcome.lowData': t6('wenig Daten', 'little data', '\uB370\uC774\uD130 \uBD80\uC871', '\u6570\u636E\u8F83\u5C11', 'pocos datos', 'peu de donn\u00E9es'),
   'tft.comp.outcome.avgShort': t6('Ø', 'Avg', '평균', '平均', 'Media', 'Moy.'),
-  'tft.comp.familyMode.banner': t6(
-    'Familien-Ansicht \u2014 Stats \u00FCber alle Build-Varianten gemittelt',
-    'Family view \u2014 stats averaged across all build variants',
-    '\uD328\uBC00\uB9AC \uBCF4\uAE30 \u2014 \uBAA8\uB4E0 \uBE4C\uB4DC \uBCC0\uD615 \uD1B5\uACC4 \uD3C9\uADE0',
-    '\u65CF\u7CFB\u89C6\u56FE \u2014 \u6240\u6709\u53D8\u4F53\u52A0\u6743\u5E73\u5747',
-    'Vista de familia \u2014 promedio sobre todas las variantes',
-    'Vue Famille \u2014 moyenne sur toutes les variantes'
-  ),
-  'tft.comp.familyMode.toggleToExact': t6(
-    '\u2192 Nur diese Variante',
-    '\u2192 This variant only',
-    '\u2192 \uC774 \uBCC0\uD615\uB9CC',
-    '\u2192 \u4EC5\u6B64\u53D8\u4F53',
-    '\u2192 Solo esta variante',
-    '\u2192 Cette variante seulement'
-  ),
   'tft.comp.flexUnits.pickrate': t6(
     'Pick', 'Pick',
     '\uD53D', '\u9009\u62E9',

@@ -1,7 +1,8 @@
 // Comp-Katalog je Crawl-Tag (Phase 2, .claude/plan-current.md a–c, i).
 //
 // Vor der Regionen-Schleife: decideDay — klassisch oder mit Katalog sammeln.
-//   * Schalter aus (COMP_CATALOG_COLLECT≠1) → klassisch.
+//   * Schalter aus (catalogCollectOn: COMP_CATALOG_COLLECT≠1 und Patch des Tages
+//     vor COMP_CATALOG_COLLECT_FROM_PATCH) → klassisch.
 //   * Anlauf: die Patch-Familie (18.5 + 18.5b) hat vor dem Zieltag weniger als
 //     WARMUP_DAYS Tage → klassisch (zu wenig Daten fuer feste Comps).
 //   * Katalog-Tag: Version „gueltig ab D“ = eingefroren aus der neuesten Version
@@ -24,6 +25,29 @@ export const CATALOG_FILE_PROTOCOL = 1;
 export const WARMUP_DAYS = 3;
 
 const prevDay = d => new Date(Date.parse(`${d}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Schalter fuer einen Zieltag aus der Box-Env (User 20.10.2026: je Brett ab 18.5).
+ * COMP_CATALOG_COLLECT=1 gilt fuer jeden Tag; COMP_CATALOG_COLLECT_FROM_PATCH=18.5
+ * ab dieser Patch-Familie (18.5b zaehlt mit, die Anlauftage regelt decideDay).
+ * Ein Treiber ohne diese Funktion kennt die zweite Zeile nicht und sammelt
+ * klassisch — Code und Env koennen in beliebiger Reihenfolge auf die Box.
+ * Ungueltiger Wert → aus, mit Grund (der Treiber loggt ihn laut).
+ *
+ * @param {{ collect?: string, fromPatch?: string, patch?: string|null }} o
+ * @returns {{ on: boolean, reason: string }}
+ */
+export function catalogCollectOn({ collect, fromPatch, patch }) {
+  if (collect === '1') return { on: true, reason: 'collect' };
+  const from = String(fromPatch ?? '').trim();
+  if (!from) return { on: false, reason: 'switch-off' };
+  const f = /^(\d+)\.(\d+)$/.exec(from);
+  if (!f) return { on: false, reason: 'from-patch-invalid' };
+  const p = /^(\d+)\.(\d+)$/.exec(patchFamily(patch));
+  if (!p) return { on: false, reason: 'no-patch' };
+  const cmp = Number(p[1]) - Number(f[1]) || Number(p[2]) - Number(f[2]);
+  return cmp >= 0 ? { on: true, reason: 'from-patch' } : { on: false, reason: 'before-from-patch' };
+}
 
 /**
  * @returns {Promise<{ mode: 'classic' | 'catalog', reason: string, set: number, patch: string,

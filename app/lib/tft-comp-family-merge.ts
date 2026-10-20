@@ -53,7 +53,8 @@ export interface CompRowLike extends CompPerfectSums {
 /** Familien-Identität für den Detail-Merge: `<trait>__<carry>` (User-Entscheid
  *  2026-06-21 / Option C). Level UND Augment werden konsolidiert. Die
  *  Skill-Ceiling-Strategie bleibt sichtbar via VariantsSwitcher (Sub-Cluster
- *  individuell klickbar), via `?variant=exact` (isolierte mainComp-Stats),
+ *  individuell klickbar, ab 2 Varianten), via `?variant=exact` (isolierte
+ *  mainComp-Stats; bei weniger als 2 Varianten wechselt sie zur Familie),
  *  und via `levelOutcome`-Block in Detail-Page (rekonstruiert aus
  *  level_dist_merged). Vorher (bis 2026-06-20): `<trait>@<level>_<carry>~aug`.
  *  Anker-Slug bestimmt die Familie — alle Rows die diesen Key matchen sind

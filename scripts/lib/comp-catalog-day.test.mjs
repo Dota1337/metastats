@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decideDay, buildAfterLoop, catalogFileBody, checkCatalogFile, WARMUP_DAYS } from './comp-catalog-day.mjs';
+import { decideDay, buildAfterLoop, catalogFileBody, checkCatalogFile, catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { catalogHash, CATALOG_RULES } from '../../app/lib/tft-comp-catalog.mjs';
 import { familiesFromInputRows, patchFamily } from './comp-catalog-store.mjs';
 
@@ -41,6 +41,26 @@ test('Schalter aus und Anlauftage: klassisch', async () => {
   const d = await decideDay({ day: '2026-10-23', set: 18, patch: '18.5', switchOn: true, store: memStore({ days: days185(2) }), isUnit });
   assert.deepEqual([d.mode, d.reason], ['classic', 'warmup']);
   assert.equal(WARMUP_DAYS, 3);
+});
+
+test('Schalter je Patch: COLLECT=1 immer, FROM_PATCH ab der Familie, ungueltig/leer aus', () => {
+  const on = (env, patch) => catalogCollectOn({ ...env, patch });
+  assert.deepEqual(on({ collect: '1' }, null), { on: true, reason: 'collect' });
+  assert.deepEqual(on({ collect: '1', fromPatch: '19.1' }, '18.4'), { on: true, reason: 'collect' });
+  assert.deepEqual(on({}, '18.5'), { on: false, reason: 'switch-off' });
+  assert.deepEqual(on({ collect: '0', fromPatch: '  ' }, '18.5'), { on: false, reason: 'switch-off' });
+  const from = { fromPatch: '18.5' };
+  assert.deepEqual(on(from, '18.4'), { on: false, reason: 'before-from-patch' });
+  assert.deepEqual(on(from, '18.3b'), { on: false, reason: 'before-from-patch' });
+  assert.deepEqual(on(from, '18.5'), { on: true, reason: 'from-patch' });
+  assert.deepEqual(on(from, '18.5b'), { on: true, reason: 'from-patch' });
+  assert.deepEqual(on(from, '18.10'), { on: true, reason: 'from-patch' });
+  assert.deepEqual(on(from, '19.1'), { on: true, reason: 'from-patch' });
+  assert.deepEqual(on({ fromPatch: '18.10' }, '18.9'), { on: false, reason: 'before-from-patch' });
+  assert.deepEqual(on(from, null), { on: false, reason: 'no-patch' });
+  for (const bad of ['24.10.2026', '2026-10-24', '18', '18.5b', 'v18.5']) {
+    assert.deepEqual(on({ fromPatch: bad }, '18.5'), { on: false, reason: 'from-patch-invalid' }, bad);
+  }
 });
 
 test('Katalog-Tag: eingefroren aus der neuesten Version, unveraendert → alte Kennung', async () => {

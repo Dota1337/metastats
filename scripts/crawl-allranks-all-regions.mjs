@@ -26,7 +26,9 @@
  * Entscheid), und gibt den Kindern die Katalog-Datei mit. Nach der Schleife
  * schreibt er an klassischen Tagen die naechste Katalog-Version fort. Regeln:
  * scripts/lib/comp-catalog-day.mjs. Schalter (Box-Env): COMP_CATALOG_COLLECT=1
- * sammelt mit Katalog (Standard aus), COMP_CATALOG_BUILD=0 baut keine Versionen.
+ * sammelt mit Katalog (Standard aus), COMP_CATALOG_COLLECT_FROM_PATCH=18.5 erst
+ * ab dieser Patch-Familie (catalogCollectOn), COMP_CATALOG_BUILD=0 baut keine
+ * Versionen.
  *
  * Usage:
  *   node scripts/crawl-allranks-all-regions.mjs                  # all regions, mode=auto (last finished day: D-1 after 05:00 UTC)
@@ -62,7 +64,7 @@ import {
   markCompleted, recordAttempt, isSettled, selectTodo, selectGapDay,
   migrateLegacyCursor, pruneOldCursors, setCatalogDecision, CURSOR_DIR,
 } from './lib/daily-crawl-cursor.mjs';
-import { decideDay, buildAfterLoop, catalogFileBody } from './lib/comp-catalog-day.mjs';
+import { decideDay, buildAfterLoop, catalogFileBody, catalogCollectOn } from './lib/comp-catalog-day.mjs';
 import { createCatalogStore, unitCheckForSet } from './lib/comp-catalog-store.mjs';
 
 const args = process.argv.slice(2);
@@ -312,7 +314,12 @@ async function crawlLabelFor(day) {
 }
 
 // ── Comp-Katalog (0101) ─────────────────────────────────────────────────────
-const CATALOG_COLLECT = process.env.COMP_CATALOG_COLLECT === '1';
+// Je Zieltag nach dessen Patch (Regel in catalogCollectOn).
+const catalogCollectFor = patch => catalogCollectOn({
+  collect: process.env.COMP_CATALOG_COLLECT,
+  fromPatch: process.env.COMP_CATALOG_COLLECT_FROM_PATCH,
+  patch,
+});
 const CATALOG_BUILD = process.env.COMP_CATALOG_BUILD !== '0';
 
 async function withCatalogStore(fn) {
@@ -340,7 +347,11 @@ function writeCatalogFile(path, body) {
 // weiter (alle Regionen eines Tages gleich). Wirft nie: jeder Fehler → klassisch.
 async function prepareCatalogDay(targetDay, label, cursor) {
   const classic = reason => ({ decision: { mode: 'classic', reason, set: label.set, patch: label.patch }, args: [], file: null });
-  const minArgs = CATALOG_COLLECT ? ['--min-comp-games', '3'] : [];
+  const collect = catalogCollectFor(label.patch);
+  if (collect.reason === 'from-patch-invalid') {
+    console.error(`    [comp-catalog] COMP_CATALOG_COLLECT_FROM_PATCH=${JSON.stringify(process.env.COMP_CATALOG_COLLECT_FROM_PATCH)} ungueltig (erwartet z. B. 18.5) — klassisch`);
+  }
+  const minArgs = collect.on ? ['--min-comp-games', '3'] : [];
   if (label.error) return { ...classic('no-label'), args: minArgs };
   try {
     let decision = cursor.catalogDecision;
@@ -358,7 +369,7 @@ async function prepareCatalogDay(targetDay, label, cursor) {
       catalog = v.catalog;
     } else if (!decision) {
       const d = await withCatalogStore(store => decideDay({
-        day: targetDay, set: label.set, patch: label.patch, switchOn: CATALOG_COLLECT, store,
+        day: targetDay, set: label.set, patch: label.patch, switchOn: collect.on, store,
         isUnit: unitCheckForSet(label.set), log: msg => console.log(`    ${msg}`),
       }));
       catalog = d.catalog ?? null;

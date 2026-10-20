@@ -360,7 +360,6 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
       patch={null}
       assets={assets}
       familyMergeActive={variantMode === 'family'}
-      familySize={comp?.aliasedFromFamily?.mergedFrom?.length ?? 1}
       // switchFamilies: auch die genaue Ansicht nennt alle
       // zusammengelegten Familien, sonst schrumpft die Knopfreihe
       // nach dem Klick (mergedFamilies ist dort nur die eigene).

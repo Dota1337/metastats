@@ -21,6 +21,8 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { evaluateGuideCoverage } from './guide-coverage.mjs';
+import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
+import { patchFamily } from './comp-catalog-store.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -623,13 +625,16 @@ async function checkSetAxis(c, r) {
  * Katalog-Vergleich zum Vorpatch heraus (p_assign) → gelb. Eine markierte
  * Region ohne einen einzigen Perfekt-Zaehler heisst: der Sammler bewertet
  * nichts, der Schalter „Perfekt getroffen“ verschwindet → rot. Ohne
- * Katalog-Tag (Schalter aus, Anlauf eines Patches) gruen.
+ * Katalog-Tag (Schalter aus, Anlauf eines Patches) gruen — ausser der Schalter
+ * gilt fuer den Patch des Tages und die Anlauftage sind vorbei (`expected`):
+ * dann ist der Start ausgeblieben → rot.
  *
  * @param {{ day: string|null, metaRows: {region: string, catalog_id: unknown}[],
- *   perfectByRegion: Map<string, number> }} o
+ *   perfectByRegion: Map<string, number>,
+ *   expected?: { patch: string, priorDays: number } | null }} o
  * @returns {{ status: 'ok'|'warn'|'broken'|'skipped', detail: string }}
  */
-export function evaluateCompCatalogDays({ day, metaRows, perfectByRegion }) {
+export function evaluateCompCatalogDays({ day, metaRows, perfectByRegion, expected = null }) {
   if (!day) return { status: 'skipped', detail: 'kein Crawl-Tag im laufenden Set' };
   // crawl_meta hat je Region×Tag eine Zeile je Rang; die Datenbank wertet
   // bool_or aus (get_tft_comp_marked_days), hier genauso.
@@ -637,6 +642,9 @@ export function evaluateCompCatalogDays({ day, metaRows, perfectByRegion }) {
   for (const m of metaRows) markedOf.set(m.region, (markedOf.get(m.region) ?? false) || m.catalog_id != null);
   const marked = [...markedOf].filter(([, v]) => v).map(([k]) => k).sort();
   const unmarked = [...markedOf].filter(([, v]) => !v).map(([k]) => k).sort();
+  if (marked.length === 0 && expected) {
+    return { status: 'broken', detail: `${day}: Katalog-Tag erwartet (Patch ${expected.patch}, ${expected.priorDays} fruehere Tage, Schalter an), aber alle ${unmarked.length} Regionen klassisch gezaehlt — Journal metastats-daily-crawl auf [comp-catalog] pruefen` };
+  }
   if (marked.length === 0) return { status: 'ok', detail: `${day}: noch kein Katalog-Tag (${unmarked.length} Regionen klassisch gezaehlt)` };
   const noPerfect = marked.filter(rg => !((perfectByRegion.get(rg) ?? 0) > 0));
   if (noPerfect.length > 0) {
@@ -655,17 +663,43 @@ async function checkCompCatalogDays(c, r) {
   const day = await supaMaxDate('tft_daily_crawl_meta', 'day', `&set_number=eq.${set}`);
   let metaRows = [];
   const perfectByRegion = new Map();
+  let expected = null;
   if (day) {
-    metaRows = await (await supaGet(`tft_daily_crawl_meta?select=region,catalog_id&set_number=eq.${set}&day=eq.${day}`)).json();
+    metaRows = await (await supaGet(`tft_daily_crawl_meta?select=region,catalog_id,patch&set_number=eq.${set}&day=eq.${day}`)).json();
     const marked = [...new Set(metaRows.filter(m => m.catalog_id != null).map(m => m.region))];
     for (const rg of marked) {
       if (!/^[a-z0-9]+$/.test(rg)) throw new Error(`Region ungueltig: ${JSON.stringify(rg)}`);
       perfectByRegion.set(rg, await supaCount('tft_daily_comp_stats',
         `&set_number=eq.${set}&day=eq.${day}&region=eq.${rg}&perfect_games=not.is.null`));
     }
+    expected = marked.length === 0 ? await catalogDayExpected(set, day, metaRows) : null;
   }
-  const res = evaluateCompCatalogDays({ day, metaRows, perfectByRegion });
+  const res = evaluateCompCatalogDays({ day, metaRows, perfectByRegion, expected });
   return r(res.status, res.detail);
+}
+
+// Haette der Tag je Brett gezaehlt werden muessen? Dieselbe Regel wie der
+// Treiber: Schalter (Env dieses Dienstes = Env des Sammlers) fuer den Patch des
+// Tages und mindestens WARMUP_DAYS fruehere Tage der Patch-Familie
+// (decideDay zaehlt dieselben Tage aus tft_daily_crawl_meta).
+async function catalogDayExpected(set, day, metaRows) {
+  const counts = new Map();
+  for (const m of metaRows) if (m.patch) counts.set(m.patch, (counts.get(m.patch) ?? 0) + 1);
+  const patch = [...counts].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0] ?? null;
+  const collect = catalogCollectOn({
+    collect: process.env.COMP_CATALOG_COLLECT,
+    fromPatch: process.env.COMP_CATALOG_COLLECT_FROM_PATCH,
+    patch,
+  });
+  if (!collect.on) return null;
+  const family = patchFamily(patch);
+  if (!/^\d+\.\d+$/.test(family)) return null;
+  // Neueste 1000 Zeilen reichen: ein Tag hat Regionen × Raenge ≈ 150 Zeilen.
+  const rows = await (await supaGet(
+    `tft_daily_crawl_meta?select=day,patch&set_number=eq.${set}&day=lt.${day}&patch=like.${family}*&order=day.desc&limit=1000`,
+  )).json();
+  const priorDays = new Set(rows.filter(x => patchFamily(x.patch) === family).map(x => x.day)).size;
+  return priorDays >= WARMUP_DAYS ? { patch, priorDays } : null;
 }
 
 /**

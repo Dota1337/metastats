@@ -8,11 +8,10 @@ import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import TftItemIcon from '../TftItemIcon';
 import { type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { itemBucketOf, type ItemBucket } from '../../../lib/tft-item-bucket';
-import { TIER_COLORS } from '../../../lib/tft-tier-letter';
 import { type ExplorerRow } from '../../../lib/tft-explorer-query';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import {
-  MIN_TIER_GAMES, buildsWithCount, isThiefsGlovesBuild, scoreBuilds, scoreItems, type Scored,
+  BUILD_TIER_COLORS, MIN_TIER_GAMES, buildsWithCount, isThiefsGlovesBuild, scoreBuilds, scoreItems, type Scored,
 } from '../../../lib/tft-unit-build-score';
 import { unitFilterOf, type UnitExplorerFilters, type UnitExplorerState } from './useUnitExplorer';
 import type { ExplorerError } from '../../../lib/useTftExplorer';
@@ -364,7 +363,7 @@ function TierBadge({ tier }: { tier: Scored<ExplorerRow>['tier'] }) {
   return (
     <span
       className="inline-flex items-center justify-center w-6 h-6 rounded text-[12px] font-bold text-[#11151c]"
-      style={{ background: TIER_COLORS[tier] }}
+      style={{ background: BUILD_TIER_COLORS[tier] }}
     >
       {tier}
     </span>

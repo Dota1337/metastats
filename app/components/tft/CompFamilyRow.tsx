@@ -1,7 +1,6 @@
 'use client';
 import { useId, useMemo, useState } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { type TierCutoffs } from '../../lib/tft-tier-letter';
 import CompRow from './CompRow';
 import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompBoardPanel';
 import { useI18n } from '../../lib/i18n';
@@ -68,7 +67,6 @@ export default function CompFamilyRow({
   days,
   patch,
   deltaView = null,
-  tierCutoffs,
   compareSelected = false,
   onCompareToggle = null,
   end = null,
@@ -83,7 +81,6 @@ export default function CompFamilyRow({
   patch: string;
   // Vergleichs-Spalte „vs Vorpatch" (Werte in family.delta / variant.delta).
   deltaView?: DeltaView | null;
-  tierCutoffs?: TierCutoffs | null;
   // Compare-Toggle (User-Flow für /tft/comps/compare). Listing-Page hält den
   // Selection-State + reicht hier mit dem Family-Main-Slug durch.
   compareSelected?: boolean;
@@ -127,7 +124,6 @@ export default function CompFamilyRow({
           assets={assets}
           href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
           deltaView={deltaView}
-          tierCutoffs={tierCutoffs}
           compareSelected={compareSelected}
           onCompareToggle={onCompareToggle}
           roles={familyRoles}
@@ -162,7 +158,6 @@ export default function CompFamilyRow({
         assets={assets}
         href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
         deltaView={deltaView}
-        tierCutoffs={tierCutoffs}
         expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
         compareSelected={compareSelected}
         onCompareToggle={onCompareToggle}
@@ -200,7 +195,6 @@ export default function CompFamilyRow({
                   assets={assets}
                   href={withLang(familyHref(v.slug, region, bucket, days))}
                   deltaView={deltaView}
-                  tierCutoffs={tierCutoffs}
                 />
               ))}
             </div>

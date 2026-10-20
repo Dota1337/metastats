@@ -22,6 +22,17 @@ const MIN_S = 3;
 
 export type BuildTier = 'S' | 'A' | 'B' | 'C' | 'D';
 
+// Eigene Leiter, getrennt von den Listen-Tiers (tft-tier-letter.ts, seit
+// 20.10.2026 S+–C nach Ø): die Build-Bewertung misst Place Change und behaelt D.
+// Farben wie vorher.
+export const BUILD_TIER_COLORS: Record<BuildTier, string> = {
+  S: '#e0c75a',
+  A: '#8a73ff',
+  B: '#4a9be6',
+  C: '#9aa6b2',
+  D: '#6e7e94',
+};
+
 export interface ScoreRow { key: string; games: number; avg: number; half: number }
 export interface ScoreRef { games: number; avg: number }
 

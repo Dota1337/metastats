@@ -28,10 +28,13 @@ async function getJson<T>(path: string, timeoutMs = 20000): Promise<T> {
 export async function loadComps(force = false): Promise<CompanionCompsResponse | null> {
   const region = read('ms.settings').region;
   const cached = read('ms.comps');
-  const fresh = cached && cached.data.filters.region === region && Date.now() - cached.fetchedAt < COMPS_TTL;
+  // Ab 0.8.5 Tier-Skala S+–C (?tiers=2). Ein gespeicherter Stand ohne
+  // `tierScale` traegt noch die alten Buchstaben — dann sofort neu laden.
+  const fresh = cached && cached.data.filters.region === region && cached.data.tierScale === 2
+    && Date.now() - cached.fetchedAt < COMPS_TTL;
   if (fresh && !force) return cached.data;
   try {
-    const data = await getJson<CompanionCompsResponse>(`/api/companion/v1/comps?region=${encodeURIComponent(region)}`, 60000);
+    const data = await getJson<CompanionCompsResponse>(`/api/companion/v1/comps?region=${encodeURIComponent(region)}&tiers=2`, 60000);
     // Region waehrend des Abrufs gewechselt: die Antwort gehoert zur alten und
     // darf die neue (eigener Abruf) nicht ueberschreiben.
     if (read('ms.settings').region !== region) return null;

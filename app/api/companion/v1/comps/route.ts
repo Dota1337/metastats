@@ -5,7 +5,6 @@
 import { NextRequest } from 'next/server';
 import { GET as compsGET } from '../../../tft/comps/route';
 import { buildCompFamilies, currentSetFamilies, topFamilyKeys } from '../../../../lib/tft-comp-families';
-import { resolveCutoffs } from '../../../../lib/tft-tier-letter';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
 import { callRpc, resolveFilters, rpcWindowArgs } from '../../../../lib/tft-supabase-reader';
 import { resolveGuideId, guideStyleFromUnits } from '../../../../lib/tft-comp-guides';
@@ -65,6 +64,9 @@ export async function GET(request: NextRequest) {
   const bucket = /^[a-z_]{3,20}$/.test(sp.get('bucket') || '') ? sp.get('bucket')! : 'master_plus';
   const daysRaw = parseInt(sp.get('days') || '3', 10);
   const days = Number.isFinite(daysRaw) ? Math.max(1, Math.min(14, daysRaw)) : 3;
+  // Tier-Skala S+–C seit 20.10.2026; ab App 0.8.5 mit ?tiers=2. Aeltere Apps
+  // kennen kein S+ (sortieren es ganz nach hinten) und bekommen dafuer S.
+  const tierScale2 = sp.get('tiers') === '2';
 
   const origin = request.nextUrl.origin;
   const inner = new URL('/api/tft/comps', origin);
@@ -75,10 +77,9 @@ export async function GET(request: NextRequest) {
   const filtersPromise = resolveFilters(inner.searchParams);
   filtersPromise.catch(() => {});
 
-  const [res, assets, cutoffBundle] = await Promise.all([
+  const [res, assets] = await Promise.all([
     compsGET(new NextRequest(inner)),
     fetch(`${origin}/tft-assets.json`).then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null)).catch(() => null),
-    fetch(`${origin}/tft-tier-cutoffs.json`).then(r => (r.ok ? r.json() : null)).catch(() => null),
   ]);
   if (!res.ok) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'comps_unavailable' }, { status: 503, ...NO_STORE });
@@ -91,7 +92,6 @@ export async function GET(request: NextRequest) {
   const top = topFamilyKeys(families);
   const shown = top ? families.filter(f => top.has(f.familyKey)) : families;
   const set = body.filters?.set ?? assets?.set ?? null;
-  const cutoffs = cutoffBundle ? resolveCutoffs(cutoffBundle, set) : null;
 
   const out: CompanionCompsResponse = {
     v: COMPANION_API_VERSION,
@@ -103,7 +103,12 @@ export async function GET(request: NextRequest) {
       days: body.filters?.days ?? days,
     },
     generatedAt: new Date().toISOString(),
-    comps: shown.map(f => toCompanionComp(f, assets, cutoffs)),
+    comps: shown.map(f => {
+      const c = toCompanionComp(f, assets);
+      if (!tierScale2 && c.tier === 'S+') c.tier = 'S';
+      return c;
+    }),
+    ...(tierScale2 ? { tierScale: 2 as const } : {}),
   };
   const vs = await companionVs(out.comps, filtersPromise);
   for (const c of out.comps) if (vs[c.key]) c.vs = vs[c.key];

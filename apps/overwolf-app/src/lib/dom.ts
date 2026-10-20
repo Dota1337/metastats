@@ -56,8 +56,9 @@ export function itemIcon(id: string, lookups: CompanionLookups | null, size: 'xs
     : h('span', { class: `item ${size} item-fallback`, title: name }, name.slice(0, 2));
 }
 
+// „S+" als Klasse tier-splus: ein „+" muesste im Selektor maskiert werden.
 export function tierBadge(tier: string | null): HTMLElement {
-  return h('span', { class: `tier tier-${(tier || 'none').toLowerCase()}` }, tier || '—');
+  return h('span', { class: `tier tier-${(tier || 'none').toLowerCase().replace('+', 'plus')}` }, tier || '—');
 }
 
 // Stufen-Reiter wie bei MetaTFT: „Stufe N", darunter klein der Anteil der

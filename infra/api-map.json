@@ -10,8 +10,8 @@
     "groups": 30,
     "tables": 43,
     "rpcs": 34,
-    "files": 14,
-    "edges": 624,
+    "files": 13,
+    "edges": 615,
     "unused": 7,
     "unresolved": 1
   },
@@ -244,7 +244,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -271,7 +270,6 @@
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
         "app/lib/tft-supabase-reader.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -294,7 +292,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -320,7 +317,6 @@
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -343,7 +339,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -366,7 +361,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -391,7 +385,6 @@
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -414,7 +407,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-roll-odds.ts",
         "app/lib/tft-shop-pool.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -954,7 +946,6 @@
         "app/lib/tft-patch-label.ts",
         "app/lib/tft-player-search-server.ts",
         "app/lib/tft-supabase-reader.ts",
-        "app/lib/tft-tier-letter.ts",
         "public/tft-set.json"
       ],
       "used": true,
@@ -2217,11 +2208,6 @@
       "label": "tft-stats-*.json"
     },
     {
-      "id": "file:tft-tier-cutoffs.json",
-      "kind": "file",
-      "label": "tft-tier-cutoffs.json"
-    },
-    {
       "id": "fn:get_tft_available_patches",
       "kind": "rpc",
       "label": "get_tft_available_patches",
@@ -2603,11 +2589,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/companion/v1/comp",
-      "to": "file:tft-tier-cutoffs.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/companion/v1/comps",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -2650,11 +2631,6 @@
     {
       "from": "api:/api/companion/v1/comps",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/comps",
-      "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },
     {
@@ -2713,11 +2689,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/companion/v1/items",
-      "to": "file:tft-tier-cutoffs.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/companion/v1/lobby",
       "to": "box:hetzner",
       "kind": "fetches"
@@ -2764,11 +2735,6 @@
     },
     {
       "from": "api:/api/companion/v1/lobby",
-      "to": "file:tft-tier-cutoffs.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/lobby",
       "to": "fn:search_tft_player_names_exact",
       "kind": "calls"
     },
@@ -2808,11 +2774,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/companion/v1/lookups",
-      "to": "file:tft-tier-cutoffs.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/companion/v1/player",
       "to": "ext:cdragon",
       "kind": "fetches"
@@ -2845,11 +2806,6 @@
     {
       "from": "api:/api/companion/v1/player",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/player",
-      "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },
     {
@@ -2894,11 +2850,6 @@
     },
     {
       "from": "api:/api/companion/v1/search",
-      "to": "file:tft-tier-cutoffs.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/search",
       "to": "fn:search_tft_player_names_exact",
       "kind": "calls"
     },
@@ -2935,11 +2886,6 @@
     {
       "from": "api:/api/companion/v1/units",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/units",
-      "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },
     {
@@ -3710,11 +3656,6 @@
     {
       "from": "api:/api/tft/comps/families",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps/families",
-      "to": "file:tft-tier-cutoffs.json",
       "kind": "reads"
     },
     {

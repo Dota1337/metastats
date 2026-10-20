@@ -38,7 +38,6 @@ import {
 import type { StatsInitial } from './seo/initial-data';
 import { releaseStatsPending } from './seo/stats-pending';
 import { loadTftAssets, type TftAssetsBundle } from './tft-cdragon';
-import { loadTierCutoffs, type TierCutoffs } from './tft-tier-letter';
 import {
   advFromUrlParam,
   advToUrlParam,
@@ -64,7 +63,7 @@ interface Loaded {
 }
 
 
-export function useTftCompsData({ initialFilters, initial = null, wantFull = false, deltaAlways = false, initialDelta = null }: {
+export function useTftCompsData({ initialFilters, initial = null, wantFull = false, deltaAlways = false, initialDelta = null, extraQuery = '' }: {
   /** Liste: Filter der Server-Ansicht (Adresse + vom Server bestimmter Rang). */
   initialFilters?: Filters;
   initial?: StatsInitial<CompApiRow> | null;
@@ -74,6 +73,9 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   deltaAlways?: boolean;
   /** Vorpatch-Vergleich der Server-Seite (seo/initial-data.ts compDeltaStart). */
   initialDelta?: PatchDeltaStart | null;
+  /** Weitere Adress-Parameter der Seite (Uebersicht: `&group=tier`). Der Hook
+   *  bleibt einziger Schreiber der Adresse; Daten-Schluessel aendert das nicht. */
+  extraQuery?: string;
 } = {}) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -112,7 +114,6 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   // ein 502 hier aus wie „keine Comps" — r.ok wurde nie geprueft.
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(() => initial?.tierCutoffs ?? null);
   // Daten-Schluessel und Teildaten-Merkmal der gezeigten Zeilen.
   const shownKey = useRef<string | null>(initial && initialFilters ? filtersDataKey(initialFilters) : null);
   const shownPartial = useRef<boolean>(!!initial?.partial);
@@ -125,18 +126,10 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   const startData = useRef(initial && initialFilters
     ? { key: filtersDataKey(initialFilters), version: initial.version ?? null }
     : null);
-  // Set, fuer das die Tier-Grenzen schon da sind (vom Server mitgeliefert).
-  const cutoffSet = useRef<number | null | undefined>(initial ? initial.assets.set : undefined);
 
   // Volles Bundle wie bisher; bis dahin reicht der Ausschnitt vom Server, ein
   // Fehlschlag ersetzt ihn nicht.
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
-  useEffect(() => {
-    const set = assets?.set ?? null;
-    if (cutoffSet.current === set) return;
-    cutoffSet.current = set;
-    loadTierCutoffs(set).then(setTierCutoffs);
-  }, [assets?.set]);
 
   const remember = (key: string, entry: Loaded) => {
     loaded.current.delete(key);
@@ -182,12 +175,12 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     const qs = filtersToQueryString(filters);
     const advParam = advToUrlParam(adv);
     const sortParam = sortTouched && sortBy !== 'avg' ? `&sort=${sortBy}` : '';
-    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}`;
+    const url = `${pathname}?${qs}${advParam ? `&adv=${advParam}` : ''}${sortParam}${extraQuery}`;
     if (window.location.pathname + window.location.search !== url) {
       window.history.replaceState(null, '', url);
     }
     persistFilters(filters);
-  }, [filters, adv, sortBy, sortTouched, hydrated, pathname]);
+  }, [filters, adv, sortBy, sortTouched, hydrated, pathname, extraQuery]);
 
   // Erweitert rechnet auf der vollen Liste; auf Teildaten kaemen andere Comps
   // heraus → Ladeanzeige bis sie da ist. Trending nicht mehr: es sortiert
@@ -380,7 +373,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     filters, handleFiltersChange,
     adv, setAdv,
     sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, minGames, assets, loading, tierCutoffs,
+    comps, filteredComps, hasData, patches, minGames, assets, loading,
     error, retry, dataEnd,
     // Vergleichs-Spalte bzw. Pfeile (null = aus).
     deltaView,

@@ -41,6 +41,12 @@ test('Ohne Brett: nach Tier, ohne Tier zuletzt', () => {
   assert.deepEqual(rankComps(comps, [], '', lk).map(r => r.comp.key), ['exe', 'lun', 'low']);
 });
 
+test('S+ steht vor S, D bleibt vor ohne Tier', () => {
+  const top = mk('top', 'DA_18_Lunar', 'S+', 3.9, ['DA_18_Varus'], ['DA_18_Varus']);
+  const old = mk('old', 'DA_18_Lunar', 'D', 4.9, ['DA_18_Varus'], ['DA_18_Varus']);
+  assert.deepEqual(rankComps([low, old, lun, exe, top], [], '', lk).map(r => r.comp.key), ['top', 'exe', 'lun', 'old', 'low']);
+});
+
 test('Brett-Treffer ab 2 (2★ doppelt) gehen vor das Tier', () => {
   const mine = [{ id: 'DA_18_Varus', star: 2 }];
   assert.deepEqual(boardScore(lun, mine), { score: 2, onBoard: ['DA_18_Varus'] });

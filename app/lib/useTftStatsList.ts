@@ -36,7 +36,6 @@ import {
 import type { StatsInitial } from './seo/initial-data';
 import { releaseStatsPending } from './seo/stats-pending';
 import { loadTftAssets, type TftAssetsBundle } from './tft-cdragon';
-import { loadTierCutoffs, type TierCutoffs } from './tft-tier-letter';
 
 const FETCH_TIMEOUT_MS = 15_000;
 
@@ -45,15 +44,13 @@ interface Loaded<Row> {
   patches: PatchInfo[];
 }
 
-export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial, withTierCutoffs = true }: {
+export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial }: {
   /** z. B. '/api/tft/units' */
   endpoint: string;
   /** Feld der API-Antwort mit den Zeilen ('units' / 'items' / 'traits'). */
   field: string;
   initialFilters: Filters;
   initial: StatsInitial<Row> | null;
-  /** false: die Seite zeigt keine Tier-Buchstaben, Grenzen nicht laden. */
-  withTierCutoffs?: boolean;
 }) {
   const pathname = usePathname();
 
@@ -68,26 +65,16 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial,
   // Gespeicherte Filter weichen von der Server-Ansicht ab: Ladeanzeige statt
   // fremder Zahlen, bis die eigenen da sind (SEO-Plan E3).
   const [awaitingStored, setAwaitingStored] = useState(false);
-  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(() => initial?.tierCutoffs ?? null);
   // Daten-Schluessel der gezeigten Zeilen. Gleich dem der Filter → kein
   // Abruf. Startdaten zaehlen als gezeigt.
   const shownKey = useRef<string | null>(initial ? filtersDataKey(initialFilters) : null);
   // Geladene Staende mit Daten je Daten-Schluessel; Startdaten traegt der
   // Mount-Effekt ein.
   const loaded = useRef(new Map<string, Loaded<Row>>());
-  // Set, fuer das die Tier-Grenzen schon da sind (vom Server mitgeliefert).
-  const cutoffSet = useRef<number | null | undefined>(initial ? initial.assets.set : undefined);
 
   // Volles Bundle wie bisher (neue Eintraege nach einem Filterwechsel). Bis
   // dahin reicht der Ausschnitt vom Server; ein Fehlschlag ersetzt ihn nicht.
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
-  useEffect(() => {
-    if (!withTierCutoffs) return;
-    const set = assets?.set ?? null;
-    if (cutoffSet.current === set) return;
-    cutoffSet.current = set;
-    loadTierCutoffs(set).then(setTierCutoffs);
-  }, [assets?.set, withTierCutoffs]);
 
   // Vor dem ersten Zeichnen: die Filter, die wirklich gelten (Adresse, sonst
   // localStorage — resolveMountFilters). Weichen sie von denen der
@@ -167,5 +154,5 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial,
     return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
   }, [filters, hydrated, pathname, endpoint, field]);
 
-  return { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets, tierCutoffs };
+  return { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets };
 }

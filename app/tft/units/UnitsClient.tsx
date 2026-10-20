@@ -14,7 +14,8 @@ import { patchDeltaOf } from '../../lib/tft-patch-delta';
 import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
+import { tierLetterOf, TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
+import type { TranslationKey } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 import TftItemIcon from '../../components/tft/TftItemIcon';
 
@@ -65,7 +66,7 @@ export default function UnitsClient({ initialFilters, initial }: {
   const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Items/Traits.
-  const { filters, setFilters, rows: units, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
+  const { filters, setFilters, rows: units, hasData, patches, loading, awaitingStored, assets } =
     useTftStatsList<UnitRow>({ endpoint: '/api/tft/units', field: 'units', initialFilters, initial });
   // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
   // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
@@ -129,18 +130,17 @@ export default function UnitsClient({ initialFilters, initial }: {
     // the bottom, tiered units keep their api-sorted order. Without this a
     // niche unit with 200 games + 3.2 avg sits above the popular meta carry
     // with 50k games + 3.4 avg, which doesn't match user intent.
-    if (!tierCutoffs) return passFilter;
     const tiered: UnitRow[] = [];
     const untiered: UnitRow[] = [];
     for (const u of passFilter) {
-      if (tierLetterOfSync({ avgPlacement: u.avgPlacement, pickRate: u.pickRate, games: u.games }, 'units', tierCutoffs)) {
+      if (tierLetterOf({ avgPlacement: u.avgPlacement, games: u.games }, 'units')) {
         tiered.push(u);
       } else {
         untiered.push(u);
       }
     }
     return [...tiered, ...untiered];
-  }, [units, assets, costFilter, traitFilter, search, tierCutoffs, shownIds]);
+  }, [units, assets, costFilter, traitFilter, search, shownIds]);
 
   // Over all loaded units, not `filtered`, so the item column doesn't shift
   // while searching or filtering by cost/trait. Character count doesn't
@@ -240,7 +240,7 @@ export default function UnitsClient({ initialFilters, initial }: {
               const cost = ch?.cost ?? 1;
               const costColor = costColorOf(cost);
               const url = tftChampionTileUrl(assets, ch);
-              const letter = tierCutoffs ? tierLetterOfSync({ avgPlacement: u.avgPlacement, pickRate: u.pickRate, games: u.games }, 'units', tierCutoffs) : null;
+              const letter = tierLetterOf({ avgPlacement: u.avgPlacement, games: u.games }, 'units');
               const top4ShareTip = u.top4Share != null
                 ? t('tft.shares.top4ShareTooltip.unit').replace('{share}', (u.top4Share * 100).toFixed(1))
                 : undefined;
@@ -406,10 +406,10 @@ function Cell({ label, value, accent, title, align = 'right' }: { label: string;
   );
 }
 
-// Tier-letter badge — S/A/B/C/D, color-coded. Renders "—" when the entity
-// is below the sample gate for its kind (handled by tierLetterOfSync).
-// Tooltip carries the verbal label so users know what S/A/B/C/D means.
-function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => string }) {
+// Tier-letter badge — S+/S/A/B/C, color-coded. Renders "—" when the entity
+// is below the sample gate for its kind (handled by tierLetterOf).
+// Tooltip carries the verbal label so users know what the letter means.
+function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: TranslationKey) => string }) {
   if (!letter) {
     return (
       <span
@@ -423,7 +423,7 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
     <span
       className="inline-flex items-center justify-center w-7 h-6 rounded text-[11px] font-bold tabular-nums"
       style={{ color, backgroundColor: `${withAlpha(color, 0x1f)}`, border: `1px solid ${withAlpha(color, 0x50)}` }}
-      title={t(`tft.tier.tooltip.${letter}` as any)}
+      title={t(TIER_TOOLTIP_KEY[letter])}
     >{letter}</span>
   );
 }

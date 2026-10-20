@@ -1,52 +1,87 @@
 /**
- * Cutoffs je Entitaetsklasse. Gemessen am 27.08.2026 (euw1+na1+kr, 7 Tage):
- * mit einem globalen Cutoff-Set trugen 51 % der Items und 53 % der Comps ein
- * S. Die Klassen-Bloecke in public/tft-tier-cutoffs.json korrigieren das —
- * diese Tests halten fest, dass der Resolver sie auch anwendet und dass ein
- * fehlender Block weiterhin auf scoreCutoffs zurueckfaellt.
+ * Tier-Skala nach Ø-Platz (User 20.10.2026). Comps + Units S+ ≤ 3,99 · S ≤ 4,25
+ * · A ≤ 4,39 · B ≤ 4,79 · C darueber; Items S+ ≤ 3,99 · S ≤ 4,10 · A ≤ 4,24 ·
+ * B ≤ 4,49 · C darueber. Gerechnet am angezeigten Wert (toFixed(2)).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { resolveCutoffs, tierLetterOfSync, tierScore } from './tft-tier-letter.ts';
+import { familyTierLetter, itemTakesTier, tierLetterOf, TIER_LETTERS, TIER_MIN_GAMES } from './tft-tier-letter.ts';
 
-const BUNDLE = JSON.parse(readFileSync(new URL('../../public/tft-tier-cutoffs.json', import.meta.url), 'utf8'));
+const comp = avg => tierLetterOf({ avgPlacement: avg, games: 10_000 }, 'comps');
+const unit = avg => tierLetterOf({ avgPlacement: avg, games: 10_000 }, 'units');
+const item = avg => tierLetterOf({ avgPlacement: avg, games: 10_000 }, 'items');
 
-test('Set-18-Block wird je Klasse aufgeloest, der Rest kommt aus default', () => {
-  const c = resolveCutoffs(BUNDLE, 18);
-  assert.equal(c.scoreCutoffsByKind.items.S, 0.65);
-  assert.equal(c.scoreCutoffsByKind.units.S, 0.64);
-  assert.equal(c.pickratePenalty, BUNDLE.default.pickratePenalty);
-  assert.deepEqual(c.minGames, BUNDLE.default.minGames);
+test('Comp-Grenzen wie vom User vorgegeben', () => {
+  const cases = [
+    [3.12, 'S+'], [3.99, 'S+'], [4.0, 'S'], [4.25, 'S'], [4.26, 'A'], [4.39, 'A'],
+    [4.4, 'B'], [4.79, 'B'], [4.8, 'C'], [5.85, 'C'],
+  ];
+  for (const [avg, want] of cases) assert.equal(comp(avg), want, `Ø ${avg}`);
 });
 
-test('ohne Set-Block bleibt es beim globalen scoreCutoffs', () => {
-  const c = resolveCutoffs(BUNDLE, 17);
-  assert.equal(c.scoreCutoffsByKind, undefined);
-  assert.deepEqual(c.scoreCutoffs, BUNDLE.default.scoreCutoffs);
+test('Units wie Comps', () => {
+  for (const avg of [3.55, 3.99, 4.0, 4.25, 4.26, 4.39, 4.4, 4.79, 4.8]) assert.equal(unit(avg), comp(avg), `Ø ${avg}`);
 });
 
-test('derselbe Score wird je Klasse verschieden benotet', () => {
-  const c = resolveCutoffs(BUNDLE, 18);
-  // Score 0.30: klar ueber dem Units-A (0.06), aber unter dem Items-B (0.36).
-  const row = { avgPlacement: 4.5 - 0.30, pickRate: 0.005, games: 100000 };
-  assert.equal(tierScore(row.avgPlacement, row.pickRate, c).toFixed(2), '0.30');
-  assert.equal(tierLetterOfSync(row, 'units', c), 'A');
-  assert.equal(tierLetterOfSync(row, 'items', c), 'C');
+test('Items mit eigenen, engeren Grenzen', () => {
+  const cases = [
+    [3.99, 'S+'], [4.0, 'S'], [4.1, 'S'], [4.11, 'A'], [4.24, 'A'], [4.25, 'B'],
+    [4.49, 'B'], [4.5, 'C'],
+  ];
+  for (const [avg, want] of cases) assert.equal(item(avg), want, `Ø ${avg}`);
 });
 
-test('Sample-Gate schlaegt jeden Cutoff-Block', () => {
-  const c = resolveCutoffs(BUNDLE, 18);
-  assert.equal(tierLetterOfSync({ avgPlacement: 1.0, pickRate: 0.005, games: 10 }, 'items', c), null);
+test('Tier folgt der angezeigten Zahl, nicht dem Rohwert', () => {
+  // toFixed(2) zeigt 4,255 als 4,25 und 4,795 als 4,79 (binaere Darstellung).
+  assert.equal((4.255).toFixed(2), '4.25');
+  assert.equal(comp(4.255), 'S');
+  assert.equal(comp(4.795), 'B');
+  assert.equal(comp(3.994), 'S+');
+  assert.equal(comp(3.996), 'S');
+  // Zufallszahlen: gleiches Tier wie der gerundet angezeigte Wert.
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < 20_000; i++) {
+    const avg = 3 + rnd() * 2.5;
+    const shown = Number(avg.toFixed(2));
+    for (const kind of ['comps', 'units', 'items']) {
+      assert.equal(
+        tierLetterOf({ avgPlacement: avg, games: 10_000 }, kind),
+        tierLetterOf({ avgPlacement: shown, games: 10_000 }, kind),
+        `${kind} Ø ${avg}`,
+      );
+    }
+  }
 });
 
-test('fehlt der Klassen-Block fuer eine Klasse, gilt fuer sie scoreCutoffs', () => {
-  const bundle = {
-    default: BUNDLE.default,
-    perSet: { 18: { scoreCutoffsByKind: { items: { S: 9, A: 8, B: 7, C: 6 } } } },
-  };
-  const c = resolveCutoffs(bundle, 18);
-  const row = { avgPlacement: 4.5 - 0.55, pickRate: 0.005, games: 100000 };
-  assert.equal(tierLetterOfSync(row, 'items', c), 'D');
-  assert.equal(tierLetterOfSync(row, 'comps', c), 'S');
+test('Unter der Mindest-Spielzahl und ohne Ø kein Buchstabe', () => {
+  assert.equal(tierLetterOf({ avgPlacement: 3.0, games: TIER_MIN_GAMES.comps - 1 }, 'comps'), null);
+  assert.equal(tierLetterOf({ avgPlacement: 3.0, games: TIER_MIN_GAMES.comps }, 'comps'), 'S+');
+  assert.equal(tierLetterOf({ avgPlacement: 3.0, games: 199 }, 'units'), null);
+  assert.equal(tierLetterOf({ avgPlacement: 3.0, games: 149 }, 'items'), null);
+  assert.equal(tierLetterOf({ avgPlacement: null, games: 10_000 }, 'comps'), null);
+  assert.equal(tierLetterOf({ avgPlacement: undefined, games: 10_000 }, 'comps'), null);
+  assert.equal(tierLetterOf({ avgPlacement: Number.NaN, games: 10_000 }, 'comps'), null);
+  assert.equal(tierLetterOf({ avgPlacement: 3.0, games: null }, 'comps'), null);
+});
+
+test('kein D mehr, Reihenfolge beste zuerst', () => {
+  assert.deepEqual([...TIER_LETTERS], ['S+', 'S', 'A', 'B', 'C']);
+  assert.equal(comp(7.9), 'C');
+});
+
+test('Familie: Tier aus den gezeigten Familienwerten', () => {
+  assert.equal(familyTierLetter({ weightedAvgPlacement: 3.85, totalGames: 653 }), 'S+');
+  assert.equal(familyTierLetter({ weightedAvgPlacement: 4.04, totalGames: 1020 }), 'S');
+  assert.equal(familyTierLetter({ weightedAvgPlacement: 4.04, totalGames: 49 }), null);
+});
+
+test('Komponenten und Traenke bekommen keinen Buchstaben', () => {
+  assert.equal(itemTakesTier('DA_Component_BFSword', ['component']), false);
+  assert.equal(itemTakesTier('DA_Component_Spatula', undefined), false);
+  assert.equal(itemTakesTier('TFT_Item_BFSword', ['component']), false);
+  assert.equal(itemTakesTier('DA_HealthPotion18', []), false);
+  assert.equal(itemTakesTier('DA_BlastPotion18_Radiant', []), false);
+  assert.equal(itemTakesTier('DA_Item_InfinityEdge', []), true);
+  assert.equal(itemTakesTier('DA_Artifact_WitsEnd', null), true);
 });

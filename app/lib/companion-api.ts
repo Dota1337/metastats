@@ -15,7 +15,7 @@ import {
   componentCheckFromItems, namedCarries, shownItems, sortUnitsByImportance,
   type CompRoles, type IsComponent, type RoleUnit,
 } from './tft-comp-roles';
-import { tierLetterOfSync, type TierCutoffs } from './tft-tier-letter';
+import { familyTierLetter } from './tft-tier-letter';
 import { BAG_SIZE, SHOP_ODDS } from './tft-roll-odds';
 import { plantIds, plantNames, plantRules } from './tft-elderwood-plants';
 import { matchupVerdict, type MatchupRow } from './tft-comp-matchups';
@@ -228,7 +228,6 @@ export function rerollPlan(
 export function toCompanionComp(
   family: CompFamily,
   assets: TftAssetsBundle | null,
-  cutoffs: TierCutoffs | null,
 ): CompanionComp {
   const main = family.mainComp;
   const parts = parseClusterKey(main.slug || main.clusterKey);
@@ -244,9 +243,8 @@ export function toCompanionComp(
     if (isThreeStarUnit(u as { gamesWithUnit?: unknown; star3Games?: unknown })) out.star3 = true;
     return out;
   });
-  const tier = cutoffs
-    ? tierLetterOfSync({ avgPlacement: main.avgPlacement, pickRate: main.pickRate, games: main.games }, 'comps', cutoffs)
-    : null;
+  // Aus denselben Familienwerten wie `avg` und `games` unten.
+  const tier = familyTierLetter(family);
   const reroll = rerollPlan(
     [...new Set([...named, ...(family.itemCarriers ?? [])])],
     (family.variants?.length ? family.variants : [main]) as Parameters<typeof rerollPlan>[1],

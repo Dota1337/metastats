@@ -115,6 +115,7 @@ input, select { font: inherit; color: var(--text); }
   display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 4px;
   border-radius: 6px; font-weight: 700; font-size: 13px; background: var(--line); color: var(--muted);
 }
+.tier-splus { background: #f472b6; color: #1f0a16; }
 .tier-s { background: #ff5d5d; color: #1a0b0b; }
 .tier-a { background: #ff9f43; color: #1f1206; }
 .tier-b { background: #f7d154; color: #1f1a06; }

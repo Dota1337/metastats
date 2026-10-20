@@ -15,7 +15,8 @@ import { deltaHeader, deltaTooltip } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
 import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
-import { tierLetterOfSync, TIER_COLORS, type TierLetter } from '../../lib/tft-tier-letter';
+import { itemTakesTier, tierLetterOf, TIER_COLORS, TIER_MIN_GAMES, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
+import type { TranslationKey } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
 
 export interface ItemRow {
@@ -36,7 +37,7 @@ export default function ItemsClient({ initialFilters, initial }: {
   const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
-  const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets, tierCutoffs } =
+  const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets } =
     useTftStatsList<ItemRow>({ endpoint: '/api/tft/items', field: 'items', initialFilters, initial });
   // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
   // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
@@ -63,20 +64,19 @@ export default function ItemsClient({ initialFilters, initial }: {
     // Sub-150-game items lose their tier-badge (Items min-games gate) — sorting
     // them to the bottom keeps the noisy 1.4-avg-with-56-games entries from
     // dominating the top of the list. Within each segment, existing avg-place
-    // sort stays. tierCutoffs is loaded async, so during the brief window
-    // before it lands we keep the original order.
-    if (!tierCutoffs) return inBucket;
+    // sort stays. Getrennt wird nach der Mindest-Spielzahl, nicht nach dem
+    // Buchstaben: Komponenten und Traenke haben keinen, aber genug Spiele.
     const tiered: ItemRow[] = [];
     const untiered: ItemRow[] = [];
     for (const it of inBucket) {
-      if (tierLetterOfSync({ avgPlacement: it.avgPlacement, pickRate: it.pickRate, games: it.games }, 'items', tierCutoffs)) {
+      if (it.games >= TIER_MIN_GAMES.items) {
         tiered.push(it);
       } else {
         untiered.push(it);
       }
     }
     return [...tiered, ...untiered];
-  }, [items, bucket, search, assets, tierCutoffs]);
+  }, [items, bucket, search, assets]);
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -145,7 +145,8 @@ export default function ItemsClient({ initialFilters, initial }: {
             {filtered.map(it => {
               const meta = assets?.items[it.apiName];
               const url = tftIconUrl(assets, meta?.icon);
-              const letter = tierCutoffs ? tierLetterOfSync({ avgPlacement: it.avgPlacement, pickRate: it.pickRate, games: it.games }, 'items', tierCutoffs) : null;
+              const takesTier = itemTakesTier(it.apiName, meta?.tags);
+              const letter = takesTier ? tierLetterOf({ avgPlacement: it.avgPlacement, games: it.games }, 'items') : null;
               // Zeile = div, nicht <a>: sie enthaelt die Champion-Links, und ein
               // Link im Link wird im Server-HTML vom Parser zerlegt (zwei
               // Item-Links je Zeile, React verwirft das HTML). Der Item-Name ist
@@ -157,11 +158,11 @@ export default function ItemsClient({ initialFilters, initial }: {
                   className={`relative block md:grid ${deltaOn ? 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[2rem_3rem_12rem_1fr_5rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm hover:bg-white/5 border-t border-border-subtle`}
                 >
                   <div className="hidden md:flex justify-center">
-                    <TierBadge letter={letter} t={t} />
+                    <TierBadge letter={letter} t={t} noData={takesTier} />
                   </div>
                   <div className="flex items-center gap-3 md:contents">
                     <div className="md:hidden">
-                      <TierBadge letter={letter} t={t} />
+                      <TierBadge letter={letter} t={t} noData={takesTier} />
                     </div>
                     {url ? (
                       <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
@@ -238,12 +239,14 @@ export default function ItemsClient({ initialFilters, initial }: {
 
 function prettyApi(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '').slice(0, 10); }
 
-function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => string }) {
+// noData=false: Item ohne Buchstaben (Komponente/Trank) — „Zu wenig Daten"
+// stimmt dort nicht, also kein Hinweis.
+function TierBadge({ letter, t, noData }: { letter: TierLetter | null; t: (k: TranslationKey) => string; noData: boolean }) {
   if (!letter) {
     return (
       <span
         className="inline-flex items-center justify-center w-7 h-6 rounded text-[10px] font-medium text-fg-faint bg-surface-raised border border-border-subtle"
-        title={t('tft.tier.tooltip.empty')}
+        title={noData ? t('tft.tier.tooltip.empty') : undefined}
       >—</span>
     );
   }
@@ -252,7 +255,7 @@ function TierBadge({ letter, t }: { letter: TierLetter | null; t: (k: any) => st
     <span
       className="inline-flex items-center justify-center w-7 h-6 rounded text-[11px] font-bold tabular-nums"
       style={{ color, backgroundColor: `${withAlpha(color, 0x1f)}`, border: `1px solid ${withAlpha(color, 0x50)}` }}
-      title={t(`tft.tier.tooltip.${letter}` as any)}
+      title={t(TIER_TOOLTIP_KEY[letter])}
     >{letter}</span>
   );
 }

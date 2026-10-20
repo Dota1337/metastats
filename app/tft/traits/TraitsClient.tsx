@@ -59,7 +59,7 @@ export default function TraitsClient({ initialFilters, initial }: {
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Items. Die
   // Liste zeigt keine Tier-Buchstaben → keine Grenzen laden.
   const { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets } =
-    useTftStatsList<TraitRow>({ endpoint: '/api/tft/traits', field: 'traits', initialFilters, initial, withTierCutoffs: false });
+    useTftStatsList<TraitRow>({ endpoint: '/api/tft/traits', field: 'traits', initialFilters, initial });
   // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
   // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
   const delta = usePatchDelta({ entity: 'trait', filters, patches, enabled: filters.velocity > 0 });

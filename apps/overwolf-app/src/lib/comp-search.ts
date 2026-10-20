@@ -5,11 +5,14 @@
 // Kennungen. Augmente werden nie durchsucht (Riot-Regeln, keine Augment-Daten).
 // Reihenfolge: Comps mit mindestens 2 Treffern auf dem eigenen Brett zuerst
 // (2-Sterne-Units zaehlen doppelt), danach nach Tier.
-import type { CompanionComp, CompanionLookups } from '../../../../app/lib/companion-types.ts';
+import { COMPANION_TIER_ORDER, type CompanionComp, type CompanionLookups } from '../../../../app/lib/companion-types.ts';
 
 export const BOARD_MIN_SCORE = 2;
-const TIER_ORDER: Record<string, number> = { S: 0, A: 1, B: 2, C: 3, D: 4 };
-const tierRank = (t: string | null) => (t != null && t in TIER_ORDER ? TIER_ORDER[t] : 9);
+// Reihenfolge aus companion-types (S+ zuerst, seit 0.8.5); unbekannt = hinten.
+const tierRank = (t: string | null) => {
+  const i = t != null ? COMPANION_TIER_ORDER.indexOf(t) : -1;
+  return i >= 0 ? i : 9;
+};
 
 export function searchText(c: CompanionComp, lk: CompanionLookups | null): string {
   const ids = [...new Set([...c.units.map(u => u.id), ...c.carries])];

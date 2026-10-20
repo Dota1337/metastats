@@ -21,7 +21,6 @@ import 'server-only';
 //     nur die Zeilen der gezeigten Familien, ohne Mitspiel-Anteil (`partial`,
 //     compsStart unten). Die Uebersicht bekommt dazu den Vorpatch-Vergleich
 //     ihrer Familien (compDeltaStart).
-import tierCutoffsFile from '../../../public/tft-tier-cutoffs.json' with { type: 'json' };
 import { lookupSnapshot } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
 import { resolveFilters, getAvailablePatches, ALL_REGIONS } from '../tft-supabase-reader';
@@ -29,7 +28,6 @@ import { compTraitFamilyKey } from '../tft-cluster';
 import { patchDeltaPair, patchDeltaQuery, type PatchDeltaRow, type PatchDeltaStart } from '../tft-patch-delta';
 import { compactDeltaRows, loadPatchDeltaBlobs } from '../patch-delta-server';
 import { filtersFromSearchParams, filtersDataKey, type Filters, type PatchInfo } from '../tft-filters';
-import { resolveCutoffs, type TierCutoffs, type TierCutoffsBundle } from '../tft-tier-letter';
 import { sortUnitsRareLast } from '../tft-list-sort';
 import { parseClusterKey } from '../tft-cluster';
 import { leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
@@ -56,7 +54,6 @@ export interface StatsInitial<Row> {
   // Nur die Eintraege, die die gezeigten Zeilen brauchen, jeweils vollstaendig —
   // das volle Bundle (2,1 MB) laedt der Browser danach wie bisher.
   assets: TftAssetsBundle;
-  tierCutoffs: TierCutoffs;
   /** Nur ein Teil der API-Zeilen (Comps: die der gezeigten Familien). Wer mehr
    *  braucht (Suche, Erweitert), laedt die volle Liste nach — nur
    *  useTftCompsData kennt das. */
@@ -211,7 +208,6 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
       rows,
     },
     assets: spec.assets(bundle, rows),
-    tierCutoffs: resolveCutoffs(tierCutoffsFile as TierCutoffsBundle, bundle.set),
     ...(spec.partial ? { partial: true } : {}),
     ...(hit?.builtAt ? { version: hit.builtAt } : {}),
   };

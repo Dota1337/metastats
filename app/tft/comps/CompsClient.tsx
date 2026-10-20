@@ -44,7 +44,7 @@ export default function CompsClient({ initialFilters, initial }: {
   const [wantFull, setWantFull] = useState(() => !!initialCompareA);
   const {
     filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, assets, loading, tierCutoffs, error, retry,
+    comps, filteredComps, hasData, patches, assets, loading, error, retry,
     currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
     partial, awaitingStored, awaitingFull, dataEnd, deltaView,
   } = useTftCompsData({ initialFilters, initial, wantFull });
@@ -153,7 +153,6 @@ export default function CompsClient({ initialFilters, initial }: {
                   days={filters.days}
                   patch={filters.patch}
                   deltaView={deltaView}
-                  tierCutoffs={tierCutoffs}
                   compareSelected={compareSelection.includes(f.mainComp.slug)}
                   onCompareToggle={() => toggleCompare(f.mainComp.slug)}
                   end={dataEnd}

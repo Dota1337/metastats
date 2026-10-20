@@ -14,7 +14,7 @@ import PlanAheadButton from './PlanAheadButton';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
-import { tierLetterOfSync, TIER_COLORS, type TierLetter, type TierCutoffs } from '../../lib/tft-tier-letter';
+import { tierLetterOf, TIER_COLORS, TIER_NONE_COLOR, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { descriptorTag } from '../../lib/tft-comp-descriptor';
 import { computeRoles, namedCarries, shownItems, componentCheckFromItems, forcedCoreIds, sortUnitsByImportance, type CompRoles } from '../../lib/tft-comp-roles';
 import type { PatchDelta, PatchDeltaPair } from '../../lib/tft-patch-delta';
@@ -87,18 +87,6 @@ interface Comp {
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 
-// Legacy avg-only badge kept ONLY as a tier-color fallback for the placement
-// cell rendering (the cell color tracks the tier). The actual letter+gating
-// now comes from the central tierLetterOfSync helper with sample-gate +
-// pickrate-penalty. See app/lib/tft-tier-letter.ts.
-function tierColorByAvg(avg: number | null) {
-  if (avg == null) return 'var(--fg-faint)';
-  if (avg < 3.8) return TIER_COLORS.S;
-  if (avg < 4.2) return TIER_COLORS.A;
-  if (avg < 4.5) return TIER_COLORS.B;
-  return TIER_COLORS.C;
-}
-
 
 function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
 function prettyChar(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
@@ -115,7 +103,7 @@ function extractTraitVariant(traitApiName: string, traitDisplayName: string): st
 // descriptorTag + rerollLevelForCost ausgelagert nach app/lib/tft-comp-descriptor.ts
 
 export default function CompRow({
-  comp, rank, assets, href, deltaView = null, tierCutoffs = null,
+  comp, rank, assets, href, deltaView = null,
   expandToggle = null,
   compareSelected = false,
   onCompareToggle = null,
@@ -129,11 +117,6 @@ export default function CompRow({
   assets: TftAssetsBundle | null;
   href: string;
   deltaView?: DeltaView | null;
-  // Loaded once in the parent page (CompsPage / CompList) and passed down
-  // to all rows. Earlier this hooked a useEffect per row which fired one
-  // fetch + setState per CompRow on mount — 100 rows = 100 effects. The
-  // parent-load pattern keeps it O(1) regardless of row count.
-  tierCutoffs?: TierCutoffs | null;
   // Optional Drop-Down-Toggle (für CompFamilyRow). Wenn gesetzt, rendert
   // CompRow einen Pfeil-Button rechts. Click auf den Pfeil triggert onToggle
   // (mit stopPropagation), Click auf den Rest der Card navigiert weiterhin
@@ -229,12 +212,11 @@ export default function CompRow({
   const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);
   const carryUrl = tftChampionTileUrl(assets, carry);
 
-  // Tier-letter from central helper with sample-gate + pickrate-penalty.
-  // tierCutoffs comes from the parent page (single load for the whole list).
-  const tierLetter: TierLetter | null = tierCutoffs
-    ? tierLetterOfSync({ avgPlacement: comp.avgPlacement, pickRate: comp.pickRate, games: comp.games }, 'comps', tierCutoffs)
-    : null;
-  const tierColor = tierLetter ? TIER_COLORS[tierLetter] : tierColorByAvg(comp.avgPlacement);
+  // Tier nach Ø (tft-tier-letter.ts). Hauptzeile: comp traegt die Familienwerte
+  // (tft-comp-families), Unterzeilen ihre eigenen. Ohne Buchstaben (unter der
+  // Mindest-Spielzahl) neutral, damit die Ø-Zahl kein Tier vortaeuscht.
+  const tierLetter: TierLetter | null = tierLetterOf({ avgPlacement: comp.avgPlacement, games: comp.games }, 'comps');
+  const tierColor = tierLetter ? TIER_COLORS[tierLetter] : TIER_NONE_COLOR;
   const tier = { label: tierLetter ?? '—', color: tierColor };
   const winShareTip = comp.winShare != null
     ? t('tft.shares.winShareTooltip.comp').replace('{share}', (comp.winShare * 100).toFixed(1))
@@ -406,7 +388,7 @@ export default function CompRow({
         <div
           className="w-[30px] h-[30px] rounded-md flex items-center justify-center font-bold text-sm shadow-sm"
           style={{ color: tier.color, backgroundColor: `${withAlpha(tier.color, 0x28)}`, border: `1.5px solid ${withAlpha(tier.color, 0x55)}` }}
-          title={tierLetter ? t(`tft.tier.tooltip.${tierLetter}` as any) : t('tft.tier.tooltip.empty')}
+          title={tierLetter ? t(TIER_TOOLTIP_KEY[tierLetter]) : t('tft.tier.tooltip.empty')}
         >
           {tier.label}
         </div>

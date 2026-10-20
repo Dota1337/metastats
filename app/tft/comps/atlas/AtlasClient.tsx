@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import EmptyData from '../../../components/tft/EmptyData';
@@ -18,6 +18,7 @@ import type { PatchDeltaPair, PatchDeltaStart } from '../../../lib/tft-patch-del
 import { deltaTooltip } from '../../../components/tft/PatchDeltaCell';
 import { compPath } from '../../../lib/tft-comp-path';
 import { costColor, HEX_CLIP } from '../../../lib/tft-ui';
+import { familyTierLetter, TIER_COLORS, TIER_LETTERS, TIER_NONE_COLOR, TIER_TOOLTIP_KEY, type TierLetter } from '../../../lib/tft-tier-letter';
 import type { StatsInitial } from '../../../lib/seo/initial-data';
 import type { Filters } from '../../../lib/tft-filters';
 import { useTftCompsData } from '../../../lib/useTftCompsData';
@@ -27,6 +28,14 @@ import { useTftCompsData } from '../../../lib/useTftCompsData';
 // (tft-comp-families), Zeile = Kosten des Haupt-Carrys laut Asset-Bundle
 // (User 2026-09-28: Spellweaver · Veigar & LeBlanc gehoert zu 1-Cost).
 // Startdaten kommen von der Server-Huelle (page.tsx), wie bei der Liste.
+// Schalter „Kosten | Tier" (User 20.10.2026): die Tier-Ansicht ordnet dieselben
+// Kacheln in Reihen S+ … C (tft-tier-letter.ts), Adresse ?group=tier.
+
+export type AtlasGroup = 'cost' | 'tier';
+
+type AtlasRow =
+  | { kind: 'cost'; cost: number; families: CompFamily[] }
+  | { kind: 'tier'; tier: TierLetter | null; families: CompFamily[] };
 
 const prettyId = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 
@@ -37,38 +46,54 @@ function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
   return costs[0] ?? null;
 }
 
-export default function AtlasClient({ initialFilters, initial, initialDelta = null }: {
+export default function AtlasClient({ initialFilters, initial, initialDelta = null, initialGroup = 'cost' }: {
   // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
   // Zeilen der 40 gezeigten Familien, falls der Zwischenstand sie hatte.
   initialFilters: Filters;
   initial: StatsInitial<CompApiRow> | null;
   // Vorpatch-Vergleich dieser Familien (Pfeile im ersten HTML).
   initialDelta?: PatchDeltaStart | null;
+  // Ansicht aus der Adresse (?group=tier), damit das erste HTML schon stimmt.
+  initialGroup?: AtlasGroup;
 }) {
   const { t, withLang } = useI18n();
+  const [group, setGroup] = useState<AtlasGroup>(initialGroup);
   // Pfeile immer gegen den Vorpatch (User 18.10.2026) — deshalb hier kein Δ-Feld.
   const {
     filters, handleFiltersChange, sortBy, chooseSort,
     hasData, patches, assets, loading, currentPatchLabel, error, retry,
     currentSetFamilies, topFamilyKeys, awaitingStored, awaitingFull, deltaView,
-  } = useTftCompsData({ initialFilters, initial, deltaAlways: true, initialDelta });
+  } = useTftCompsData({ initialFilters, initial, deltaAlways: true, initialDelta, extraQuery: group === 'tier' ? '&group=tier' : '' });
 
   // Dieselben 40 Familien wie die Liste, in der gewaehlten Sortierung —
   // ohne Doppelungen (gleicher Carry + gleiches Board, bestes Ø bleibt).
-  const rows = useMemo(() => {
+  // Beide Ansichten zeigen dieselbe Menge: ohne Kosten des Carrys keine Kachel.
+  const rows = useMemo((): AtlasRow[] => {
     if (!assets) return [];
-    const shown = dedupeByCarry(visibleFamilies(currentSetFamilies, topFamilyKeys, '', assets));
+    const shown = dedupeByCarry(visibleFamilies(currentSetFamilies, topFamilyKeys, '', assets))
+      .map(f => ({ f, cost: familyCost(f, assets) }))
+      .filter((x): x is { f: CompFamily; cost: number } => x.cost != null);
+    if (group === 'tier') {
+      const byTier = new Map<TierLetter | null, CompFamily[]>();
+      for (const { f } of shown) {
+        const tier = familyTierLetter(f);
+        if (!byTier.has(tier)) byTier.set(tier, []);
+        byTier.get(tier)!.push(f);
+      }
+      // Unter der Mindest-Spielzahl: eigene Reihe „—" ganz unten, nur wenn belegt.
+      return [...TIER_LETTERS, null]
+        .filter(tier => (byTier.get(tier)?.length ?? 0) > 0)
+        .map(tier => ({ kind: 'tier' as const, tier, families: byTier.get(tier)! }));
+    }
     const byCost = new Map<number, CompFamily[]>();
-    for (const f of shown) {
-      const c = familyCost(f, assets);
-      if (c == null) continue;
-      if (!byCost.has(c)) byCost.set(c, []);
-      byCost.get(c)!.push(f);
+    for (const { f, cost } of shown) {
+      if (!byCost.has(cost)) byCost.set(cost, []);
+      byCost.get(cost)!.push(f);
     }
     return [5, 4, 3, 2, 1]
       .filter(c => (byCost.get(c)?.length ?? 0) > 0)
-      .map(c => ({ cost: c, families: byCost.get(c)! }));
-  }, [currentSetFamilies, topFamilyKeys, assets]);
+      .map(c => ({ kind: 'cost' as const, cost: c, families: byCost.get(c)! }));
+  }, [currentSetFamilies, topFamilyKeys, assets, group]);
 
   const rowLabel = (cost: number) => {
     const plan = cost === 5 ? t('tft.comps.atlas.fast9')
@@ -93,7 +118,24 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
           showDelta={false}
         />
 
-        <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs">
+        <div className="flex items-center justify-end gap-2 mb-3 -mt-1 text-xs flex-wrap">
+          <div className="flex gap-1 bg-surface-raised border border-border-subtle rounded p-0.5 mr-1" role="group" aria-label={t('tft.comps.atlas.groupAria')}>
+            {(['cost', 'tier'] as const).map(g => (
+              <button
+                key={g}
+                type="button"
+                aria-pressed={group === g}
+                onClick={() => setGroup(g)}
+                className={`px-2.5 py-0.5 text-xs rounded ${
+                  group === g
+                    ? 'bg-accent text-white'
+                    : 'text-fg-secondary hover:text-white'
+                }`}
+              >
+                {t(g === 'cost' ? 'tft.comps.atlas.groupCost' : 'tft.comps.atlas.groupTier')}
+              </button>
+            ))}
+          </div>
           <span className="text-fg-muted">{t('tft.sortBy')}:</span>
           <select
             value={sortBy}
@@ -123,14 +165,26 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
           <div className="space-y-2" data-e3-rows>
             {rows.map(row => (
               <section
-                key={row.cost}
+                key={row.kind === 'cost' ? `cost-${row.cost}` : `tier-${row.tier ?? 'none'}`}
                 className="flex flex-col sm:flex-row gap-3 sm:gap-4 rounded-md border border-border-subtle bg-surface-comp-row px-3 py-3"
               >
                 <div className="flex sm:flex-col items-center sm:items-start gap-2 sm:gap-0.5 sm:w-28 flex-shrink-0">
-                  <span className="text-3xl sm:text-4xl font-bold leading-none tabular-nums" style={{ color: costColor(row.cost) }}>
-                    {row.cost}
-                  </span>
-                  <span className="text-[11px] text-fg-secondary font-medium">{rowLabel(row.cost)}</span>
+                  {row.kind === 'cost' ? (
+                    <>
+                      <span className="text-3xl sm:text-4xl font-bold leading-none tabular-nums" style={{ color: costColor(row.cost) }}>
+                        {row.cost}
+                      </span>
+                      <span className="text-[11px] text-fg-secondary font-medium">{rowLabel(row.cost)}</span>
+                    </>
+                  ) : (
+                    <span
+                      className="text-3xl sm:text-4xl font-bold leading-none"
+                      style={{ color: row.tier ? TIER_COLORS[row.tier] : TIER_NONE_COLOR }}
+                      title={t(row.tier ? TIER_TOOLTIP_KEY[row.tier] : 'tft.tier.tooltip.empty')}
+                    >
+                      {row.tier ?? '—'}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-x-2 gap-y-3 min-w-0">
                   {row.families.map(f => (

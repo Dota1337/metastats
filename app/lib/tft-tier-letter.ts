@@ -1,167 +1,87 @@
-// Tier-Letter (S/A/B/C/D) badge for Units/Items/Comps lists. Market standard
-// across MetaTFT / MetaBot / op.gg / u.gg / tactics.tools — metastats was the
-// only major TFT stats site without one. Score-formula calibrated against the
-// snapshot live data so the distribution lands ~10/15/25/30/20%.
+// Tier-Buchstabe (S+/S/A/B/C) fuer Comps-, Units- und Items-Listen, den
+// Comps-Atlas, den Detailkopf und die Companion-App.
 //
-// score = (4.5 − avgPlacement) − max(0, log(pickRate / anchor)) × penalty
+// Seit 20.10.2026 nur noch nach Ø-Platz, mit festen Grenzen vom User:
+//   Comps + Units  S+ ≤ 3,99 · S ≤ 4,25 · A ≤ 4,39 · B ≤ 4,79 · C darueber
+//   Items          S+ ≤ 3,99 · S ≤ 4,10 · A ≤ 4,24 · B ≤ 4,49 · C darueber
+// Items liegen enger beisammen und besser (ein Item-Ø zaehlt je getragenem
+// Item, Items stecken meist auf Carries starker Bretter): mit der Comp-Skala
+// waeren 54 % S+/S (gemessen 20.10.2026, alle Regionen, Diamond+, 3 Tage).
+// Grenzen nie ohne Freigabe des Users aendern.
 //
-// The pickrate term dampens popular-but-mediocre entities. Items+Comps that
-// players reach for first get a slight haircut so „Meta-Defining" stays
-// reserved for actually strong entities. Sample-Gate (minGames) blocks
-// 5-game-curiosities from landing in S.
+// Vorher: Score aus Ø minus Pickrate-Abschlag mit Grenzen aus
+// public/tft-tier-cutoffs.json — 35 von 40 Comps landeten in C/D.
 //
-// Cutoffs live in public/tft-tier-cutoffs.json so re-calibration after a set
-// drop or major patch doesn't need a code redeploy. Set-specific overrides
-// in perSet[<setNumber>] take precedence over the default block, und darin
-// schlaegt scoreCutoffsByKind[<kind>] das globale scoreCutoffs.
-//
-// 5 tiers, not 6 — F was deliberately dropped after the classification-
-// reviewer flagged a Community-Backlash risk; tactics.tools also runs
-// S/A/B/C with red-coded last tier as "avoid".
+// Gerechnet wird mit dem ANGEZEIGTEN Wert (toFixed(2), wie jede Anzeige): ein
+// Ø von 4,255 steht als 4,25 da und ist deshalb S, nicht A.
 
-export type TierLetter = 'S' | 'A' | 'B' | 'C' | 'D';
+import type { TranslationKey } from './i18n';
+
+export type TierLetter = 'S+' | 'S' | 'A' | 'B' | 'C';
 export type EntityKind = 'units' | 'items' | 'comps';
 
-export interface TierCutoffsBundle {
-  default: TierCutoffs;
-  perSet?: Record<string, Partial<TierCutoffs>>;
-}
+/** Beste zuerst. */
+export const TIER_LETTERS: readonly TierLetter[] = ['S+', 'S', 'A', 'B', 'C'];
 
-export interface ScoreCutoffs { S: number; A: number; B: number; C: number }
-
-export interface TierCutoffs {
-  scoreCutoffs: ScoreCutoffs;
-  // Optionale Cutoffs je Entitaetsklasse. Gemessen am 27.08.2026 ueber
-  // euw1+na1+kr/7d: die Score-Streuung ist je Klasse strukturell verschieden
-  // (Items liegen eng beisammen, Units breit), ein globales Set trifft die
-  // Zielverteilung deshalb hoechstens fuer eine Klasse. Fehlt der Block, gilt
-  // scoreCutoffs wie bisher.
-  scoreCutoffsByKind?: Partial<Record<EntityKind, ScoreCutoffs>>;
-  pickratePenalty: number;
-  pickrateAnchor: number;
-  minGames: { units: number; items: number; comps: number };
-}
-
-// Fallback identical to the JSON's `default` block — keeps the helper usable
-// when the JSON is missing or fetch fails mid-render. Calibrated 2026-06-19.
-const FALLBACK: TierCutoffs = {
-  scoreCutoffs: { S: 0.40, A: 0.20, B: 0.00, C: -0.25 },
-  pickratePenalty: 0.10,
-  pickrateAnchor: 0.005,
-  minGames: { units: 200, items: 150, comps: 50 },
+// Obergrenzen (einschliesslich) in Hundertsteln fuer S+, S, A, B — darueber C.
+const UPPER: Record<EntityKind, readonly [number, number, number, number]> = {
+  comps: [399, 425, 439, 479],
+  units: [399, 425, 439, 479],
+  items: [399, 410, 424, 449],
 };
 
-let cached: TierCutoffsBundle | null = null;
-let cacheLoaded = false;
-
-async function loadCutoffs(): Promise<TierCutoffsBundle> {
-  if (cacheLoaded) return cached ?? { default: FALLBACK };
-  cacheLoaded = true;
-  try {
-    const res = await fetch('/tft-tier-cutoffs.json', { cache: 'force-cache' });
-    if (res.ok) cached = await res.json();
-  } catch {
-    // Silent — fallback covers it.
-  }
-  return cached ?? { default: FALLBACK };
-}
-
-export function resolveCutoffs(bundle: TierCutoffsBundle, setNumber?: number | null): TierCutoffs {
-  const base = bundle.default ?? FALLBACK;
-  if (setNumber != null) {
-    const override = bundle.perSet?.[String(setNumber)];
-    if (override) {
-      const byKind: Partial<Record<EntityKind, ScoreCutoffs>> = { ...(base.scoreCutoffsByKind || {}) };
-      for (const [kind, block] of Object.entries(override.scoreCutoffsByKind || {})) {
-        const k = kind as EntityKind;
-        byKind[k] = { ...(byKind[k] || base.scoreCutoffs), ...(block || {}) };
-      }
-      return {
-        scoreCutoffs: { ...base.scoreCutoffs, ...(override.scoreCutoffs || {}) },
-        scoreCutoffsByKind: Object.keys(byKind).length ? byKind : undefined,
-        pickratePenalty: override.pickratePenalty ?? base.pickratePenalty,
-        pickrateAnchor: override.pickrateAnchor ?? base.pickrateAnchor,
-        minGames: { ...base.minGames, ...(override.minGames || {}) },
-      };
-    }
-  }
-  return base;
-}
-
-export function tierScore(
-  avgPlacement: number | null | undefined,
-  pickRate: number | null | undefined,
-  cutoffs: TierCutoffs,
-): number | null {
-  if (avgPlacement == null || pickRate == null) return null;
-  const placeTerm = 4.5 - avgPlacement;
-  // log(0) is -Infinity → max(0, …) neutralises, so 0-pickrate entities get
-  // no penalty (their sample size is already handled by the minGames gate).
-  const penalty =
-    pickRate > 0
-      ? Math.max(0, Math.log(pickRate / cutoffs.pickrateAnchor)) * cutoffs.pickratePenalty
-      : 0;
-  return placeTerm - penalty;
-}
-
-export function scoreToLetter(score: number | null, cutoffs: TierCutoffs): TierLetter | null {
-  if (score == null) return null;
-  if (score >= cutoffs.scoreCutoffs.S) return 'S';
-  if (score >= cutoffs.scoreCutoffs.A) return 'A';
-  if (score >= cutoffs.scoreCutoffs.B) return 'B';
-  if (score >= cutoffs.scoreCutoffs.C) return 'C';
-  return 'D';
-}
+/** Darunter kein Buchstabe („—"), Zufallswerte sollen nicht in S+ landen. */
+export const TIER_MIN_GAMES: Record<EntityKind, number> = { units: 200, items: 150, comps: 50 };
 
 interface TierInput {
   avgPlacement: number | null | undefined;
-  pickRate: number | null | undefined;
-  games: number;
+  games: number | null | undefined;
 }
 
-/**
- * Async tier-letter resolver. Loads cutoffs on first call, then memoises.
- * Returns null when the entity is below the sample gate for its kind — UI
- * renders "—" instead of a misleading badge.
- */
-export async function tierLetterOf(
-  input: TierInput,
-  kind: EntityKind,
-  setNumber?: number | null,
-): Promise<TierLetter | null> {
-  const bundle = await loadCutoffs();
-  const cutoffs = resolveCutoffs(bundle, setNumber);
-  return tierLetterOfSync(input, kind, cutoffs);
+export function tierLetterOf(input: TierInput, kind: EntityKind): TierLetter | null {
+  const avg = input.avgPlacement;
+  if (avg == null || !Number.isFinite(avg)) return null;
+  if (!((input.games ?? 0) >= TIER_MIN_GAMES[kind])) return null;
+  const hundredths = Math.round(Number(avg.toFixed(2)) * 100);
+  const [sPlus, s, a, b] = UPPER[kind];
+  if (hundredths <= sPlus) return 'S+';
+  if (hundredths <= s) return 'S';
+  if (hundredths <= a) return 'A';
+  if (hundredths <= b) return 'B';
+  return 'C';
 }
 
-/**
- * Synchronous variant for cases where the cutoffs bundle is already loaded
- * (loadTierCutoffs called upstream). Used by list pages that compute the
- * badge for many rows at once — avoids per-row async.
- */
-export function tierLetterOfSync(
-  input: TierInput,
-  kind: EntityKind,
-  cutoffs: TierCutoffs,
-): TierLetter | null {
-  if (input.games < cutoffs.minGames[kind]) return null;
-  const perKind = cutoffs.scoreCutoffsByKind?.[kind];
-  const effective = perKind ? { ...cutoffs, scoreCutoffs: perKind } : cutoffs;
-  return scoreToLetter(tierScore(input.avgPlacement, input.pickRate, effective), effective);
+/** Items ohne Buchstaben (User 20.10.2026): Komponenten sind unfertige Items
+ *  auf dem Endbrett, Traenke keine echte Item-Wahl — beide alle C bzw. Health
+ *  Potion S+ (Ø 2,64), das fuehrte in die Irre. Ø und Spiele bleiben sichtbar. */
+export function itemTakesTier(apiName: string, tags?: readonly string[] | null): boolean {
+  return !tags?.includes('component') && !/_Component_|Potion/i.test(apiName);
 }
 
-export async function loadTierCutoffs(setNumber?: number | null): Promise<TierCutoffs> {
-  const bundle = await loadCutoffs();
-  return resolveCutoffs(bundle, setNumber);
+/** Tier einer Comp-Familie: dieselben Werte wie die gezeigte Ø-Zahl und Spiele. */
+export function familyTierLetter(f: { weightedAvgPlacement: number | null; totalGames: number }): TierLetter | null {
+  return tierLetterOf({ avgPlacement: f.weightedAvgPlacement, games: f.totalGames }, 'comps');
 }
 
 // Roh-Hexe, bewusst: eine Rang-Leiter. Die Stufen muessen untereinander
 // unterscheidbar bleiben und duerfen sich nicht mitbewegen, wenn die
-// Text-Token fuer Lesbarkeit nachgezogen werden.
+// Text-Token fuer Lesbarkeit nachgezogen werden. S+ Pink (User 20.10.2026):
+// weder mit dem Gold von S noch mit dem roten ▼ im Atlas zu verwechseln.
 export const TIER_COLORS: Record<TierLetter, string> = {
+  'S+': '#f472b6',
   S: '#e0c75a',
   A: '#8a73ff',
   B: '#4a9be6',
   C: '#9aa6b2',
-  D: '#6e7e94',
+};
+
+/** Farbe ohne Buchstaben (unter der Mindest-Spielzahl). */
+export const TIER_NONE_COLOR = '#6e7e94';
+
+export const TIER_TOOLTIP_KEY: Record<TierLetter, TranslationKey> = {
+  'S+': 'tft.tier.tooltip.Splus',
+  S: 'tft.tier.tooltip.S',
+  A: 'tft.tier.tooltip.A',
+  B: 'tft.tier.tooltip.B',
+  C: 'tft.tier.tooltip.C',
 };

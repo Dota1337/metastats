@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
+import { tierLetterOf, TIER_COLORS } from '../../lib/tft-tier-letter';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
@@ -46,12 +47,14 @@ interface Comp {
 
 const safeCount = (v: unknown): number => (typeof v === 'number' ? v : 1);
 
-function tierBadge(avgPlacement: number | null): { label: string; color: string; bg: string } {
-  if (avgPlacement == null) return { label: '?', color: 'var(--fg-faint)', bg: 'var(--surface-overlay)' };
-  if (avgPlacement < 3.8) return { label: 'S',  color: '#e0c75a', bg: 'rgba(224,199,90,0.15)' };
-  if (avgPlacement < 4.2) return { label: 'A',  color: '#8a73ff', bg: 'rgba(138,115,255,0.15)' };
-  if (avgPlacement < 4.5) return { label: 'B',  color: '#4a9be6', bg: 'rgba(58,141,220,0.15)' };
-  return                         { label: 'C',  color: 'var(--fg-faint)', bg: 'rgba(90,106,128,0.15)' };
+// Dieselbe Regel wie Liste, Uebersicht und Companion (tft-tier-letter.ts) —
+// bis 20.10.2026 rechnete der Kopf eigene Grenzen (Elder Dragon: Liste B,
+// Kopf A). Ohne Buchstaben (Ø fehlt oder unter der Mindest-Spielzahl) „?".
+function tierBadge(avgPlacement: number | null, games: number): { label: string; color: string; bg: string } {
+  const letter = tierLetterOf({ avgPlacement, games }, 'comps');
+  if (!letter) return { label: '?', color: 'var(--fg-faint)', bg: 'var(--surface-overlay)' };
+  const color = TIER_COLORS[letter];
+  return { label: letter, color, bg: withAlpha(color, 0x26) };
 }
 
 export default function CompCard({
@@ -105,7 +108,7 @@ export default function CompCard({
   // Display für Stargazer-Constellations: Wolf→Boar, Shield→Altar).
   const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
   const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
-  const tier = tierBadge(comp.avgPlacement);
+  const tier = tierBadge(comp.avgPlacement, comp.games);
   const shown = stats ?? comp;
 
   const typicalUnits = (() => {

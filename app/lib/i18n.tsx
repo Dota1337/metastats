@@ -2861,6 +2861,9 @@ const translations = {
   'tft.comps.atlas.fast9': t6('Fast 9', 'Fast 9', '\uBE60\uB978 9\uB808\uBCA8', '\u901F9', 'Nivel 9 r\u00E1pido', 'Niveau 9 rapide'),
   'tft.comps.atlas.fast8': t6('Fast 8', 'Fast 8', '\uBE60\uB978 8\uB808\uBCA8', '\u901F8', 'Nivel 8 r\u00E1pido', 'Niveau 8 rapide'),
   'tft.comps.atlas.reroll': t6('Reroll', 'Reroll', '\uB9AC\uB864', '\u8D4C\u72D7', 'Reroll', 'Reroll'),
+  'tft.comps.atlas.groupAria': t6('Ansicht', 'View', '\uBCF4\uAE30', '\u89C6\u56FE', 'Vista', 'Vue'),
+  'tft.comps.atlas.groupCost': t6('Kosten', 'Cost', '\uCF54\uC2A4\uD2B8', '\u8D39\u7528', 'Coste', 'Co\u00FBt'),
+  'tft.comps.atlas.groupTier': t6('Tier', 'Tier', '\uD2F0\uC5B4', '\u68AF\u961F', 'Tier', 'Tier'),
   'tft.compare.reset': t6(
     'Zur\u00FCcksetzen', 'Reset',
     '\uCD08\uAE30\uD654', '\u91CD\u7F6E',
@@ -3192,11 +3195,12 @@ const translations = {
   'tft.tier.B': t6('B', 'B', 'B', 'B', 'B', 'B'),
   'tft.tier.C': t6('C', 'C', 'C', 'C', 'C', 'C'),
   'tft.tier.D': t6('D', 'D', 'D', 'D', 'D', 'D'),
+  // Seit 20.10.2026 S+\u2013C nach \u00D8 (tft-tier-letter.ts); C uebernimmt den Text des alten D.
+  'tft.tier.tooltip.Splus': t6('\u00DCberragend', 'Outstanding', '\uC555\uB3C4\uC801', '\u8D85\u5F3A', 'Sobresaliente', 'Exceptionnel'),
   'tft.tier.tooltip.S': t6('Meta-pr\u00E4gend', 'Meta-defining', '\uBA54\uD0C0 \uC815\uC758', '\u7248\u672C\u4E3B\u5BFC', 'Define el meta', 'D\u00E9finit le m\u00E9ta'),
   'tft.tier.tooltip.A': t6('Stark', 'Strong', '\uAC15\uB825', '\u5F3A\u529B', 'Fuerte', 'Solide'),
   'tft.tier.tooltip.B': t6('Solide', 'Viable', '\uC4F8 \uB9CC\uD568', '\u53EF\u7528', 'Viable', 'Viable'),
-  'tft.tier.tooltip.C': t6('Situativ', 'Situational', '\uC0C1\uD669\uBCC4', '\u60C5\u5883', 'Situacional', 'Situationnel'),
-  'tft.tier.tooltip.D': t6('Schwach', 'Below average', '\uD3C9\uADE0 \uC774\uD558', '\u4F4E\u4E8E\u5E73\u5747', 'Bajo el promedio', 'En dessous de la moyenne'),
+  'tft.tier.tooltip.C': t6('Schwach', 'Below average', '\uD3C9\uADE0 \uC774\uD558', '\u4F4E\u4E8E\u5E73\u5747', 'Bajo el promedio', 'En dessous de la moyenne'),
   'tft.tier.tooltip.empty': t6('Zu wenig Daten', 'Not enough data', '\uB370\uC774\uD130 \uBD80\uC871', '\u6570\u636E\u4E0D\u8DB3', 'Datos insuficientes', 'Donn\u00E9es insuffisantes'),
 
   // Win Share / Top4 Share \u2014 MetaTFT-equivalent metrics, surfaced as tooltips.

@@ -11,7 +11,6 @@ import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { dataEndOf, unitListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
-import { loadTierCutoffs, type TierCutoffs } from '../../../lib/tft-tier-letter';
 import { loadUnitInfo, type UnitInfoFile } from '../../../lib/tft-unit-info';
 import { costColor } from '../../../lib/tft-ui';
 import CompFamilyRow from '../../../components/tft/CompFamilyRow';
@@ -61,7 +60,6 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
   const [comps, setComps] = useState<CompsState | null>(() => initial?.comps ?? null);
   const [info, setInfo] = useState<UnitInfoFile | null>(initialInfo);
-  const [tierCutoffs, setTierCutoffs] = useState<TierCutoffs | null>(null);
   const [timeline, setTimeline] = useState<TimelinePoint[]>([]);
   const [filters, setFilters] = useState<UnitExplorerFilters>(UNIT_DEFAULT_FILTERS);
   const explorer = useUnitExplorer(id, region, bucket, filters);
@@ -88,7 +86,6 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
   // Abruf, bleibt der Ausschnitt stehen.
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => { if (!initialInfo) loadUnitInfo().then(setInfo); }, [initialInfo]);
-  useEffect(() => { loadTierCutoffs(assets?.set ?? null).then(setTierCutoffs); }, [assets?.set]);
   useEffect(() => {
     fetch(`/api/tft/unit-history?characterId=${encodeURIComponent(id)}&bucket=${bucket}&patches=5`)
       .then(r => r.ok ? r.json() : { timeline: [] })
@@ -261,7 +258,6 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
                   bucket={bucket}
                   days={days}
                   patch="current"
-                  tierCutoffs={tierCutoffs}
                   end={comps?.dataEnd ?? null}
                 />
               ))}

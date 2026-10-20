@@ -12,6 +12,10 @@ export interface CompanionCompUnit {
   star3?: true;
 }
 
+/** Reihenfolge der Tier-Buchstaben in der App, beste zuerst. D bleibt fuer
+ *  einen Rueckweg der Seite auf die alte Skala. */
+export const COMPANION_TIER_ORDER: readonly string[] = ['S+', 'S', 'A', 'B', 'C', 'D'];
+
 export interface CompanionComp {
   key: string;         // Familien-Schluessel <trait>__<carry>
   slug: string;        // Detailseite auf metastats.gg
@@ -19,7 +23,7 @@ export interface CompanionComp {
   trait: string;
   carries: string[];
   itemCarriers: string[];
-  tier: string | null; // S/A/B/C/D, null unter der Mindest-Spielzahl
+  tier: string | null; // S+/S/A/B/C (mit ?tiers=2, sonst S+ als S), null unter der Mindest-Spielzahl
   avg: number | null;
   top4: number | null;
   win: number | null;
@@ -48,6 +52,8 @@ export interface CompanionCompsResponse {
   filters: { region: string; bucket: string; days: number };
   generatedAt: string;
   comps: CompanionComp[];
+  /** 2 = Tier-Skala S+–C nach Ø (Abruf mit ?tiers=2, seit 20.10.2026). */
+  tierScale?: 2;
   /** Geladene MetaTFT-Datei; null = keine fuer das laufende Set. */
   guides?: { set: number; clusterId: number | null; fetchedAt: string } | null;
 }

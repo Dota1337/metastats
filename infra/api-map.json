@@ -9,9 +9,9 @@
     "routes": 90,
     "groups": 30,
     "tables": 43,
-    "rpcs": 33,
+    "rpcs": 34,
     "files": 14,
-    "edges": 618,
+    "edges": 623,
     "unused": 7,
     "unresolved": 1
   },
@@ -1302,6 +1302,7 @@
       "file": "app/api/tft/meta-pulse/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/comp-assign-server.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
@@ -1342,6 +1343,7 @@
       "file": "app/api/tft/patch-diff/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/comp-assign-server.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
@@ -2241,6 +2243,12 @@
       "id": "fn:get_tft_comp_emblems",
       "kind": "rpc",
       "label": "get_tft_comp_emblems",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_marked_days",
+      "kind": "rpc",
+      "label": "get_tft_comp_marked_days",
       "declared": true
     },
     {
@@ -4341,6 +4349,11 @@
     },
     {
       "from": "api:/api/tft/meta-pulse",
+      "to": "fn:get_tft_comp_marked_days",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/meta-pulse",
       "to": "fn:get_tft_comp_stats_for_diff",
       "kind": "calls"
     },
@@ -4412,6 +4425,11 @@
     {
       "from": "api:/api/tft/patch-diff",
       "to": "fn:get_tft_available_patches",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/patch-diff",
+      "to": "fn:get_tft_comp_marked_days",
       "kind": "calls"
     },
     {
@@ -5310,6 +5328,11 @@
       "kind": "reads"
     },
     {
+      "from": "fn:get_tft_comp_marked_days",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_comp_matchups",
       "to": "db:tft_daily_comp_matchups",
       "kind": "reads"
@@ -5355,6 +5378,11 @@
       "kind": "reads"
     },
     {
+      "from": "fn:get_tft_comp_stats_for_diff",
+      "to": "db:tft_daily_crawl_meta",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_comp_stats_list_v2",
       "to": "db:tft_daily_comp_stats",
       "kind": "reads"
@@ -5362,6 +5390,11 @@
     {
       "from": "fn:get_tft_comp_velocity",
       "to": "db:tft_daily_comp_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_velocity",
+      "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
     },
     {

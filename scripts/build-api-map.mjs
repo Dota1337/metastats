@@ -253,7 +253,10 @@ function migrationFacts() {
     for (const m of sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?([a-z0-9_]+)/gi)) {
       declaredTables.add(m[1].toLowerCase());
     }
-    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?([a-z0-9_]+)([\s\S]*?)\$\$\s*;/gi)) {
+    // Koerper bis zum passenden Dollar-Ende ($$ oder $function$ …): mit nur
+    // $$ lief eine $function$-Funktion bis zum naechsten $$; der Datei und
+    // verschluckte die Funktionen dazwischen (0102: get_tft_comp_marked_days).
+    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?([a-z0-9_]+)([\s\S]*?\$([a-z_]*)\$[\s\S]*?\$\3\$)\s*;/gi)) {
       // Spaetere Migration gewinnt — sie ist die aktuelle Fassung.
       fnBodies.set(m[1].toLowerCase(), m[2]);
     }

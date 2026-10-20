@@ -1356,6 +1356,7 @@
     "metastats-daily-crawl.service": [
       "daily-crawl/comp-stats",
       "daily-crawl/comp-classic",
+      "daily-crawl/comp-catalog-days",
       "daily-crawl/comp-outcome",
       "daily-crawl/comp-matchups",
       "daily-crawl/comp-matchups-all",

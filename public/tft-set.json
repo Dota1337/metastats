@@ -4,10 +4,10 @@
   "mutator": "TFTSet18",
   "latestPatch": "18.4",
   "lolPatch": "16.20",
-  "ddragonVersion": "16.20.1",
+  "ddragonVersion": "16.21.1",
   "patchOverride": null,
   "detectedAt": "2026-08-26T14:08:32.809Z",
-  "lastCheckedAt": "2026-10-20T02:37:03.983Z",
+  "lastCheckedAt": "2026-10-21T02:38:46.959Z",
   "history": [
     {
       "setNumber": 17,

@@ -10,21 +10,63 @@
 # und fuenf Skripten und liegt seitdem nur noch in der Env (app/lib/lolesports.ts).
 # Kein weiterer Fund. Eine Verlaufs-Bereinigung waere also viel Laerm um einen
 # Wert, der auf lolesports.com in den Devtools steht.
+#
+# Fehlalarme (Stand 23.10.2026): alle 7 roten Laeufe seit 27.09.2026 waren die
+# Regel generic-api-key auf Riots Spielbezeichnern (`"api": "DA_18_Caitlyn"`)
+# und daraus gebauten Comp-Schluesseln in Tests (`'DA_18_Spell__DA_18_Veigar'`,
+# `'days-1__region-all'`) — Ziffer im Wert + Entropie ueber 3,5. Die
+# Ausnahmen unten sind deshalb je an Pfad UND Wertform gebunden: derselbe Wert
+# in einer anderen Datei wird weiter gemeldet.
+#
+# Alle Ausnahmen haengen als [[rules.allowlists]] an der Regel. Die alte Form
+# [rules.allowlist] darf nicht daneben stehen, sonst bricht gitleaks ab
+# (config/config.go:157 in v8.30.1).
 
 [extend]
 useDefault = true
 
 [[rules]]
 id = "generic-api-key"
-  [rules.allowlist]
+
   # Die Companion-App wird offen verteilt, jeder kann das Bundle entpacken.
   # Der Wert ist kein Geheimnis im kryptografischen Sinn, sondern eine
   # Missbrauchsbremse (HMAC + Zeitfenster). Die Begruendung steht ausfuehrlich
   # im Kopf der Datei selbst. Ein echtes Geheimnis waere ein kurzlebiges Token,
   # das der Server nach einer Anmeldung ausstellt.
+  [[rules.allowlists]]
+  description = "Companion-Missbrauchsbremse, nur in ihrer eigenen Datei"
+  condition = "AND"
   regexes = [
     '''b1fb7ccb494629968f7f23cf4619de60bcca00abd9edaf01ec2104058966308e''',
   ]
   paths = [
-    '''apps/overwolf-app/js/config\.js''',
+    '''(?:^|/)apps/overwolf-app/src/lib/config\.ts$''',
+  ]
+
+  # Riots Bezeichner (apiName) in den eingelesenen TFT-Tabellen. Das Praefix
+  # wechselt je Set (TFT17_, DA_), deshalb nur die Form: Grossbuchstabe,
+  # Buchstaben, optional Set-Nummer, Unterstrich, Rest ohne Sonderzeichen.
+  [[rules.allowlists]]
+  description = "TFT-Spielbezeichner im Feld api der Tabellen-Dateien"
+  condition = "AND"
+  regexTarget = "match"
+  regexes = [
+    '''\bapi["']?\s*:\s*["'][A-Z][A-Za-z]{0,7}\d*_[A-Za-z0-9_]{1,60}["']''',
+  ]
+  paths = [
+    '''(?:^|/)public/tft-[\w.-]+\.json$''',
+    '''(?:^|/)scripts/import-tft-tables\.mjs$''',
+  ]
+
+  # Zusammengesetzte Schluessel in Tests: Comp-Familien (<trait>__<carry>)
+  # und Route-Spiegel (days-1__region-all). Der doppelte Unterstrich ist
+  # das Kennzeichen.
+  [[rules.allowlists]]
+  description = "Comp- und Spiegel-Schluessel in Testdateien"
+  condition = "AND"
+  regexes = [
+    '''^[\w-]+__[\w-]+$''',
+  ]
+  paths = [
+    '''\.test\.(?:m?[jt]s|tsx?)$''',
   ]

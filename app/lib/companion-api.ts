@@ -9,10 +9,10 @@
 // durch, damit der Zuschnitt testbar bleibt (companion-api.test.mjs).
 import { NextResponse } from 'next/server';
 import type { CompFamily } from '../components/tft/CompFamilyRow';
-import { isThreeStarUnit, parseClusterKey, STAR3_MIN_GAMES, STAR3_SHARE_THRESHOLD } from './tft-cluster';
+import { isThreeStarUnit, parseClusterKey } from './tft-cluster';
 import { tftChampionTileUrl, tftIconUrl, tftTraitDisplayName, type TftAssetsBundle } from './tft-cdragon';
 import {
-  componentCheckFromItems, namedCarries, shownItems, sortUnitsByImportance,
+  componentCheckFromItems, namedCarries, REROLL_LEVEL_BY_COST, rerollPlan, shownItems, sortUnitsByImportance,
   type CompRoles, type IsComponent, type RoleUnit,
 } from './tft-comp-roles';
 import { familyTierLetter } from './tft-tier-letter';
@@ -188,42 +188,9 @@ export function buildCompanionVsFromMatchups(
   return out;
 }
 
-// Reroll-Comps bleiben auf der Stufe, auf der ihr 3-Sterne-Carry am haeufigsten
-// im Shop steht: 1-Kosten auf 5, 2-Kosten auf 6, 3-Kosten auf 7.
-export const REROLL_LEVEL_BY_COST: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
-
-/**
- * Reroll oder nicht (classification-reviewer 2026-10-07, 33/33 Comps richtig):
- * ein Carry oder Item-Traeger kostet hoechstens 3 und steht ueber alle
- * Varianten der Familie gerechnet zu mindestens STAR3_SHARE_THRESHOLD auf
- * 3 Sternen. Die Stufe kommt von den Kosten des Carrys mit dem hoechsten
- * 3-Sterne-Anteil. Kein Filter auf die Endstufe: Reroll-Comps leveln nach dem
- * 3-Sterne-Treffer weiter und enden oft auf 8.
- */
-export function rerollPlan(
-  candidates: string[],
-  variants: Array<{ typicalUnits?: Array<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }> }>,
-  costOf: (cid: string) => number | null | undefined,
-): { level: number; targets: string[] } | null {
-  const want = new Set(candidates);
-  const acc = new Map<string, { games: number; star3: number }>();
-  for (const v of variants) {
-    for (const u of v.typicalUnits || []) {
-      if (!want.has(u.characterId)) continue;
-      const cur = acc.get(u.characterId) ?? { games: 0, star3: 0 };
-      cur.games += Number(u.gamesWithUnit) || 0;
-      cur.star3 += Number(u.star3Games) || 0;
-      acc.set(u.characterId, cur);
-    }
-  }
-  const hits = [...acc]
-    .map(([id, a]) => ({ id, cost: Number(costOf(id)), share: a.games > 0 ? a.star3 / a.games : 0, games: a.games }))
-    .filter(h => REROLL_LEVEL_BY_COST[h.cost] != null && h.games >= STAR3_MIN_GAMES && h.share >= STAR3_SHARE_THRESHOLD)
-    .sort((a, b) => b.share - a.share || a.id.localeCompare(b.id));
-  if (hits.length === 0) return null;
-  const cost = hits[0].cost;
-  return { level: REROLL_LEVEL_BY_COST[cost], targets: hits.filter(h => h.cost === cost).map(h => h.id) };
-}
+// Reroll-Regel liegt seit 22.10.2026 in tft-comp-roles.ts (die Comp-Liste im
+// Browser nutzt sie auch); hier weiter exportiert fuer bestehende Aufrufer.
+export { REROLL_LEVEL_BY_COST, rerollPlan };
 
 export function toCompanionComp(
   family: CompFamily,

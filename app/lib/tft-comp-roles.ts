@@ -9,7 +9,7 @@
 // auf der falschen.
 
 import { damageCarryItemsForSet, defensiveItemsForSet } from './tft-item-classes';
-import { isThreeStarUnit } from './tft-cluster';
+import { isThreeStarUnit, STAR3_MIN_GAMES, STAR3_SHARE_THRESHOLD } from './tft-cluster';
 
 export const CARRY_MIN_GAMES = 30;
 export const CARRY_MIN_PRESENCE = 0.5;   // Anteil der Comp-Spiele mit dieser Unit
@@ -175,6 +175,45 @@ export function namedCarries(roles: CompRoles | null | undefined, keyCarry: stri
   const named = (roles?.carries || []).slice(0, MAX_NAMED_CARRIES);
   if (named.length > 0) return named;
   return keyCarry ? [keyCarry] : [];
+}
+
+// Reroll-Comps bleiben auf der Stufe, auf der ihr 3-Sterne-Carry am haeufigsten
+// im Shop steht: 1-Kosten auf 5, 2-Kosten auf 6, 3-Kosten auf 7.
+export const REROLL_LEVEL_BY_COST: Record<number, number> = { 1: 5, 2: 6, 3: 7 };
+
+/**
+ * Reroll oder nicht (classification-reviewer 2026-10-07, 33/33 Comps richtig):
+ * ein Carry oder Item-Traeger kostet hoechstens 3 und steht ueber alle
+ * Varianten der Familie gerechnet zu mindestens STAR3_SHARE_THRESHOLD auf
+ * 3 Sternen. Die Stufe kommt von den Kosten des Carrys mit dem hoechsten
+ * 3-Sterne-Anteil. Kein Filter auf die Endstufe: Reroll-Comps leveln nach dem
+ * 3-Sterne-Treffer weiter und enden oft auf 8.
+ * Companion-App (companion-api.ts) und Kostengruppe der Comp-Liste
+ * (familyCost in tft-comp-families.ts) nutzen dieselbe Regel.
+ */
+export function rerollPlan(
+  candidates: string[],
+  variants: Array<{ typicalUnits?: Array<{ characterId: string; gamesWithUnit?: unknown; star3Games?: unknown }> }>,
+  costOf: (cid: string) => number | null | undefined,
+): { level: number; targets: string[] } | null {
+  const want = new Set(candidates);
+  const acc = new Map<string, { games: number; star3: number }>();
+  for (const v of variants) {
+    for (const u of v.typicalUnits || []) {
+      if (!want.has(u.characterId)) continue;
+      const cur = acc.get(u.characterId) ?? { games: 0, star3: 0 };
+      cur.games += Number(u.gamesWithUnit) || 0;
+      cur.star3 += Number(u.star3Games) || 0;
+      acc.set(u.characterId, cur);
+    }
+  }
+  const hits = [...acc]
+    .map(([id, a]) => ({ id, cost: Number(costOf(id)), share: a.games > 0 ? a.star3 / a.games : 0, games: a.games }))
+    .filter(h => REROLL_LEVEL_BY_COST[h.cost] != null && h.games >= STAR3_MIN_GAMES && h.share >= STAR3_SHARE_THRESHOLD)
+    .sort((a, b) => b.share - a.share || a.id.localeCompare(b.id));
+  if (hits.length === 0) return null;
+  const cost = hits[0].cost;
+  return { level: REROLL_LEVEL_BY_COST[cost], targets: hits.filter(h => h.cost === cost).map(h => h.id) };
 }
 
 // Items, die an einer Unit gezeigt werden: nur an Item-Traegern, nur fertige

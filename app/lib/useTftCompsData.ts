@@ -44,8 +44,8 @@ import {
   applyAdvancedFilters,
   isAdvActive,
   type AdvancedFilters,
-} from '../components/tft/AdvancedCompFilters';
-import { attachPatchDeltas, buildCompFamilies, currentSetFamilies, dataEndOf, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
+} from './tft-comp-adv-filters';
+import { attachPatchDeltas, buildCompFamilies, currentSetFamilies, dataEndOf, TOP_FAMILY_LIMIT, topFamilyKeys, type CompApiRow, type CompSortBy } from './tft-comp-families';
 import { usePatchDelta } from './usePatchDelta';
 import type { PatchDeltaStart } from './tft-patch-delta';
 
@@ -332,23 +332,6 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   };
   const chooseSort = (s: CompSortBy) => { setSortTouched(true); setSortBy(s); };
 
-  // Apply advanced filters BEFORE sort so the result count + sort target match.
-  // Client-side filter on the already-loaded comps — no extra API roundtrip.
-  // Memoisiert: sonst baut jedes Rendern die Familien neu (useMemo unten).
-  const filteredComps = useMemo(() => {
-    // Carry-Cost-Lookup: cluster_key = "<trait>@<level>_<carryCharacterId>".
-    // Bundle-Champions tragen den Cost direkt; null wenn der Carry-Asset fehlt
-    // (stale Carry-ID nach Set-Wechsel).
-    const carryCostLookup = (clusterKey: string): number | null => {
-      if (!assets) return null;
-      const m = /^(.+)@\d+_(.+)$/.exec(clusterKey);
-      if (!m) return null;
-      const ch = assets.champions[m[2]];
-      return typeof ch?.cost === 'number' ? ch.cost : null;
-    };
-    return applyAdvancedFilters(comps, adv, { carryCostLookup });
-  }, [comps, adv, assets]);
-
   // Vorpatch-Vergleich: Liste nur mit Δ-Filter, Uebersicht immer. Ohne Paar
   // (Set-Start, zu junger Patch) gibt es ihn nicht — auch nicht mit Filter.
   const deltaOn = deltaAlways || filters.velocity > 0;
@@ -358,22 +341,32 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
     [delta.pair, delta.loading, deltaOn],
   );
 
+  // Familien aus ALLEN Zeilen, „Erweitert" filtert danach die fertigen Comps an
+  // ihren Familienwerten (tft-comp-adv-filters) — und zwar VOR dem Schnitt auf
+  // die 40 meistgespielten, damit z. B. „Hidden Gems" auch jenseits von Platz 40
+  // sucht. `families` bleibt ungefiltert (Vergleichs-Leiste).
   const builtFamilies = useMemo(
-    () => buildCompFamilies(filteredComps, sortBy, assets),
-    [filteredComps, sortBy, assets],
+    () => buildCompFamilies(comps, sortBy, assets),
+    [comps, sortBy, assets],
   );
   const families = useMemo(
     () => attachPatchDeltas(builtFamilies, deltaOn ? delta.index : null, sortBy === 'velocity'),
     [builtFamilies, deltaOn, delta.index, sortBy],
   );
-  const setFamilies = useMemo(() => currentSetFamilies(families, assets), [families, assets]);
+  const allSetFamilies = useMemo(() => currentSetFamilies(families, assets), [families, assets]);
+  const setFamilies = useMemo(() => applyAdvancedFilters(allSetFamilies, adv, assets), [allSetFamilies, adv, assets]);
   const topKeys = useMemo(() => topFamilyKeys(setFamilies), [setFamilies]);
+  // Zaehler am Knopf „Erweitert": gezeigte Comps mit Filter / ohne Filter.
+  const advCounts = useMemo(() => ({
+    shown: Math.min(setFamilies.length, TOP_FAMILY_LIMIT),
+    total: Math.min(allSetFamilies.length, TOP_FAMILY_LIMIT),
+  }), [setFamilies, allSetFamilies]);
 
   return {
     filters, handleFiltersChange,
     adv, setAdv,
     sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, minGames, assets, loading,
+    comps, advCounts, hasData, patches, minGames, assets, loading,
     error, retry, dataEnd,
     // Vergleichs-Spalte bzw. Pfeile (null = aus).
     deltaView,

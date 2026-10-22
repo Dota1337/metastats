@@ -1,117 +1,15 @@
 'use client';
 import { useState, type ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
+import { ADV_DEFAULT, isAdvActive, type AdvancedFilters, type CostGroup } from '../../lib/tft-comp-adv-filters';
 
 // W1-C: Multi-Criteria-Filter — Pro-Tool, um versteckte Power-Comps zu finden
 // (z.B. „avgPlace<4.4 UND pickrate<5% UND games>500" = under-the-radar S-Tier).
 // Reine Client-Filterung über die bereits geladene Comp-Liste; keine zusätzlichen
 // API-Calls. Preset-Chips deck'n die häufigsten Pro-Fragen ab.
 
-// Carry-Kosten-Gruppen — mappt 1-2-Cost auf "Reroll", 3-Cost auf "Mid",
-// 4-5-Cost auf "Fast 8/9". Pro-Filter den metatft.com schon hat, bei uns
-// fehlte er bisher. Der costLookup im applyAdvancedFilters resolved den
-// Cluster-Key über das Asset-Bundle zum Carry-Cost.
-export type CostGroup = 'all' | 'reroll' | 'mid' | 'fast8';
-
-export interface AdvancedFilters {
-  avgPlaceMax: number | null;     // Ø-Platzierung höchstens X (kleiner = besser)
-  top4MinPct: number | null;      // Top-4-Rate mindestens X%
-  top1MinPct: number | null;      // Top-1-Rate mindestens X%
-  pickMaxPct: number | null;      // Pickrate höchstens X% (für versteckte Comps)
-  gamesMin: number | null;        // Mindest-Samplegröße
-  costGroup: CostGroup;           // Reroll / Mid / Fast8 / Alle
-}
-
-export const ADV_DEFAULT: AdvancedFilters = {
-  avgPlaceMax: null,
-  top4MinPct: null,
-  top1MinPct: null,
-  pickMaxPct: null,
-  gamesMin: null,
-  costGroup: 'all',
-};
-
-// Active when at least one constraint is set.
-export function isAdvActive(f: AdvancedFilters): boolean {
-  return f.avgPlaceMax != null || f.top4MinPct != null || f.top1MinPct != null
-    || f.pickMaxPct != null || f.gamesMin != null || f.costGroup !== 'all';
-}
-
-// Carry-Cost-Bucket-Matcher. 1-2 = Reroll, 3 = Mid, 4-5 = Fast 8/9. Cost === 0
-// (Set-Boss / NPC) wird wie 1 gewertet, > 5 (Set-Sondermechanik) wie 5.
-function matchesCostGroup(group: CostGroup, cost: number | null): boolean {
-  if (group === 'all') return true;
-  if (cost == null) return false;
-  const c = Math.max(1, Math.min(5, cost));
-  if (group === 'reroll') return c <= 2;
-  if (group === 'mid') return c === 3;
-  if (group === 'fast8') return c >= 4;
-  return true;
-}
-
-// Apply filters to a list of comps (client-side). Comps with missing metric
-// values pass when no constraint references that metric, and fail any constraint
-// that touches a missing value (so partial data doesn't masquerade as a fit).
-export function applyAdvancedFilters<T extends {
-  avgPlacement: number | null;
-  top4Rate: number | null;
-  top1Rate: number | null;
-  pickRate?: number | null;
-  games: number;
-  clusterKey?: string;
-}>(comps: T[], f: AdvancedFilters, opts?: {
-  // Optional Asset-Bundle-getriebene Lookup-Funktion. Die Component selbst
-  // sieht die Assets nicht — die liegen in der Page als State — also wird der
-  // Lookup als Callback durchgereicht. null wenn der Carry nicht im Bundle
-  // gefunden wird (Stale-Daten nach Set-Wechsel etc.).
-  carryCostLookup?: (clusterKey: string) => number | null;
-}): T[] {
-  return comps.filter(c => {
-    if (f.avgPlaceMax != null && (c.avgPlacement == null || c.avgPlacement > f.avgPlaceMax)) return false;
-    if (f.top4MinPct != null && (c.top4Rate == null || c.top4Rate * 100 < f.top4MinPct)) return false;
-    if (f.top1MinPct != null && (c.top1Rate == null || c.top1Rate * 100 < f.top1MinPct)) return false;
-    if (f.pickMaxPct != null && c.pickRate != null && c.pickRate * 100 > f.pickMaxPct) return false;
-    if (f.gamesMin != null && c.games < f.gamesMin) return false;
-    if (f.costGroup !== 'all') {
-      const cost = opts?.carryCostLookup && c.clusterKey ? opts.carryCostLookup(c.clusterKey) : null;
-      if (!matchesCostGroup(f.costGroup, cost)) return false;
-    }
-    return true;
-  });
-}
-
-// URL helpers: pack into a single "adv" param so URLs stay compact and
-// shareable. Format: avgMax=4.4_top4Min=50_gamesMin=500_pickMax=8.
-export function advToUrlParam(f: AdvancedFilters): string | null {
-  const parts: string[] = [];
-  if (f.avgPlaceMax != null) parts.push(`avgMax=${f.avgPlaceMax}`);
-  if (f.top4MinPct != null) parts.push(`top4Min=${f.top4MinPct}`);
-  if (f.top1MinPct != null) parts.push(`top1Min=${f.top1MinPct}`);
-  if (f.pickMaxPct != null) parts.push(`pickMax=${f.pickMaxPct}`);
-  if (f.gamesMin != null) parts.push(`gamesMin=${f.gamesMin}`);
-  if (f.costGroup !== 'all') parts.push(`cost=${f.costGroup}`);
-  return parts.length > 0 ? parts.join('_') : null;
-}
-
-export function advFromUrlParam(raw: string | null): AdvancedFilters {
-  if (!raw) return ADV_DEFAULT;
-  const out: AdvancedFilters = { ...ADV_DEFAULT };
-  for (const p of raw.split('_')) {
-    const [k, v] = p.split('=');
-    if (k === 'cost') {
-      if (v === 'reroll' || v === 'mid' || v === 'fast8') out.costGroup = v;
-      continue;
-    }
-    const n = Number(v);
-    if (!Number.isFinite(n)) continue;
-    if (k === 'avgMax') out.avgPlaceMax = n;
-    else if (k === 'top4Min') out.top4MinPct = n;
-    else if (k === 'top1Min') out.top1MinPct = n;
-    else if (k === 'pickMax') out.pickMaxPct = n;
-    else if (k === 'gamesMin') out.gamesMin = n;
-  }
-  return out;
-}
+// Kriterien, Adress-Format und Filterung liegen in lib/tft-comp-adv-filters.ts
+// (ohne JSX, testbar). Gefiltert werden fertige Comps an ihren Familienwerten.
 
 // Pro-Presets — die häufigsten Such-Patterns. Werte konservativ gewählt:
 // "Hidden Gems" trifft S-Tier-Comps unter 5% Pickrate (= das, was die meisten

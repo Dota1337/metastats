@@ -13,7 +13,7 @@ import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
-import { dedupeByCarry, visibleFamilies, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
+import { dedupeByCarry, familyCost, visibleFamilies, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
 import type { PatchDeltaPair, PatchDeltaStart } from '../../../lib/tft-patch-delta';
 import { deltaTooltip } from '../../../components/tft/PatchDeltaCell';
 import { compPath } from '../../../lib/tft-comp-path';
@@ -25,8 +25,9 @@ import { useTftCompsData } from '../../../lib/useTftCompsData';
 
 // Comp-Uebersicht nach Unit-Kosten (User 2026-09-27, Vorbild tftable.cc/comps):
 // eine Zeile je Kostenstufe, 5 oben. Dieselben Familien wie die Liste
-// (tft-comp-families), Zeile = Kosten des Haupt-Carrys laut Asset-Bundle
-// (User 2026-09-28: Spellweaver · Veigar & LeBlanc gehoert zu 1-Cost).
+// (tft-comp-families), Zeile = familyCost: Kosten des Haupt-Carrys laut
+// Asset-Bundle, bei einem 3-Sterne-Reroll-Carry dessen Kosten (User
+// 2026-09-28: Spellweaver · Veigar & LeBlanc gehoert zu 1-Cost; 22.10.2026).
 // Startdaten kommen von der Server-Huelle (page.tsx), wie bei der Liste.
 // Schalter „Kosten | Tier" (User 20.10.2026): die Tier-Ansicht ordnet dieselben
 // Kacheln in Reihen S+ … C (tft-tier-letter.ts), Adresse ?group=tier.
@@ -38,13 +39,6 @@ type AtlasRow =
   | { kind: 'tier'; tier: TierLetter | null; families: CompFamily[] };
 
 const prettyId = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
-
-function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
-  const costs = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry)
-    .map(cid => assets.champions[cid]?.cost)
-    .filter((c): c is number => typeof c === 'number' && c >= 1 && c <= 5);
-  return costs[0] ?? null;
-}
 
 export default function AtlasClient({ initialFilters, initial, initialDelta = null, initialGroup = 'cost' }: {
   // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die

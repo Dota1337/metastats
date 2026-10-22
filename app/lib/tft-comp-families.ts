@@ -4,7 +4,7 @@
 import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from './tft-cluster';
 import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
-import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
+import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, rerollPlan, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
 import { sumMinorRows, type MinorCompRow } from './tft-comp-minor-rows';
 
@@ -382,6 +382,22 @@ export function buildCompFamilies(
 export function currentSetFamilies(families: CompFamily[], assets: TftAssetsBundle | null): CompFamily[] {
   if (!assets) return families;
   return families.filter(f => !!assets.traits[f.trait]);
+}
+
+// Kosten einer Comp fuer die Uebersicht nach Kosten und den Kostenfilter der
+// Liste: die des ersten genannten Carrys (User 2026-09-28: Spellweaver · Veigar
+// & LeBlanc gehoert zu 1-Cost). Wird ein genannter Carry mit 1–3 Kosten ueber
+// die Familie ueberwiegend auf 3 Sternen gespielt (rerollPlan, dieselbe Regel
+// wie die Companion-App), zaehlen seine Kosten (User 22.10.2026: Reroll-Carry
+// hinter einem teureren Carry). null, wenn das Bundle keine Kosten 1–5 kennt.
+export function familyCost(f: CompFamily, assets: TftAssetsBundle): number | null {
+  const named = namedCarries({ carries: f.carries, tanks: f.tanks }, f.carry);
+  const costOf = (cid: string) => assets.champions[cid]?.cost;
+  const reroll = rerollPlan(named, f.variants, costOf);
+  const costs = (reroll ? reroll.targets : named)
+    .map(costOf)
+    .filter((c): c is number => typeof c === 'number' && c >= 1 && c <= 5);
+  return costs[0] ?? null;
 }
 
 // Harter Schnitt auf die 40 meistgespielten Familien — unabhaengig von der

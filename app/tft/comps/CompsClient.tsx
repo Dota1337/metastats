@@ -44,7 +44,7 @@ export default function CompsClient({ initialFilters, initial }: {
   const [wantFull, setWantFull] = useState(() => !!initialCompareA);
   const {
     filters, handleFiltersChange, adv, setAdv, sortBy, chooseSort,
-    comps, filteredComps, hasData, patches, assets, loading, error, retry,
+    advCounts, hasData, patches, assets, loading, error, retry,
     currentPatchLabel, families, currentSetFamilies, topFamilyKeys,
     partial, awaitingStored, awaitingFull, dataEnd, deltaView,
   } = useTftCompsData({ initialFilters, initial, wantFull });
@@ -98,8 +98,8 @@ export default function CompsClient({ initialFilters, initial }: {
         <AdvancedCompFilters
           filters={adv}
           onChange={setAdv}
-          resultCount={partial ? undefined : filteredComps.length}
-          totalCount={partial ? undefined : comps.length}
+          resultCount={partial ? undefined : advCounts.shown}
+          totalCount={partial ? undefined : advCounts.total}
           trailing={
             <>
               <span className="text-fg-muted">{t('tft.sortBy')}:</span>

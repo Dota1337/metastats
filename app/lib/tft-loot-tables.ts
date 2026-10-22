@@ -112,7 +112,8 @@ export interface WispEntry extends Wisp {
 
 export interface WispsFile {
   set: number;
-  source: { name: string; url: string };
+  // corrections: Kosten aus Riot-Notes, die LBB noch nicht hat (import-tft-tables.mjs).
+  source: { name: string; url: string; corrections?: { api: string; from: number; to: number; source: string }[] };
   fetchedAt: string;
   // Runden je Band (LBB). Optional: fehlt es, zeigt die Seite nur das Band.
   bands?: WispBands;

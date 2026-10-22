@@ -4,14 +4,14 @@
   "name": "Little Buddy Bot",
   "url": "https://www.littlebuddybot.com"
  },
- "fetchedAt": "2026-09-28T08:14:30.561Z",
+ "fetchedAt": "2026-10-22T19:23:55.276Z",
  "tables": [
   {
    "key": "traitladder",
    "api": "DA_TraitLadder",
    "name": "Trait Ladder",
    "icon": "/tft-extra/augments/18/DA_TraitLadder.webp",
-   "patch": "18.2",
+   "patch": "18.4",
    "stage": "2",
    "subs": [
     {
@@ -58,7 +58,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 6,
+         "n": 5,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         }
        ]
@@ -85,7 +85,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 10,
+         "n": 7,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         }
        ]
@@ -99,7 +99,7 @@
        "rewards": [
         {
          "k": "randomUnit",
-         "n": 3,
+         "n": 2,
          "cost": 3,
          "icon": "assets/maps/particles/tft/item_icons/pairs/doubleup_assistarmory_champ_3c.png"
         }
@@ -114,7 +114,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 8,
+         "n": 2,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         },
         {
@@ -133,15 +133,9 @@
        },
        "rewards": [
         {
-         "k": "component",
+         "k": "uniqueComponents",
          "n": 2,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistrandomcomponent.png"
-        },
-        {
-         "k": "item",
-         "api": "DA_Reforger",
-         "name": "Reforger",
-         "icon": "assets/maps/tft/icons/items/hexcore/tft_consumable_itemreroller.png"
         }
        ]
       },
@@ -174,7 +168,7 @@
         },
         {
          "k": "randomUnit",
-         "n": 3,
+         "n": 2,
          "cost": 5,
          "icon": "assets/maps/particles/tft/item_icons/pairs/doubleup_assistarmory_champ_5c.png"
         }
@@ -189,7 +183,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 20,
+         "n": 18,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         }
        ]
@@ -1649,7 +1643,7 @@
    "api": "DA_ExpectedUnexpectedness",
    "name": "Expected Unexpectedness",
    "icon": "assets/maps/tft/icons/augments/hexcore/addicted-to-rolling-iii.png",
-   "patch": "18.2",
+   "patch": "18.5",
    "stage": "2",
    "subs": [
     {
@@ -1766,7 +1760,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 18,
+         "n": 15,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         }
        ]
@@ -1803,8 +1797,13 @@
        "chance": 36,
        "rewards": [
         {
-         "k": "randomUnit",
+         "k": "gold",
          "n": 3,
+         "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
+        },
+        {
+         "k": "randomUnit",
+         "n": 2,
          "cost": 5,
          "icon": "assets/maps/particles/tft/item_icons/pairs/doubleup_assistarmory_champ_5c.png"
         }
@@ -1831,7 +1830,7 @@
        "rewards": [
         {
          "k": "gold",
-         "n": 20,
+         "n": 18,
          "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
         }
        ]
@@ -2289,7 +2288,7 @@
   "augmentName": "Dark Ritual",
   "name": "Coven",
   "icon": "assets/ux/traiticons/trait_icon_18_coven.png",
-  "patch": "18.3",
+  "patch": "18.5",
   "essence": [
    {
     "units": "3",
@@ -2317,7 +2316,7 @@
     "label": {
      "t": "essence",
      "essence": 40,
-     "ap": 7
+     "ap": 5
     },
     "rows": [
      {
@@ -2370,7 +2369,7 @@
     "label": {
      "t": "essence",
      "essence": 85,
-     "ap": 15
+     "ap": 10
     },
     "rows": [
      {
@@ -2419,7 +2418,7 @@
     "label": {
      "t": "essence",
      "essence": 130,
-     "ap": 50
+     "ap": 28
     },
     "rows": [
      {
@@ -2427,34 +2426,7 @@
       "rewards": [
        {
         "k": "component",
-        "n": 2,
         "icon": "assets/maps/particles/tft/item_icons/pairs/assistrandomcomponent.png"
-       }
-      ]
-     },
-     {
-      "chance": 25,
-      "rewards": [
-       {
-        "k": "gold",
-        "n": 3,
-        "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
-       },
-       {
-        "k": "fullItem",
-        "icon": "assets/maps/particles/tft/item_icons/pairs/assistrandomcomponent.png"
-       }
-      ]
-     },
-     {
-      "chance": 25,
-      "rewards": [
-       {
-        "k": "champion",
-        "api": "DA_18_Cassiopeia",
-        "name": "Cassiopeia",
-        "icon": "assets/characters/tft18_cassiopeia/tft18_cassiopeia_square.png",
-        "cost": 3
        },
        {
         "k": "champion",
@@ -2463,6 +2435,33 @@
         "name": "Elise",
         "icon": "assets/characters/tft18_elise/tft18_elise_square.png",
         "cost": 2
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "component",
+        "icon": "assets/maps/particles/tft/item_icons/pairs/assistrandomcomponent.png"
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Caitlyn",
+        "name": "Caitlyn",
+        "icon": "assets/characters/tft18_caitlyn/tft18_caitlyn_square.png",
+        "cost": 2
+       }
+      ]
+     },
+     {
+      "chance": 25,
+      "rewards": [
+       {
+        "k": "gold",
+        "n": 6,
+        "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
        },
        {
         "k": "component",
@@ -2479,16 +2478,16 @@
         "icon": "assets/maps/particles/tft/item_icons/pairs/assistgivegold.png"
        },
        {
-        "k": "champion",
-        "n": 3,
-        "api": "DA_18_Caitlyn",
-        "name": "Caitlyn",
-        "icon": "assets/characters/tft18_caitlyn/tft18_caitlyn_square.png",
-        "cost": 2
-       },
-       {
         "k": "component",
         "icon": "assets/maps/particles/tft/item_icons/pairs/assistrandomcomponent.png"
+       },
+       {
+        "k": "champion",
+        "n": 3,
+        "api": "DA_18_Camille",
+        "name": "Camille",
+        "icon": "assets/characters/tft18_camille/tft18_camille_square.png",
+        "cost": 1
        }
       ]
      }
@@ -2498,7 +2497,7 @@
     "label": {
      "t": "essence",
      "essence": 185,
-     "ap": 75
+     "ap": 45
     },
     "rows": [
      {
@@ -2586,7 +2585,7 @@
     "label": {
      "t": "essence",
      "essence": 250,
-     "ap": 125
+     "ap": 85
     },
     "rows": [
      {
@@ -2715,7 +2714,7 @@
     "label": {
      "t": "essence",
      "essence": 365,
-     "ap": 200
+     "ap": 175
     },
     "rows": [
      {

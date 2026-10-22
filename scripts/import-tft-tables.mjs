@@ -102,16 +102,17 @@ const B = (...xs) => xs.map(([cost, n = 1, stars = null]) => orb(cost, n, stars)
 const T = (n, rows) => rows.map(([c, r]) => row(c, r, { t: 'traits', n }));
 
 const tables = [
-  table('traitladder', 'DA_TraitLadder', '18.2', '2', [sub(null, [
+  // 8 Traits: Bild „components ×2", Riot-Notes 18.4 „2 Different Components".
+  table('traitladder', 'DA_TraitLadder', '18.4', '2', [sub(null, [
     ...T(2, [[null, [gold(1), reforger()]]]),
     ...T(3, [[null, [gold(3)]]]),
-    ...T(4, [[null, [gold(6)]]]),
+    ...T(4, [[null, [gold(5)]]]),
     ...T(5, [[null, [comp()]]]),
-    ...T(6, [[50, [gold(10)]], [50, [orb(3, 3)]]]),
-    ...T(7, [[null, [gold(8), anvil('component')]]]),
-    ...T(8, [[57, [comp(2), reforger()]], [43, [anvil('full')]]]),
-    ...T(9, [[null, [gold(2), orb(5, 3)]]]),
-    ...T(10, [[null, [gold(20)]]]),
+    ...T(6, [[50, [gold(7)]], [50, [orb(3, 2)]]]),
+    ...T(7, [[null, [gold(2), anvil('component')]]]),
+    ...T(8, [[57, [R('uniqueComponents', 2)]], [43, [anvil('full')]]]),
+    ...T(9, [[null, [gold(2), orb(5, 2)]]]),
+    ...T(10, [[null, [gold(18)]]]),
     ...T(11, [[null, [R('tacticianItem')]]]),
     ...T(12, [[null, [orb(4, 3), lucky()]]]),
     ...T(13, [[null, [gold(8), comp(4), remover()]]]),
@@ -183,10 +184,10 @@ const tables = [
     row(0.5, [R('specialEgg', 1, { turns: 3, contents: [gold(5), orb(5, 2), crown()] })], { t: 'combo', v: '626' }),
   ])]),
 
-  table('expected', 'DA_ExpectedUnexpectedness', '18.2', '2', [
+  table('expected', 'DA_ExpectedUnexpectedness', '18.5', '2', [
     sub({ t: 'stage', n: 2 }, [row(36, [orb(4, 2)]), row(32, [anvil('component', 2), reforger(3)]), row(25, [gold(9)]), row(4, [anvil('artifact')]), row(3, [crown()])]),
-    sub({ t: 'stage', n: 3 }, [row(36, [gold(5), lesserDup(2)]), row(32, [gold(3), anvil('full')]), row(25, [gold(18)]), row(4, [comp(3)]), row(3, [emblem(2)])]),
-    sub({ t: 'stage', n: 4 }, [row(36, [orb(5, 3)]), row(32, [gold(5), lucky()]), row(25, [gold(20)]), row(4, [fullItem(), comp(2)]), row(3, [orb(5, 3), dup()])]),
+    sub({ t: 'stage', n: 3 }, [row(36, [gold(5), lesserDup(2)]), row(32, [gold(3), anvil('full')]), row(25, [gold(15)]), row(4, [comp(3)]), row(3, [emblem(2)])]),
+    sub({ t: 'stage', n: 4 }, [row(36, [gold(3), orb(5, 2)]), row(32, [gold(5), lucky()]), row(25, [gold(18)]), row(4, [fullItem(), comp(2)]), row(3, [orb(5, 3), dup()])]),
   ]),
 
   table('goldenegg', 'DA_GoldenEgg', '18.2', '4', [sub(null, [
@@ -211,8 +212,9 @@ const tables = [
   ])]),
 ];
 
-// ---------- Coven (Bild 18.3) ----------
-// Federzahl = Faehigkeitsstaerke mit Dark Ritual (DA_18_CovenTraitAugment_LootToAP).
+// ---------- Coven (Bild 18.5, 21.10.2026) ----------
+// Federzahl = Faehigkeitsstaerke mit Dark Ritual (DA_18_CovenTraitAugment_LootToAP),
+// deckt sich mit Riot-Notes 18.5 („Dark Ritual AP Granted").
 // Essenz je Stufe: Bild 22/28/35/60 pro Niederlage, Riot-Datei 18/25/32/60 —
 // Anzeige nach Bild (User-Entscheid 2). Stufen-Grenzen aus dem Bundle: 3, 4, 5-6, 7+.
 const cam = (n = 1) => champ('DA_18_Camille', n);
@@ -231,7 +233,7 @@ const coven = {
   ...(() => { const { name, icon } = resolve('DA_18_CovenTraitAugment_LootToAP'); return { api: 'DA_18_CovenTraitAugment_LootToAP', augmentName: name }; })(),
   name: bundle.traits?.DA_18_Coven?.name ?? 'Coven',
   icon: bundle.traits?.DA_18_Coven?.icon ?? null,
-  patch: '18.3',
+  patch: '18.5',
   essence: [
     { units: '3', kill: 2, loss: 22 },
     { units: '4', kill: 2, loss: 28 },
@@ -239,15 +241,18 @@ const coven = {
     { units: '7+', kill: 10, loss: 60 },
   ],
   subs: [
-    E(40, 7, [row(33, [gold(4)]), row(33, [orb(2), orb(2)]), row(33, [cass(), cam()])]),
-    E(85, 15, [row(33, [gold(2), comp()]), row(33, [gold(10)]), row(33, [eli(), comp()])]),
-    E(130, 50, [row(25, [comp(2)]), row(25, [gold(3), fullItem()]), row(25, [cass(), eli(3), comp()]), row(25, [gold(3), cait(3), comp()])]),
-    E(185, 75, [row(25, [anvil('full'), comp()]), row(25, [gold(10), anvil('full')]), row(25, [gold(10), comp(2), reforger()]), row(25, [cait(3), cam(3), anvil('full')])]),
-    E(250, 125, [
+    E(40, 5, [row(33, [gold(4)]), row(33, [orb(2), orb(2)]), row(33, [cass(), cam()])]),
+    E(85, 10, [row(33, [gold(2), comp()]), row(33, [gold(10)]), row(33, [eli(), comp()])]),
+    // Bild: eine 50-%-Zeile „Komponente + Caitlyn ×3 oder Elise ×3". Riot-Notes 18.4
+    // fuehren beide als getrennte Belohnungen (Zufall, keine Wahl) → zwei 25-%-Zeilen
+    // (User-Entscheid 22.10.2026).
+    E(130, 28, [row(25, [comp(), eli(3)]), row(25, [comp(), cait(3)]), row(25, [gold(6), comp()]), row(25, [gold(3), comp(), cam(3)])]),
+    E(185, 45, [row(25, [anvil('full'), comp()]), row(25, [gold(10), anvil('full')]), row(25, [gold(10), comp(2), reforger()]), row(25, [cait(3), cam(3), anvil('full')])]),
+    E(250, 85, [
       row(20, [gold(20), anvil('full', 2)]), row(20, [gold(5), morg(3), lucky(), fullItem()]),
       row(20, [gold(18), lucky(2), reforger()]), row(20, [gold(18), lux(), lucky(), anvil('component', 2)]),
       row(20, [gold(18), anvil('artifact'), anvil('full')])]),
-    E(365, 200, [
+    E(365, 175, [
       row(17, [gold(27), radiant(2), remover(2), reforger(2)]),
       row(17, [gold(22), morg(3), sentinel(3), rlucky(), thief()]),
       row(17, [gold(22), rlucky(), anvil('full', 2), emblem()]),
@@ -360,6 +365,30 @@ const need = ['Name', 'mName', 'Icon URL', 'Description', 'Tier', 'Cost', 'Doubl
 for (const h of need) if (!head.includes(h)) throw new Error(`Wisps-Tabelle: Spalte "${h}" fehlt — Aufbau geaendert?`);
 const W = body.filter(r => r.length === head.length).map(r => Object.fromEntries(head.map((h, i) => [h, r[i].trim()])));
 if (W.length < 100) throw new Error(`Wisps-Tabelle: nur ${W.length} Zeilen`);
+
+// Kosten aus den Riot-Notes, die die LBB-Tabelle noch nicht hat (18.5 „MID-PATCH UPDATE
+// OCTOBER 22ND", User-Entscheid 22.10.2026). Schluessel = mName. Hat die Tabelle schon
+// `to`: laut melden und den Eintrag hier loeschen. Weder `from` noch `to` → Exit 1.
+const COST_SOURCE = 'Riot patch notes 18.5, mid-patch update 2026-10-22';
+const COST_CORRECTIONS = {
+  DA_DieRoll18_Upgrade: { from: 3, to: 2 },
+  DA_Downpour18_Upgrade: { from: 3, to: 2 },
+  DA_HerosEntranceUpgrade18: { from: 4, to: 2 },
+  DA_Hireling18: { from: 2, to: 5 },
+  DA_KnickKnackBag18_Upgrade: { from: 2, to: 1 },
+  DA_MoonlightRitual18: { from: 2, to: 3 },
+  DA_AbandonShip18_Upgrade: { from: 0, to: 2 },
+};
+const corrections = [];
+for (const [api, { from, to }] of Object.entries(COST_CORRECTIONS)) {
+  const d = W.find(r => r.mName === api);
+  if (!d) throw new Error(`Kosten-Korrektur ${api}: nicht in der Wisps-Tabelle`);
+  const cost = Number(d.Cost) || 0;
+  if (cost === to) { console.warn(`! Kosten-Korrektur ${api}: LBB hat schon ${to} — Eintrag aus COST_CORRECTIONS loeschen`); continue; }
+  if (cost !== from) throw new Error(`Kosten-Korrektur ${api}: Tabelle ${cost}, erwartet ${from} (alt) oder ${to} (neu)`);
+  d.Cost = String(to);
+  corrections.push({ api, from, to, source: COST_SOURCE });
+}
 
 // Varianten wie bei LBB (getWispVariant/getWispBaseKey auf der Wisps-Seite, 17.10.2026):
 // „Upgrade"/„Prismatic" stehen als _Teil, am Ende oder vor der Set-Zahl —
@@ -513,8 +542,8 @@ if (badIcons.length) {
 const now = new Date().toISOString();
 const source = { name: 'Little Buddy Bot', url: 'https://www.littlebuddybot.com' };
 writeFileSync(`public/tft-loot-tables-${SET}.json`, JSON.stringify({ set: SET, source, fetchedAt: now, tables, coven }, null, 1) + '\n');
-writeFileSync(wispFile, JSON.stringify({ set: SET, source: { ...source, url: WISPS_PAGE_URL }, fetchedAt: now, bands, wisps }, null, 1) + '\n');
+writeFileSync(wispFile, JSON.stringify({ set: SET, source: { ...source, url: WISPS_PAGE_URL, ...(corrections.length ? { corrections } : {}) }, fetchedAt: now, bands, wisps }, null, 1) + '\n');
 
 const sums = tables.flatMap(t => t.subs.map(s => `${t.key}${s.label ? '/' + (s.label.name ?? s.label.n) : ''}=${Math.round(s.rows.reduce((a, r) => a + (r.chance ?? 0), 0) * 10) / 10}`));
-console.log(`✓ Set ${SET}: ${tables.length} Loot-Tabellen + Coven (${coven.subs.length} Schwellen), ${wisps.length} Wisps mit ${variants.length} Varianten (${W.length} Zeilen), ${inherited} Upgrade(s) auf Basis-Baender gesetzt`);
+console.log(`✓ Set ${SET}: ${tables.length} Loot-Tabellen + Coven (${coven.subs.length} Schwellen), ${wisps.length} Wisps mit ${variants.length} Varianten (${W.length} Zeilen), ${inherited} Upgrade(s) auf Basis-Baender gesetzt, ${corrections.length} Kosten-Korrektur(en)`);
 console.log('  Summen:', sums.join(' '));

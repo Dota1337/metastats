@@ -2,9 +2,53 @@
  "set": 18,
  "source": {
   "name": "Little Buddy Bot",
-  "url": "https://www.littlebuddybot.com/tft-wisps"
+  "url": "https://www.littlebuddybot.com/tft-wisps",
+  "corrections": [
+   {
+    "api": "DA_DieRoll18_Upgrade",
+    "from": 3,
+    "to": 2,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_Downpour18_Upgrade",
+    "from": 3,
+    "to": 2,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_HerosEntranceUpgrade18",
+    "from": 4,
+    "to": 2,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_Hireling18",
+    "from": 2,
+    "to": 5,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_KnickKnackBag18_Upgrade",
+    "from": 2,
+    "to": 1,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_MoonlightRitual18",
+    "from": 2,
+    "to": 3,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   },
+   {
+    "api": "DA_AbandonShip18_Upgrade",
+    "from": 0,
+    "to": 2,
+    "source": "Riot patch notes 18.5, mid-patch update 2026-10-22"
+   }
+  ]
  },
- "fetchedAt": "2026-09-27T16:27:58.474Z",
+ "fetchedAt": "2026-10-22T19:23:55.276Z",
  "bands": {
   "Early": {
    "from": "2-1",
@@ -226,6 +270,7 @@
    ],
    "doubles": true,
    "tockers": true,
+   "req": "More than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -243,6 +288,7 @@
      ],
      "doubles": true,
      "tockers": true,
+     "req": "More than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -251,7 +297,7 @@
   {
    "api": "DA_BeggarsWisp18",
    "name": "Beggar's Wisp",
-   "desc": "The wilds couldn't find a wisp for you this roll. Gain 3 gold.",
+   "desc": "The wilds couldn't find a wisp for you this roll. Gain 2 gold.",
    "tier": 1,
    "cat": "GoldXP",
    "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
@@ -271,7 +317,7 @@
     {
      "api": "DA_BeggarsWisp18_Upgrade",
      "name": "Beggar's Wisp",
-     "desc": "The wilds couldn't find a wisp for you this roll. Gain 5 gold.",
+     "desc": "The wilds couldn't find a wisp for you this roll. Gain 3 gold.",
      "tier": 1,
      "cat": "GoldXP",
      "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
@@ -545,43 +591,6 @@
    ]
   },
   {
-   "api": "DA_CrystalBall18",
-   "name": "Crystal Ball",
-   "desc": "Reveal your next opponent. Your team gains 12% Attack Speed.",
-   "tier": 1,
-   "cat": "Combat",
-   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
-   "cost": 1,
-   "rounds": [
-    "MidLate",
-    "Late",
-    "VeryLate"
-   ],
-   "doubles": true,
-   "tockers": true,
-   "cooldown": 5,
-   "variants": [
-    {
-     "api": "DA_CrystalBall18_Upgrade",
-     "name": "Crystal Ball",
-     "desc": "Reveal your next opponent. Your team gains 18% Attack Speed.",
-     "tier": 1,
-     "cat": "Combat",
-     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
-     "cost": 1,
-     "rounds": [
-      "MidLate",
-      "Late",
-      "VeryLate"
-     ],
-     "doubles": true,
-     "tockers": true,
-     "cooldown": 5,
-     "kind": "upgrade"
-    }
-   ]
-  },
-  {
    "api": "DA_DieRoll18",
    "name": "Die Roll",
    "desc": "Roll a six-sided die. Gain gold equal to the result.",
@@ -604,7 +613,7 @@
      "tier": 1,
      "cat": "GoldXP",
      "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
-     "cost": 3,
+     "cost": 2,
      "rounds": [
       "EarlyMid",
       "Mid"
@@ -630,6 +639,7 @@
    ],
    "doubles": true,
    "tockers": true,
+   "req": "More than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -646,6 +656,7 @@
      ],
      "doubles": true,
      "tockers": true,
+     "req": "More than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -664,6 +675,7 @@
    ],
    "doubles": true,
    "tockers": true,
+   "req": "More than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -679,6 +691,44 @@
      ],
      "doubles": true,
      "tockers": true,
+     "req": "More than 20 player health remaining.",
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
+  },
+  {
+   "api": "DA_18_Drizzle",
+   "name": "Drizzle",
+   "desc": "After 8 seconds of combat, your team gains 10 Mana.",
+   "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+   "cost": 0,
+   "rounds": [
+    "MidLate",
+    "Late"
+   ],
+   "doubles": true,
+   "tockers": true,
+   "req": "Less than 10 gold.",
+   "cooldown": 5,
+   "variants": [
+    {
+     "api": "DA_18_DrizzleUpgrade",
+     "name": "Drizzle",
+     "desc": "After 8 seconds of combat, your team gains 15 Mana.",
+     "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+     "cost": 0,
+     "rounds": [
+      "MidLate",
+      "Late"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "req": "Less than 10 gold.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -911,7 +961,7 @@
    ],
    "doubles": true,
    "tockers": false,
-   "req": "Not on a loss streak.",
+   "req": "On no streak or a win streak (any length).",
    "cooldown": 5,
    "variants": [
     {
@@ -927,7 +977,7 @@
      ],
      "doubles": true,
      "tockers": false,
-     "req": "Not on a loss streak.",
+     "req": "On no streak or a win streak (any length).",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -936,7 +986,7 @@
   {
    "api": "DA_Flow18",
    "name": "Flow",
-   "desc": "Your champions are Unstoppable and gain 15% Attack Speed for 10 seconds.",
+   "desc": "Your champions are unstoppable and gain 15% Attack Speed for 10 seconds.",
    "tier": 1,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
@@ -953,7 +1003,7 @@
     {
      "api": "DA_Flow18_Upgrade",
      "name": "Flow",
-     "desc": "Your champions are Unstoppable and gain 15% Attack Speed for 15 seconds.",
+     "desc": "Your champions are unstoppable and gain 15% Attack Speed for 15 seconds.",
      "tier": 1,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
@@ -1084,9 +1134,50 @@
    ]
   },
   {
+   "api": "DA_18_GroveArmor",
+   "name": "Grove Armor",
+   "desc": "Your highest Health champion gains 15 Armor and 15 Magic Resist.",
+   "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+   "cost": 0,
+   "rounds": [
+    "EarlyMid",
+    "Mid",
+    "MidLate",
+    "Late"
+   ],
+   "doubles": true,
+   "tockers": true,
+   "req": "Less than 10 gold.",
+   "cooldown": 5,
+   "variants": [
+    {
+     "api": "DA_18_GroveArmorUpgrade",
+     "name": "Grove Armor",
+     "desc": "Your highest Health champion gains 25 Armor and 25 Magic Resist.",
+     "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+     "cost": 0,
+     "rounds": [
+      "EarlyMid",
+      "Mid",
+      "MidLate",
+      "Late"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "req": "Less than 10 gold.",
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
+  },
+  {
    "api": "DA_HealthPotion18_Charm",
    "name": "Health Potion",
-   "desc": "Gain a tempoary equippable Health Potion.",
+   "desc": "Gain a temporary equippable Health Potion.",
    "tier": 1,
    "cat": "Misc",
    "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
@@ -1279,7 +1370,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+   "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -1289,14 +1380,14 @@
      "tier": 1,
      "cat": "Misc",
      "icon": "/tft-extra/wisps/18/Misc_Tier1.webp",
-     "cost": 2,
+     "cost": 1,
      "rounds": [
       "EarlyMid",
       "Mid"
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+     "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -1315,7 +1406,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+   "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -1331,7 +1422,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+     "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -1526,7 +1617,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "A 1-cost champion in your army.",
+   "req": "A 1-cost champion in your army; offered only in the first 2 seconds of the planning phase.",
    "cooldown": 5,
    "excl": [
     "NO SCOUT NO PIVOT"
@@ -1546,7 +1637,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "A 1-cost champion in your army.",
+     "req": "A 1-cost champion in your army; offered only in the first 2 seconds of the planning phase.",
      "cooldown": 5,
      "excl": [
       "NO SCOUT NO PIVOT"
@@ -1749,7 +1840,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "A 2-cost champion in your army.",
+   "req": "A 2-cost champion in your army; offered only in the first 2 seconds of the planning phase.",
    "cooldown": 5,
    "excl": [
     "NO SCOUT NO PIVOT"
@@ -1770,7 +1861,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "A 2-cost champion in your army.",
+     "req": "A 2-cost champion in your army; offered only in the first 2 seconds of the planning phase.",
      "cooldown": 5,
      "excl": [
       "NO SCOUT NO PIVOT"
@@ -1930,6 +2021,84 @@
    ]
   },
   {
+   "api": "DA_ReturningFriend",
+   "name": "Returning Friend",
+   "desc": "Gain a temporary Training Dummy with two Giant's Belts.",
+   "tier": 1,
+   "cat": "Combat",
+   "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+   "cost": 0,
+   "rounds": [
+    "EarlyMid",
+    "Mid",
+    "MidLate",
+    "Late"
+   ],
+   "doubles": true,
+   "tockers": true,
+   "req": "Less than 10 gold.",
+   "cooldown": 5,
+   "variants": [
+    {
+     "api": "DA_ReturningFriendUpgrade",
+     "name": "Returning Friend",
+     "desc": "Gain a Training Dummy with Three Giant's Belts.",
+     "tier": 1,
+     "cat": "Combat",
+     "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
+     "cost": 0,
+     "rounds": [
+      "EarlyMid",
+      "Mid",
+      "MidLate",
+      "Late"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "req": "Less than 10 gold.",
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
+  },
+  {
+   "api": "DA_RoomForAShroom",
+   "name": "Room for a Shroom",
+   "desc": "Gain 2 random mushrooms.",
+   "tier": 1,
+   "cat": "GoldXP",
+   "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
+   "cost": 0,
+   "rounds": [
+    "MidLate",
+    "Late"
+   ],
+   "doubles": true,
+   "tockers": true,
+   "req": "Less than 10 gold.",
+   "cooldown": 5,
+   "variants": [
+    {
+     "api": "DA_RoomForAShroomUpgrade",
+     "name": "Room for a Shroom",
+     "desc": "Gain 3 random mushrooms.",
+     "tier": 1,
+     "cat": "GoldXP",
+     "icon": "/tft-extra/wisps/18/GoldXP_Tier1.webp",
+     "cost": 0,
+     "rounds": [
+      "MidLate",
+      "Late"
+     ],
+     "doubles": true,
+     "tockers": true,
+     "req": "Less than 10 gold.",
+     "cooldown": 5,
+     "kind": "upgrade"
+    }
+   ]
+  },
+  {
    "api": "DA_Salvager18",
    "name": "Salvager",
    "desc": "Any units you bench have items removed and broken apart.",
@@ -1990,7 +2159,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 8 gold.",
+   "req": "At least 10 gold.",
    "cooldown": 5,
    "variants": [
     {
@@ -2007,7 +2176,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 8 gold.",
+     "req": "At least 10 gold.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -2053,7 +2222,7 @@
   {
    "api": "DA_Stealthy18",
    "name": "Stealthy",
-   "desc": "Your 2 strongest Fighters or Assassins are untargetable for 6 seconds.",
+   "desc": "Your 3 strongest Fighters or Assassins are untargetable for 8 seconds.",
    "tier": 1,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
@@ -2064,13 +2233,13 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Fighters or Assassins on the board; an itemized Assassin or Fighter champion on your board.",
+   "req": "At least 3 Fighters or Assassins combined fielded last combat; an itemized Assassin or Fighter on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
      "api": "DA_Stealthy18_Upgrade",
      "name": "Stealthy",
-     "desc": "2 random champions on the back row are untargetable for 10 seconds.",
+     "desc": "3 random champions on the back row are untargetable for 12 seconds.",
      "tier": 1,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier1.webp",
@@ -2081,7 +2250,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Fighters or Assassins on the board; an itemized Assassin or Fighter champion on your board.",
+     "req": "At least 3 Fighters or Assassins combined fielded last combat; an itemized Assassin or Fighter on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -2270,7 +2439,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -2287,7 +2456,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -2306,7 +2475,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -2322,7 +2491,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -2534,7 +2703,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Tanks on the board.",
+   "req": "At least 2 Tanks fielded last combat.",
    "cooldown": 5,
    "variants": [
     {
@@ -2553,7 +2722,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Tanks on the board.",
+     "req": "At least 2 Tanks fielded last combat.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -2695,7 +2864,6 @@
     "Lucky Gloves+",
     "Solo Plate",
     "Seraphim's Staff",
-    "Heart of Steel",
     "Deadlier Blades",
     "Deadlier Caps",
     "Living Forge",
@@ -2726,7 +2894,6 @@
       "Lucky Gloves+",
       "Solo Plate",
       "Seraphim's Staff",
-      "Heart of Steel",
       "Deadlier Blades",
       "Deadlier Caps",
       "Living Forge",
@@ -2740,7 +2907,7 @@
   {
    "api": "DA_18_BackrowStar",
    "name": "Backrow Star",
-   "desc": "A random back row champion gains 85% Attack Speed for 7 seconds.",
+   "desc": "A random back row champion gains 100% Attack Speed for 7 seconds.",
    "tier": 2,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -2757,7 +2924,7 @@
     {
      "api": "DA_18_BackrowStar_Upgrade",
      "name": "Backrow Star",
-     "desc": "A random back row champion gains 115% Attack Speed for 8 seconds.",
+     "desc": "A random back row champion gains 130% Attack Speed for 8 seconds.",
      "tier": 2,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -3032,7 +3199,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Tanks on the board.",
+   "req": "At least 2 Tanks fielded last combat.",
    "cooldown": 5,
    "variants": [
     {
@@ -3050,7 +3217,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Tanks on the board.",
+     "req": "At least 2 Tanks fielded last combat.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3237,6 +3404,7 @@
    ],
    "doubles": true,
    "tockers": true,
+   "req": "More than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -3253,6 +3421,7 @@
      ],
      "doubles": true,
      "tockers": true,
+     "req": "More than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3431,6 +3600,7 @@
    ],
    "doubles": true,
    "tockers": true,
+   "req": "More than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -3447,6 +3617,7 @@
      ],
      "doubles": true,
      "tockers": true,
+     "req": "More than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3616,7 +3787,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Casters on the board.",
+   "req": "At least 2 Casters fielded last combat.",
    "cooldown": 5,
    "variants": [
     {
@@ -3635,7 +3806,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Casters on the board.",
+     "req": "At least 2 Casters fielded last combat.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3685,14 +3856,14 @@
    "tier": 2,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
-   "cost": 2,
+   "cost": 1,
    "rounds": [
     "Late",
     "VeryLate"
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Fighters on the board; an itemized Fighter champion on your board.",
+   "req": "At least 2 Fighters fielded last combat; an itemized Fighter on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
@@ -3702,14 +3873,14 @@
      "tier": 2,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
-     "cost": 2,
+     "cost": 1,
      "rounds": [
       "Late",
       "VeryLate"
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Fighters on the board; an itemized Fighter champion on your board.",
+     "req": "At least 2 Fighters fielded last combat; an itemized Fighter on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3870,7 +4041,7 @@
   {
    "api": "DA_18_KillingFrenzy",
    "name": "Killing Frenzy",
-   "desc": "Fighters execute targets under 12% Health. They gain 15% Attack Speed on kill.",
+   "desc": "Fighters execute targets under 12% Health. They gain 30% Attack Speed on kill.",
    "tier": 2,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -3881,13 +4052,13 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized champion on your board with the Fighter role; at least 2 Fighters on the board.",
+   "req": "An itemized Fighter on your board or bench; at least 2 Fighters fielded last combat.",
    "cooldown": 5,
    "variants": [
     {
      "api": "DA_18_KillingFrenzy_Upgrade",
      "name": "Killing Frenzy",
-     "desc": "Fighters execute targets under 15% Health. They gain 40% Attack Speed on kill.",
+     "desc": "Fighters execute targets under 15% Health. They gain 60% Attack Speed on kill.",
      "tier": 2,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -3898,7 +4069,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized champion on your board with the Fighter role; at least 2 Fighters on the board.",
+     "req": "An itemized Fighter on your board or bench; at least 2 Fighters fielded last combat.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -3918,7 +4089,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+   "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -3935,7 +4106,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized champion on your board with the Attack damage category and a role of Assassin, Caster, Marksman, Fighter or Specialist.",
+     "req": "An itemized Attack Assassin, Caster, Marksman, Fighter or Specialist on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -4081,7 +4252,7 @@
    ],
    "doubles": true,
    "tockers": false,
-   "req": "Not on a loss streak of 3 or more.",
+   "req": "Not on a loss streak of 3 or more; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -4098,7 +4269,7 @@
      ],
      "doubles": true,
      "tockers": false,
-     "req": "Not on a loss streak of 3 or more.",
+     "req": "Not on a loss streak of 3 or more; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -4118,7 +4289,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "A 4-cost champion in your army.",
+   "req": "A 4-cost champion in your army; only offered in the first 2 seconds of the planning phase.",
    "cooldown": 5,
    "excl": [
     "NO SCOUT NO PIVOT"
@@ -4138,7 +4309,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "A 4-cost champion in your army.",
+     "req": "A 4-cost champion in your army; only offered in the first 2 seconds of the planning phase.",
      "cooldown": 5,
      "excl": [
       "NO SCOUT NO PIVOT"
@@ -4161,7 +4332,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Casters on the board; an itemized champion on your board with the Caster role.",
+   "req": "At least 2 Casters fielded last combat; an itemized Caster on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
@@ -4178,7 +4349,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Casters on the board; an itemized champion on your board with the Caster role.",
+     "req": "At least 2 Casters fielded last combat; an itemized Caster on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -4199,7 +4370,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Marksmans on the board; an itemized champion on your board with the Marksman role.",
+   "req": "At least 2 Marksmen fielded last combat; an itemized Marksman on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
@@ -4217,7 +4388,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Marksmans on the board; an itemized champion on your board with the Marksman role.",
+     "req": "At least 2 Marksmen fielded last combat; an itemized Marksman on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -4237,7 +4408,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 Marksmans on the board; an itemized champion on your board with the Marksman role.",
+   "req": "At least 2 Marksmen fielded last combat; an itemized Marksman on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
@@ -4254,7 +4425,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 2 Marksmans on the board; an itemized champion on your board with the Marksman role.",
+     "req": "At least 2 Marksmen fielded last combat; an itemized Marksman on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -4376,7 +4547,7 @@
    "tier": 2,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
-   "cost": 2,
+   "cost": 3,
    "rounds": [
     "EarlyMid",
     "Mid",
@@ -4631,7 +4802,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 2 inactive traits (contributed but not active).",
+   "req": "At least 2 inactive traits.",
    "cooldown": 5,
    "excl": [
     "Trait Ladder"
@@ -4652,7 +4823,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 4 inactive traits (contributed but not active).",
+     "req": "At least 4 inactive traits.",
      "cooldown": 5,
      "excl": [
       "Trait Ladder"
@@ -4773,7 +4944,7 @@
   {
    "api": "DA_PottedLifebloom18",
    "name": "Potted Lifebloom",
-   "desc": "Gain a temporary Lifeblossom.",
+   "desc": "Gain a temporary Lifebloom.",
    "tier": 2,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -4791,7 +4962,7 @@
     {
      "api": "DA_PottedLifebloom18_Upgrade",
      "name": "Potted Lifebloom",
-     "desc": "Gain a temporary Lifeblossom.",
+     "desc": "Gain a temporary Lifebloom.",
      "tier": 2,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier2.webp",
@@ -5186,7 +5357,7 @@
    "tier": 2,
    "cat": "GoldXP",
    "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
-   "cost": 3,
+   "cost": 2,
    "rounds": [
     "Mid",
     "MidLate"
@@ -5202,7 +5373,7 @@
      "tier": 2,
      "cat": "GoldXP",
      "icon": "/tft-extra/wisps/18/GoldXP_Tier2.webp",
-     "cost": 3,
+     "cost": 2,
      "rounds": [
       "Mid",
       "MidLate"
@@ -5433,7 +5604,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+   "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
    "cooldown": 5,
    "variants": [
     {
@@ -5450,7 +5621,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin champion on your board.",
+     "req": "An itemized Magic Caster, Fighter, Marksman or Assassin on your board or bench; more than 20 player health remaining.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -5646,13 +5817,13 @@
    "tier": 3,
    "cat": "Risky",
    "icon": "/tft-extra/wisps/18/Risky_Tier3.webp",
-   "cost": 0,
+   "cost": 2,
    "rounds": [
     "EarlyMid"
    ],
    "doubles": true,
    "tockers": true,
-   "req": "No 3-star champion anywhere in your army; not on a win streak of 3 or more.",
+   "req": "No 3-star champion; a running subtotal of your army's unit sell values reaches between 15 and 24 gold; not on a win streak of 3 or more. Offered only in the first 2 seconds of the planning phase.",
    "cooldown": 5,
    "excl": [
     "NO SCOUT NO PIVOT",
@@ -5660,6 +5831,7 @@
     "Worth the Wait II",
     "Weight The Worth",
     "Hard Commit",
+    "Construct a Companion",
     "Luxury Subscription",
     "Frontline Foundation",
     "Backline Blueprint",
@@ -5675,13 +5847,13 @@
      "tier": 3,
      "cat": "Risky",
      "icon": "/tft-extra/wisps/18/Risky_Tier3.webp",
-     "cost": 0,
+     "cost": 2,
      "rounds": [
       "EarlyMid"
      ],
      "doubles": true,
      "tockers": true,
-     "req": "No 3-star champion anywhere in your army; not on a win streak of 3 or more.",
+     "req": "No 3-star champion; a running subtotal of your army's unit sell values reaches between 15 and 24 gold; not on a win streak of 3 or more. Offered only in the first 2 seconds of the planning phase.",
      "cooldown": 5,
      "excl": [
       "NO SCOUT NO PIVOT",
@@ -5689,6 +5861,7 @@
       "Worth the Wait II",
       "Weight The Worth",
       "Hard Commit",
+      "Construct a Companion",
       "Luxury Subscription",
       "Frontline Foundation",
       "Backline Blueprint",
@@ -5957,7 +6130,7 @@
    "tier": 3,
    "cat": "Champion",
    "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
-   "cost": 5,
+   "cost": 6,
    "rounds": [
     "Early"
    ],
@@ -5972,7 +6145,7 @@
      "tier": 3,
      "cat": "Champion",
      "icon": "/tft-extra/wisps/18/Champion_Tier3.webp",
-     "cost": 4,
+     "cost": 5,
      "rounds": [
       "Early"
      ],
@@ -5986,7 +6159,7 @@
   {
    "api": "DA_18_GiantGrowth",
    "name": "Giant Growth",
-   "desc": "Your highest Health unit grows, gaining 750 Health.",
+   "desc": "Your highest Health unit grows, gaining 800 Health.",
    "tier": 3,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
@@ -6002,7 +6175,7 @@
     {
      "api": "DA_18_GiantGrowth_Upgrade",
      "name": "Giant Growth",
-     "desc": "Your 2 highest Health units grow, gaining 750 Health.",
+     "desc": "Your 2 highest Health units grow, gaining 800 Health.",
      "tier": 3,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
@@ -6032,7 +6205,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "An itemized Tank champion on your board.",
+   "req": "An itemized Tank on your board or bench.",
    "cooldown": 5,
    "variants": [
     {
@@ -6070,7 +6243,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "An itemized Tank champion on your board.",
+     "req": "An itemized Tank on your board or bench.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -6151,7 +6324,7 @@
    "tier": 3,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
-   "cost": 6,
+   "cost": 4,
    "rounds": [
     "Late",
     "VeryLate"
@@ -6168,7 +6341,7 @@
      "tier": 3,
      "cat": "Combat",
      "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
-     "cost": 6,
+     "cost": 4,
      "rounds": [
       "Late",
       "VeryLate"
@@ -6265,7 +6438,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "Exactly 2 or 3 (no more or less) champions holding 3 items each.",
+   "req": "At least 2 champions on your board or bench each holding 3 or more items; fewer than 4 fully itemised champions on your board or bench (3 items each).",
    "cooldown": 5,
    "excl": [
     "Makeshift Armor I",
@@ -6286,7 +6459,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "Exactly 2 or 3 (no more or less) champions holding 3 items each.",
+     "req": "At least 2 champions on your board or bench each holding 3 or more items; fewer than 4 fully itemised champions on your board or bench (3 items each).",
      "cooldown": 5,
      "excl": [
       "Makeshift Armor I",
@@ -6303,7 +6476,7 @@
    "tier": 3,
    "cat": "Combat",
    "icon": "/tft-extra/wisps/18/Combat_Tier3.webp",
-   "cost": 2,
+   "cost": 5,
    "rounds": [
     "VeryLate"
    ],
@@ -6547,7 +6720,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "At least 5 champions on your board each holding 1 or more items; Elderwood not active.",
+   "req": "At least 5 champions on your board or bench each holding 1 or more items; Elderwood not active.",
    "cooldown": 5,
    "variants": [
     {
@@ -6563,7 +6736,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "At least 5 champions on your board each holding 1 or more items; Elderwood not active.",
+     "req": "At least 5 champions on your board or bench each holding 1 or more items; Elderwood not active.",
      "cooldown": 5,
      "kind": "upgrade"
     }
@@ -6653,7 +6826,7 @@
    ],
    "doubles": true,
    "tockers": true,
-   "req": "During the shop phase, only in the first 20 seconds; at least 20 gold.",
+   "req": "Offered only in the first 20 seconds of the planning phase; at least 20 gold.",
    "cooldown": 5,
    "variants": [
     {
@@ -6670,7 +6843,7 @@
      ],
      "doubles": true,
      "tockers": true,
-     "req": "During the shop phase, only in the first 20 seconds; at least 20 gold.",
+     "req": "Offered only in the first 20 seconds of the planning phase; at least 20 gold.",
      "cooldown": 5,
      "kind": "upgrade"
     }

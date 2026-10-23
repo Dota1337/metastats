@@ -114,7 +114,15 @@ crawl_running() {
 # (Begruendung im Kopf). Fehlt er, gilt die Installation als abweichend — so
 # holt die Box beim ersten Lauf nach dieser Umstellung den Rueckstand nach.
 DEPS_STAMP=node_modules/.metastats-lock-sha1
-lock_hash() { sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true; }
+# Node-ABI gehoert in den Stempel (2026-10-24, Wechsel Node 20 -> 22): native
+# Module wie better-sqlite3 sind an die ABI gebunden. Ohne sie saehe ein
+# Node-Wechsel bei gleichem Lockfile "alles passt" und liesse die alten Builds liegen.
+lock_hash() {
+  local h
+  h=$(sha1sum package-lock.json 2>/dev/null | cut -d' ' -f1 || true)
+  [ -n "$h" ] || return 0
+  printf '%s abi-%s\n' "$h" "$(node -p process.versions.modules 2>/dev/null || echo unbekannt)"
+}
 deps_outdated() {
   local want
   want=$(lock_hash)

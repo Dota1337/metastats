@@ -4351,6 +4351,7 @@ export function I18nProvider({ children, initialLang = 'de' }: { children: React
     try {
       const saved = localStorage.getItem(LANG_COOKIE);
       if (isLang(saved) && saved !== chosen) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Absicht: localStorage gibt es erst im Browser
         setChosen(saved);
       }
     } catch {}

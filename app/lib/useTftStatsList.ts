@@ -82,6 +82,7 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
   useLayoutEffect(() => {
     if (initial) loaded.current.set(filtersDataKey(initialFilters), { rows: initial.payload.rows, patches: initial.payload.patches });
     const mount = resolveMountFilters(initialFilters, new URLSearchParams(window.location.search));
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Absicht: Adresse und localStorage gibt es erst im Browser, Angleich vor dem ersten Zeichnen
     if (mount.change) setFilters(mount.filters);
     if (mount.change === 'data') setAwaitingStored(true);
     const served = initial?.payload.filters?.bucket;

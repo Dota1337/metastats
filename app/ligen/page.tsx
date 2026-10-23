@@ -149,7 +149,7 @@ export default function LigenPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLeagueSlug]);
 
-  const fetchLeagueDetail = async (slug: string) => {
+  async function fetchLeagueDetail(slug: string) {
     setSelectedLeague(slug);
     setDetailLoading(true);
     setDetailTab('standings');
@@ -163,7 +163,7 @@ export default function LigenPage() {
       else setLeagueDetail(null);
     } catch { if (req === detailReq.current) setLeagueDetail(null); }
     finally { if (req === detailReq.current) setDetailLoading(false); }
-  };
+  }
 
   // Calendar helpers
   const calendarEvents = useMemo(() => {

@@ -35,20 +35,23 @@ import { dirname, join } from 'node:path';
 const require_ = createRequire(import.meta.url);
 const ESLINT_BIN = join(dirname(require_.resolve('eslint/package.json')), 'bin', 'eslint.js');
 
-// Stand 28.09.2026, gemessen mit diesem Script.
+// Stand 24.10.2026, gemessen mit diesem Script.
 // Beim Senken das Datum mitziehen.
 const BUDGET = {
-  '@typescript-eslint/no-explicit-any': 602,
+  '@typescript-eslint/no-explicit-any': 556,
   // 28 -> 0 am 15.10.2026: Links laufen seitdem ueber withLang() (Sprach-Adressen),
   // die Regel sieht nur feste Texte. Ihren Platz nimmt no-restricted-syntax ein.
   '@next/next/no-html-link-for-pages': 0,
   // Interne Links ohne Sprach-Adresse (eslint.config.mjs, SEO Weg C). Bleibt 0.
   'no-restricted-syntax': 0,
-  'react-hooks/set-state-in-effect': 29,
-  'prefer-const': 4,
+  // 24.10.2026: eslint-plugin-react-hooks 7.1.1 (mit Next 16.4.3) meldet mehr.
+  // Echte Fehler umgebaut; Fehlalarme (setState erst nach await) und bewusste
+  // Angleiche an localStorage/Adresse stehen mit Begruendung an der Zeile.
+  'react-hooks/set-state-in-effect': 26,
+  'prefer-const': 2,
   'react-hooks/immutability': 0,
   'react-hooks/static-components': 5,
-  'react/no-unescaped-entities': 4,
+  'react/no-unescaped-entities': 2,
   '@typescript-eslint/no-require-imports': 2,
   'react-hooks/purity': 1,
 };

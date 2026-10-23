@@ -155,11 +155,29 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
   const [refreshState, setRefreshState] = useState<'idle' | 'busy' | 'cooldown' | 'error'>('idle');
   const [refreshMessage, setRefreshMessage] = useState<string | null>(null);
 
-  const loadValue = (signal?: AbortSignal) => {
+  // Anderer Spieler oder andere Region: alte Werte schon beim Rendern
+  // verwerfen (React-Muster „State bei Prop-Wechsel anpassen"), nicht erst im
+  // Effekt. Beim ersten Rendern stimmen die Startwerte.
+  const valueKey = `${fullName}|${region}`;
+  const [shownValue, setShownValue] = useState(valueKey);
+  if (shownValue !== valueKey) {
+    setShownValue(valueKey);
     setLoading(true);
     setData(null);
     setHistory([]);
     setPeaks([]);
+  }
+
+  const resetValue = () => {
+    setLoading(true);
+    setData(null);
+    setHistory([]);
+    setPeaks([]);
+  };
+
+  // Setzt State nur in den .then-Callbacks; das Zuruecksetzen davor macht
+  // der Aufrufer (resetValue bzw. der Wechsel-Block oben).
+  const loadValue = (signal?: AbortSignal) => {
     // Fetch marketvalue + current-set in parallel — the set's startDate
     // scopes the sparkline window so the chart shows only this set's data.
     return Promise.all([
@@ -232,6 +250,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         return;
       }
       if (!res.ok) throw new Error(`refresh failed: ${res.status}`);
+      resetValue();
       await loadValue();
       setRefreshState('idle');
     } catch {

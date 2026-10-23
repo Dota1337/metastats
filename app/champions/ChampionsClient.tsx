@@ -85,18 +85,6 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     { value: 'support', label: t('role.support') },
   ];
 
-  // Abbruch im Cleanup: zwei schnelle Filter-Klicks starten zwei Requests, und
-  // ohne Guard gewinnt der zuletzt EINTREFFENDE statt des zuletzt angeforderten
-  // — sichtbar als falsche Champion-Liste bei korrekt markiertem Filter.
-  useEffect(() => {
-    const key = `${championListKey({ tier, role, region })}|${reloadKey}`;
-    if (shownKey.current === key) return;
-    shownKey.current = null;
-    const ctl = new AbortController();
-    fetchChampions(ctl.signal, key);
-    return () => ctl.abort();
-  }, [tier, role, region, reloadKey]);
-
   const fetchChampions = async (signal: AbortSignal, key: string) => {
     setLoading(true);
     setFailed(false);
@@ -118,6 +106,18 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     }
     if (!signal.aborted) setLoading(false);
   };
+
+  // Abbruch im Cleanup: zwei schnelle Filter-Klicks starten zwei Requests, und
+  // ohne Guard gewinnt der zuletzt EINTREFFENDE statt des zuletzt angeforderten
+  // — sichtbar als falsche Champion-Liste bei korrekt markiertem Filter.
+  useEffect(() => {
+    const key = `${championListKey({ tier, role, region })}|${reloadKey}`;
+    if (shownKey.current === key) return;
+    shownKey.current = null;
+    const ctl = new AbortController();
+    fetchChampions(ctl.signal, key);
+    return () => ctl.abort();
+  }, [tier, role, region, reloadKey]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -158,7 +158,9 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     TOP: 'Top', JUNGLE: 'Jungle', MIDDLE: 'Mid', BOTTOM: 'ADC', UTILITY: 'Support', SUPPORT: 'Support',
   };
 
-  const SortHeader = ({ label, sKey, className }: { label: string; sKey: SortKey; className?: string }) => (
+  // Als Aufruf statt als Komponente: eine hier definierte Komponente waere bei
+  // jedem Rendern eine neue und wuerde neu eingehaengt (Fokus weg nach Klick).
+  const sortHeader = (label: string, sKey: SortKey, className?: string) => (
     <button
       onClick={() => handleSort(sKey)}
       className={`text-xs uppercase tracking-wider hover:text-white transition-colors flex items-center gap-1 ${className || ''} ${sortKey === sKey ? 'text-accent' : 'text-fg-secondary'}`}
@@ -306,21 +308,21 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
           <div className="hidden md:grid grid-cols-[3rem_3rem_1fr_5rem_5rem_5rem_5rem_5rem_4rem] gap-2 px-4 py-3 border-b border-border-subtle bg-surface-sunken">
             <div className="text-fg-secondary text-xs uppercase tracking-wider">#</div>
             <div />
-            <SortHeader label={t('champ.champion')} sKey="name" />
+            {sortHeader(t('champ.champion'), 'name')}
             <div className="text-fg-secondary text-xs uppercase tracking-wider">{t('champ.role')}</div>
-            <SortHeader label="Winrate" sKey="winRate" className="justify-end" />
-            <SortHeader label="Pickrate" sKey="pickRate" className="justify-end" />
-            <SortHeader label="Banrate" sKey="banRate" className="justify-end" />
-            <SortHeader label="KDA" sKey="avgKDA" className="justify-end" />
-            <SortHeader label={t('champ.games')} sKey="games" className="justify-end" />
+            {sortHeader('Winrate', 'winRate', 'justify-end')}
+            {sortHeader('Pickrate', 'pickRate', 'justify-end')}
+            {sortHeader('Banrate', 'banRate', 'justify-end')}
+            {sortHeader('KDA', 'avgKDA', 'justify-end')}
+            {sortHeader(t('champ.games'), 'games', 'justify-end')}
           </div>
           {/* Mobile sort buttons */}
           <div className="md:hidden flex flex-wrap gap-1 px-3 py-2 border-b border-border-subtle bg-surface-sunken">
-            <SortHeader label="Name" sKey="name" />
-            <SortHeader label="WR" sKey="winRate" />
-            <SortHeader label="Pick" sKey="pickRate" />
-            <SortHeader label="Ban" sKey="banRate" />
-            <SortHeader label="KDA" sKey="avgKDA" />
+            {sortHeader('Name', 'name')}
+            {sortHeader('WR', 'winRate')}
+            {sortHeader('Pick', 'pickRate')}
+            {sortHeader('Ban', 'banRate')}
+            {sortHeader('KDA', 'avgKDA')}
           </div>
 
           {loading ? (

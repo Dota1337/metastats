@@ -32,13 +32,21 @@ export default function TeamDetailPage() {
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Neues Team oder „Erneut versuchen": Ladeanzeige schon beim Rendern setzen
+  // (React-Muster „State bei Prop-Wechsel anpassen"), nicht erst im Effekt.
+  const loadKey = `${id}|${reloadKey}`;
+  const [shownLoad, setShownLoad] = useState(loadKey);
+  if (shownLoad !== loadKey) {
+    setShownLoad(loadKey);
+    setLoading(true);
+    setFailed(false);
+  }
+
   useEffect(() => {
     // Die Detail-Datei wird direkt aus dem URL-Param adressiert — kein
     // Wasserfall über ein Listing, also genau ein Fetch (~3,6 KB statt 2,9 MB).
     // Fallback auf die SoT nur bei 404 (Derivat nicht gebaut/deployed).
     let alive = true;
-    setLoading(true);
-    setFailed(false);
     (async () => {
       try {
         const direct = await fetch(`/pro-teams/teams/${encodeURIComponent(String(id))}.json`);

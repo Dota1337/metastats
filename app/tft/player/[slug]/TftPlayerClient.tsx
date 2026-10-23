@@ -172,8 +172,6 @@ export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHe
   const [error, setError] = useState<string | null>(null);
   const [ddVersion, setDdVersion] = useState('');
   const [currentSet, setCurrentSet] = useState<number | null>(null);
-  const [selectedSet, setSelectedSet] = useState<number | null>(null);
-  const [setManuallyPicked, setSetManuallyPicked] = useState(false);
   const [page, setPage] = useState(0);
 
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null);
@@ -250,9 +248,17 @@ export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fullName, gameName, urlRegion, urlPuuid]);
 
+  // Neuer Spieler, andere Region oder anderes Set: Ladeanzeige der Statistik
+  // schon beim Rendern setzen (React-Muster „State bei Prop-Wechsel anpassen").
+  const statsKey = data?.summoner.puuid ? `${data.summoner.puuid}|${region}|${statsSetOverride}` : null;
+  const [statsShown, setStatsShown] = useState(statsKey);
+  if (statsShown !== statsKey) {
+    setStatsShown(statsKey);
+    if (statsKey) setStatsLoading(true);
+  }
+
   useEffect(() => {
     if (!data?.summoner.puuid) return;
-    setStatsLoading(true);
     const setQuery = statsSetOverride != null ? `&set=${statsSetOverride}` : '';
     fetch(`/api/tft/player-stats?puuid=${data.summoner.puuid}&region=${region}${setQuery}`)
       .then(r => r.ok ? r.json() : null)
@@ -284,11 +290,18 @@ export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHe
     return data.matchIds.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   }, [data, page]);
 
+  // Neue Seite oder Region: Ladeanzeige schon beim Rendern, falls Spiele fehlen.
+  const pageKey = `${currentPageIds.join(',')}|${region}`;
+  const [pageShown, setPageShown] = useState(pageKey);
+  if (pageShown !== pageKey) {
+    setPageShown(pageKey);
+    if (currentPageIds.some(id => !matchCache[id])) setPageLoading(true);
+  }
+
   useEffect(() => {
     if (currentPageIds.length === 0) return;
     const missing = currentPageIds.filter(id => !matchCache[id]);
     if (missing.length === 0) return;
-    setPageLoading(true);
     fetch(`/api/tft/matches?ids=${missing.join(',')}&region=${region}`)
       .then(r => r.ok ? r.json() : { matches: [] })
       .then(m => {
@@ -313,17 +326,16 @@ export default function TftPlayerPage({ head = null }: { head?: Promise<PlayerHe
     return [...set].sort((a, b) => b - a);
   }, [matchCache, playerStats?.availableSets]);
 
-  useEffect(() => {
-    if (setManuallyPicked || availableSets.length === 0) return;
-    if (currentSet != null && availableSets.includes(currentSet)) {
-      setSelectedSet(currentSet);
-    } else {
-      const counts: Record<number, number> = {};
-      for (const m of Object.values(matchCache)) if (m.setNumber != null) counts[m.setNumber] = (counts[m.setNumber] || 0) + 1;
-      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-      setSelectedSet(top ? Number(top[0]) : null);
-    }
-  }, [availableSets, currentSet, matchCache, setManuallyPicked]);
+  // Set-Filter der Match-Liste: aktuelles Set, sonst das meistgespielte —
+  // beim Rendern abgeleitet statt per Effekt nachgezogen.
+  const selectedSet = useMemo(() => {
+    if (availableSets.length === 0) return null;
+    if (currentSet != null && availableSets.includes(currentSet)) return currentSet;
+    const counts: Record<number, number> = {};
+    for (const m of Object.values(matchCache)) if (m.setNumber != null) counts[m.setNumber] = (counts[m.setNumber] || 0) + 1;
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top ? Number(top[0]) : null;
+  }, [availableSets, currentSet, matchCache]);
 
   const pageMatches = useMemo(() => {
     const out: TftMatchSummary[] = [];

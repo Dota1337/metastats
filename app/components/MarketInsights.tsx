@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
 import { regionLabel } from '../lib/regions';
 import ApiUnavailable from './ApiUnavailable';
@@ -75,6 +75,9 @@ export default function MarketInsights() {
   const [transfers, setTransfers] = useState<TransferPrediction[]>([]);
   const [status, setStatus] = useState<Record<Tab, Load>>({ anomalies: 'idle', transfers: 'idle' });
   const [expanded, setExpanded] = useState(false);
+  // Zeitpunkt des Ladens: Vergleichsbasis fuer Vertragsenden (Date.now() beim
+  // Zeichnen waere bei jedem Rendern ein anderer Wert).
+  const [loadedAt, setLoadedAt] = useState(0);
 
   const load = useCallback(async (which: Tab) => {
     setStatus(s => ({ ...s, [which]: 'loading' }));
@@ -84,15 +87,18 @@ export default function MarketInsights() {
       const data = await res.json();
       if (which === 'anomalies') setAnomalies(Array.isArray(data.anomalies) ? data.anomalies : []);
       else setTransfers(Array.isArray(data.predictions) ? data.predictions : []);
+      setLoadedAt(Date.now());
       setStatus(s => ({ ...s, [which]: 'ready' }));
     } catch {
       setStatus(s => ({ ...s, [which]: 'error' }));
     }
   }, []);
 
-  useEffect(() => {
-    if (expanded && status[tab] === 'idle') load(tab);
-  }, [expanded, tab, status, load]);
+  // Laden beim Aufklappen bzw. Tab-Wechsel, je Tab nur beim ersten Mal —
+  // im Klick selbst statt in einem Effekt nach dem Zeichnen.
+  const openTab = (which: Tab) => {
+    if (status[which] === 'idle') load(which);
+  };
 
   // Platzhalter {x} fuellen; Datum, Geld, Prozent und Platz je Sprache formatiert.
   const fill = (key: string, vals: Record<string, string | number> = {}) =>
@@ -110,7 +116,10 @@ export default function MarketInsights() {
     <div className="bg-surface-base border border-border-subtle rounded-lg overflow-hidden mb-4">
       {/* Header */}
       <button
-        onClick={() => setExpanded(!expanded)}
+        onClick={() => {
+          if (!expanded) openTab(tab);
+          setExpanded(!expanded);
+        }}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-surface-raised transition-colors"
       >
         <div className="flex items-center gap-2">
@@ -132,7 +141,7 @@ export default function MarketInsights() {
           {/* Tabs */}
           <div className="flex gap-1 bg-surface-raised rounded-lg p-0.5 mb-3">
             <button
-              onClick={() => setTab('transfers')}
+              onClick={() => { setTab('transfers'); openTab('transfers'); }}
               className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'transfers' ? 'bg-surface-overlay text-white shadow-sm' : 'text-fg-secondary hover:text-white'
               }`}
@@ -140,7 +149,7 @@ export default function MarketInsights() {
               {t('mi.transferRadar')}
             </button>
             <button
-              onClick={() => setTab('anomalies')}
+              onClick={() => { setTab('anomalies'); openTab('anomalies'); }}
               className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 tab === 'anomalies' ? 'bg-surface-overlay text-white shadow-sm' : 'text-fg-secondary hover:text-white'
               }`}
@@ -240,8 +249,8 @@ export default function MarketInsights() {
                           <div className="text-center">
                             <div className={`text-xs font-medium ${
                               !tp.contractEnd ? 'text-fg-muted' :
-                              new Date(tp.contractEnd) < new Date() ? 'text-red-400' :
-                              new Date(tp.contractEnd).getTime() - Date.now() < 180 * 86400000 ? 'text-yellow-400' :
+                              new Date(tp.contractEnd).getTime() < loadedAt ? 'text-red-400' :
+                              new Date(tp.contractEnd).getTime() - loadedAt < 180 * 86400000 ? 'text-yellow-400' :
                               'text-white'
                             }`}>
                               {tp.contractEnd ? new Date(tp.contractEnd).toLocaleDateString(locale, { month: 'short', year: 'numeric' }) : 'n/a'}

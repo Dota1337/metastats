@@ -34,10 +34,16 @@ export default function TftCommunityGalleryPage() {
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   const [voting, setVoting] = useState<Set<string>>(new Set());
 
+  // Sortierwechsel: Ladeanzeige schon beim Rendern setzen, nicht erst im Effekt.
+  const [shownSort, setShownSort] = useState(sort);
+  if (shownSort !== sort) {
+    setShownSort(sort);
+    setLoading(true);
+  }
+
   useEffect(() => { loadTftAssets().then(setAssets); }, []);
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     fetch(`/api/tft/comps/community?sort=${sort}&limit=40`)
       .then(r => r.ok ? r.json() : { comps: [] })
       .then(d => { if (!cancelled) { setComps(d.comps || []); setLoading(false); } })

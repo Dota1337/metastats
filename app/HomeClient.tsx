@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import Nav from './components/Nav';
 import DdragonImg from './components/DdragonImg';
 import Footer from './components/Footer';
@@ -25,6 +25,14 @@ interface SiteStats {
 }
 
 // Nur echte Zahlen > 0; sonst bleibt das Skelett statt einer erfundenen 0.
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
+const subscribeNothing = () => () => {};
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia(REDUCED_MOTION);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+
 function positiveOrUndefined(v: unknown): number | undefined {
   return typeof v === 'number' && v > 0 ? v : undefined;
 }
@@ -40,13 +48,15 @@ export default function Home() {
   const [recentError, setRecentError] = useState(false);
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-  const [mounted, setMounted] = useState(false);
+  // Server und erstes Zeichnen: false, danach true — wie vorher per Effekt,
+  // aber ohne zweiten Zeichenvorgang aus dem Effekt heraus.
+  const mounted = useSyncExternalStore(subscribeNothing, () => true, () => false);
   // Die Partikel setzen ihre `animation` als Inline-Style; eine
   // prefers-reduced-motion-Regel in globals.css würde dagegen verlieren.
   // Deshalb werden die 20 Knoten bei `reduce` gar nicht erst gerendert —
   // statisch wären sie ohnehin nur 20 Goldpunkte in der Luft, und ihr
   // doppelter box-shadow-Glow kostet auch unbewegt Paint.
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const reduceMotion = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia(REDUCED_MOTION).matches, () => false);
   const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(null);
   const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
   const { t, lang, withLang } = useI18n();
@@ -60,13 +70,6 @@ export default function Home() {
     }
     fetchRecentPlayers();
     fetchHomepageStats();
-    setMounted(true);
-
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduceMotion(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
@@ -75,7 +78,7 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  const fetchRecentPlayers = async () => {
+  async function fetchRecentPlayers() {
     try {
       const res = await fetch('/api/recent-players');
       if (!res.ok) throw new Error(String(res.status));
@@ -85,9 +88,9 @@ export default function Home() {
     } catch {
       setRecentError(true);
     }
-  };
+  }
 
-  const fetchHomepageStats = async () => {
+  async function fetchHomepageStats() {
     try {
       const res = await fetch('/api/homepage-stats');
       const data = res.ok ? await res.json() : {};
@@ -102,9 +105,9 @@ export default function Home() {
     } catch {
       setFeaturedChamps([]);
     }
-  };
+  }
 
-  const fetchMarketData = async () => {
+  async function fetchMarketData() {
     setLoadingMarket(true);
     try {
       const res = await fetch('/api/market-rankings');
@@ -114,7 +117,7 @@ export default function Home() {
       if (data.losers) setLosers(data.losers);
     } catch {}
     setLoadingMarket(false);
-  };
+  }
 
   const search = () => {
     if (!name.trim()) return;

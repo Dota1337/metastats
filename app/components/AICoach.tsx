@@ -55,27 +55,31 @@ export default function AICoach({ matches, tier, role }: AICoachProps) {
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
+  // Neue Spiele oder neuer Rang: Ladeanzeige schon im selben Render setzen, nicht erst im Effekt.
+  const [analyzedFor, setAnalyzedFor] = useState<{ matches: AICoachProps['matches']; tier?: string } | null>(null);
+  if (matches.length > 0 && (analyzedFor?.matches !== matches || analyzedFor?.tier !== tier)) {
+    setAnalyzedFor({ matches, tier });
+    setLoading(true);
+  }
+
   useEffect(() => {
     if (matches.length === 0) return;
-    analyzePerformance();
+    (async () => {
+      try {
+        const res = await fetch('/api/ai-coach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matches, tier: tier || 'GOLD', role }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setReport(data);
+      } catch {
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [matches, tier]);
-
-  const analyzePerformance = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/ai-coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matches, tier: tier || 'GOLD', role }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setReport(data);
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!report && !loading) return null;
 

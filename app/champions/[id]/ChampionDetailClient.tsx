@@ -90,19 +90,6 @@ export default function ChampionDetailPage({ initial = null, builds = null }: {
   // der Sprache oder des Champions laedt wie bisher.
   const shownKey = useRef<string | null>(initial ? `${initial.id}|${initial.lang}` : null);
 
-  // Abbruch im Cleanup: bei schnellem Sprachwechsel (de → en → de) gewinnt
-  // sonst die zuletzt EINTREFFENDE Antwort, nicht die zuletzt angeforderte.
-  useEffect(() => {
-    if (!id) return;
-    const key = `${id}|${lang}`;
-    if (shownKey.current === key) return;
-    shownKey.current = null;
-    const ctl = new AbortController();
-    loadChampion(id as string, key, ctl.signal);
-    return () => ctl.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, lang]);
-
   const loadChampion = async (championId: string, key: string, signal: AbortSignal) => {
     setLoading(true);
     setError('');
@@ -131,6 +118,19 @@ export default function ChampionDetailPage({ initial = null, builds = null }: {
       if (!signal.aborted) setLoading(false);
     }
   };
+
+  // Abbruch im Cleanup: bei schnellem Sprachwechsel (de → en → de) gewinnt
+  // sonst die zuletzt EINTREFFENDE Antwort, nicht die zuletzt angeforderte.
+  useEffect(() => {
+    if (!id) return;
+    const key = `${id}|${lang}`;
+    if (shownKey.current === key) return;
+    shownKey.current = null;
+    const ctl = new AbortController();
+    loadChampion(id as string, key, ctl.signal);
+    return () => ctl.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, lang]);
 
   const statItems = champion
     ? [

@@ -154,6 +154,7 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
         });
       }
       const mount = resolveMountFilters(initialFilters, params);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Absicht: Adresse und localStorage gibt es erst im Browser, Angleich vor dem ersten Zeichnen
       if (mount.change) setFilters(mount.filters);
       if (mount.change === 'data' && initial) setAwaitingStored(true);
       const served = initial?.payload.filters?.bucket;
@@ -188,7 +189,8 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   const fullForView = isAdvActive(adv);
   const needFull = wantFull || fullForView;
   const fullForViewRef = useRef(fullForView);
-  fullForViewRef.current = fullForView;
+  // Nach dem Zeichnen nachziehen, nicht waehrend: gelesen wird erst im spaeten Fehlerfall.
+  useLayoutEffect(() => { fullForViewRef.current = fullForView; });
 
   // Laufenden Abruf beim Verlassen der Seite abbrechen.
   useEffect(() => () => { inflight.current?.cancel(); inflight.current = null; }, []);

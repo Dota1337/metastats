@@ -173,13 +173,13 @@ function StarValues({ values, suffix = '', star, className = '' }: {
   values: Array<string | number>; suffix?: string; star: number | null; className?: string;
 }) {
   // Gewaehlter Stern ohne eigenen Wert (4★ bei Werten fuer 3 Stufen): alle normal zeigen.
-  if (star != null && star > values.length) star = null;
+  const shown = star != null && star > values.length ? null : star;
   return (
     <span className={`tabular-nums ${className}`}>
       {values.map((v, i) => (
         <span key={i}>
           {i > 0 && <span className="text-fg-faint">/</span>}
-          <span className={star == null ? 'font-semibold' : i + 1 === star ? 'font-bold underline decoration-2 underline-offset-2' : 'opacity-45'}>
+          <span className={shown == null ? 'font-semibold' : i + 1 === shown ? 'font-bold underline decoration-2 underline-offset-2' : 'opacity-45'}>
             {typeof v === 'number' ? v.toLocaleString('de-DE') : v}
           </span>
         </span>

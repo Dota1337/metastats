@@ -101,12 +101,32 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
   const { t, lang, withLang } = useI18n();
   const numLocale = LOCALE_MAP[lang];
 
-  useEffect(() => {
-    if (!slug) return;
-    // Name--Tag, alte Adressen Name-Tag — gleiche Auslese wie Titel und Vorschaubild.
-    const { name, tag } = parseLolPlayerSlug(slug as string);
-    loadPlayer(name, tag);
-  }, [slug, region]);
+  // Spieler- oder Regionwechsel: Werte des vorigen Profils schon beim Rendern
+  // verwerfen (React-Muster „State bei Prop-Wechsel anpassen"), damit sie nie
+  // unter dem neuen Namen aufblitzen. Beim ersten Rendern stimmen die Startwerte.
+  const profileKey = `${slug}|${region}`;
+  const [shownProfile, setShownProfile] = useState(profileKey);
+  if (shownProfile !== profileKey) {
+    setShownProfile(profileKey);
+    setLoading(true);
+    setError('');
+    setNotFound(false);
+    setStoredMarketValue(null);
+    setProInfo(null);
+    setMatches([]);
+    setStatsOverview(null);
+    setExtendedById({});
+    setSeasonStats(null);
+    setSeasonLoading(false);
+    setHasMoreMatches(true);
+    setMatchesNextStart(null);
+    setMatchesError('');
+    setMasteries([]);
+    setRoleFilter('all');
+    setExpandedMatch(null);
+    setLiveGame({ inGame: false });
+    setLiveGameUnavailable('');
+  }
 
   // Live-Spiel getrennt, damit „Erneut versuchen“ nur diesen Teil neu holt.
   // 403 = Schluessel ohne Spectator-Recht (Funktion fehlt), alles andere = kurz weg.
@@ -137,28 +157,11 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
   const loadPlayer = async (name: string, tag: string) => {
     // Spieler- oder Regionwechsel: Werte des vorigen Profils verwerfen und
     // verspaetete Antworten eines alten Aufrufs ignorieren.
+    // Die Werte des vorigen Profils setzt der Wechsel-Block oben schon beim Rendern zurueck.
     const req = ++loadReq.current;
     const stale = () => req !== loadReq.current;
-    setLoading(true);
-    setError('');
-    setNotFound(false);
-    setStoredMarketValue(null);
-    setProInfo(null);
-    setMatches([]);
-    setStatsOverview(null);
-    setExtendedById({});
-    setSeasonStats(null);
     // Spaete Saison-Antwort des vorigen Spielers verwerfen.
     seasonReq.current++;
-    setSeasonLoading(false);
-    setHasMoreMatches(true);
-    setMatchesNextStart(null);
-    setMatchesError('');
-    setMasteries([]);
-    setRoleFilter('all');
-    setExpandedMatch(null);
-    setLiveGame({ inGame: false });
-    setLiveGameUnavailable('');
     try {
       const version = await getDdragonVersion();
       if (version) setDdVersion(version);
@@ -353,6 +356,14 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
     }
     return null;
   }
+
+  useEffect(() => {
+    if (!slug) return;
+    // Name--Tag, alte Adressen Name-Tag — gleiche Auslese wie Titel und Vorschaubild.
+    const { name, tag } = parseLolPlayerSlug(slug as string);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fehlalarm: setState erst nach await
+    loadPlayer(name, tag);
+  }, [slug, region]);
 
   const loadMoreMatches = async () => {
     if (!player?.summoner?.puuid || loadingMore) return;

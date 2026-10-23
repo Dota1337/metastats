@@ -62,7 +62,8 @@ export default function Leaderboard() {
   const [hasNextPage, setHasNextPage] = useState(false);
   const [totalPlayers, setTotalPlayers] = useState<number | null>(null);
   const [search, setSearch] = useState('');
-  const [searchTimeout, setSearchTimeout] = useState<any>(null);
+  // Ref statt State: der Timer wird nie gezeichnet.
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [source, setSource] = useState('');
   const [failed, setFailed] = useState(false);
   // Rangliste und Suche laufen ueber dieselbe Liste: nur die juengste Anfrage schreibt.
@@ -93,16 +94,15 @@ export default function Leaderboard() {
   }, [region, tier, division, page]);
 
   useEffect(() => {
-    if (searchTimeout) clearTimeout(searchTimeout);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
     if (search.trim().length >= 2) {
-      const t = setTimeout(() => fetchSearch(search), 400);
-      setSearchTimeout(t);
+      searchTimer.current = setTimeout(() => fetchSearch(search), 400);
     } else if (!search.trim()) {
       fetchLeaderboard();
     }
   }, [search]);
 
-  const fetchLeaderboard = async () => {
+  async function fetchLeaderboard() {
     const seq = ++reqSeq.current;
     setLoading(true);
     setMessage('');
@@ -124,9 +124,9 @@ export default function Leaderboard() {
       setFailed(true);
     }
     setLoading(false);
-  };
+  }
 
-  const fetchSearch = async (q: string) => {
+  async function fetchSearch(q: string) {
     const seq = ++reqSeq.current;
     setLoading(true);
     setFailed(false);
@@ -143,7 +143,7 @@ export default function Leaderboard() {
       setFailed(true);
     }
     setLoading(false);
-  };
+  }
 
   const formatValue = (v: number | null) => {
     if (!v) return '-';
@@ -155,7 +155,9 @@ export default function Leaderboard() {
   const pageSize = APEX_TIERS.includes(tier) ? 100 : 205;
   const totalPages = totalPlayers ? Math.ceil(totalPlayers / pageSize) : null;
 
-  const PaginationBar = () => {
+  // Als Aufruf statt als Komponente: eine hier definierte Komponente waere bei
+  // jedem Rendern eine neue und wuerde neu eingehaengt.
+  const paginationBar = () => {
     if (search.trim() || entries.length === 0 || (page <= 1 && !hasNextPage)) return null;
 
     // Build page numbers to show: first, last, current +-2, with ellipsis
@@ -414,7 +416,7 @@ export default function Leaderboard() {
         )}
 
         {/* Pagination Top */}
-        {!loading && <div className="mb-2"><PaginationBar /></div>}
+        {!loading && <div className="mb-2">{paginationBar()}</div>}
 
         {/* Content */}
         {loading ? (
@@ -558,7 +560,7 @@ export default function Leaderboard() {
         )}
 
         {/* Pagination Bottom */}
-        <div className="mt-2"><PaginationBar /></div>
+        <div className="mt-2">{paginationBar()}</div>
 
         <Footer />
       </div>

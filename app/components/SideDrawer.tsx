@@ -93,7 +93,9 @@ export default function SideDrawer() {
   // Nachlade-Pfad schon vorbei war — dauerhaft leerer Patches-Tab.
   // `patches` darf NICHT in die Deps des Lade-Effects: die API liefert legitim
   // auch mal [], das wäre eine Endlosschleife.
-  const patchesLoadedFor = useRef<Game | null>(null);
+  // State statt Ref (2026-10-24), weil die Ladeanzeige beim Rendern darauf
+  // schaut; in die Deps des Lade-Effects kommt er trotzdem nicht.
+  const [patchesFor, setPatchesFor] = useState<Game | null>(null);
 
   const startContentFetch = () => {
     contentCtl.current?.abort();
@@ -129,43 +131,9 @@ export default function SideDrawer() {
     return () => document.removeEventListener('keydown', handler);
   }, []);
 
-  // Load data when drawer opens — split by game so we only hit the API the
-  // user actually needs for the page they're on.
-  useEffect(() => {
-    if (!open) return;
-    if (tab === 'patches' && patchesLoadedFor.current !== game) fetchPatches();
-    if (tab === 'tournaments') {
-      if (game === 'tft' && tftTournaments.length === 0) fetchTftTournaments();
-      if (game === 'lol' && tournaments.length === 0) fetchTournaments();
-    }
-  }, [open, tab, game]);
-
-  // Re-fetch tournaments when filter changes (only the LoL path has filters;
-  // TFT drawer shows the unfiltered live + upcoming list).
-  useEffect(() => {
-    if (open && tab === 'tournaments' && game === 'lol') fetchTournaments();
-  }, [tournamentFilter, leagueFilter]);
-
-  // Live-count badge — counts the live ones for the active game so the
-  // pulsing dot is in-context.
-  useEffect(() => {
-    liveCtl.current?.abort();
-    const ctl = new AbortController();
-    liveCtl.current = ctl;
-    const { signal } = ctl;
-    const url = game === 'tft' ? '/api/tft/tournaments?status=live' : '/api/tournaments?filter=live';
-    fetch(url, { signal })
-      .then(r => r.json())
-      .then(d => {
-        if (signal.aborted) return;
-        setLiveCount(game === 'tft' ? (d.tournaments || []).length : (d.totalMatches || 0));
-      })
-      .catch(() => {});
-  }, [game]);
-
+  // Die Ladeanzeige setzt der Wechsel-Block unten schon beim Rendern.
   const fetchTftTournaments = async () => {
     const signal = startContentFetch();
-    setLoading(true);
     try {
       // Drawer surfaces what's actually relevant right now — live + upcoming.
       // Past events live on the /tft/tournaments full page if a user wants
@@ -194,7 +162,6 @@ export default function SideDrawer() {
   const fetchPatches = async () => {
     const signal = startContentFetch();
     const loadingFor = game;
-    setLoading(true);
     try {
       // Game-aware patch source: TFT pulls from our own crawl_meta-derived
       // list (URLs point to teamfighttactics.lol...); LoL keeps the existing
@@ -205,7 +172,7 @@ export default function SideDrawer() {
       if (signal.aborted) return;
       if (data.patches) {
         setPatches(data.patches);
-        patchesLoadedFor.current = loadingFor;
+        setPatchesFor(loadingFor);
       }
     } catch {} finally {
       if (!signal.aborted) setLoading(false);
@@ -214,7 +181,6 @@ export default function SideDrawer() {
 
   const fetchTournaments = async () => {
     const signal = startContentFetch();
-    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (tournamentFilter !== 'all') params.set('filter', tournamentFilter);
@@ -229,6 +195,65 @@ export default function SideDrawer() {
       if (!signal.aborted) setLoading(false);
     }
   };
+
+  // Ladeanzeige schon beim Rendern setzen (React-Muster „State bei
+  // Prop-Wechsel anpassen"), unter genau den Bedingungen, unter denen die
+  // beiden Effects unten einen Abruf starten.
+  const openTrigger = `${open}|${tab}|${game}`;
+  const [shownOpen, setShownOpen] = useState(openTrigger);
+  if (shownOpen !== openTrigger) {
+    setShownOpen(openTrigger);
+    if (open && (
+      (tab === 'patches' && patchesFor !== game) ||
+      (tab === 'tournaments' && ((game === 'tft' && tftTournaments.length === 0) || (game === 'lol' && tournaments.length === 0)))
+    )) setLoading(true);
+  }
+  const filterTrigger = `${tournamentFilter}|${leagueFilter}`;
+  const [shownFilter, setShownFilter] = useState(filterTrigger);
+  if (shownFilter !== filterTrigger) {
+    setShownFilter(filterTrigger);
+    if (open && tab === 'tournaments' && game === 'lol') setLoading(true);
+  }
+
+  // Load data when drawer opens — split by game so we only hit the API the
+  // user actually needs for the page they're on.
+  // Die drei Lader setzen State erst nach dem ersten await; der Pruefer
+  // (react-hooks 7.1) meldet das trotzdem als synchron — Fehlalarm, per
+  // Probe am 24.10.2026 belegt. Er meldet je Effect nur den ersten Aufruf,
+  // daher je Effect eine Ausnahme.
+  useEffect(() => {
+    if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fehlalarm: setState erst nach await
+    if (tab === 'patches' && patchesFor !== game) fetchPatches();
+    if (tab === 'tournaments') {
+      if (game === 'tft' && tftTournaments.length === 0) fetchTftTournaments();
+      if (game === 'lol' && tournaments.length === 0) fetchTournaments();
+    }
+  }, [open, tab, game]);
+
+  // Re-fetch tournaments when filter changes (only the LoL path has filters;
+  // TFT drawer shows the unfiltered live + upcoming list).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Fehlalarm: setState erst nach await
+    if (open && tab === 'tournaments' && game === 'lol') fetchTournaments();
+  }, [tournamentFilter, leagueFilter]);
+
+  // Live-count badge — counts the live ones for the active game so the
+  // pulsing dot is in-context.
+  useEffect(() => {
+    liveCtl.current?.abort();
+    const ctl = new AbortController();
+    liveCtl.current = ctl;
+    const { signal } = ctl;
+    const url = game === 'tft' ? '/api/tft/tournaments?status=live' : '/api/tournaments?filter=live';
+    fetch(url, { signal })
+      .then(r => r.json())
+      .then(d => {
+        if (signal.aborted) return;
+        setLiveCount(game === 'tft' ? (d.tournaments || []).length : (d.totalMatches || 0));
+      })
+      .catch(() => {});
+  }, [game]);
 
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr);

@@ -73,7 +73,7 @@ export default function MarktwertPage() {
     fetchData();
   }, [region, tier]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     const seq = ++reqSeq.current;
     setLoading(true);
     setFailed(false);
@@ -97,7 +97,7 @@ export default function MarktwertPage() {
       setFailed(true);
     }
     setLoading(false);
-  };
+  }
 
   const formatValue = (v: number) => {
     return '$' + v.toLocaleString('de-DE');

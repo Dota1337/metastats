@@ -4,7 +4,8 @@
 // Warum ueberhaupt: `npm audit` lief bis 19.09.2026 nirgends automatisch. Beim
 // ersten Durchgang standen 10 Warnungen offen, zwei davon kritisch. Nach dem
 // Aufraeumen (Commit 0077abf, next 16.3.1 -> 16.3.5; 2026-09-30 next 16.3.8 + undici/brace-expansion) ist der Auslieferungsbaum
-// nachweislich sauber; nur der Werkzeug-Baum traegt noch Altlast.
+// nachweislich sauber. 2026-10-24: next 16.4.3, @sentry/nextjs 10.76.2, zod
+// 4.6.7; die letzte Ausnahme (braces) wurde am 23.10. zurueckgezogen.
 //
 // Warum der Ausnahme-Block eine Konstante ist und keine Datei, die sich selbst
 // schreibt: gleiche Begruendung wie in check-eslint-budget.mjs. Ein Stand, den
@@ -28,14 +29,7 @@ import { dirname, join } from 'node:path';
 
 // Bekannte, bewusst offene Warnungen. Neue Ausnahmen nur mit Begruendung im
 // Klartext eintragen.
-const BEKANNT = {
-  // 2026-10-04: braces 3.0.3 ist die neueste Version, es gibt keinen Fix.
-  // Kommt nur ueber eslint-config-next > @next/eslint-plugin-next >
-  // fast-glob@3.3.1 (fest gepinnt) — reines Lint-Werkzeug, nicht in der Seite.
-  // Erneut pruefen bei neuem braces-Release oder fast-glob-Bump im Next-Plugin;
-  // die Pruefung unten meldet den Eintrag dann selbst als erledigt.
-  'GHSA-vfj7-8cjw-p6xm': 'braces via eslint-config-next > fast-glob@3.3.1 (dev, nur Lint)',
-};
+const BEKANNT = {};
 
 const ROT_AB = new Set(['high', 'critical']);
 

@@ -126,7 +126,7 @@ const SERVICE_DESCRIPTIONS: Record<string, string> = {
   'metastats-position-aggregator.service':
     'Alle 15 Minuten. Aggregiert tft_position_observations zu tft_position_comp_cell für die Position-Heatmaps in den Comp-Detail-Pages. Schreibt die Comp-Zuordnung an die Beobachtungen und ersetzt danach den Riot-Namen durch ein Pseudonym (spätestens 48 h nach dem Hochladen, sonst Exit 1).',
   'metastats-build-check.service':
-    'Periodischer Smoke-Check der Crawler-Box (Node-Version, Disk-Space, env-File-Existenz). Reine Diagnose, schreibt nichts in die Pipeline.',
+    'Alle 10 Minuten. Prüft den Vercel-Build des jüngsten main-Commits; ist er gescheitert und der Commit jünger als 30 min, stößt ein leerer Commit einen neuen Build an (höchstens 1× je 30 min, 3× je 24 h).',
   'metastats-health.service':
     'Self-Health-Endpoint des Refresh-API-Servers. Periodischer Self-Test damit ein hängender Server-Prozess früh erkannt wird.',
   'metastats-tft-pro-validator.service':

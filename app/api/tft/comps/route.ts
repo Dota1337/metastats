@@ -9,9 +9,11 @@ import {
   mergeJsonbCountArrays,
   mergeJsonbCountDicts,
   rpcWindowArgs,
+  type ResolvedFilters,
 } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
-import { FALLBACK_HEADER } from '../../../lib/snapshot-fallback';
+import { FALLBACK_HEADER, lookupFallbackSnapshot } from '../../../lib/snapshot-fallback';
+import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '../../../lib/stats-patch-display';
 import { isExcludedUnit, isExcludedItem, setContainsExcludedItem } from '../../../lib/tft-excluded';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupCompDetailSnapshot } from '../../../lib/comp-detail-snapshot';
@@ -307,6 +309,9 @@ export async function GET(request: NextRequest) {
   // Letzter gespeicherter Stand derselben Anfrage, falls die Live-Abfrage
   // gleich scheitert (gesetzt im Listen-Pfad).
   let fallback: { payload: unknown; tag: string } | null = null;
+  // Netz der Liste (snapshot-fallback.ts), falls oben kein Stand passte.
+  let netFilters: ResolvedFilters | null = null;
+  let netCatalog: CompCatalogView | null = null;
 
   try {
     // Plan E — Per-Patch-Cache-Key. Lade die patches einmalig vorne und
@@ -315,15 +320,20 @@ export async function GET(request: NextRequest) {
     // unter dem Alias zu halten der bei Patch-Wechsel stale wird. Der Aufruf
     // ist gratis: resolveFilters() unten ruft `getAvailablePatches()` eh auf
     // und die Funktion cached process-weit für 6h (siehe _patchCache).
-    const patches = await getAvailablePatches();
+    let patches = await getAvailablePatches();
     const redirect = maybeRedirectByPatchAlias(request, patches);
     if (redirect) return redirect;
-    // Plan B — Patch-Changed-Boost: in den ersten 4h nach Patch-Drop liefere
-    // ein 5min-TTL statt 6h, damit das thin Pre-Patch-Sample nicht 6h lang
-    // den Cache prägt. Hilfsfunktion liest patches[0].first_day.
-    const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams, { publisher });
+    if (!slug && source === 'data') netFilters = filters;
+    // resolveFilters laedt die Liste neu, wenn das Manifest schon einen neueren
+    // Patch kennt — dieselbe Liste in die Antwort.
+    patches = await getAvailablePatches();
+    // Plan B — Patch-Changed-Boost: in den ersten 4h nach Patch-Drop liefere
+    // ein 5min-TTL statt 6h, damit das thin Pre-Patch-Sample nicht 6h lang
+    // den Cache prägt. Hilfsfunktion liest patches[0].first_day. Ebenso kurz
+    // in der Uebergangszeit nach einem Patchwechsel (transitionCacheControl).
+    const cacheControl = transitionCacheControl(cacheControlForPatches(patches), filters);
 
     // Detail view: full metrics (death-curve, comp-DNA, matchups) for the one
     // matched cluster only. These are heavy per row — entropy, variance and
@@ -348,20 +358,15 @@ export async function GET(request: NextRequest) {
       // Vorrat je Familie (E2) mit Rueckfall auf den Slug-Schluessel, dieselbe
       // Funktion wie OG-Bild und Startdaten der Seite (comp-detail-snapshot.ts).
       const detailHit = await lookupCompDetailSnapshot({
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
+        ...snapshotFilterOpts(filters),
         minGames,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
         slug,
         skip: detailVariantMode === 'exact' || source === 'editorial'
           || isSnapshotPublisher(request),
         catalog: compCtx ? { id: compCtx.view.id, compKey: compCtx.key } : null,
       });
       if (detailHit) {
-        const resp = cachedJson(detailHit.payload, { cache: cacheControl });
+        const resp = cachedJson(withDisplayPatch(detailHit.payload, filters, patches), { cache: cacheControl });
         resp.headers.set('x-snapshot', detailHit.tag);
         return resp;
       }
@@ -755,11 +760,11 @@ export async function GET(request: NextRequest) {
         counters = { beats: beatsOut.slice(0, 5), losesTo: losesToOut.slice(0, 5), even: evenOut.slice(0, 5), source: 'pairs' };
       }
 
-      return cachedJson({
+      return cachedJson(withDisplayPatch({
         filters,
         hasData: true,
         comp: { ...comp, counters },
-      }, { cache: cacheControl });
+      }, filters, patches), { cache: cacheControl });
     }
 
     // List view: lean RPC — aggregates only the 3 jsonb columns the list
@@ -778,15 +783,11 @@ export async function GET(request: NextRequest) {
     // Comp-Katalog des Fensters (null = klassisch). Gilt fuer Vorrat und
     // Live-Weg gleich: jede Zeile bekommt ihre Comp (compKey).
     const catalog = await compCatalogForFilters(filters, { fresh: publisher });
+    netCatalog = catalog;
     if (source === 'data') {
       const lookup = (mg: number) => lookupSnapshot('comps', {
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
+        ...snapshotFilterOpts(filters),
         minGames: mg,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Seit 2026-10-02 publiziert der Publisher die Liste ohne ?minGames
@@ -810,7 +811,7 @@ export async function GET(request: NextRequest) {
       if (hit && snapshotComplete && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
         // Vorrat von vor dem Katalog (oder mit anderem Stand): Comp je Zeile
         // hier nachtragen — billig, die Zeilen selbst bleiben gleich.
-        const resp = cachedJson(listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), { cache: cacheControl });
+        const resp = cachedJson(withDisplayPatch(listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), filters, patches), { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         // Die Comps-Liste laedt die volle Liste zu ihren Startdaten mit deren
         // Stand nach (?sv=, useTftCompsData). Eigene Adresse je Stand, damit
@@ -827,7 +828,7 @@ export async function GET(request: NextRequest) {
       // Gleicher Zeitraum, aber mit fester statt angepasster Schwelle: als
       // Antwort zweite Wahl, als Notreserve bei DB-Ausfall besser als nichts.
       if (hit && payload?.hasData && Array.isArray(payload.comps) && payload.comps.length > 0) {
-        fallback = { payload: listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), tag: `snapshot:${hit.tag}` };
+        fallback = { payload: withDisplayPatch(listPayloadForCatalog(hit.payload as { comps?: unknown; catalogId?: string | null }, catalog), filters, patches), tag: `snapshot:${hit.tag}` };
       }
     }
 
@@ -961,7 +962,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         days: filters.days,
         requestedDays: filters.requestedDays,
-        patch: filters.patch,
+        patch: filters.displayPatch,
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
@@ -987,6 +988,15 @@ export async function GET(request: NextRequest) {
     // Bei ausgelasteter DB lieber den letzten gespeicherten Stand zeigen als
     // eine leere Seite. Kurz gecacht, damit nach Erholung sofort wieder
     // frische Zahlen kommen; nie fuer den Publisher (siehe oben).
+    if (!fallback && netFilters && !publisher) {
+      const fb = await lookupFallbackSnapshot('comps', 'comps', netFilters);
+      if (fb) {
+        fallback = {
+          payload: withDisplayPatch(listPayloadForCatalog(fb.payload as { comps?: unknown; catalogId?: string | null }, netCatalog), netFilters, await getAvailablePatches()),
+          tag: fb.tag,
+        };
+      }
+    }
     if (fallback && !publisher) {
       console.error('[api/tft/comps] Live fehlgeschlagen, Rueckfall', fallback.tag, ':', e?.message ?? e);
       const resp = cachedJson(fallback.payload, { cache: DEGRADED_CACHE_CONTROL });

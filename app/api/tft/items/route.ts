@@ -8,11 +8,13 @@ import {
   getAvailablePatches,
   mergeJsonbCountArrays,
   rpcWindowArgs,
+  type ResolvedFilters,
 } from '../../../lib/tft-supabase-reader';
 import { isExcludedItem, isExcludedUnit } from '../../../lib/tft-excluded';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
+import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '../../../lib/stats-patch-display';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -50,20 +52,12 @@ export async function GET(request: NextRequest) {
     try {
       const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
-      filterPatch = filters.patch;
+      filterPatch = filters.displayPatch;
       const carriersP = itemCarriersFor(filters, id).catch((e: Error) => {
         console.error('[items detail] carriers', e.message);
         return 'failed' as const;
       });
-      const hit = await lookupSnapshot('items', {
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
-        minGames: 0,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
-      });
+      const hit = await lookupSnapshot('items', { ...snapshotFilterOpts(filters), minGames: 0 });
       const snapItems = (hit?.payload as { items?: any[] } | undefined)?.items;
       if (Array.isArray(snapItems) && snapItems.length > 0) {
         core = coreFromListRow(snapItems.find(x => x.apiName === id));
@@ -98,34 +92,32 @@ export async function GET(request: NextRequest) {
   }
 
   // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.
-  let fallbackFilters: FallbackFilters | null = null;
+  let fallbackFilters: (FallbackFilters & ResolvedFilters) | null = null;
   try {
     // Plan E + B (siehe comps/route.ts).
-    const patches = await getAvailablePatches();
+    let patches = await getAvailablePatches();
     const redirect = maybeRedirectByPatchAlias(request, patches);
     if (redirect) return redirect;
-    const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
     fallbackFilters = filters;
+    // resolveFilters laedt die Liste neu, wenn das Manifest schon einen neueren
+    // Patch kennt — dieselbe Liste in die Antwort.
+    patches = await getAvailablePatches();
+    const cacheControl = transitionCacheControl(cacheControlForPatches(patches), filters);
     // Snapshot-Pfad: gleiches Pattern wie /api/tft/comps. Den Δ-Vergleich
     // „vs Vorpatch" liefert seit 18.10.2026 /api/tft/patch-diff?full=1; ein
     // altes ?velocity= wird ignoriert.
     {
       const hit = await lookupSnapshot('items', {
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
+        ...snapshotFilterOpts(filters),
         minGames: 0,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
       const payload = hit?.payload as { hasData?: boolean; items?: unknown[] } | undefined;
       if (hit && payload?.hasData && Array.isArray(payload.items) && payload.items.length > 0) {
-        const resp = cachedJson(hit.payload, { cache: cacheControl });
+        const resp = cachedJson(withDisplayPatch(hit.payload, filters, patches), { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
       }
@@ -185,7 +177,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         days: filters.days,
         requestedDays: filters.requestedDays,
-        patch: filters.patch,
+        patch: filters.displayPatch,
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
@@ -204,7 +196,7 @@ export async function GET(request: NextRequest) {
       const fb = await lookupFallbackSnapshot('items', 'items', fallbackFilters);
       if (fb) {
         console.error('[api/tft/items] Live fehlgeschlagen, Rueckfall', fb.tag, ':', e?.message ?? e);
-        const resp = cachedJson(fb.payload, { cache: DEGRADED_CACHE_CONTROL });
+        const resp = cachedJson(withDisplayPatch(fb.payload, fallbackFilters, await getAvailablePatches()), { cache: DEGRADED_CACHE_CONTROL });
         resp.headers.set(FALLBACK_HEADER, fb.tag);
         return resp;
       }

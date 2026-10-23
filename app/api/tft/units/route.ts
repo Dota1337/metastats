@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeBucket, bucketParticipants } from '../../../lib/tft-stats-loader';
-import { resolveFilters, callRpc, getAvailablePatches, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
+import { resolveFilters, callRpc, getAvailablePatches, rpcWindowArgs, type ResolvedFilters } from '../../../lib/tft-supabase-reader';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { coreFromListRow, unitDetailBody, type Blocks, type DetailCore, type UnitBuildsRaw } from '../../../lib/tft-detail-payload';
 import { unitBuildsFor } from '../../../lib/tft-detail-builds';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED_CACHE_CONTROL } from '../../../lib/api-cache';
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
+import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '../../../lib/stats-patch-display';
 import { computeShares } from '../../../lib/tft-shares';
 // Seltene Einheiten ans Ende — gleiche Reihenfolge wie die Startdaten der Seite.
 import { sortUnitsRareLast } from '../../../lib/tft-list-sort';
@@ -101,22 +102,15 @@ export async function GET(request: NextRequest) {
     try {
       const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
       filterSet = filters.setNumber;
-      filterPatch = filters.patch;
+      filterPatch = filters.displayPatch;
       const buildsP = unitBuildsFor(filters, id).catch((e: Error) => {
         console.error('[units detail] builds', e.message);
         return 'failed' as const;
       });
       // Wie die Liste unten: der Snapshot enthaelt patchuebergreifende Zahlen,
       // bei einem konkret gewaehlten Patch also direkt aus der DB lesen.
-      const hit = filters.patchFilter != null ? null : await lookupSnapshot('units', {
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
-        minGames: 0,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
-      });
+      const hit = filters.patchFilter != null ? null
+        : await lookupSnapshot('units', { ...snapshotFilterOpts(filters), minGames: 0 });
       const snapUnits = (hit?.payload as { units?: any[] } | undefined)?.units;
       if (Array.isArray(snapUnits) && snapUnits.length > 0) {
         core = coreFromListRow(snapUnits.find(x => x.characterId === id));
@@ -150,16 +144,18 @@ export async function GET(request: NextRequest) {
 
   // Stats list — Supabase RPC with filter expansion.
   // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.
-  let fallbackFilters: FallbackFilters | null = null;
+  let fallbackFilters: (FallbackFilters & ResolvedFilters) | null = null;
   try {
     // Plan E + B (siehe comps/route.ts für Begründung): patches vorne, Alias
     // redirecten, Cache-Control patch-frische-abhängig wählen.
-    const patches = await getAvailablePatches();
+    let patches = await getAvailablePatches();
     const redirect = maybeRedirectByPatchAlias(request, patches);
     if (redirect) return redirect;
-    const cacheControl = cacheControlForPatches(patches);
 
     const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
+    // Liste nach resolveFilters (ggf. neu geladen, siehe items/route.ts).
+    patches = await getAvailablePatches();
+    const cacheControl = transitionCacheControl(cacheControlForPatches(patches), filters);
     // Mit ausdruecklich gewaehltem Patch passt das patchuebergreifende Bundle
     // nicht (siehe Snapshot-Pfad unten) — dann keine Notreserve.
     if (filters.patchFilter == null) fallbackFilters = filters;
@@ -172,13 +168,8 @@ export async function GET(request: NextRequest) {
     // 18.10.2026 /api/tft/patch-diff?full=1; ein altes ?velocity= wird ignoriert.
     if (filters.patchFilter == null) {
       const hit = await lookupSnapshot('units', {
-        patch: filters.patch,
-        region: filters.regionLabel,
-        days: filters.requestedDays,
-        bucket: filters.bucketLabel,
+        ...snapshotFilterOpts(filters),
         minGames: 0,
-        setNumber: filters.setNumber,
-        endDay: filters.endDay,
         skip: isSnapshotPublisher(request),
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern → sonst
@@ -189,7 +180,7 @@ export async function GET(request: NextRequest) {
         // gleich wie im Live-Pfad nachsortieren (Kopie, der Cache bleibt unberuehrt).
         const units = [...payload.units] as { avgPlacement?: number | null; pickRate?: number | null }[];
         sortUnitsRareLast(units);
-        const resp = cachedJson({ ...payload, units }, { cache: cacheControl });
+        const resp = cachedJson(withDisplayPatch({ ...payload, units }, filters, patches), { cache: cacheControl });
         resp.headers.set('x-snapshot', hit.tag);
         return resp;
       }
@@ -276,7 +267,7 @@ export async function GET(request: NextRequest) {
         bucket: filters.bucketLabel,
         days: filters.days,
         requestedDays: filters.requestedDays,
-        patch: filters.patch,
+        patch: filters.displayPatch,
         patchFilter: filters.patchFilter,
         patchStartDay: filters.patchStartDay,
         set: filters.setNumber,
@@ -297,7 +288,7 @@ export async function GET(request: NextRequest) {
         console.error('[api/tft/units] Live fehlgeschlagen, Rueckfall', fb.tag, ':', e?.message ?? e);
         const units = [...(fb.payload.units as { avgPlacement?: number | null; pickRate?: number | null }[])];
         sortUnitsRareLast(units);
-        const resp = cachedJson({ ...fb.payload, units }, { cache: DEGRADED_CACHE_CONTROL });
+        const resp = cachedJson(withDisplayPatch({ ...fb.payload, units }, fallbackFilters, await getAvailablePatches()), { cache: DEGRADED_CACHE_CONTROL });
         resp.headers.set(FALLBACK_HEADER, fb.tag);
         return resp;
       }

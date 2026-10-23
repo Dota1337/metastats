@@ -13,6 +13,7 @@ import 'server-only';
 import { lookupSnapshot, type LookupHit } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
 import { resolveFilters } from '../tft-supabase-reader';
+import { snapshotFilterOpts } from '../stats-patch-display';
 import { normalizeBucket } from '../tft-stats-loader';
 import { isExcludedItem, isExcludedUnit } from '../tft-excluded';
 import { coreFromListRow, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
@@ -48,10 +49,7 @@ function snapshotPayload(endpoint: SnapshotEndpoint, r: Resolved): Promise<Paylo
   if (hit && Date.now() - hit.ts <= CACHE_TTL_MS) return hit.value;
   // mg0 = der Stand, den die Routen zuerst nehmen (Comps: angepasste Schwelle
   // ohne ?minGames; Units/Items/Traits: immer mg0).
-  const value = lookupSnapshot(endpoint, {
-    patch: r.patch, region: r.regionLabel, days: r.requestedDays,
-    bucket: r.bucketLabel, minGames: 0, setNumber: r.setNumber, endDay: r.endDay,
-  }).then((h: LookupHit | null) => (h?.payload as Payload | undefined) ?? null, () => null);
+  const value = lookupSnapshot(endpoint, { ...snapshotFilterOpts(r), minGames: 0 }).then((h: LookupHit | null) => (h?.payload as Payload | undefined) ?? null, () => null);
   snapCache.delete(key);
   snapCache.set(key, { ts: Date.now(), value });
   while (snapCache.size > CACHE_MAX) snapCache.delete(snapCache.keys().next().value as string);
@@ -126,7 +124,7 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
     detail = unitDetailBody({
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
       core: coreFromListRow(unitRows.find(x => x.characterId === id)), coreKnown: true,
-      filterSet: r.setNumber, filterPatch: r.patch,
+      filterSet: r.setNumber, filterPatch: r.displayPatch,
     }, stock ? (stock.units[id] ?? null) : 'pending').body;
   }
   const compRows = listRows(compsSnap, 'comps') as CompApiRow[] | null;
@@ -207,7 +205,7 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
     detail = itemDetailBody({
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
       core: coreFromListRow(itemRows.find(x => x.apiName === id)), coreKnown: true,
-      filterSet: r.setNumber, filterPatch: r.patch,
+      filterSet: r.setNumber, filterPatch: r.displayPatch,
     }, stock ? (stock.items[id] ?? null) : 'pending').body;
   }
   const compRows = listRows(compsSnap, 'comps');

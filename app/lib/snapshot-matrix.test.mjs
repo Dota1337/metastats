@@ -34,6 +34,8 @@ import {
   fullDayComplete,
   dataWindow,
   addDays,
+  transitionDataPatch,
+  patchFilterCoversWindow,
   PATCH_DIFF_ENTITIES,
   PATCH_DIFF_RPC,
   PATCH_DIFF_COLUMNS,
@@ -705,4 +707,55 @@ test('Zaehlart: weniger Katalog-Tage als bekannt = veraltet (Kulanz wie bei Spie
   assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, markedDays: 9 }, { ...V_WANT, markedDays: 18 }), false);
   assert.equal(isValidMetaPulseVelocity({ ...V_SNAP, markedDays: 18 }, { ...V_WANT, markedDays: 18 }), true);
   assert.equal(isValidMetaPulseVelocity(V_SNAP, V_WANT), true); // alte Datei ohne Feld, kein Katalog
+});
+
+// Uebergangszeit nach einem Patchwechsel (User 23./24.10.2026). Datenlage vom
+// 24.10.: 18.5b ab 22.10., 18.5 nur 21.10.; Manifest noch auf 18.5, dataThrough 21.
+const P_TRANS = [
+  { patch: '18.5b', set_number: 18, first_day: '2026-10-22', last_day: '2026-10-24', total_matches: 421_032 },
+  { patch: '18.5', set_number: 18, first_day: '2026-10-21', last_day: '2026-10-21', total_matches: 300_000 },
+  { patch: '18.4', set_number: 18, first_day: '2026-10-07', last_day: '2026-10-20', total_matches: 4_000_000 },
+];
+
+test('Daten-Pin: current rechnet in der Uebergangszeit mit dem Patch des Manifests', () => {
+  const base = { alias: 'current', livePatches: P_TRANS, manifestPatch: '18.5', setNumber: 18 };
+  assert.equal(transitionDataPatch(base), '18.5');
+  // Manifest hat den neuen Stand → kein Pin.
+  assert.equal(transitionDataPatch({ ...base, manifestPatch: '18.5b' }), null);
+  // Nur der Alias current — ein gewaehlter Patch und previous zeigen ihre echten Tage.
+  assert.equal(transitionDataPatch({ ...base, alias: '18.5b' }), null);
+  assert.equal(transitionDataPatch({ ...base, alias: 'previous' }), null);
+  assert.equal(transitionDataPatch({ ...base, alias: 'any' }), null);
+  // Patch fehlt in der Liste, anderes Set, set=any, kein Manifest → kein Pin.
+  assert.equal(transitionDataPatch({ ...base, manifestPatch: '18.5x' }), null);
+  assert.equal(transitionDataPatch({ ...base, setNumber: 19 }), null);
+  assert.equal(transitionDataPatch({ ...base, setNumber: null }), null);
+  assert.equal(transitionDataPatch({ ...base, manifestPatch: null }), null);
+  assert.equal(transitionDataPatch({ ...base, livePatches: [] }), null);
+  // set_number kommt aus der RPC teils als Text.
+  assert.equal(transitionDataPatch({ ...base, livePatches: P_TRANS.map(p => ({ ...p, set_number: '18' })) }), '18.5');
+});
+
+test('Daten-Pin: Fenster aus der Manifest-Zeile endet am abgelegten Tag', () => {
+  const row = p => P_TRANS.find(x => x.patch === p);
+  // Mit Pin: 19.–21.10. wie der abgelegte Stand.
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-21', requestedDays: 3, patchFilter: null, patch: row('18.5') }),
+    { startDay: '2026-10-19', endDay: '2026-10-21', days: 3 });
+  // Ohne Pin (der Fehler vom 23.10.): Patch-Tag-Ausnahme schiebt das Ende auf
+  // den letzten Tag von 18.5b → kein Stand passt, alles laeuft live.
+  assert.deepEqual(dataWindow({ dataEnd: '2026-10-21', requestedDays: 3, patchFilter: null, patch: row('18.5b') }),
+    { startDay: '2026-10-22', endDay: '2026-10-24', days: 3 });
+});
+
+test('Patch-Filter aendert im Fenster nichts nur ohne fremde Tage', () => {
+  const cov = (patchFilter, startDay, endDay, patches = P_TRANS) => patchFilterCoversWindow({ patchFilter, startDay, endDay, patches });
+  assert.equal(cov('18.5b', '2026-10-22', '2026-10-23'), true);
+  assert.equal(cov('18.5b', '2026-10-21', '2026-10-23'), false, '21.10. gehoert zu 18.5');
+  assert.equal(cov('18.4', '2026-10-18', '2026-10-20'), true);
+  assert.equal(cov('18.4', '2026-10-19', '2026-10-21'), false, 'Fenster reicht ueber das Ende von 18.4');
+  assert.equal(cov(null, '2026-10-22', '2026-10-23'), false);
+  assert.equal(cov('18.5b', null, '2026-10-23'), false);
+  assert.equal(cov('18.9', '2026-10-22', '2026-10-23'), false);
+  // Unbekannte Grenzen eines anderen Patches zaehlen als Ueberschneidung.
+  assert.equal(cov('18.5b', '2026-10-22', '2026-10-23', [...P_TRANS, { patch: '18.6', first_day: '', last_day: '' }]), false);
 });

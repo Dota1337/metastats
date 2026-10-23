@@ -401,6 +401,61 @@ export function dataWindow(o: {
   return { startDay: numDay(start), endDay: numDay(end), days: end - start + 1 };
 }
 
+/**
+ * Daten-Patch in der Uebergangszeit (User 23./24.10.2026): kennt die DB schon
+ * einen neueren Patch als das Manifest, rechnet `current` fuer Besucher weiter
+ * mit dem Patch des Manifests — Vorrats-Schluessel und Fenster passen dann zum
+ * letzten fertigen Stand, statt bis zum Abend leer zu laufen. Die Seite nennt
+ * trotzdem den neuen Patch (Aufrufer: displayPatch). null = kein Pin.
+ * Publisher, Notschalter und Manifest-Alter prueft der Aufrufer.
+ */
+export function transitionDataPatch(o: {
+  alias: string;
+  livePatches: ReadonlyArray<{ patch: string; set_number: number | string }>;
+  manifestPatch: string | null | undefined;
+  setNumber: number | null;
+}): string | null {
+  if (o.alias !== 'current' || !o.manifestPatch || o.setNumber == null) return null;
+  const newest = o.livePatches[0]?.patch;
+  if (!newest || newest === o.manifestPatch) return null;
+  // Nur ein Patch derselben Liste und desselben Sets — nie Set-18-Zahlen unter
+  // Set 19, nie ein Patch, den es nicht mehr gibt (Umbenennung).
+  const row = o.livePatches.find(p => p.patch === o.manifestPatch);
+  if (!row || Number(row.set_number) !== o.setNumber) return null;
+  return o.manifestPatch;
+}
+
+/**
+ * Aendert der Patch-Filter im Fenster nichts? Ja, wenn das Fenster ganz im
+ * gefilterten Patch liegt und kein anderer Patch der Liste einen Tag darin hat —
+ * dann zaehlt die patchuebergreifende Abfrage dieselben Zeilen. Damit darf ein
+ * gewaehlter Patch den Vorrat ohne Filter lesen (Vorpatch am Tag nach einem
+ * Patchwechsel), sonst nicht.
+ */
+export function patchFilterCoversWindow(o: {
+  patchFilter: string | null;
+  startDay: string | null;
+  endDay: string | null;
+  patches: ReadonlyArray<{ patch: string; first_day: string; last_day: string }>;
+}): boolean {
+  if (o.patchFilter == null || !o.startDay || !o.endDay) return false;
+  const start = dayNum(o.startDay);
+  const end = dayNum(o.endDay);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return false;
+  const row = o.patches.find(p => p.patch === o.patchFilter);
+  if (!row) return false;
+  const first = dayNum(row.first_day);
+  const last = dayNum(row.last_day);
+  if (!Number.isFinite(first) || !Number.isFinite(last) || first > start || last < end) return false;
+  // Unbekannte Grenzen eines anderen Patches zaehlen als Ueberschneidung.
+  return o.patches.every(p => {
+    if (p.patch === o.patchFilter) return true;
+    const f = dayNum(p.first_day);
+    const l = dayNum(p.last_day);
+    return Number.isFinite(f) && Number.isFinite(l) && (l < start || f > end);
+  });
+}
+
 // Ein frisch erschienener Patch taucht am ersten (Teil-)Tag mit wenigen tausend
 // Spielen auf — viel zu duenn fuer die Comp-Liste. Darunter zaehlt er nicht als
 // „current". Sind alle darunter (Set-Start), bleibt die rohe Liste.

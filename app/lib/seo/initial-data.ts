@@ -24,6 +24,7 @@ import 'server-only';
 import { lookupSnapshot } from '../snapshot-lookup';
 import type { SnapshotEndpoint } from '../snapshot-matrix';
 import { resolveFilters, getAvailablePatches, ALL_REGIONS } from '../tft-supabase-reader';
+import { snapshotFilterOpts, withDisplayPatch } from '../stats-patch-display';
 import { compTraitFamilyKey } from '../tft-cluster';
 import { patchDeltaPair, patchDeltaQuery, type PatchDeltaRow, type PatchDeltaStart } from '../tft-patch-delta';
 import { compactDeltaRows, loadPatchDeltaBlobs } from '../patch-delta-server';
@@ -177,7 +178,8 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
   if (resolved.patchFilter != null || spec.skip) return { filters, data: null };
 
   // Mit aufgeloestem Patch und Set: nach einem Patchwechsel neuer Schluessel.
-  const key = `${spec.endpoint}|${resolved.patch}|${resolved.setNumber}|${filtersDataKey(filters)}`;
+  // Daten-Patch und angezeigter Patch: in der Uebergangszeit weichen sie ab.
+  const key = `${spec.endpoint}|${resolved.patch}|${resolved.displayPatch}|${resolved.setNumber}|${filtersDataKey(filters)}`;
   const cached = cacheGet<Row>(key);
   if (cached) return { filters, data: cached };
 
@@ -185,11 +187,7 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
   if (!bundle) return { filters, data: null };
 
   // Genau der Aufruf der Routen (units/items/traits route.ts, Snapshot-Pfad).
-  const hit = await withTimeout(lookupSnapshot(spec.endpoint, {
-    patch: resolved.patch, region: resolved.regionLabel, days: resolved.requestedDays,
-    bucket: resolved.bucketLabel, minGames: 0, setNumber: resolved.setNumber,
-    endDay: resolved.endDay,
-  }), left());
+  const hit = await withTimeout(lookupSnapshot(spec.endpoint, { ...snapshotFilterOpts(resolved), minGames: 0 }), left());
   const stored = hit?.payload as Record<string, unknown> | undefined;
   const adapted = stored && spec.adapt ? await withTimeout(spec.adapt(stored), left()) : stored;
   const payload = adapted as (Record<string, unknown> & { hasData?: boolean; patches?: PatchInfo[]; minGames?: unknown }) | null | undefined;
@@ -199,11 +197,17 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
 
   const rows = spec.prepare ? spec.prepare([...raw] as Row[], bundle) : ([...raw] as Row[]);
   if (!rows || rows.length === 0) return { filters, data: null };
+  // Wie die Routen (withDisplayPatch): Patchliste der DB, in der Uebergangszeit
+  // der angezeigte Patch in filters.patch.
+  const shown = withDisplayPatch(
+    { filters: payload.filters, patches: Array.isArray(payload.patches) ? payload.patches : [] },
+    resolved, await getAvailablePatches(),
+  );
   const value: StatsInitial<Row> = {
     payload: {
       hasData: true,
-      filters: payload.filters as Record<string, unknown> | undefined,
-      patches: Array.isArray(payload.patches) ? payload.patches : [],
+      filters: shown.filters as Record<string, unknown> | undefined,
+      patches: shown.patches,
       ...(typeof payload.minGames === 'number' ? { minGames: payload.minGames } : {}),
       rows,
     },

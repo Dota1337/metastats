@@ -78,11 +78,24 @@ async function loadManifest(): Promise<SnapshotManifest | null> {
   return _inflight;
 }
 
-/** Bauzeit + Endtag des Manifests fuer den Endtag der Besucher (resolveDataEnd). */
-export async function loadManifestWindow(): Promise<{ builtAt: string | null; dataThrough: string | null } | null> {
+export interface ManifestWindow {
+  builtAt: string | null;
+  dataThrough: string | null;
+  // Patch, unter dem der Publisher `current` abgelegt hat (Daten-Pin in der
+  // Uebergangszeit, resolveFilters).
+  current: string | null;
+}
+
+/** Bauzeit, Endtag und Patch des Manifests fuer Endtag und Daten-Patch der Besucher. */
+export async function loadManifestWindow(): Promise<ManifestWindow | null> {
   const m = await loadManifest();
   if (!m) return null;
-  return { builtAt: m.builtAt ?? null, dataThrough: m.dataThrough ?? null };
+  return { builtAt: m.builtAt ?? null, dataThrough: m.dataThrough ?? null, current: m.patches?.current ?? null };
+}
+
+/** `current` des zuletzt geladenen Manifests, ohne Abruf (null = keins geladen). */
+export function peekManifestCurrent(): string | null {
+  return _manifest?.data?.patches?.current ?? null;
 }
 
 export interface LookupOptions {
@@ -112,6 +125,15 @@ export interface LookupOptions {
   // Fenster-Waechter in fetchEntry. Ohne (OG-Bild, Sitemap, Rueckfall bei
   // Datenbank-Fehlern) wird jeder Stand genommen.
   endDay?: string | null;
+  // Patch-Filter der Anfrage (ResolvedFilters.patchFilter). Gesetzt →
+  // Alias-Waechter in fetchEntry: der Schluessel kennt nur den Patch-Namen, ein
+  // Stand ohne Filter (`current`) und einer mit Filter (gewaehlter Patch,
+  // `previous`) koennen unter demselben Schluessel liegen. undefined = nicht
+  // pruefen (Aufrufer ohne aufgeloeste Filter).
+  patchFilter?: string | null;
+  // Der Filter aendert im Fenster nichts (patchFilterCoversWindow) — dann
+  // taugt auch der Stand ohne Filter.
+  patchFilterNoop?: boolean;
 }
 
 export interface LookupHit {
@@ -251,7 +273,7 @@ async function fetchEntry(
     // Listing-Payloads tragen das Set als `filters.set`, der Detail-Payload
     // reicht die kompletten ResolvedFilters durch und nennt es `setNumber`.
     const payloadFilters = (payload as
-      { filters?: { set?: number | null; setNumber?: number | null; endDay?: string | null } } | null)?.filters;
+      { filters?: { set?: number | null; setNumber?: number | null; endDay?: string | null; patchFilter?: string | null } } | null)?.filters;
     const payloadSet = payloadFilters?.set ?? payloadFilters?.setNumber ?? null;
     if (payloadSet !== (opts.setNumber ?? null)) return null;
     // Fenster-Waechter (volle Tage, 15.10.2026): ein Stand mit anderem Endtag
@@ -263,10 +285,29 @@ async function fetchEntry(
       const pe = payloadFilters?.endDay;
       if (pe != null && pe !== opts.endDay && pe !== addDays(opts.endDay, 1)) return null;
     }
+    if (!patchFilterMatches(payloadFilters?.patchFilter, opts)) return null;
     return { payload, tag: `${endpoint}-v2`, blobUrl: entry.url, blobBytes: entry.bytes, builtAt: entry.builtAt };
   } catch {
     return null;
   }
+}
+
+/**
+ * Alias-Waechter (24.10.2026, live gemessen): `?patch=18.5b` bekam den Stand der
+ * Standardansicht (ohne Filter, 20.–22.10.) — 18.5b begann am 22.10. Gleicher
+ * Filter → passt; Stand ohne Filter fuer einen gewaehlten Patch nur, wenn der
+ * Filter im Fenster nichts aendert. Stand ohne Feld (alt) oder Aufrufer ohne
+ * Angabe → wie bisher.
+ */
+export function patchFilterMatches(
+  payloadPatchFilter: string | null | undefined,
+  opts: Pick<LookupOptions, 'patchFilter' | 'patchFilterNoop'>,
+): boolean {
+  if (opts.patchFilter === undefined || payloadPatchFilter === undefined) return true;
+  const want = opts.patchFilter ?? null;
+  const have = payloadPatchFilter ?? null;
+  if (want === have) return true;
+  return have === null && opts.patchFilterNoop === true;
 }
 
 // Per-endpoint required-field marker. Bump these whenever a new top-level

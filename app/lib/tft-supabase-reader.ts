@@ -11,9 +11,9 @@ import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
 import {
   PATCH_MIN_GAMES, establishedPatches, listWindowDays,
   META_PULSE_COMPLETE_LOOKBACK_DAYS, META_PULSE_COMPLETE_SETTLE_MS, previousPatchOf, type CrawlMetaDayRow,
-  fullDayComplete, dataWindow, addDays,
+  fullDayComplete, dataWindow, addDays, transitionDataPatch, patchFilterCoversWindow,
 } from './snapshot-matrix';
-import { loadManifestWindow } from './snapshot-lookup';
+import { loadManifestWindow, peekManifestCurrent, type ManifestWindow } from './snapshot-lookup';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -62,16 +62,25 @@ export interface ResolvedFilters {
   buckets: string[];     // exact bucket names
   days: number;          // 1-7 — already bumped to cover stale-data lag
   requestedDays: number; // 1-7 — raw user choice, pre-bump (use for Δ-windows)
-  // patch (display): immer der konkrete Patch-String. Bei ?patch=current ist
-  //   das `patches[0].patch`, dient nur der UI-Anzeige ("Patch 17.5 seit …").
-  //   Wird AUCH als Cache-Key und Snapshot-Key benutzt.
+  // patch (Daten-Patch): der konkrete Patch-String, mit dem gerechnet wird —
+  //   Cache-Key, Snapshot-Key und Patch-Zeile des Fensters. Bei ?patch=current
+  //   sonst `patches[0].patch`; in der Uebergangszeit nach einem Patchwechsel
+  //   der Patch des Manifests (transitionDataPatch), bis der Publisher den
+  //   neuen Stand abgelegt hat.
+  // displayPatch: der Patch, den die Seite nennt — immer der neueste der Liste
+  //   bzw. der gewaehlte. Weicht nur in der Uebergangszeit von `patch` ab;
+  //   Antworten setzen ihn dann als filters.patch (withDisplayPatch).
   // patchFilter (RPC-Filter): null = keine Filterung → patchübergreifende
   //   Aggregation. Explicit Patch-String filtert die RPC auf diesen Patch.
   //   Default-View (current) hat patchFilter=null — der Default-User sieht
   //   aggregierte Daten und wird durch den Patch-Frische-Hinweis informiert.
   patch: string | null;
+  displayPatch: string | null;
   patchFilter: string | null;
-  patchStartDay: string | null;  // ISO-day des display-patch first_day, für UI-Hint
+  // Der Patch-Filter aendert im Fenster nichts (patchFilterCoversWindow) — ein
+  // gespeicherter Stand ohne Filter zaehlt dieselben Zeilen.
+  patchFilterNoop: boolean;
+  patchStartDay: string | null;  // ISO-day des displayPatch first_day, für UI-Hint
   setNumber: number | null;
   // true wenn der Bucket NICHT vom User gewaehlt wurde, sondern serverseitig
   // aus der Datenlage des laufenden Sets abgeleitet ist (resolveDefaultBucket).
@@ -183,9 +192,26 @@ let _patchCacheNegativeTs = 0;
 // davor (SEO-Plan Schritt 3).
 const _patchInflight = new Map<number, Promise<PatchInfo[]>>();
 
+// Kennt das zuletzt geladene Manifest einen Patch, der in der gemerkten Liste
+// fehlt (Publisher hat abends auf den neuen Patch umgestellt, die Liste ist
+// noch vom Vormittag), die Liste neu holen — sonst sucht die Instanz bis zu 6 h
+// unter dem alten Schluessel. Hoechstens alle 5 min, falls der Patch dauerhaft
+// fehlt (Umbenennung).
+const PATCH_MANIFEST_RECHECK_MS = 5 * 60 * 1000;
+const _patchManifestRecheck = new Map<number, number>();
+
+function manifestAheadOf(days: number, rows: PatchInfo[]): boolean {
+  const current = peekManifestCurrent();
+  if (!current || rows.some(r => r.patch === current)) return false;
+  const last = _patchManifestRecheck.get(days) ?? 0;
+  if (Date.now() - last < PATCH_MANIFEST_RECHECK_MS) return false;
+  _patchManifestRecheck.set(days, Date.now());
+  return true;
+}
+
 export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   const hit = _patchCache.get(days);
-  if (hit && Date.now() - hit.ts < PATCH_CACHE_TTL_MS) {
+  if (hit && Date.now() - hit.ts < PATCH_CACHE_TTL_MS && !manifestAheadOf(days, hit.rows)) {
     return hit.rows;
   }
   // Negative-Cache: wenn der letzte Call gerade fehlgeschlagen ist, NICHT
@@ -193,7 +219,7 @@ export async function getAvailablePatches(days = 30): Promise<PatchInfo[]> {
   // bis zum nächsten Cloudflare-522. Für 60s leere Liste ausliefern, dann
   // Retry.
   if (_patchCacheNegativeTs && Date.now() - _patchCacheNegativeTs < PATCH_NEGATIVE_CACHE_TTL_MS) {
-    return [];
+    return hit?.rows ?? [];
   }
   const running = _patchInflight.get(days);
   if (running) return running;
@@ -325,8 +351,11 @@ export async function resolveFilters(
   // Endtag per &end= frei setzen (resolveDataEnd).
   opts: { publisher?: boolean } = {},
 ): Promise<ResolvedFilters> {
-  // Endtag parallel zu Rang-Default und Patch-Liste.
-  const dataEndP = resolveDataEnd(searchParams.get('end'), !!opts.publisher).catch(() => null);
+  // Endtag parallel zu Rang-Default und Patch-Liste. Besucher lesen das Manifest
+  // einmal — Endtag und Daten-Patch kommen aus demselben Stand.
+  const publisher = !!opts.publisher;
+  const manifestP = publisher ? null : loadManifestWindow().catch(() => null);
+  const dataEndP = resolveDataEnd(searchParams.get('end'), publisher, manifestP ?? undefined).catch(() => null);
   const regionLabel = searchParams.get('region') || 'all';
   // C3 (2026-07-04): single-tier `diamond` has no snapshot coverage and was the
   // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus is its
@@ -351,17 +380,13 @@ export async function resolveFilters(
 
   const regions = expandRegions(regionLabel);
   const buckets = expandBuckets(bucketLabel);
-  const patches = await getAvailablePatches();
-  // patch (display) = der konkrete Patch-String (für UI + Cache-Key).
-  // patchFilter (RPC) = null wenn ?patch=current (patchübergreifend aggregieren)
-  //   oder ?patch=any, sonst der explizite Patch-String.
-  //   Findet ?patch=previous keinen Vorpatch, steht im patchFilter der
-  //   Platzhalter NO_PREVIOUS_PATCH: leere Antwort statt Aggregat ueber alles.
-  const patch = await resolvePatchFromList(patches, patchParam);
-  const patchFilter = (patchParam === 'current' || patchParam === 'any')
-    ? null
-    : (patchParam === 'previous' ? (patch ?? NO_PREVIOUS_PATCH) : patch);
-  const patchStartDay = patches.find(p => p.patch === patch)?.first_day ?? null;
+  let patches = await getAvailablePatches();
+  const manifest = manifestP ? await manifestP : null;
+  // Das Manifest kennt schon einen Patch, den die gemerkte Liste nicht hat →
+  // einmal neu laden (getAvailablePatches → manifestAheadOf, hoechstens alle 5 min).
+  if (manifest?.current && !patches.some(p => p.patch === manifest.current)) {
+    patches = await getAvailablePatches();
+  }
   // Set-Pin (2026-08-27): ohne diesen Default lief `p_set` als null in JEDE
   // Stats-RPC — die Antworten mischten das laufende Set mit dem vorherigen
   // (gemessen: Units/Items/Traits/Comps lieferten reine Set-17-Listen, weil
@@ -370,6 +395,24 @@ export async function resolveFilters(
   const setNumber = setParam === 'any'
     ? null
     : (setParam ? parseInt(setParam, 10) : CURRENT_SET);
+  // displayPatch = der konkrete Patch-String, den die Seite nennt.
+  // patch (Daten-Patch) = displayPatch, ausser in der Uebergangszeit nach einem
+  //   Patchwechsel (transitionDataPatch): dann der Patch des Manifests, bis der
+  //   Publisher den neuen Stand abgelegt hat. Nur Besucher, nur ?patch=current,
+  //   nur mit vollen Tagen und frischem Manifest (Endtag = dataThrough).
+  // patchFilter (RPC) = null wenn ?patch=current (patchübergreifend aggregieren)
+  //   oder ?patch=any, sonst der explizite Patch-String.
+  //   Findet ?patch=previous keinen Vorpatch, steht im patchFilter der
+  //   Platzhalter NO_PREVIOUS_PATCH: leere Antwort statt Aggregat ueber alles.
+  const displayPatch = await resolvePatchFromList(patches, patchParam);
+  const pinned = manifest && dataPinEnabled() && fullDayWindowEnabled() && manifestFresh(manifest)
+    ? transitionDataPatch({ alias: patchParam, livePatches: patches, manifestPatch: manifest.current, setNumber })
+    : null;
+  const patch = pinned ?? displayPatch;
+  const patchFilter = (patchParam === 'current' || patchParam === 'any')
+    ? null
+    : (patchParam === 'previous' ? (displayPatch ?? NO_PREVIOUS_PATCH) : displayPatch);
+  const patchStartDay = patches.find(p => p.patch === displayPatch)?.first_day ?? null;
 
   // Stale-Data-Bump: während des Erstfills läuft der daily-Aggregator nicht,
   // also kann der letzte Stats-Tag mehrere Tage hinter `current_date` liegen.
@@ -380,20 +423,25 @@ export async function resolveFilters(
   // weiter die User-gewählte Granularität, aber mit verschobener Range.
   // Die Rechnung steht in snapshot-matrix.ts, weil das Box-Skript
   // precompute-comp-windows.mjs dasselbe Fenster rechnen muss.
+  // Patch-Zeile des Daten-Patches — in der Uebergangszeit die des Manifests,
+  // damit das Fenster dem abgelegten Stand gleicht.
   const patchRow = patches.find(p => p.patch === patch) ?? null;
   const { days, anchorOffsetDays } = listWindowDays({
-    requestedDays, patchFilter, patchStartDay,
+    requestedDays, patchFilter, patchStartDay: patchRow?.first_day ?? null,
     patchEndDay: patchRow?.last_day ?? null,
     latestDay: patches[0]?.last_day, today: new Date(),
   });
   // Volle Tage: ohne Patch-Filter zaehlt fuer die Patch-Tag-Ausnahme der
-  // angezeigte aktuelle Patch (patchRow = patches[0]).
+  // aktuelle Daten-Patch (patchRow = patches[0] bzw. der gepinnte).
   const dataEnd = await dataEndP;
   const win = dataEnd ? dataWindow({ dataEnd, requestedDays, patchFilter, patch: patchRow }) : null;
+  const patchFilterNoop = patchFilterCoversWindow({
+    patchFilter, startDay: win?.startDay ?? null, endDay: win?.endDay ?? null, patches,
+  });
 
   return {
     regions, buckets, days, requestedDays,
-    patch, patchFilter, patchStartDay,
+    patch, displayPatch, patchFilter, patchFilterNoop, patchStartDay,
     setNumber, bucketAuto, regionLabel, bucketLabel, anchorOffsetDays,
     startDay: win?.startDay ?? null,
     endDay: win?.endDay ?? null,
@@ -431,7 +479,25 @@ export function fullDayWindowEnabled(): boolean {
   return process.env.FULL_DAY_WINDOW !== '0';
 }
 
-export async function resolveDataEnd(endParam: string | null, publisher = false): Promise<string | null> {
+// Notschalter Daten-Pin (User 24.10.2026): DATA_PIN=0 → `current` rechnet auch
+// in der Uebergangszeit mit dem neuesten Patch der DB (Stand vor dem Pin).
+export function dataPinEnabled(): boolean {
+  return process.env.DATA_PIN !== '0';
+}
+
+// Uebergangszeit: die Zahlen stammen vom Daten-Patch, die Seite nennt schon den
+// neueren displayPatch.
+export function inPatchTransition(f: Pick<ResolvedFilters, 'patch' | 'displayPatch'>): boolean {
+  return f.displayPatch != null && f.displayPatch !== f.patch;
+}
+
+export async function resolveDataEnd(
+  endParam: string | null,
+  publisher = false,
+  // Bereits geladenes Manifest (resolveFilters) — Endtag und Daten-Patch aus
+  // demselben Stand.
+  manifest?: Promise<ManifestWindow | null>,
+): Promise<string | null> {
   if (!fullDayWindowEnabled()) return null;
   const today = new Date().toISOString().slice(0, 10);
   const param = validDay(endParam);
@@ -439,7 +505,7 @@ export async function resolveDataEnd(endParam: string | null, publisher = false)
     if (param && param <= today && param >= addDays(today, -30)) return param;
     return completeDayFromCrawlMeta(true);
   }
-  const base = await visitorDataEnd();
+  const base = await visitorDataEnd(manifest);
   if (param) {
     const ok = base
       ? param >= addDays(base, -2) && param <= addDays(base, 1)
@@ -449,10 +515,15 @@ export async function resolveDataEnd(endParam: string | null, publisher = false)
   return base;
 }
 
-async function visitorDataEnd(): Promise<string | null> {
-  const m = await loadManifestWindow().catch(() => null);
+function manifestFresh(m: ManifestWindow | null): boolean {
   const built = m?.builtAt ? Date.parse(m.builtAt) : NaN;
-  const fresh = Number.isFinite(built) && Date.now() - built <= MANIFEST_DATA_END_MAX_AGE_MS;
+  return Number.isFinite(built) && Date.now() - built <= MANIFEST_DATA_END_MAX_AGE_MS;
+}
+
+async function visitorDataEnd(manifest?: Promise<ManifestWindow | null>): Promise<string | null> {
+  const m = await (manifest ?? loadManifestWindow()).catch(() => null);
+  const built = m?.builtAt ? Date.parse(m.builtAt) : NaN;
+  const fresh = manifestFresh(m);
   const pinned = fresh ? validDay(m?.dataThrough) : null;
   if (pinned) return pinned;
   const complete = await completeDayFromCrawlMeta(false);

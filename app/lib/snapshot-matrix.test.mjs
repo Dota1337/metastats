@@ -747,15 +747,19 @@ test('Daten-Pin: Fenster aus der Manifest-Zeile endet am abgelegten Tag', () => 
     { startDay: '2026-10-22', endDay: '2026-10-24', days: 3 });
 });
 
-test('Patch-Filter aendert im Fenster nichts nur ohne fremde Tage', () => {
-  const cov = (patchFilter, startDay, endDay, patches = P_TRANS) => patchFilterCoversWindow({ patchFilter, startDay, endDay, patches });
-  assert.equal(cov('18.5b', '2026-10-22', '2026-10-23'), true);
-  assert.equal(cov('18.5b', '2026-10-21', '2026-10-23'), false, '21.10. gehoert zu 18.5');
-  assert.equal(cov('18.4', '2026-10-18', '2026-10-20'), true);
-  assert.equal(cov('18.4', '2026-10-19', '2026-10-21'), false, 'Fenster reicht ueber das Ende von 18.4');
-  assert.equal(cov(null, '2026-10-22', '2026-10-23'), false);
-  assert.equal(cov('18.5b', null, '2026-10-23'), false);
-  assert.equal(cov('18.9', '2026-10-22', '2026-10-23'), false);
+test('Patch-Filter aendert im Vorrats-Fenster nichts nur ohne fremde Tage', () => {
+  const cov = (patchFilter, endDay, requestedDays, patches = P_TRANS) => patchFilterCoversWindow({ patchFilter, endDay, requestedDays, patches });
+  // Live 24.10.: ?patch=18.5b, Endtag 22, 3 Tage → Vorrat ohne Filter zaehlt
+  // 20.–22.10. (+ Endtag + 1) → 18.4 und 18.5 haben Tage darin → live rechnen.
+  assert.equal(cov('18.5b', '2026-10-22', 3), false);
+  assert.equal(cov('18.5b', '2026-10-22', 1), true, '22.–23.10. ganz in 18.5b');
+  assert.equal(cov('18.5b', '2026-10-23', 2), true);
+  assert.equal(cov('18.5b', '2026-10-24', 1), false, 'Endtag + 1 liegt hinter dem letzten Tag');
+  assert.equal(cov('18.4', '2026-10-18', 3), true);
+  assert.equal(cov('18.4', '2026-10-20', 3), false, 'Endtag + 1 = 21.10. gehoert zu 18.5');
+  assert.equal(cov(null, '2026-10-22', 1), false);
+  assert.equal(cov('18.5b', null, 1), false);
+  assert.equal(cov('18.9', '2026-10-22', 1), false);
   // Unbekannte Grenzen eines anderen Patches zaehlen als Ueberschneidung.
-  assert.equal(cov('18.5b', '2026-10-22', '2026-10-23', [...P_TRANS, { patch: '18.6', first_day: '', last_day: '' }]), false);
+  assert.equal(cov('18.5b', '2026-10-22', 1, [...P_TRANS, { patch: '18.6', first_day: '', last_day: '' }]), false);
 });

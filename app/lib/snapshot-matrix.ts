@@ -426,22 +426,25 @@ export function transitionDataPatch(o: {
 }
 
 /**
- * Aendert der Patch-Filter im Fenster nichts? Ja, wenn das Fenster ganz im
- * gefilterten Patch liegt und kein anderer Patch der Liste einen Tag darin hat —
- * dann zaehlt die patchuebergreifende Abfrage dieselben Zeilen. Damit darf ein
- * gewaehlter Patch den Vorrat ohne Filter lesen (Vorpatch am Tag nach einem
- * Patchwechsel), sonst nicht.
+ * Darf ein gewaehlter Patch den Vorrat ohne Filter lesen? Nur wenn der Filter
+ * dort nichts aendert: das Fenster DES VORRATS liegt ganz im gefilterten Patch
+ * und kein anderer Patch der Liste hat einen Tag darin. Der Vorrat ohne Filter
+ * rechnet ungekappt (Ende − N + 1 … Ende) und darf einen Tag weiter reichen (der
+ * Fenster-Waechter nimmt Endtag + 1) — geprueft wird also Ende − N + 1 … Ende + 1,
+ * nicht das gekappte Fenster der Anfrage (live 24.10.: `?patch=18.5b` mit Fenster
+ * 22.10. nahm sonst den Stand 20.–22.10.).
  */
 export function patchFilterCoversWindow(o: {
   patchFilter: string | null;
-  startDay: string | null;
   endDay: string | null;
+  requestedDays: number;
   patches: ReadonlyArray<{ patch: string; first_day: string; last_day: string }>;
 }): boolean {
-  if (o.patchFilter == null || !o.startDay || !o.endDay) return false;
-  const start = dayNum(o.startDay);
-  const end = dayNum(o.endDay);
-  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return false;
+  if (o.patchFilter == null || !o.endDay) return false;
+  const n = Math.max(1, Math.floor(o.requestedDays) || 1);
+  const end = dayNum(o.endDay) + 1;
+  const start = end - n;
+  if (!Number.isFinite(end)) return false;
   const row = o.patches.find(p => p.patch === o.patchFilter);
   if (!row) return false;
   const first = dayNum(row.first_day);

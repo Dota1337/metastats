@@ -436,7 +436,7 @@ export async function resolveFilters(
   const dataEnd = await dataEndP;
   const win = dataEnd ? dataWindow({ dataEnd, requestedDays, patchFilter, patch: patchRow }) : null;
   const patchFilterNoop = patchFilterCoversWindow({
-    patchFilter, startDay: win?.startDay ?? null, endDay: win?.endDay ?? null, patches,
+    patchFilter, endDay: win?.endDay ?? null, requestedDays, patches,
   });
 
   return {

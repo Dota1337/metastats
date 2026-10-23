@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # No `npm ci`: the warmer is pure Node built-ins (global fetch /
       # AbortController), so we skip dependency install for a fast, cheap run.

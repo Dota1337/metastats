@@ -7,7 +7,7 @@
   "ddragonVersion": "16.21.1",
   "patchOverride": null,
   "detectedAt": "2026-08-26T14:08:32.809Z",
-  "lastCheckedAt": "2026-10-22T02:39:13.132Z",
+  "lastCheckedAt": "2026-10-23T02:39:36.809Z",
   "history": [
     {
       "setNumber": 17,
@@ -42,6 +42,14 @@
       "from_day": "2026-09-24",
       "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-3/",
       "detected_at": "2026-10-04T18:04:13.148Z"
+    },
+    {
+      "set": 18,
+      "patch": "18.5b",
+      "base": "18.5",
+      "from_day": "2026-10-22",
+      "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-5/",
+      "detected_at": "2026-10-23T02:39:37.527Z"
     }
   ],
   "patchStarts": [

@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 import path from "path";
 import { closeSync, openSync, readdirSync, readFileSync, readSync } from "fs";
-import { withSentryConfig } from "@sentry/nextjs";
+// Build-Wrapper aus dem config-Einstieg (der alte Weg ueber "@sentry/nextjs"
+// faellt mit Sentry 11 weg). Die Laufzeit-Importe (instrumentation.ts,
+// sentry.*.config.ts, revalidate-Route) bleiben bei "@sentry/nextjs": der
+// config-Einstieg hat keine Edge- und keine Browser-Variante.
+import { withSentryConfig } from "@sentry/nextjs/config";
 import { SECURITY_HEADERS } from "./app/lib/security-headers";
 import { PREFIX_LANGS } from "./app/lib/lang-path";
 import { TFT_IS_HOME } from "./app/lib/feature-flags";
@@ -128,9 +132,10 @@ const nextConfig: NextConfig = {
 // wuerden die Maps trotzdem generiert und Build-Zeit kosten, ohne je hochgeladen
 // zu werden. Stack-Traces bleiben dadurch minifiziert; Fehler sind sichtbar.
 //
-// automaticVercelMonitors: aus. Legt sonst ungefragt Cron-Monitore an.
+// automaticVercelMonitors: aus. Legt sonst ungefragt Cron-Monitore an
+// (vercel.json hat Crons). Steht seit Sentry 10.7x unter webpack.
 export default withSentryConfig(nextConfig, {
   silent: true,
   sourcemaps: { disable: true },
-  automaticVercelMonitors: false,
+  webpack: { automaticVercelMonitors: false },
 });

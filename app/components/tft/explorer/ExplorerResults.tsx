@@ -387,11 +387,12 @@ export default function ExplorerResults({
                   {t1 && <td className="px-2 py-1.5 text-center text-fg-primary hidden md:table-cell">{fmtPct(r.top1)}</td>}
                   {t4 && <td className="px-2 py-1.5 text-center text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
                   <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                    {/* Anteil mittig ueber der Leiste, beides auf der Spaltenmitte. */}
+                    {/* Anteil mittig ueber der Leiste, beides auf der Spaltenmitte, Querstrich dazwischen. */}
                     <div className="mx-auto flex w-fit flex-col items-center">
                       <span className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</span>
-                      {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird. */}
-                      <span className="min-w-[3.75rem] sm:min-w-[4.5rem] rounded-full bg-pos-win-a40 px-1.5 py-0.5 text-center text-fg-primary text-xs sm:text-[13px] leading-none">{num(r.games)}</span>
+                      <span aria-hidden className="my-0.5 h-px w-full bg-border-default" />
+                      {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird; Schrift wie der Anteil. */}
+                      <span className="min-w-[3.75rem] sm:min-w-[4.5rem] rounded-full bg-pos-win-a40 px-1.5 py-0.5 text-center text-fg-primary text-xs sm:text-sm leading-none">{num(r.games)}</span>
                     </div>
                   </td>
                   {showStar3 && (

@@ -24,6 +24,28 @@ export function coplayPick(rows, { chosen = new Set(), allow = () => true, max =
     .slice(0, max);
 }
 
+// „Beste Traeger von {Item}" (Plan 24.10.2026, vom User freigegeben):
+// mindestens CARRIER_MIN_GAMES Spiele UND CARRIER_MIN_SHARE der Bretter mit
+// dem Item, bester Ø zuerst, hoechstens COPLAY_MAX. Nur die Seite filtert; der
+// Dienst liefert alle Traeger aus dem Vorrat (scripts/lib/explorer-carriers.mjs).
+export const CARRIER_MIN_GAMES = 200;
+export const CARRIER_MIN_SHARE = 0.02;
+
+/**
+ * @template {{ key: string, games: number, avg: number }} R
+ * @param {R[] | null | undefined} rows
+ * @param {{ refGames: number, allow?: (id: string) => boolean, max?: number }} opts
+ * @returns {R[]}
+ */
+export function carrierPick(rows, { refGames, allow = () => true, max = COPLAY_MAX }) {
+  if (!(refGames > 0)) return [];
+  return (rows ?? [])
+    .filter(r => r && typeof r.key === 'string' && allow(r.key)
+      && r.games >= CARRIER_MIN_GAMES && r.games >= CARRIER_MIN_SHARE * refGames)
+    .sort((a, b) => a.avg - b.avg || b.games - a.games || a.key.localeCompare(b.key))
+    .slice(0, max);
+}
+
 /**
  * Alle schon gewaehlten Unit-Kennungen (Hauptliste und Kaesten) — die schlaegt die Zeile nicht mehr vor.
  * @param {{ units?: { id: string }[], groups?: { units?: { id: string }[] }[] }} q

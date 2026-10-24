@@ -31,7 +31,9 @@ const REGION_RE = /^[a-z0-9]{2,5}$/;
 const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
 // 'unknown' nur noch fuer alte Links; die Oberflaeche bietet es nicht mehr an.
 export const RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD', 'unknown'];
-export const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank', 'games', 'builds'];
+// carriers: Units, die das Fokus-Item selbst tragen (scripts/lib/explorer-carriers.mjs),
+// nur aus dem Vorrat — keine Startansicht (startViewTabs), Fokus Pflicht.
+export const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank', 'games', 'builds', 'carriers'];
 export const ITEM_KINDS = ['artifact', 'emblem', 'radiant'];
 export const LIMITS = { units: 9, items: 6, traits: 6, groups: 3, groupMembers: 6, total: 15 };
 
@@ -174,6 +176,7 @@ export function normalizeQuery(q) {
   const tags = tagList(q.tags);
   const tab = q.tab == null ? 'summary' : (TABS.includes(q.tab) ? q.tab : (() => { throw bad('invalid_tab'); })());
   const focus = q.focus == null ? null : id(q.focus, 'focus');
+  if (tab === 'carriers' && focus == null) throw bad('invalid_focus');
   const split = q.split === 'star' || q.split === 'over' ? q.split : null;
   const combo = int(q.combo, 1, 3, 'combo') ?? 1;
   return { region, ranks, patches, levels, place, units, items, traits, groups, bc, tags, tab, focus, split, combo };

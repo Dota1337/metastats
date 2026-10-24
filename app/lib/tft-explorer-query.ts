@@ -556,6 +556,32 @@ export function toServiceBody(q: ExplorerQuery) {
   };
 }
 
+// „Beste Traeger von {Item}" (Plan 24.10.2026): eigener Reiter nur der API —
+// nie in der Reiterleiste oder der Seiten-Adresse. Der Dienst beantwortet ihn
+// nur fuer die Standardansicht aus vorgewaermten Ansichten; die Anfrage hat
+// genau die Form von carriersBody in scripts/lib/explorer-carriers.mjs (Test).
+export const CARRIERS_TAB = 'carriers';
+export const isExplorerId = (s: string) => ID_RE.test(s);
+/** Feste API-Adresse; die Route nimmt keine andere Form an. */
+export const carriersApiQs = (itemId: string) => new URLSearchParams([['i', itemId], ['tab', CARRIERS_TAB], ['f', itemId]]).toString();
+export const carriersServiceBody = (itemId: string) => ({
+  ...toServiceBody({ ...EMPTY_QUERY, items: [{ id: itemId }] }), tab: CARRIERS_TAB, focus: itemId,
+});
+
+/**
+ * Item der Zeile „Beste Traeger": nur in der Standardansicht — genau ein Item
+ * ohne „ohne" und Anzahl, sonst keine Brett-Filter, alle Regionen und Raenge,
+ * neuester Patch (auch als Nummer gewaehlt: latestPatch aus meta). Sonst null.
+ */
+export function carriersItemOf(q: ExplorerQuery, latestPatch?: string | null): string | null {
+  const latest = q.patches.length === 1 && (q.patches[0] === LATEST_PATCH || (!!latestPatch && q.patches[0] === latestPatch));
+  if (!latest || q.region !== 'all' || q.ranks.length || q.levels.length || q.place) return null;
+  if (q.units.length || q.traits.length || q.groups.length || (q.bc ?? []).length || (q.tags ?? []).length) return null;
+  if (q.items.length !== 1) return null;
+  const i = canonItem(q.items[0]);
+  return !i.x && !i.n ? i.id : null;
+}
+
 // ─── Antwort-Typen ─────────────────────────────────────────────────────────
 
 export interface ExplorerSummary {
@@ -593,6 +619,10 @@ export interface ExplorerResponse {
   /** Nur Spiele-Reiter: die neuesten Bretter der Auswahl. */
   games?: ExplorerGame[];
 }
+
+/** Reiter carriers: Units, die das Item selbst tragen; refGames = Bretter mit dem Item. */
+export interface ExplorerCarrier { key: string; games: number; matches: number; avg: number; top4: number; top1: number; half: number }
+export interface ExplorerCarriersResponse { meta: ExplorerMeta; rows: ExplorerCarrier[]; refGames: number }
 
 export interface ExplorerGame {
   /** Spielende, Sekunden seit 1970 (UTC). */

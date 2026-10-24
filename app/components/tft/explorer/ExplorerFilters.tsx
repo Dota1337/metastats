@@ -4,13 +4,13 @@ import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
-  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, filterCount, serializeExplorerQuery,
-  type BoardCountKey, type BoardTag, type ExplorerQuery, type ExplorerResponse, type ExplorerRow, type FilterGroup, type ItemFilter, type ItemKind,
-  type TraitFilter, type UnitFilter,
+  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, carriersApiQs, carriersItemOf, filterCount, serializeExplorerQuery,
+  type BoardCountKey, type BoardTag, type ExplorerCarriersResponse, type ExplorerQuery, type ExplorerResponse, type ExplorerRow,
+  type FilterGroup, type ItemFilter, type ItemKind, type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
 import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import {
-  itemFitsUnit, itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
+  fmtAvg, itemFitsUnit, itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
 } from './explorer-options';
 import {
   PICK_KINDS, applyPhrase, applyPick, canAdd, chosenIds, normText, pickKey, removeEverywhere,
@@ -19,7 +19,7 @@ import {
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
 import { useFilterDrag } from './explorer-drag';
 import type { DragSrc, Where } from './explorer-move';
-import { COPLAY_MAX, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
+import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
 
 // Filterleiste (Plan 19.10.2026, Teil C1): eine Suchzeile fuer Units, Items und
 // Synergien (ExplorerSearchBox), darunter die Bausteine — Hauptliste mit „und",
@@ -402,6 +402,59 @@ export default function ExplorerFilters({
 
       <CoplayRow query={query} data={data} dataQuery={dataQuery} options={options} assets={assets}
         onAdd={id => onApply([], { kind: 'units', f: { id } }, 'and')} />
+      <CarrierRow query={query} data={data} options={options} assets={assets}
+        onAdd={(id, item) => onApply([], { kind: 'units', f: { id, it: [item] } }, 'and')} />
+    </div>
+  );
+}
+
+// „Beste Traeger von {Item}" (Plan 24.10.2026): steht in der Standardansicht
+// genau ein Item, die Units, die es selbst tragen, bester Ø zuerst (Regel
+// carrierPick). Die Antwort liegt im Dienst fertig bereit; mit weiteren Filtern
+// gibt es keine Zeile. Klick: die Unit mit dem Item kommt dazu und wird Traeger.
+const carriersCache = new Map<string, Promise<ExplorerCarriersResponse | null>>();
+
+function CarrierRow({
+  query, data, options, assets, onAdd,
+}: {
+  query: ExplorerQuery; data: ExplorerResponse | null;
+  options: ExplorerOptions; assets: TftAssetsBundle | null; onAdd: (unitId: string, itemId: string) => void;
+}) {
+  const { t } = useI18n();
+  const item = carriersItemOf(query, data?.meta.patches[0]?.patch);
+  const qs = item ? carriersApiQs(item) : null;
+  const [fetched, setFetched] = useState<{ qs: string; data: ExplorerCarriersResponse | null } | null>(null);
+  useEffect(() => {
+    if (!qs) return;
+    let alive = true;
+    let p = carriersCache.get(qs);
+    if (!p) {
+      p = fetch(`/api/tft/explorer?${qs}`).then(r => (r.ok ? r.json() as Promise<ExplorerCarriersResponse> : null)).catch(() => null);
+      carriersCache.set(qs, p);
+      p.then(v => { if (!v) carriersCache.delete(qs); });
+    }
+    p.then(v => { if (alive) setFetched({ qs, data: v }); });
+    return () => { alive = false; };
+  }, [qs]);
+
+  const src = fetched && fetched.qs === qs ? fetched.data : null;
+  if (!item || !src?.rows) return null;
+  const rows = carrierPick(src.rows, { refGames: src.refGames, allow: (id: string) => options.unitById.has(id), max: COPLAY_MAX });
+  if (!rows.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+      <span className="text-xs text-fg-muted">{t('tft.explorer.x.carriersOf').replace('{item}', itemName(options, assets, item))}</span>
+      {rows.map(r => {
+        const u = options.unitById.get(r.key)!;
+        return (
+          <button key={r.key} type="button" onClick={() => onAdd(r.key, item)} title={u.name}
+            className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-sm text-fg-primary hover:border-accent-a50">
+            <OptIcon src={u.img} alt={u.name} className="w-8 h-8" border={costColor(u.cost)} />
+            <span className="truncate max-w-[7rem]">{u.name}</span>
+            <span className="text-fg-muted tabular-nums">{fmtAvg(r.avg)}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

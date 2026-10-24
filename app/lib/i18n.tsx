@@ -3339,6 +3339,7 @@ const translations = {
   'tft.explorer.x.notFound': t6('Nicht gefunden', 'Not found', '\uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230', 'No encontrado', 'Introuvable'),
   'tft.explorer.x.threeItems': t6('3 Items', '3 items', '\uC544\uC774\uD15C 3\uAC1C', '3\u4EF6\u88C5\u5907', '3 objetos', '3 objets'),
   'tft.explorer.x.coplayWith': t6('Oft zusammen mit {unit}', 'Often played with {unit}', '{unit}\uC640 \uC790\uC8FC \uD568\uAED8', '\u5E38\u4E0E{unit}\u540C\u573A', 'Suele jugarse con {unit}', 'Souvent jou\u00E9 avec {unit}'),
+  'tft.explorer.x.carriersOf': t6('Beste Träger von {item}', 'Best carriers of {item}', '{item} 최고 장착 유닛', '{item}最佳携带者', 'Mejores portadores de {item}', 'Meilleurs porteurs de {item}'),
   'tft.explorer.x.coplaySel': t6('Oft zusammen mit deiner Auswahl', 'Often played with your selection', '\uC120\uD0DD\uACFC \uC790\uC8FC \uD568\uAED8', '\u5E38\u4E0E\u6240\u9009\u540C\u573A', 'Suele jugarse con tu selecci\u00F3n', 'Souvent jou\u00E9 avec ta s\u00E9lection'),
 
   // Item bucket filter (analog to tactics.tools/metatft Standard/Artifact/Emblem/Radiant)

@@ -52,6 +52,11 @@
 // alles andere laeuft weiter. EXPLORER_BOARD_COUNTS=0 / EXPLORER_GAMES=0
 // schalten Zaehler bzw. Spiele ab, /healthz zeigt caps.
 //
+// Beste Traeger je Item (Reiter carriers, Plan 24.10.2026): nur Standardansicht,
+// zusammengesetzt aus den vorgewaermten Items-Ansichten je Unit, ohne Rechnung;
+// unfertig → 503 carriers_not_ready, andere Filter → 400. EXPLORER_CARRIERS=0
+// schaltet ab, /healthz zeigt carriers.ready.
+//
 // Vertrauensbereich: Mehrere unserer Spieler sitzen in derselben Partie (im
 // Schnitt ~2,5 je Lobby), ihre Platzierungen sind also nicht unabhaengig. Die
 // Fehlerrechnung laeuft deshalb ueber Partien als Klumpen (cluster-robust),
@@ -68,7 +73,8 @@ import { LIMITS, TABS, neededCaps, normalizeQuery } from './lib/explorer-normali
 import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
-import { coplayPairBodies, pickItemsWarmBody, pickWarmBody, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { coplayPairBodies, pickItemsWarmBody, pickWarmBody, startViewTabs, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { carrierRows, isCarriersDefault } from './lib/explorer-carriers.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -103,6 +109,9 @@ const COPLAY_TIMEOUT_MS = QUERY_TIMEOUT_MS;
 // So lange auf eine freie Spur warten, danach ist die Auswahl vermutlich alt.
 const COPLAY_IDLE_MAX_MS = 20_000;
 const COPLAY_JOBS_MAX = 3;
+// „Beste Traeger von {Item}" aus dem Vorrat beantworten (Plan 24.10.2026); 0 = aus.
+// Haengt an PICK_WARM_ON: ohne die Items-Ansicht je Unit bleibt sie unfertig (503).
+const CARRIERS_ON = process.env.EXPLORER_CARRIERS !== '0';
 // Liegt waehrend eines Baus neben der Datei (build-explorer-store.mjs).
 const BUILD_LOCK = `${DB_PATH}.lock`;
 const UNIT_WARM_IDLE_MS = 2_000;
@@ -446,6 +455,7 @@ const server = http.createServer(async (req, res) => {
       agg: a ? { covered: a.coveredDays, total: a.total, running: aggLane.running, queued: aggLane.queue.length } : null,
       masks: { on: MASK_ON, covered: current?.mask?.coveredDays ?? null, total: current?.mask?.total ?? null },
       caps: current ? [...current.caps] : [],
+      carriers: { on: CARRIERS_ON, ready: !!current && carrierRows('', body => storedAnswer(current, body)) != null },
     });
   }
   if (req.method !== 'POST' || req.url !== '/explore') return send(res, 404, { error: 'not_found' });
@@ -461,6 +471,7 @@ const server = http.createServer(async (req, res) => {
   const holder = current;
   resolveLatest(holder, q);
   const headers = { 'X-Explorer-Built-At': holder.meta.builtAt };
+  if (q.tab === 'carriers') return sendCarriers(res, holder, q, headers);
   if (neededCaps(q).some(c => !holder.caps.has(c))) return send(res, 409, { error: 'not_ready' }, headers);
   const key = cacheKey(holder, q);
   const hit = holder.pinned.get(key) ?? cacheGet(key);
@@ -498,6 +509,26 @@ function resolveLatest(holder, q) {
   if (q.patches[0] === 'latest') q.patches = holder.meta.patches[0] ? [holder.meta.patches[0].patch] : [];
 }
 function cacheKey(holder, q) { return `${holder.ino}|${JSON.stringify(q)}`; }
+
+// Fertige Antwort zu einer Anfrage aus fester Ablage oder Zwischenspeicher, ohne zu rechnen.
+function storedAnswer(holder, body) {
+  const q = normalizeQuery(body);
+  resolveLatest(holder, q);
+  const key = cacheKey(holder, q);
+  return holder.pinned.get(key) ?? cache.get(key);
+}
+
+// Beste Traeger eines Items (scripts/lib/explorer-carriers.mjs): nur die
+// Standardansicht, nur aus dem Vorrat — keine Rechnung, keine Spur. Unfertig
+// (nach Tausch oder Neustart, bis warmUnits durch ist) → 503, nie eine leere
+// 200: die haelt Vercel bis 03:30 UTC fest.
+function sendCarriers(res, holder, q, headers) {
+  if (!CARRIERS_ON) return send(res, 503, { error: 'carriers_off' }, headers);
+  if (!isCarriersDefault(q, holder.meta.patches[0]?.patch)) return send(res, 400, { error: 'carriers_scope' }, headers);
+  const ans = carrierRows(q.focus, body => storedAnswer(holder, body));
+  if (!ans) return send(res, 503, { error: 'carriers_not_ready' }, { ...headers, 'Retry-After': '60' });
+  send(res, 200, { meta: holder.meta, query: q, ...ans, cached: true }, { ...headers, 'X-Explorer-Source': 'pinned' });
+}
 
 // Laeuft mit belegtem Slot; der Aufrufer gibt ihn frei.
 // days gesetzt = Summen-Weg (aggDays), sonst Masken-Weg oder live
@@ -537,7 +568,7 @@ async function execute(holder, q, key, warm = false, days = null, timeoutMs = un
 async function warmUp(holder) {
   const t0 = Date.now();
   let n = 0;
-  let todo = TABS.filter(x => !['summary', 'games', 'builds'].includes(x));
+  let todo = startViewTabs(TABS);
   for (let round = 0; round < 2 && todo.length; round++) {
     if (round > 0) await new Promise(r => setTimeout(r, WARM_RETRY_PAUSE_MS));
     const failed = [];

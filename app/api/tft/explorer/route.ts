@@ -3,7 +3,10 @@ import { DEGRADED_CACHE_CONTROL, cacheHeaders } from '../../../lib/api-cache';
 import { checkRateLimit } from '../../../lib/rate-limit';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { tftProfileHref } from '../../../lib/tft-player-search';
-import { parseExplorerParams, serializeExplorerQuery, toServiceBody, type ExplorerGame } from '../../../lib/tft-explorer-query';
+import {
+  CARRIERS_TAB, carriersApiQs, carriersServiceBody, isExplorerId, parseExplorerParams, serializeExplorerQuery, toServiceBody,
+  type ExplorerGame,
+} from '../../../lib/tft-explorer-query';
 import { boxFetch } from '../../../lib/box-tls.mjs';
 
 // Data Explorer. Die Rechnung laeuft auf der Hetzner-Box im Abfrage-Dienst
@@ -67,14 +70,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'explorer_unavailable' }, { status: 503, headers: cacheHeaders(DEGRADED_CACHE_CONTROL) });
   }
 
-  const query = parseExplorerParams(req.nextUrl.searchParams);
-  // Abweichende Schreibweise derselben Anfrage auf die feste Form umleiten,
-  // damit sie denselben Cache-Eintrag trifft.
-  const canonical = serializeExplorerQuery(query, { forApi: true });
-  if (req.nextUrl.search.replace(/^\?/, '') !== canonical) {
-    const url = req.nextUrl.clone();
-    url.search = canonical;
-    return NextResponse.redirect(url, 308);
+  // Beste Traeger eines Items: eigener Reiter nur der API, genau eine Form
+  // (carriersApiQs); der Dienst kennt nur die Standardansicht.
+  const search = req.nextUrl.search.replace(/^\?/, '');
+  let body: object;
+  if (req.nextUrl.searchParams.get('tab') === CARRIERS_TAB) {
+    const item = req.nextUrl.searchParams.get('f') ?? '';
+    if (!isExplorerId(item) || search !== carriersApiQs(item)) {
+      return NextResponse.json({ error: 'carriers_scope' }, { status: 400, headers: cacheHeaders(DEGRADED_CACHE_CONTROL) });
+    }
+    body = carriersServiceBody(item);
+  } else {
+    const query = parseExplorerParams(req.nextUrl.searchParams);
+    // Abweichende Schreibweise derselben Anfrage auf die feste Form umleiten,
+    // damit sie denselben Cache-Eintrag trifft.
+    const canonical = serializeExplorerQuery(query, { forApi: true });
+    if (search !== canonical) {
+      const url = req.nextUrl.clone();
+      url.search = canonical;
+      return NextResponse.redirect(url, 308);
+    }
+    body = toServiceBody(query);
   }
 
   // Ungecachte Anfragen rechnen auf einer Box mit 2 Kernen — pro IP deckeln.
@@ -86,7 +102,7 @@ export async function GET(req: NextRequest) {
     upstream = await boxFetch(`${HETZNER_URL}/explore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
-      body: JSON.stringify(toServiceBody(query)),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(40_000),
     });
   } catch (err) {

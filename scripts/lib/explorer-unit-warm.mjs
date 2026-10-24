@@ -38,6 +38,11 @@ export function pickItemsWarmBody(unitId) {
   return { ...pickWarmBody(unitId), tab: 'items', focus: unitId };
 }
 
+// Reiter der Startansichten (warmUp im Dienst): ohne Uebersicht, Spiele,
+// Builds (braucht einen Traeger) und Traeger je Item (Fokus Pflicht, liest nur
+// den Vorrat) — normalizeQuery wuerfe dort, und warmUnits liefe nie.
+export const startViewTabs = (tabs) => tabs.filter(x => !['summary', 'games', 'builds', 'carriers'].includes(x));
+
 // Vorschlags-Paare (S6): die Seite laesst nur spielbare Units zu
 // (tftPlayableChampions), der Dienst kennt die Liste nicht und rechnet deshalb
 // ein paar Partner mehr — eine Obermenge der Seiten-Auswahl.

@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, use, useState, useEffect, useMemo, useRef } from 'react';
+import { Suspense, use, useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { calculateMarketValue, type BreakdownItem } from '../../lib/marketvalue';
@@ -127,6 +127,13 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
     setLiveGame({ inGame: false });
     setLiveGameUnavailable('');
   }
+  // Alte Anfragen schon beim Uebernehmen des Wechsels ungueltig machen, nicht
+  // erst im Lade-Effekt: eine Antwort, die dazwischen ankommt, wuerde sonst die
+  // Rueckstellung oben mit dem vorigen Profil ueberschreiben.
+  useLayoutEffect(() => {
+    loadReq.current++;
+    seasonReq.current++;
+  }, [profileKey]);
 
   // Live-Spiel getrennt, damit „Erneut versuchen“ nur diesen Teil neu holt.
   // 403 = Schluessel ohne Spectator-Recht (Funktion fehlt), alles andere = kurz weg.
@@ -406,8 +413,9 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
 
   // Arena und Swarm sind nicht mit 5-gegen-5 vergleichbar (lol-queue.ts).
   const headerMatches = matches.filter(m => !isNonStandardMode(m));
-  // Coach vergleicht mit Ranglisten-Schwellen: nur Spiele auf der Kluft
-  const riftMatches = matches.filter(isRiftGame);
+  // Coach vergleicht mit Ranglisten-Schwellen: nur Spiele auf der Kluft.
+  // Gemerkt, sonst haelt AICoach jedes Neuzeichnen fuer neue Spiele und fragt neu an.
+  const riftMatches = useMemo(() => matches.filter(isRiftGame), [matches]);
 
   // Use stored market value from Supabase when available (cached responses),
   // only recalculate when we have fresh match data

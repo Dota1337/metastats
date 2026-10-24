@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useState } from 'react';
 import { ResponsiveContainer, LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import { useI18n, LOCALE_MAP, type Lang, type TranslationKey } from '../../lib/i18n';
 import SetTimeline, { type SetInfo } from './SetTimeline';
@@ -191,6 +191,8 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
         .catch(() => null),
     ])
       .then(([j, s]) => {
+        // Abgebrochen = anderer Spieler: nichts mehr setzen.
+        if (signal?.aborted) return;
         setData(j);
         const validSet = s && s.startDate && s.endDate && !s.error ? (s as SetInfo) : null;
         setSetInfo(validSet);
@@ -217,10 +219,13 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
             .catch(() => setHistoryLoading(false));
         }
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (!signal?.aborted) setLoading(false); });
   };
 
-  useEffect(() => {
+  // Layout- statt normalem Effekt: der Abbruch der alten Anfrage greift so beim
+  // Uebernehmen des Wechsels. Eine spaete Antwort dazwischen setzte sonst den
+  // vorigen Spieler wieder ein (die Rueckstellung passiert schon beim Rendern).
+  useLayoutEffect(() => {
     const ctrl = new AbortController();
     loadValue(ctrl.signal);
     return () => ctrl.abort();

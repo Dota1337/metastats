@@ -345,8 +345,8 @@
       "titel": "Der einzige Dauerdienst ist jetzt ausdruecklich aus dem ganzen Internet erreichbar und laeuft dabei als root mit allen 17 Box-Schluesseln",
       "ort": "infra/hetzner/metastats-refresh-api.service",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "scripts/refresh-api-server.mjs:1121 'server.listen(PORT, ...)' ohne Host-Argument. Box (ssh, lesend): ss -tlnp -> '*:4100 users:((node,pid=1146908))'; ufw status verbose -> '4100/tcp ALLOW IN Anywhere # metastats refresh API' plus v6; systemctl show metastats-refresh-api -> User=root, IPAddressAllow= und IPAddressDeny= leer; ps -> 'root 1146908 /usr/bin/node scripts/refresh-api-server.mjs'. Die ufw-Regel steht nirgends im Repo (grep -rnwE 'ufw|iptables|nft' infra/ scripts/ -> 0 Treffer ausser infra/security-baseline.json). Zugangspruefung faellt weiter geschlossen aus: refresh-api-server.mjs:147-149 bricht ohne REFRESH_API_TOKEN ab, :1040 prueft den Bearer; Box: curl -X POST http://127.0.0.1:4100/rising ohne Token -> 401.",
+      "status": "behoben",
+      "belegt_mit": "Behoben 24.10.2026 07:50 CEST (Commit 6d711c52): refresh-api laeuft als metastats-api statt root (B2, 7 Env-Schluessel), http-Listener nur noch auf 127.0.0.1:4100 (ss -tlnp), von aussen nur https 8443 mit gepinntem Zertifikat und Token. ufw-Regel 4100 (v4+v6) entfernt; curl von aussen auf :4100 laeuft ins Zeitlimit. Live danach: Ops-Dashboard 31 Dienste ueber https, Seite 200.",
       "seit": "2026-09-19",
       "zuletzt_gesehen": "2026-10-24"
     },

@@ -32,15 +32,6 @@
       "persistent": true
     },
     {
-      "name": "metastats-caddy.service",
-      "kind": "service",
-      "description": "metastats TLS-Vorschalter fuer refresh-api (Caddy, Let's-Encrypt-IP-Zertifikat, nur :443)",
-      "scripts": [],
-      "After": [
-        "metastats-refresh-api.service"
-      ]
-    },
-    {
       "name": "metastats-companion-backfill.service",
       "kind": "service",
       "description": "metastats — backfill placement + Riot match-id into companion observations",
@@ -1490,7 +1481,7 @@
     ".github/workflows/deploy-hetzner.yml": [
       "box/stand-main"
     ],
-    "metastats-caddy.service": [
+    "metastats-refresh-api.service": [
       "box/tls-zertifikat"
     ]
   }

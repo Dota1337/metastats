@@ -4,6 +4,7 @@ import { checkRateLimit } from '../../../lib/rate-limit';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { tftProfileHref } from '../../../lib/tft-player-search';
 import { parseExplorerParams, serializeExplorerQuery, toServiceBody, type ExplorerGame } from '../../../lib/tft-explorer-query';
+import { boxFetch } from '../../../lib/box-tls.mjs';
 
 // Data Explorer. Die Rechnung laeuft auf der Hetzner-Box im Abfrage-Dienst
 // (scripts/explorer-duckdb-server.mjs), erreichbar nur ueber refresh-api
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${HETZNER_URL}/explore`, {
+    upstream = await boxFetch(`${HETZNER_URL}/explore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
       body: JSON.stringify(toServiceBody(query)),

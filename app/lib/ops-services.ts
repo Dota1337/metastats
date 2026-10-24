@@ -40,9 +40,7 @@ const CRAWL_CHAIN = 30 * H;
 
 export const OPS_SERVICES: Record<string, OpsService> = {
   'metastats-refresh-api.service': { kind: 'persistent', text:
-    'Dauerdienst der Box. Beantwortet die Knoepfe "Aktualisieren" auf den Spielerseiten: holt neue Partien, schreibt sie in den Partien-Speicher der Box und rechnet den Marktwert neu. Reicht Anfragen des Data Explorers an dessen Abfrage-Dienst weiter.' },
-  'metastats-caddy.service': { kind: 'prepared', text:
-    'Vorbereitet, noch nicht eingerichtet. Soll die Verbindung zum Aktualisierungs-Dienst verschluesseln (Zertifikat fuer die Server-Adresse). Bis dahin laeuft die Verbindung direkt.' },
+    'Dauerdienst der Box. Beantwortet die Knoepfe "Aktualisieren" auf den Spielerseiten: holt neue Partien, schreibt sie in den Partien-Speicher der Box und rechnet den Marktwert neu. Reicht Anfragen des Data Explorers an dessen Abfrage-Dienst weiter. Erreichbar verschluesselt mit eigenem Zertifikat, dem nur die eigenen Aufrufer vertrauen.' },
   'metastats-explorer-api.service': { kind: 'persistent', text:
     'Dauerdienst des Data Explorers. Beantwortet dessen Abfragen aus einem eigenen Analyse-Speicher, nur von der Box selbst erreichbar.' },
 

@@ -27,6 +27,8 @@ on:
       - 'app/lib/tft-explorer-coplay.mjs'
       # Comp-Katalog-Regeln (Sammler, Tagestreiber, build-comp-catalog.mjs).
       - 'app/lib/tft-comp-catalog.mjs'
+      # Gepinntes Zertifikat + boxFetch (refresh-api-server, Vertrag tls-cert, Skripte).
+      - 'app/lib/box-tls.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

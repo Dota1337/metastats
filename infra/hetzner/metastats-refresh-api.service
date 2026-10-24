@@ -14,6 +14,12 @@ ExecStartPre=+/usr/local/bin/metastats-refresh-api-env.sh
 EnvironmentFile=-/run/metastats-refresh-api/env
 InaccessiblePaths=/etc/metastats-crawler -/run/metastats-refresh-api
 ExecStart=/usr/bin/node scripts/refresh-api-server.mjs
+# TLS-Schluessel fuer den https-Zugang auf 8443 (Sicherheitsdurchsicht
+# 24.10.2026, klartext-token). Liegt 0600 root in /etc/credstore; systemd
+# reicht ihn unter $CREDENTIALS_DIRECTORY an den Dienst-Nutzer. Anders als
+# LoadCredential= startet die Unit auch ohne die Datei — dann nur http.
+# Zertifikat: app/lib/box-tls.mjs. Firewall: ufw allow 8443/tcp.
+ImportCredential=metastats-refresh-api-tls.key
 Restart=on-failure
 RestartSec=5
 # Fester Nutzer ohne Sonderrechte statt root (netzbindung). Angelegt ueber

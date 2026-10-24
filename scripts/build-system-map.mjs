@@ -135,7 +135,7 @@ export function parseUnitText(file, text) {
 
 /**
  * `systemctl start|stop|restart` aus einem Shell-Skript, Zeile fuer Zeile.
- * Kommentarzeilen zaehlen nicht (install-caddy.sh nennt einen Befehl im Kopf).
+ * Kommentarzeilen zaehlen nicht (Skripte nennen Befehle oft im Kopf).
  */
 export function shellStartEdges(file, text) {
   const edges = [];

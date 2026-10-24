@@ -103,12 +103,6 @@ apply_sysfile() {
 # Feste Dienst-Nutzer vor den Units anlegen — eine Unit mit User=metastats-api
 # startet sonst nicht (Exit 217/USER). systemd-sysusers ist idempotent.
 apply_sysfile sysusers-metastats.conf /etc/sysusers.d/metastats.conf - "systemd-sysusers /etc/sysusers.d/metastats.conf"
-# Caddy-Konfiguration nur, wenn Caddy installiert ist (infra/hetzner/install-caddy.sh).
-# Greift erst mit `systemctl restart metastats-caddy` (admin off, kein reload).
-if $SSH "command -v caddy >/dev/null"; then
-  apply_sysfile metastats.Caddyfile /etc/caddy/metastats.Caddyfile \
-    "runuser -u caddy -- caddy validate --adapter caddyfile --config {} >/dev/null" -
-fi
 
 changed=0
 for u in "${units[@]}"; do

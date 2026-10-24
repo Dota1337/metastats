@@ -208,6 +208,7 @@
       "group": "coach",
       "file": "app/api/coach/chat/route.ts",
       "via": [
+        "app/lib/box-tls.mjs",
         "app/lib/tft-hetzner-matches.ts"
       ],
       "used": false,
@@ -286,6 +287,7 @@
       "group": "companion/v1",
       "file": "app/api/companion/v1/lobby/route.ts",
       "via": [
+        "app/lib/box-tls.mjs",
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/regions.ts",
@@ -473,7 +475,9 @@
       "label": "/api/internal/ops-snapshot",
       "group": "internal",
       "file": "app/api/internal/ops-snapshot/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/box-tls.mjs"
+      ],
       "used": true,
       "usedBy": [
         "app/components/internal/OpsGraph.tsx"
@@ -958,6 +962,7 @@
       "group": "tft",
       "file": "app/api/tft/econ-score/route.ts",
       "via": [
+        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-hetzner-matches.ts",
@@ -975,6 +980,7 @@
       "file": "app/api/tft/explorer/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/box-tls.mjs",
         "app/lib/regions.ts"
       ],
       "used": true,
@@ -1139,6 +1145,7 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/refresh/route.ts",
       "via": [
+        "app/lib/box-tls.mjs",
         "app/lib/regions.ts"
       ],
       "used": true,
@@ -1222,6 +1229,7 @@
       "file": "app/api/tft/onetricks/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-hetzner-matches.ts",
@@ -1365,6 +1373,7 @@
       "file": "app/api/tft/pros/by-comp/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/tft-hetzner-matches.ts",
         "public/tft-set.json"
@@ -1379,6 +1388,7 @@
       "group": "tft/pros",
       "file": "app/api/tft/pros/specialty/route.ts",
       "via": [
+        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-hetzner-matches.ts",
@@ -1416,6 +1426,7 @@
       "file": "app/api/tft/rising/route.ts",
       "via": [
         "app/lib/api-cache.ts",
+        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",

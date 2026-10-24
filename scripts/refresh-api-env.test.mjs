@@ -63,8 +63,11 @@ test('Positivliste im Dienst und im Hilfsskript sind gleich', () => {
   assert.deepEqual(helperKeys(), serverKeys());
 });
 
+// Setzt systemd selbst beim Start, steht nie in einer Env-Datei.
+const VON_SYSTEMD = ['CREDENTIALS_DIRECTORY'];
+
 test('der Dienst liest keinen Schluessel ausserhalb der Positivliste', () => {
-  const erlaubt = new Set(serverKeys());
+  const erlaubt = new Set([...serverKeys(), ...VON_SYSTEMD]);
   const { keys, dynamisch, dateien } = gelesen();
   assert.ok(dateien > 1, 'Importbaum nicht gefunden');
   const fremd = [...keys].filter(([k]) => !erlaubt.has(k)).map(([k, v]) => `${k} (${[...v].join(', ')})`);

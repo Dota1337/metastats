@@ -25,6 +25,7 @@ import { isIP } from 'node:net';
 import { evaluateGuideCoverage } from './guide-coverage.mjs';
 import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
+import { BOX_TLS_CERTS } from '../../app/lib/box-tls.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -1137,10 +1138,17 @@ export function evaluateTlsCert({ validTo, now = Date.now(), minHoursLeft }) {
 // erneuert, aber nicht ausgeliefert wird. Mit voller Pruefung (Kette, Name/IP)
 // — ein abgelaufenes oder falsches Zertifikat endet als broken mit dem
 // TLS-Fehlercode. An eine IP geht kein Servername (Node verbietet IP als SNI).
+// `pinned: true` = eigenes Zertifikat der Box: vertraut wird nur BOX_TLS_CERTS
+// (app/lib/box-tls.mjs). Rot dann auch, wenn die Box ein anderes Zertifikat
+// ausliefert als das, dem die Aufrufer vertrauen.
 function checkTlsCert(c, r) {
   const port = c.port || 443;
   return new Promise((resolveCheck) => {
-    const sock = tlsConnect({ host: c.host, port, ...(isIP(c.host) ? {} : { servername: c.host }) });
+    const sock = tlsConnect({
+      host: c.host, port,
+      ...(isIP(c.host) ? {} : { servername: c.host }),
+      ...(c.pinned ? { ca: BOX_TLS_CERTS } : {}),
+    });
     const done = (res) => { sock.destroy(); resolveCheck(res); };
     sock.setTimeout(15_000, () => done(r('broken', `${c.host}:${port} antwortet nicht (15 s)`)));
     sock.once('error', (err) => done(r('broken', `${c.host}:${port}: ${err.code || err.message}`)));

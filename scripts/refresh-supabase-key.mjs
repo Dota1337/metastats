@@ -27,10 +27,10 @@
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { request as httpsRequest } from 'node:https';
-import { request as httpRequest } from 'node:http';
 import { lookup as dnsLookup } from 'node:dns';
 import sodium from 'libsodium-wrappers';
 import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
+import { boxFetch } from '../app/lib/box-tls.mjs';
 
 const REPO = 'Dota1337/metastats';
 
@@ -159,25 +159,19 @@ function syncKeyToHetzner(env, secretName, key) {
   }
 }
 
-function verifyHealthz(env) {
-  return new Promise((resolve) => {
-    const url = env.HETZNER_REFRESH_URL;
-    if (!url) return resolve(null);
-    const u = new URL(url);
-    // http oder https, wie in HETZNER_REFRESH_URL (seit 24.10.2026 https ueber den
-    // TLS-Vorschalter auf 443, Port 4100 geht zu). Vorher immer http.
-    const request = u.protocol === 'https:' ? httpsRequest : httpRequest;
-    const req = request({ host: u.hostname, port: u.port || (u.protocol === 'https:' ? 443 : 4100), path: '/healthz', method: 'GET', timeout: 5000 }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => resolve({ status: res.statusCode, body: data }));
-    });
+async function verifyHealthz(env) {
+  const url = env.HETZNER_REFRESH_URL;
+  if (!url) return null;
+  // http oder https, wie in HETZNER_REFRESH_URL; https nur mit dem gepinnten
+  // Zertifikat der Box (app/lib/box-tls.mjs, seit 24.10.2026).
+  try {
+    const res = await boxFetch(new URL('/healthz', url), { signal: AbortSignal.timeout(5000) });
+    return { status: res.status, body: await res.text() };
+  } catch (err) {
     // Fehler laut melden statt still null: der Abruf ist der einzige Nachweis,
     // dass refresh-api nach dem Neustart wieder antwortet.
-    req.on('error', (err) => resolve({ status: 'Fehler', body: err.code || err.message }));
-    req.on('timeout', () => { req.destroy(); resolve({ status: 'Fehler', body: 'Zeitlimit 5 s' }); });
-    req.end();
-  });
+    return { status: 'Fehler', body: err?.name === 'TimeoutError' ? 'Zeitlimit 5 s' : (err?.cause?.code || err?.message) };
+  }
 }
 
 async function main() {

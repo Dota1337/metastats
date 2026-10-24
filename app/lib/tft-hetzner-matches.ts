@@ -8,6 +8,9 @@
 // btree index + a ROW_NUMBER() window so each puuid gets up to limit_per_puuid
 // recent matches — same semantic as the legacy .order().limit() pattern.
 
+import 'server-only';
+import { boxFetch } from './box-tls.mjs';
+
 const HETZNER_URL = process.env.HETZNER_REFRESH_URL;
 const TOKEN = process.env.REFRESH_API_TOKEN;
 
@@ -63,7 +66,7 @@ export async function fetchHetznerPlayerMatches(opts: PlayerMatchesOpts): Promis
     limit_per_puuid: opts.limitPerPuuid ?? 50,
     limit: opts.limit,
   };
-  const res = await fetch(`${HETZNER_URL}/player-matches`, {
+  const res = await boxFetch(`${HETZNER_URL}/player-matches`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify(body),
@@ -117,7 +120,7 @@ export async function fetchHetznerPlayerCompHistogram(opts: CompHistogramOpts): 
 }> {
   if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
   if (opts.puuids.length === 0) return { players: [], rows: 0, unclassified: 0 };
-  const res = await fetch(`${HETZNER_URL}/player-comp-histogram`, {
+  const res = await boxFetch(`${HETZNER_URL}/player-comp-histogram`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify({
@@ -165,7 +168,7 @@ interface MarketvaluePoolOpts {
 
 export async function fetchHetznerMarketvaluePool(opts: MarketvaluePoolOpts): Promise<MarketvaluePoolPlayer[]> {
   if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
-  const res = await fetch(`${HETZNER_URL}/marketvalue-pool`, {
+  const res = await boxFetch(`${HETZNER_URL}/marketvalue-pool`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify({ region: opts.region, tiers: opts.tiers, limit: opts.limit }),
@@ -215,7 +218,7 @@ export async function fetchHetznerProsByComp(opts: ProsByCompOpts): Promise<{ pr
   if (opts.familyKey) body.family_key = opts.familyKey;
   if (opts.clusterKey) body.cluster_key = opts.clusterKey;
   if (opts.sinceMs) body.since_ms = opts.sinceMs;
-  const res = await fetch(`${HETZNER_URL}/pros-by-comp`, {
+  const res = await boxFetch(`${HETZNER_URL}/pros-by-comp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify(body),
@@ -241,7 +244,7 @@ interface PeerBaselineOpts {
 
 export async function fetchHetznerPeerBaseline(opts: PeerBaselineOpts = {}): Promise<{ avgGoldLeft: number | null; sample: number }> {
   if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
-  const res = await fetch(`${HETZNER_URL}/peer-baseline`, {
+  const res = await boxFetch(`${HETZNER_URL}/peer-baseline`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify({
@@ -314,7 +317,7 @@ export interface RisingResponse {
 
 export async function fetchHetznerRising(opts: { days: number; region: string; signalTimeoutMs?: number }): Promise<RisingResponse> {
   if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
-  const res = await fetch(`${HETZNER_URL}/rising`, {
+  const res = await boxFetch(`${HETZNER_URL}/rising`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
     body: JSON.stringify({ days: opts.days, region: opts.region }),

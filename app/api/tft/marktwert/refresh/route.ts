@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '../../../../lib/rate-limit';
 import { parseRegion } from '../../../../lib/regions';
 import { publicError } from '../../../../lib/public-error';
+import { boxFetch } from '../../../../lib/box-tls.mjs';
 
 const PUUID_RE = /^[A-Za-z0-9_-]{20,100}$/;
 // Feste Codes der Box (scripts/refresh-api-server.mjs handleRefresh/refreshOnePlayer).
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${HETZNER_URL}/refresh-player`, {
+    upstream = await boxFetch(`${HETZNER_URL}/refresh-player`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,6 +61,8 @@ export async function POST(req: NextRequest) {
       // Cap at 90s — the Hetzner work can take ~30s for first-time fill;
       // anything longer is almost certainly a hung Riot call.
       signal: AbortSignal.timeout(90_000),
+      // Schreibt auf der Box: bei abgerissener Verbindung nicht still wiederholen.
+      retry: false,
     });
   } catch (err) {
     console.error('[tft/marktwert/refresh] box failed:', err instanceof Error ? err.message : err);

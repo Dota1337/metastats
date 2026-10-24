@@ -4,6 +4,7 @@
 // the Team-Marktwert tab + the players' MarketValueHero block.
 
 import { readFileSync } from 'node:fs';
+import { boxFetch } from '../app/lib/box-tls.mjs';
 
 function readEnv() {
   const text = readFileSync('.env.local', 'utf8');
@@ -35,13 +36,15 @@ async function fetchPros() {
 }
 
 async function refreshOne(puuid, region) {
-  const r = await fetch(`${HETZNER}/refresh-player`, {
+  // https nur mit dem gepinnten Zertifikat der Box; schreibt dort, also ohne Wiederholung.
+  const r = await boxFetch(`${HETZNER}/refresh-player`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${TOKEN}`,
     },
     body: JSON.stringify({ puuid, region }),
+    retry: false,
   });
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }

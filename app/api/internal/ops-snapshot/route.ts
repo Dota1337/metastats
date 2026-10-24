@@ -12,12 +12,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import apiMap from '../../../../infra/api-map.json';
 import { OPS_SERVICES } from '../../../lib/ops-services';
+import { BOX_TLS_PORT, boxFetch } from '../../../lib/box-tls.mjs';
 
 export const dynamic = 'force-dynamic';
 
-// Rueckfall = der TLS-Vorschalter der Box (metastats-caddy, IP-Zertifikat); den
+// Rueckfall = der https-Zugang der Box mit eigenem Zertifikat (box-tls.mjs); den
 // frueher hier stehenden Namen refresh.metastats.gg gab es nie im DNS.
-const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || 'https://37.27.219.140';
+const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || `https://37.27.219.140:${BOX_TLS_PORT}`;
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const MANIFEST_URL = process.env.SNAPSHOT_MANIFEST_URL || '';
@@ -122,7 +123,12 @@ async function fetchServices() {
   // 24.10.2026, statusseite-ohne-zugang) — ohne ihn sah jeder, welche Dienste
   // wann liefen und welche gescheitert sind.
   const token = process.env.REFRESH_API_TOKEN;
-  const res = await fetchWithTimeout(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+  // boxFetch statt fetchWithTimeout: https zur Box geht nur mit dem gepinnten Zertifikat.
+  const res = await boxFetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    cache: 'no-store',
+  });
   if (!res.ok) throw new Error(`hetzner ${res.status}`);
   const data = await res.json();
   const now = Date.now();

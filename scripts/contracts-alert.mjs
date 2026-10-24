@@ -3,7 +3,8 @@
 // mit Label contract-broken ab. Logik: scripts/lib/contracts-alert.mjs.
 //
 // Laeuft in .github/workflows/contracts-alert.yml. Env:
-//   CONTRACTS_STATUS_URL   https://37.27.219.140/contracts-status (TLS-Vorschalter, seit 24.10.2026)
+//   CONTRACTS_STATUS_URL   https://37.27.219.140:8443/contracts-status (eigenes Zertifikat,
+//                          gepinnt ueber app/lib/box-tls.mjs, seit 24.10.2026)
 //   CONTRACTS_READ_TOKEN   geteiltes Geheimnis mit refresh-api (nur fuer HMAC)
 //   GITHUB_TOKEN, GITHUB_REPOSITORY
 // Optionen:
@@ -15,6 +16,7 @@
 
 import { readFileSync } from 'node:fs';
 import { decide, sign, LABEL } from './lib/contracts-alert.mjs';
+import { boxFetch } from '../app/lib/box-tls.mjs';
 
 const args = process.argv.slice(2);
 const DRY = args.includes('--dry-run');
@@ -34,7 +36,7 @@ async function fetchStatus() {
   for (let attempt = 1; attempt <= 3; attempt++) {
     const ts = String(Date.now());
     try {
-      const res = await fetch(url, {
+      const res = await boxFetch(url, {
         headers: { 'X-Ms-Ts': ts, 'X-Ms-Sig': sign(token, ts) },
         signal: AbortSignal.timeout(15_000),
       });

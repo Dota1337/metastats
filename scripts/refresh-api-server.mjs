@@ -28,8 +28,10 @@
  */
 
 import http from 'node:http';
+import https from 'node:https';
+import { X509Certificate, createPrivateKey } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import pg from 'pg';
@@ -116,6 +118,7 @@ import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
 import { queryRisingCandidates, playstyleOf, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
+import { BOX_TLS_CERTS, BOX_TLS_PORT } from '../app/lib/box-tls.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
 // Nur die Schluessel, die dieser Dienst samt seiner 17 importierten Dateien
@@ -1002,12 +1005,12 @@ async function handleProsByComp(body) {
 }
 
 // Uebergangs-Messung (24.10.2026, bis Port 4100 zu ist, danach entfernen):
-// Wer kommt noch DIREKT auf 4100 statt ueber den TLS-Vorschalter? Caddy setzt
-// X-Metastats-Via; gezaehlt werden nur gueltig angemeldete Anfragen ohne ihn,
-// Scanner fallen also heraus. Alle 10 min eine Sammelzeile ins Journal.
+// Wer kommt noch unverschluesselt auf 4100 statt ueber https auf BOX_TLS_PORT?
+// Gezaehlt werden nur gueltig angemeldete Anfragen, Scanner fallen also
+// heraus. Alle 10 min eine Sammelzeile ins Journal.
 const direktZugriffe = new Map();
 function merkeDirektzugriff(req) {
-  if (req.headers['x-metastats-via'] === 'caddy') return;
+  if (req.socket?.encrypted) return;
   const k = `${req.method} ${(req.url || '').split('?')[0]} ${String(req.headers['user-agent'] || '-').slice(0, 40)}`;
   direktZugriffe.set(k, (direktZugriffe.get(k) || 0) + 1);
 }
@@ -1017,7 +1020,7 @@ setInterval(() => {
   direktZugriffe.clear();
 }, 600_000).unref();
 
-const server = http.createServer(async (req, res) => {
+async function handleRequest(req, res) {
   // Liveness + optional service-detail für das Internal-Ops-Dashboard.
   // ?detail=services listet alle metastats-*.service Units mit ActiveState,
   // SubState, Result, ActiveEnterTimestamp und InactiveEnterTimestamp.
@@ -1050,8 +1053,8 @@ const server = http.createServer(async (req, res) => {
 
   // Gekuerzter Vertragsstatus fuer die GitHub-Action contracts-alert. Eigenes
   // Geheimnis (nicht REFRESH_API_TOKEN), per HMAC ueber einen Zeitstempel —
-  // entstanden, als es zur Box noch kein HTTPS gab (seit 24.10.2026 ueber den
-  // TLS-Vorschalter metastats-caddy). Fehlt das Geheimnis, antwortet nur diese Route
+  // entstanden, als es zur Box noch kein HTTPS gab (seit 24.10.2026 per https
+  // auf BOX_TLS_PORT mit Pinning). Fehlt das Geheimnis, antwortet nur diese Route
   // 503; der Dienst selbst laeuft weiter.
   if (req.method === 'GET' && req.url === '/contracts-status') {
     const noStore = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
@@ -1126,7 +1129,46 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(payload));
   }
-});
+}
+
+const server = http.createServer(handleRequest);
+
+// Verschluesselter Zugang (Sicherheitsdurchsicht 24.10.2026, klartext-token):
+// derselbe Dienst zusaetzlich per https auf BOX_TLS_PORT. Das Zertifikat kommt
+// aus app/lib/box-tls.mjs (dem vertrauen alle Aufrufer), der Schluessel per
+// ImportCredential aus /etc/credstore. Passt keiner der beiden zusammen oder
+// fehlt der Schluessel, laeuft der Dienst laut gemeldet nur per http weiter —
+// ein TLS-Fehler darf den bestehenden Zugang nie mitreissen.
+function loadTlsPair() {
+  const dir = process.env.CREDENTIALS_DIRECTORY;
+  const file = dir ? join(dir, 'metastats-refresh-api-tls.key') : null;
+  if (!file || !existsSync(file)) {
+    console.error('[tls] AUS: kein Schluessel (ImportCredential metastats-refresh-api-tls.key) — nur http');
+    return null;
+  }
+  try {
+    const key = readFileSync(file, 'utf8');
+    const pk = createPrivateKey(key);
+    const cert = BOX_TLS_CERTS.find((pem) => new X509Certificate(pem).checkPrivateKey(pk));
+    if (!cert) {
+      console.error('[tls] AUS: Schluessel passt zu keinem Zertifikat in app/lib/box-tls.mjs — nur http');
+      return null;
+    }
+    return { key, cert, validTo: new X509Certificate(cert).validTo };
+  } catch (err) {
+    console.error(`[tls] AUS: Schluessel unlesbar (${err.message}) — nur http`);
+    return null;
+  }
+}
+const tlsPair = loadTlsPair();
+const tlsServer = tlsPair ? https.createServer({ key: tlsPair.key, cert: tlsPair.cert }, handleRequest) : null;
+if (tlsServer) {
+  // Laenger als der Ruhe-Abbau im Verbindungs-Pool der Aufrufer (4 s,
+  // box-tls.mjs), damit nie der Dienst eine Verbindung schliesst, die der
+  // Aufrufer gerade wiederverwenden will.
+  tlsServer.keepAliveTimeout = 10_000;
+  tlsServer.on('error', (err) => console.error(`[tls] Listener-Fehler auf :${BOX_TLS_PORT}: ${err.message} — http laeuft weiter`));
+}
 
 // Die Klassifikation liest public/tft-assets-<set>.json relativ zum cwd und
 // schluckt einen Lesefehler still (leere costMap, danach greift der Regex-
@@ -1173,10 +1215,12 @@ function checkClassificationBundle() {
 checkClassificationBundle();
 
 server.listen(PORT, () => console.log(`refresh-api listening on :${PORT}`));
+tlsServer?.listen(BOX_TLS_PORT, () => console.log(`refresh-api listening (tls) on :${BOX_TLS_PORT}, Zertifikat bis ${tlsPair.validTo}`));
 
 // Graceful shutdown so systemd restart doesn't drop in-flight work mid-DB
+const closeServer = (s) => new Promise((done) => (s && s.listening ? s.close(() => done()) : done()));
 ['SIGTERM', 'SIGINT'].forEach(sig => process.on(sig, () => {
   console.log(`${sig} received, draining`);
-  server.close(() => pool.end().then(() => process.exit(0)));
+  Promise.all([closeServer(server), closeServer(tlsServer)]).then(() => pool.end()).then(() => process.exit(0));
   setTimeout(() => process.exit(1), 10_000).unref();
 }));

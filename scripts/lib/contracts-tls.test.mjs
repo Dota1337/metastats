@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { evaluateTlsCert } from './contracts.mjs';
+import { BOX_TLS_PORT } from '../../app/lib/box-tls.mjs';
 
 const NOW = Date.parse('2026-10-24T04:00:00Z');
 
@@ -35,7 +36,10 @@ test('Vertrag im Register: Art, Ziel und Schwelle', () => {
   const c = (reg.contracts || reg).find((x) => x.id === 'box/tls-zertifikat');
   assert.ok(c, 'box/tls-zertifikat fehlt');
   assert.equal(c.type, 'tls-cert');
-  assert.equal(c.owner, 'metastats-caddy.service');
-  // unter Caddys Erneuerungspunkt (~53 h), sonst Fehlalarm im Normalbetrieb
-  assert.ok(c.minHoursLeft > 24 && c.minHoursLeft < 53, `minHoursLeft ${c.minHoursLeft}`);
+  assert.equal(c.owner, 'metastats-refresh-api.service');
+  // eigenes Zertifikat: Pinning auf BOX_TLS_CERTS und derselbe Port wie die Aufrufer
+  assert.equal(c.pinned, true);
+  assert.equal(c.port, BOX_TLS_PORT);
+  // 3-Jahres-Zertifikat, Wechsel von Hand: genug Vorlauf, aber kein Dauer-Rot
+  assert.ok(c.minHoursLeft >= 24 * 30 && c.minHoursLeft <= 24 * 90, `minHoursLeft ${c.minHoursLeft}`);
 });

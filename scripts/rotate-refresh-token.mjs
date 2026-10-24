@@ -35,6 +35,7 @@ import { spawnSync } from 'node:child_process';
 import { request as httpsRequest } from 'node:https';
 import sodium from 'libsodium-wrappers';
 import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
+import { boxFetch } from '../app/lib/box-tls.mjs';
 
 const REPO = 'Dota1337/metastats';
 const SECRET_NAME = 'REFRESH_API_TOKEN';
@@ -129,7 +130,8 @@ async function verifyHetzner(baseUrl, token) {
   let last;
   for (let i = 0; i < 5; i++) {
     try {
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
+      // https nur mit dem gepinnten Zertifikat der Box (box-tls.mjs).
+      const res = await boxFetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
       if (res.ok) {
         const j = await res.json();
         return { ok: j.ok, services: j.services?.length ?? 0 };

@@ -641,13 +641,14 @@
     },
     {
       "id": "box/tls-zertifikat",
-      "owner": "metastats-caddy.service",
+      "owner": "metastats-refresh-api.service",
       "type": "tls-cert",
       "host": "37.27.219.140",
-      "port": 443,
-      "minHoursLeft": 40,
+      "port": 8443,
+      "pinned": true,
+      "minHoursLeft": 1440,
       "armed": false,
-      "note": "TLS-Vorschalter vor refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Let's-Encrypt-IP-Zertifikat, Profil shortlived = 160 h Laufzeit; Caddy erneuert selbst bei etwa 1/3 Restlaufzeit (~53 h). Geprueft wird das AUSGELIEFERTE Zertifikat samt Kette und IP, nicht die Datei. Rot heisst: zwei Erneuerungen sind ausgefallen oder Caddy liefert ein falsches/abgelaufenes Zertifikat aus — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard (alle rufen https://37.27.219.140). Schwelle 40 h nach zwei echten Erneuerungen nachmessen. Rot: journalctl -u metastats-caddy | grep -iE 'obtain|renew|error'."
+      "note": "https-Zugang von refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Eigenes Zertifikat, gueltig bis 23.10.2029; alle Aufrufer vertrauen nur ihm (app/lib/box-tls.mjs). Geprueft wird das AUSGELIEFERTE Zertifikat gegen genau diese Liste, nicht die Datei. Rot heisst: weniger als 60 Tage Restlaufzeit, die Box liefert ein anderes Zertifikat aus, als im Code steht, oder der https-Zugang laeuft nicht — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard. Wechsel: Anleitung im Kopf von box-tls.mjs. Rot: journalctl -u metastats-refresh-api | grep '\\[tls\\]'."
     }
   ]
 }

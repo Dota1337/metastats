@@ -135,7 +135,7 @@
      diese Hexe (24×/13×) und Tailwind-Namen text-green-400 (45×) /
      text-red-400 (59×). Zwei verschiedene Grüns und Rots für dieselbe
      Bedeutung. Welle 2 räumt die 141 Fundstellen hierauf zusammen.      */
-  --pos-win-rgb: 62 207 142;                   /* = #3ecf8e, Tripel fuer die Stufe pos-win-a20 */
+  --pos-win-rgb: 62 207 142;                   /* = #3ecf8e, Tripel fuer die Stufe pos-win-a40 */
   --pos-win:     rgb(var(--pos-win-rgb));
   --pos-loss:    #e44040;
   --pos-neutral: var(--fg-secondary);
@@ -279,8 +279,8 @@
   --color-brand-a80: rgb(var(--brand-rgb) / 80%);
 
   --color-pos-win: var(--pos-win);
-  /* Nur Stufen anlegen, die genutzt werden (a20: Explorer-Leiste mit der Spielzahl). */
-  --color-pos-win-a20: rgb(var(--pos-win-rgb) / 20%);
+  /* Nur Stufen anlegen, die genutzt werden (a40: Explorer-Leiste mit der Spielzahl). */
+  --color-pos-win-a40: rgb(var(--pos-win-rgb) / 40%);
   --color-pos-loss: var(--pos-loss);
   --color-series-purple: var(--series-purple);
   --color-series-purple-soft: var(--series-purple-soft);

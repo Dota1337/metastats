@@ -380,9 +380,12 @@ export default function ExplorerResults({
                   {t1 && <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{fmtPct(r.top1)}</td>}
                   {t4 && <td className="px-2 py-1.5 text-right text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
-                    <div className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</div>
-                    {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird. */}
-                    <span className="block w-fit min-w-[3.75rem] sm:min-w-[4.5rem] ml-auto rounded bg-pos-win-a20 px-1.5 py-0.5 text-fg-primary text-xs sm:text-[13px] leading-none">{num(r.games)}</span>
+                    {/* Anteil mittig ueber der Leiste; der Block bleibt am rechten Spaltenrand. */}
+                    <div className="ml-auto flex w-fit flex-col items-center">
+                      <span className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</span>
+                      {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird. */}
+                      <span className="min-w-[3.75rem] sm:min-w-[4.5rem] rounded-full bg-pos-win-a40 px-1.5 py-0.5 text-center text-fg-primary text-xs sm:text-[13px] leading-none">{num(r.games)}</span>
+                    </div>
                   </td>
                   {showStar3 && (
                     <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>

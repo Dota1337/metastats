@@ -515,7 +515,7 @@ function Chip({
         <button type="button" onClick={onRemove} aria-label={removeLabel} title={removeLabel}
           className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
       </div>
-      {open && children && <Popover size={wide ? 'wide' : 'normal'}>{children}</Popover>}
+      {open && children && <Popover size={wide ? 'wide' : 'normal'} onClose={onToggle}>{children}</Popover>}
     </div>
   );
 }
@@ -546,7 +546,10 @@ const POPOVER_SIZE = {
 } as const;
 type PopoverSize = keyof typeof POPOVER_SIZE;
 
-function Popover({ children, size = 'normal' }: { children: React.ReactNode; size?: PopoverSize }) {
+// Ebenen (25.10.2026): 50 = feste Leisten (LIVE-Reiter, Cookie-Hinweis), 60 = Handy-
+// Flaeche, 61 = Einstellfenster und Suchliste, 70 = Drag-Kopie. Der LIVE-Reiter
+// verdeckte sonst den linken Rand der Fenster (Handy 21 px, ab 640 px 9 px).
+function Popover({ children, size = 'normal', onClose }: { children: React.ReactNode; size?: PopoverSize; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   // Nach jeder Darstellung messen: der Baustein waechst beim Bearbeiten
   // (Item-Bilder im Namen) und kann umbrechen.
@@ -557,11 +560,17 @@ function Popover({ children, size = 'normal' }: { children: React.ReactNode; siz
     return () => window.removeEventListener('resize', onResize);
   }, []);
   return (
-    // Handy: als Blatt am unteren Rand, sonst ragt es neben einem rechten Baustein aus dem Bild.
-    <div ref={ref}
-      className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${POPOVER_SIZE[size]}`}>
-      {children}
-    </div>
+    <>
+      {/* Handy: Seite dahinter abdunkeln, Tippen schliesst. Liegt in wrapRef und schliesst
+          per click (nicht mousedown), sonst traefe das Tippen das Element darunter.
+          Geschwister statt Kind: ab sm hat das Fenster ein transform (placePopover). */}
+      <div aria-hidden="true" onClick={onClose} className="sm:hidden fixed inset-0 z-[60] bg-black/40" />
+      {/* Handy: als Blatt am unteren Rand, sonst ragt es neben einem rechten Baustein aus dem Bild. */}
+      <div ref={ref}
+        className={`z-[61] rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto max-sm:overscroll-contain sm:absolute sm:left-0 sm:top-full sm:mt-1 ${POPOVER_SIZE[size]}`}>
+        {children}
+      </div>
+    </>
   );
 }
 
@@ -586,7 +595,7 @@ function PlainChip({
             className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
         )}
       </div>
-      {open && <Popover size={size}>{children}</Popover>}
+      {open && <Popover size={size} onClose={onToggle}>{children}</Popover>}
     </div>
   );
 }

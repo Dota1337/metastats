@@ -25,6 +25,9 @@ export interface Filters {
   // Verschiebung (1/2/3/7/14) — alte Links und gespeicherte Werte > 0 gelten
   // als „an". Kein Teil des Daten-Schluessels: die Listen bleiben dieselben.
   velocity: number;
+  // Vergleichsziel bei velocity an (User 24.10.2026, tft-patch-delta.ts):
+  // fehlt = „vs Vorpatch", 'base' = „vs Haupt-Patch" (Adresse vs=base).
+  deltaVs?: 'base';
 }
 
 export interface PatchInfo {
@@ -78,6 +81,7 @@ export function filtersFromSearchParams(searchParams: URLSearchParams, defaultBu
     days: Math.max(DAYS_MIN, Math.min(DAYS_MAX, parseInt(searchParams.get('days') || String(FILTER_DEFAULTS.days), 10))),
     region: searchParams.get('region') || FILTER_DEFAULTS.region,
     velocity,
+    ...(searchParams.get('vs') === 'base' ? { deltaVs: 'base' as const } : {}),
   };
 }
 
@@ -93,6 +97,9 @@ export function filtersToQueryString(f: Filters): string {
   if (f.bucketAuto) sp.set('bucketAuto', '1');
   // Nur wenn an — die Adresse bleibt im Normalfall kurz.
   if (f.velocity > 0) sp.set('velocity', '1');
+  // Ziel nur zusammen mit dem Vergleich — die Listen-Abfrage (velocity 0)
+  // traegt es so nie.
+  if (f.velocity > 0 && f.deltaVs === 'base') sp.set('vs', 'base');
   return sp.toString();
 }
 
@@ -185,6 +192,7 @@ export function loadInitialFilters(searchParams: URLSearchParams, defaultBucket?
         ? Math.max(DAYS_MIN, Math.min(DAYS_MAX, Number(stored.days))) : fromUrl.days,
       region: typeof stored.region === 'string' ? stored.region : fromUrl.region,
       velocity: deltaFlag(stored.velocity),
+      ...(stored.deltaVs === 'base' ? { deltaVs: 'base' as const } : {}),
     };
   } catch {
     return fromUrl;
@@ -209,7 +217,8 @@ export function resolveMountFilters(
     ? filtersFromSearchParams(params, defaultBucket)
     : loadInitialFilters(params, defaultBucket);
   if (filtersDataKey(actual) !== filtersDataKey(initial)) return { filters: actual, change: 'data' };
-  if (actual.bucketAuto !== initial.bucketAuto || actual.velocity !== initial.velocity) return { filters: actual, change: 'auto' };
+  if (actual.bucketAuto !== initial.bucketAuto || actual.velocity !== initial.velocity
+    || actual.deltaVs !== initial.deltaVs) return { filters: actual, change: 'auto' };
   return { filters: initial, change: null };
 }
 

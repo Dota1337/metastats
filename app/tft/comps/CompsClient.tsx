@@ -80,6 +80,7 @@ export default function CompsClient({ initialFilters, initial }: {
         <StatsFilterBar
           filters={filters}
           patches={patches}
+          dataEnd={dataEnd}
           onChange={handleFiltersChange}
           lead={<CompsTabs active="list" filters={filters} />}
         />

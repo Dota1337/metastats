@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, expandBuckets, expandRegions, resolvePatchFromList, ALL_REGIONS, type PatchInfo } from '../../../lib/tft-supabase-reader';
-import { cachedJson } from '../../../lib/api-cache';
+import { callRpc, getAvailablePatches, expandBuckets, expandRegions, resolveDataEnd, resolvePatchFromList, ALL_REGIONS, type PatchInfo } from '../../../lib/tft-supabase-reader';
+import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
+import { patchDeltaReady } from '../../../lib/tft-patch-delta';
 import {
   listKey,
   normalizePatchDiffRows,
-  patchDayCount,
   patchDiffWindowArgs,
   previousPatchOf,
   sumPatchDiffLevels,
   PATCH_DIFF_BUCKETS,
   PATCH_DIFF_MIN_GAMES,
   PATCH_DIFF_P_DAYS,
-  PREVIOUS_PATCH_MIN_DAYS,
   type CompAssign,
   type PatchDiffEntity,
   type PatchDiffRow,
@@ -89,7 +88,9 @@ export async function GET(request: NextRequest) {
     const prevParam = searchParams.get('prev');
     const resolved = patchParam ? await resolvePatchFromList(patches, patchParam) : null;
     if (full && patchParam && !(resolved && knownPatches.has(resolved))) {
-      return cachedJson({ hasData: false, entity, reason: 'unknown_patch' });
+      // Kurz gecacht: beim Patchwechsel kennt eine Instanz den neuen Patch
+      // bis zu 6 h nicht (Patch-Liste je Instanz), die Edge soll das nicht festhalten.
+      return cachedJson({ hasData: false, entity, reason: 'unknown_patch' }, { cache: STATS_CACHE_CONTROL_FRESH });
     }
     const currentPatch = resolved && knownPatches.has(resolved) ? resolved : patches[0].patch;
     const previousPatch = prevParam && knownPatches.has(prevParam)
@@ -256,13 +257,16 @@ async function fullRows(o: {
   const { entity, current, previous } = o;
   const head = { entity, currentPatch: current?.patch ?? null, previousPatch: previous?.patch ?? null };
   if (!current || !previous) return cachedJson({ hasData: false, ...head, reason: 'single_patch' });
-  // Kein Vergleich ueber eine Set-Grenze und keiner fuer einen Patch mit zu
-  // wenigen Tagen (Patch-Tag selbst mischt noch Spiele des alten Patches).
+  // Kein Vergleich ueber eine Set-Grenze und keiner vor dem ersten vollen Tag
+  // (patchDeltaReady, dieselbe Regel wie die Filterleiste: der Starttag mischt
+  // noch Spiele des alten Patches). „too_new" nur kurz gecacht — am Morgen des
+  // ersten vollen Tags kippt die Antwort.
   if (Number(current.set_number) !== Number(previous.set_number)) {
     return cachedJson({ hasData: false, ...head, reason: 'cross_set' });
   }
-  if (patchDayCount(current) < PREVIOUS_PATCH_MIN_DAYS) {
-    return cachedJson({ hasData: false, ...head, reason: 'too_new' });
+  const dataEnd = await resolveDataEnd(null).catch(() => null);
+  if (!patchDeltaReady(o.patches, current, previous, dataEnd)) {
+    return cachedJson({ hasData: false, ...head, reason: 'too_new' }, { cache: STATS_CACHE_CONTROL_FRESH });
   }
   const set = Number(current.set_number);
   const source = o.allRegions ? 'blob' : 'live';

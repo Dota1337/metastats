@@ -33,16 +33,23 @@ function remember(url: string, res: PatchDeltaResponse) {
   while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value as string);
 }
 
-export function usePatchDelta({ entity, filters, patches, enabled, initial = null }: {
+export function usePatchDelta({ entity, filters, patches, dataEnd = null, prevOnly = false, enabled, initial = null }: {
   entity: PatchDeltaEntity;
   filters: Filters;
   /** Patch-Liste der Listen-Antwort (neuester zuerst). */
   patches: readonly PatchInfo[];
+  /** Letzter voller Tag der Listen-Antwort (filters.dataEnd). */
+  dataEnd?: string | null;
+  /** Uebersicht der Comps: immer „vs Vorpatch", das Ziel der Filter zaehlt nicht. */
+  prevOnly?: boolean;
   /** Spalte bzw. Pfeile sichtbar — sonst kein Abruf. */
   enabled: boolean;
   initial?: PatchDeltaStart | null;
 }): { pair: PatchDeltaPair | null; index: PatchDeltaIndex | null; loading: boolean } {
-  const pair = useMemo(() => patchDeltaPair(patches, filters.patch), [patches, filters.patch]);
+  const pair = useMemo(
+    () => patchDeltaPair(patches, filters.patch, { dataEnd, vs: filters.deltaVs, prevOnly }),
+    [patches, filters.patch, filters.deltaVs, dataEnd, prevOnly],
+  );
   const url = enabled && pair ? patchDeltaQuery(entity, filters.bucket, filters.region, pair) : null;
   // Letzte eigene Antwort; null = abgerufen, aber ohne Zahlen.
   const [fetched, setFetched] = useState<{ url: string; res: PatchDeltaResponse | null } | null>(null);

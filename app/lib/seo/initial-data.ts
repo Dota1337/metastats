@@ -31,7 +31,7 @@ import { compactDeltaRows, loadPatchDeltaBlobs } from '../patch-delta-server';
 import { filtersFromSearchParams, filtersDataKey, type Filters, type PatchInfo } from '../tft-filters';
 import { sortUnitsRareLast } from '../tft-list-sort';
 import { parseClusterKey } from '../tft-cluster';
-import { leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
+import { dataEndOf, leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
 import { listPayloadWithCatalog } from '../tft-comp-catalog-resolver';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
@@ -353,7 +353,11 @@ export async function compDeltaStart(
   start: StatsInitial<CompApiRow> | null,
 ): Promise<PatchDeltaStart | null> {
   if (!start || filters.region !== 'all' || process.env.SEO_START_DATA === '0') return null;
-  const pair = patchDeltaPair(start.payload.patches, filters.patch);
+  // Wie der Browser der Uebersicht (useTftCompsData, prevOnly): immer gegen
+  // den Vorpatch, ab dem ersten vollen Tag der Antwort.
+  const pair = patchDeltaPair(start.payload.patches, filters.patch, {
+    dataEnd: dataEndOf(start.payload.filters), prevOnly: true,
+  });
   if (!pair) return null;
   const url = patchDeltaQuery('comp', filters.bucket, filters.region, pair);
   const families = new Set(start.payload.rows.map(r => compTraitFamilyKey(r.slug || r.clusterKey)));

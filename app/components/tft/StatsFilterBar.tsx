@@ -2,8 +2,8 @@
 import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
-import { previousPatchOf } from '../../lib/snapshot-matrix';
-import { patchDeltaPair } from '../../lib/tft-patch-delta';
+import { patchFamily, previousPatchOf } from '../../lib/snapshot-matrix';
+import { patchDeltaOptions } from '../../lib/tft-patch-delta';
 import type { Filters, PatchInfo } from '../../lib/tft-filters';
 
 // Region / bucket option lists kept in sync with tft-supabase-reader.ts.
@@ -65,6 +65,9 @@ const DAYS_OPTIONS = [1, 2, 3, 4, 5, 6, 7];
 interface Props {
   filters: Filters;
   patches: PatchInfo[];          // from API response
+  // Letzter voller Tag der Listen-Antwort (filters.dataEnd): ab wann es den
+  // Δ-Vergleich gibt (tft-patch-delta.ts, patchDeltaReady).
+  dataEnd?: string | null;
   onChange: (next: Filters) => void;
   // Optionaler Platz links neben den Auswahlfeldern (Comps: Umschalter
   // Liste/Uebersicht). Ab xl eine Zeile, darunter steht er ueber den Feldern.
@@ -74,7 +77,7 @@ interface Props {
   showDelta?: boolean;
 }
 
-export default function StatsFilterBar({ filters, patches, onChange, lead, showDelta = true }: Props) {
+export default function StatsFilterBar({ filters, patches, dataEnd = null, onChange, lead, showDelta = true }: Props) {
   const { t } = useI18n();
 
   const dayLabel = (n: number) =>
@@ -113,9 +116,14 @@ export default function StatsFilterBar({ filters, patches, onChange, lead, showD
   // ganzer gewaehlter Patch gegen den ganzen Vorpatch. Ohne Vorpatch im selben
   // Set oder bei einem zu jungen Patch gibt es nichts zu vergleichen — dann
   // kein Feld, und ein gespeichertes „an" wirkt wie „aus" (die Listen fragen
-  // dasselbe Paar ab, tft-patch-delta.ts).
-  const deltaPair = showDelta ? patchDeltaPair(patches, filters.patch) : null;
+  // dasselbe Paar ab, tft-patch-delta.ts). Ein Zwischen-Patch hat zusaetzlich
+  // „vs Haupt-Patch" (User 24.10.2026), am Set-Start nur diese Wahl.
+  const deltaOptions = showDelta ? patchDeltaOptions(patches, filters.patch, dataEnd) : null;
+  const deltaPair = deltaOptions ? deltaOptions.prev ?? deltaOptions.base : null;
   const deltaOn = filters.velocity > 0 && !!deltaPair;
+  const deltaValue = !deltaOn ? '0'
+    : (filters.deltaVs === 'base' && deltaOptions?.base) || !deltaOptions?.prev ? 'base' : '1';
+  const basePair = deltaOptions?.base ?? null;
 
   const body = (
     <>
@@ -141,12 +149,20 @@ export default function StatsFilterBar({ filters, patches, onChange, lead, showD
         {deltaPair && (
           <FilterSelect
             label={t('tft.filter.velocity')}
-            value={deltaOn ? '1' : '0'}
-            onChange={v => onChange({ ...filters, velocity: Number(v) })}
+            value={deltaValue}
+            onChange={v => onChange({ ...filters, velocity: v === '0' ? 0 : 1, deltaVs: v === 'base' ? 'base' : undefined })}
             highlight={deltaOn}
           >
             <option value="0">{t('tft.filter.velocityOff')}</option>
-            <option value="1">{t('tft.filter.vsPrevPatch')} · {tftPatchLabel(deltaPair.prev)}</option>
+            {deltaOptions?.prev && (
+              <option value="1">{t('tft.filter.vsPrevPatch')} · {tftPatchLabel(deltaOptions.prev.prev)}</option>
+            )}
+            {basePair && (
+              <option value="base">
+                {t(basePair.prev === patchFamily(basePair.prev) ? 'tft.filter.vsMainPatch' : 'tft.filter.vsMidPatch')}
+                {' · '}{tftPatchLabel(basePair.prev)}
+              </option>
+            )}
           </FilterSelect>
         )}
 

@@ -42,6 +42,14 @@ const FETCH_TIMEOUT_MS = 15_000;
 interface Loaded<Row> {
   rows: Row[];
   patches: PatchInfo[];
+  dataEnd: string | null;
+}
+
+// Letzter voller Tag der Antwort (filters.dataEnd) fuer den Δ-Vergleich —
+// gleiche Pruefung wie dataEndOf in tft-comp-families.ts, ohne deren Importe.
+function dataEndOf(filters: unknown): string | null {
+  const v = (filters as { dataEnd?: unknown } | null | undefined)?.dataEnd;
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
 export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial }: {
@@ -59,6 +67,7 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
   const [rows, setRows] = useState<Row[]>(() => initial?.payload.rows ?? []);
   const [hasData, setHasData] = useState<boolean | null>(() => (initial ? true : null));
   const [patches, setPatches] = useState<PatchInfo[]>(() => initial?.payload.patches ?? []);
+  const [dataEnd, setDataEnd] = useState<string | null>(() => dataEndOf(initial?.payload.filters));
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
   // Ohne Startdaten startet der erste Abruf sofort nach dem Mount.
   const [loading, setLoading] = useState(!initial);
@@ -80,7 +89,7 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
   // localStorage — resolveMountFilters). Weichen sie von denen der
   // Server-Ansicht ab, laden wir. Danach entscheidet React allein.
   useLayoutEffect(() => {
-    if (initial) loaded.current.set(filtersDataKey(initialFilters), { rows: initial.payload.rows, patches: initial.payload.patches });
+    if (initial) loaded.current.set(filtersDataKey(initialFilters), { rows: initial.payload.rows, patches: initial.payload.patches, dataEnd: dataEndOf(initial.payload.filters) });
     const mount = resolveMountFilters(initialFilters, new URLSearchParams(window.location.search));
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Absicht: Adresse und localStorage gibt es erst im Browser, Angleich vor dem ersten Zeichnen
     if (mount.change) setFilters(mount.filters);
@@ -112,6 +121,7 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
       setHasData(true);
       setRows(known.rows);
       setPatches(known.patches);
+      setDataEnd(known.dataEnd);
     }
     if (known || key === shownKey.current) {
       setLoading(false);
@@ -133,13 +143,15 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
         shownKey.current = servedKey;
         const nextRows: Row[] = d[field] || [];
         const nextPatches: PatchInfo[] = d.patches || [];
-        if (d.hasData && nextRows.length) loaded.current.set(servedKey, { rows: nextRows, patches: nextPatches });
+        const nextDataEnd = dataEndOf(d.filters);
+        if (d.hasData && nextRows.length) loaded.current.set(servedKey, { rows: nextRows, patches: nextPatches, dataEnd: nextDataEnd });
         // Rang, den der Server tatsaechlich benutzt hat, in den Filter spiegeln
         // (nur solange der User keinen eigenen gewaehlt hat).
         adoptServerBucket(d.filters?.bucket, filters, setFilters);
         setHasData(!!d.hasData);
         setRows(nextRows);
         setPatches(nextPatches);
+        setDataEnd(nextDataEnd);
         setLoading(false);
         setAwaitingStored(false);
       })
@@ -155,5 +167,5 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
     return () => { cancelled = true; clearTimeout(timer); ctrl.abort(); };
   }, [filters, hydrated, pathname, endpoint, field]);
 
-  return { filters, setFilters, rows, hasData, patches, loading, awaitingStored, assets };
+  return { filters, setFilters, rows, hasData, patches, dataEnd, loading, awaitingStored, assets };
 }

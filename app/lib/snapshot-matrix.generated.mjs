@@ -407,6 +407,15 @@ export function establishedPatches(rows, min = PATCH_MIN_GAMES) {
 // liefert die RPC nicht; ein Ausfalltag mitten im Patch zaehlt also mit.
 // Das Set prueft der Aufrufer — der Helfer kennt kein Set.
 export const PREVIOUS_PATCH_MIN_DAYS = 3;
+// Ausnahme Δ-Vergleich der Listen (tft-patch-delta.ts, User 24.10.2026): sein
+// „vs Vorpatch" ueberspringt zusaetzlich die eigene Patch-Familie (18.2b
+// vergleicht mit 18.1b, 18.2 ist dort die zweite Wahl „vs Haupt-Patch").
+/** Patch-Familie: der Patch ohne Endbuchstaben (18.5b → 18.5). Gleiche Regel
+ *  wie scripts/lib/comp-catalog-store.mjs (Gleichlauf-Test in
+ *  snapshot-matrix-previous.test.mjs). */
+export function patchFamily(patch) {
+    return String(patch || '').replace(/[a-z]$/, '');
+}
 // Ab so vielen Tagen bleibt das Rising-Fenster auf Meta-Pulse im Patch
 // (metaPulseVelocityWindow), darunter vergleicht es ueber die Patchgrenze.
 export const VELOCITY_IN_PATCH_MIN_DAYS = 2;

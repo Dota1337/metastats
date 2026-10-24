@@ -8,7 +8,7 @@
 // Ohne 'use client': die Server-Seite der Uebersicht rechnet das Patch-Paar mit
 // derselben Funktion wie der Browser (seo/initial-data.ts), sonst fragte der
 // Browser nach dem ersten Zeichnen ein anderes Paar ab und die Pfeile sprangen.
-import { previousPatchOf, patchDayCount, PREVIOUS_PATCH_MIN_DAYS, type CompAssign } from './snapshot-matrix';
+import { previousPatchOf, patchDayCount, patchFamily, PREVIOUS_PATCH_MIN_DAYS, type CompAssign } from './snapshot-matrix';
 import type { PatchInfo } from './tft-filters';
 
 // Ab so vielen Spielen je Patch-Seite zeigt eine Zeile ein Δ, darunter „—"
@@ -47,24 +47,95 @@ export interface PatchDelta {
 
 export interface PatchDeltaPair { patch: string; prev: string }
 
+/** Vergleichsziel (User 24.10.2026): 'prev' = „vs Vorpatch", 'base' = „vs
+ *  Haupt-Patch" eines Zwischen-Patches (18.5b gegen 18.5). */
+export type PatchDeltaVs = 'prev' | 'base';
+
+export interface PatchDeltaOptions { prev: PatchDeltaPair | null; base: PatchDeltaPair | null }
+
+// Datentage bis zum letzten vollen Tag: `dataEnd` aus filters.dataEnd der
+// Listen-Antwort (alle Regionen geschrieben). Der juengste gemeldete Tag kann
+// erst eine Region haben (23.10.2026 morgens: 185.504 statt ~500.000 Spiele).
+// Ohne Endtag zaehlt der letzte gemeldete Tag.
+function fullDayCount(p: PatchInfo, dataEnd?: string | null): number {
+  const last = String(p.last_day ?? '').slice(0, 10);
+  const end = dataEnd && dataEnd < last ? dataEnd : last;
+  return patchDayCount({ first_day: p.first_day, last_day: end });
+}
+
 /**
- * Welcher Patch gegen welchen: der gewaehlte (current = neuester, previous wie
- * die Listen nach previousPatchOf, sonst der genannte) gegen seinen Vorpatch.
- * null, wenn es keinen Vergleich gibt — der gewaehlte hat weniger als
- * PREVIOUS_PATCH_MIN_DAYS Datentage, es gibt keinen Vorpatch oder er liegt im
- * alten Set (Set-Start: ehrlich leer, User-Entscheid O3). Die Filterleiste
- * blendet die Option dann aus.
+ * Vergleich ab dem ersten vollen Tag (User 24.10.2026). Der Starttag eines
+ * Patches ist ein Teil-Tag (07.10.2026: 410.253 Spiele statt ~550.000, in
+ * Amerika die Haelfte) — der gewaehlte Patch braucht also zwei volle
+ * Datentage. Einer reicht, wenn der Teil-Tag beim Patch direkt davor liegt
+ * (gleiche Familie, 18.5 → 18.5b) und der nicht selbst die Vergleichsseite
+ * ist — gegen den eigenen Haupt-Patch mischt der erste Tag noch dessen Spiele.
  */
-export function patchDeltaPair(patches: readonly PatchInfo[], patchFilter: string): PatchDeltaPair | null {
+export function patchDeltaReady(
+  patches: readonly PatchInfo[],
+  selected: PatchInfo,
+  compare: PatchInfo,
+  dataEnd?: string | null,
+): boolean {
+  const days = fullDayCount(selected, dataEnd);
+  if (days >= 2) return true;
+  if (days < 1) return false;
+  const idx = patches.findIndex(p => p.patch === selected.patch);
+  const before = idx >= 0 ? patches[idx + 1] : undefined;
+  return !!before && before.patch !== compare.patch && patchFamily(before.patch) === patchFamily(selected.patch);
+}
+
+/**
+ * Welche Vergleiche der gewaehlte Patch hat (current = neuester, previous wie
+ * die Listen nach previousPatchOf, sonst der genannte):
+ *   - prev: der juengste Patch VOR der eigenen Familie mit
+ *     PREVIOUS_PATCH_MIN_DAYS Tagen (Kurz-Patches zaehlen nicht, wie
+ *     previousPatchOf).
+ *   - base: nur fuer einen Zwischen-Patch der Stand direkt davor in derselben
+ *     Familie (18.5b → 18.5, 18.5c → 18.5b) — und nur mit ebenso vielen Tagen
+ *     (User „b", 24.10.2026: gegen den Eintags-Haupt-Patch 18.5 lagen 124 von
+ *     140 Items im Zufallsbereich).
+ * Je Ziel null ohne Vergleich: anderes Set (Set-Start ehrlich leer, User-
+ * Entscheid O3) oder der gewaehlte Patch ist zu jung (patchDeltaReady).
+ */
+export function patchDeltaOptions(
+  patches: readonly PatchInfo[],
+  patchFilter: string,
+  dataEnd?: string | null,
+): PatchDeltaOptions {
   const newest = patches[0];
-  if (!newest) return null;
-  const selected = patchFilter === 'current' ? newest
+  const selected = !newest ? null
+    : patchFilter === 'current' ? newest
     : patchFilter === 'previous' ? previousPatchOf(patches, newest.patch)
     : patches.find(p => p.patch === patchFilter) ?? null;
-  if (!selected || patchDayCount(selected) < PREVIOUS_PATCH_MIN_DAYS) return null;
-  const prev = previousPatchOf(patches, selected.patch);
-  if (!prev || Number(prev.set_number) !== Number(selected.set_number)) return null;
-  return { patch: selected.patch, prev: prev.patch };
+  if (!selected) return { prev: null, base: null };
+  const idx = patches.indexOf(selected);
+  const family = patchFamily(selected.patch);
+  const pairWith = (cmp: PatchInfo | null | undefined): PatchDeltaPair | null =>
+    cmp && Number(cmp.set_number) === Number(selected.set_number) && patchDeltaReady(patches, selected, cmp, dataEnd)
+      ? { patch: selected.patch, prev: cmp.patch }
+      : null;
+  const older = patches.slice(idx + 1);
+  const prev = older.find(p => patchFamily(p.patch) !== family && patchDayCount(p) >= PREVIOUS_PATCH_MIN_DAYS);
+  const before = older[0];
+  const base = selected.patch !== family && before && patchFamily(before.patch) === family
+    && fullDayCount(before, dataEnd) >= PREVIOUS_PATCH_MIN_DAYS ? before : null;
+  return { prev: pairWith(prev), base: pairWith(base) };
+}
+
+/**
+ * Das Paar, das Liste und Spalte abfragen: das gewaehlte Ziel, sonst das
+ * andere (Set-Start: nur „vs Haupt-Patch"). `prevOnly`: Uebersicht der Comps,
+ * deren Pfeile immer gegen den Vorpatch zeigen. null blendet die Option aus.
+ */
+export function patchDeltaPair(
+  patches: readonly PatchInfo[],
+  patchFilter: string,
+  opts: { dataEnd?: string | null; vs?: PatchDeltaVs; prevOnly?: boolean } = {},
+): PatchDeltaPair | null {
+  const o = patchDeltaOptions(patches, patchFilter, opts.dataEnd);
+  if (opts.prevOnly) return o.prev;
+  return opts.vs === 'base' ? (o.base ?? o.prev) : (o.prev ?? o.base);
 }
 
 /** Adresse der Abfrage — feste Reihenfolge, Region immer dabei: gleiche

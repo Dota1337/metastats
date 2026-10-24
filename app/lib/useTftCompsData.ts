@@ -337,7 +337,10 @@ export function useTftCompsData({ initialFilters, initial = null, wantFull = fal
   // Vorpatch-Vergleich: Liste nur mit Δ-Filter, Uebersicht immer. Ohne Paar
   // (Set-Start, zu junger Patch) gibt es ihn nicht — auch nicht mit Filter.
   const deltaOn = deltaAlways || filters.velocity > 0;
-  const delta = usePatchDelta({ entity: 'comp', filters, patches, enabled: deltaOn, initial: initialDelta });
+  // Uebersicht immer „vs Vorpatch" (prevOnly), wie die Server-Startdaten.
+  const delta = usePatchDelta({
+    entity: 'comp', filters, patches, dataEnd, prevOnly: deltaAlways, enabled: deltaOn, initial: initialDelta,
+  });
   const deltaView = useMemo(
     () => (delta.pair && deltaOn ? { pair: delta.pair, loading: delta.loading } : null),
     [delta.pair, delta.loading, deltaOn],

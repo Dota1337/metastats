@@ -19,7 +19,9 @@ import {
   VELOCITY_IN_PATCH_MIN_DAYS,
   compPrecomputeJobs,
   metaPulseVelocityWindow,
+  patchFamily,
 } from './snapshot-matrix.ts';
+import { patchFamily as catalogPatchFamily } from '../../scripts/lib/comp-catalog-store.mjs';
 
 const DAY_MS = 86_400_000;
 const TODAY = new Date('2026-10-05T08:30:00Z');
@@ -36,6 +38,14 @@ const AFTER_FIX = [
 test('Konstanten: Vorpatch ab 3 Tagen, Velocity im Patch ab 2 Tagen', () => {
   assert.equal(PREVIOUS_PATCH_MIN_DAYS, 3);
   assert.equal(VELOCITY_IN_PATCH_MIN_DAYS, 2);
+});
+
+test('patchFamily: gleiche Regel wie der Comp-Katalog der Box', () => {
+  for (const v of ['18.5b', '18.5', '18.10', '18.10b', '18.5c', '', null, undefined]) {
+    assert.equal(patchFamily(v), catalogPatchFamily(v), String(v));
+  }
+  assert.equal(patchFamily('18.5b'), '18.5');
+  assert.equal(patchFamily('18.10'), '18.10');
 });
 
 test('patchDayCount: Kalenderspanne inklusive beider Enden', () => {

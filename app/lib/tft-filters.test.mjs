@@ -100,6 +100,19 @@ test('Δ-Vergleich: kein Teil der Listen-Abfrage und des Daten-Schluessels', () 
   assert.equal(filtersDataKey(on), filtersDataKey(AUTO));
 });
 
+test('Δ-Ziel „vs Haupt-Patch": nur mit Vergleich in der Adresse, nie in der Listen-Abfrage', () => {
+  const base = { ...AUTO, velocity: 1, deltaVs: 'base' };
+  assert.equal(new URLSearchParams(filtersToQueryString(base)).get('vs'), 'base');
+  assert.equal(new URLSearchParams(filtersToQueryString({ ...base, velocity: 0 })).get('vs'), null);
+  assert.equal(filtersToApiQueryString(base), filtersToQueryString(AUTO));
+  assert.equal(filtersDataKey(base), filtersDataKey(AUTO));
+  assert.equal(filtersFromSearchParams(new URLSearchParams('velocity=1&vs=base'), 'all').deltaVs, 'base');
+  assert.equal('deltaVs' in filtersFromSearchParams(new URLSearchParams('velocity=1&vs=x'), 'all'), false);
+  const r = withStorage(base, () => resolveMountFilters(AUTO, new URLSearchParams('')));
+  assert.equal(r.change, 'auto');
+  assert.equal(r.filters.deltaVs, 'base');
+});
+
 test('Mount: gespeicherter Δ-Vergleich → uebernehmen, nicht laden', () => {
   const r = withStorage({ ...AUTO, velocity: 7 }, () => resolveMountFilters(AUTO, new URLSearchParams('')));
   assert.equal(r.change, 'auto');

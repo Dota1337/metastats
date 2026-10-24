@@ -37,11 +37,11 @@ export default function ItemsClient({ initialFilters, initial }: {
   const { withLang } = useI18n();
   const { t } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
-  const { filters, setFilters, rows: items, hasData, patches, loading, awaitingStored, assets } =
+  const { filters, setFilters, rows: items, hasData, patches, dataEnd, loading, awaitingStored, assets } =
     useTftStatsList<ItemRow>({ endpoint: '/api/tft/items', field: 'items', initialFilters, initial });
   // Vergleich „vs Vorpatch" (User 18.10.2026): eigene Abfrage, die Liste bleibt
   // dieselbe. Ohne Vorpatch-Paar (Set-Start, zu junger Patch) keine Spalte.
-  const delta = usePatchDelta({ entity: 'item', filters, patches, enabled: filters.velocity > 0 });
+  const delta = usePatchDelta({ entity: 'item', filters, patches, dataEnd, enabled: filters.velocity > 0 });
   const deltaOn = filters.velocity > 0 && !!delta.pair;
   // Client-side bucket filter analog to /tft/units cost-filter pattern.
   // null = "Alle" (default). Other items (PsyOps base, AnimaSquad tier) fall
@@ -83,7 +83,7 @@ export default function ItemsClient({ initialFilters, initial }: {
       <Nav active="items" />
       <TftHero pageTitle={t('nav.items')} patch={currentPatchLabel} />
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 pt-2 pb-6">
-        <StatsFilterBar filters={filters} patches={patches} onChange={setFilters} />
+        <StatsFilterBar filters={filters} patches={patches} dataEnd={dataEnd} onChange={setFilters} />
 
         <div className="mb-3">
           <input

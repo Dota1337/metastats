@@ -82,14 +82,15 @@ const EXCEPTIONS = {
     ['PrivateTmp=no',
       'Resume-Cache nach 429-Abbruch liegt in /tmp und soll 6h ueberleben. Mit PrivateTmp waere er pro Lauf frisch, der 429-Schutz also tot.'],
   ],
+  // Bis 24.10.2026 stand hier fuer fullsync und validator zusaetzlich
+  // ProtectHome=read-only fuer `gh issue create` (/root/.config/gh). gh ist auf
+  // der Box nicht installiert und der Ordner fehlt (gemessen) — die Ausnahme
+  // oeffnete nur ganz /root. Es gilt der Boden (Sicherheitsdurchsicht, home-lesbar).
   'metastats-tft-pro-fullsync.service': [
-    ['ProtectHome=read-only',
-      'gh issue create liest /root/.config/gh. GH_TOKEN steht zwar im env-File, aber read-only kostet nichts und nimmt den stillen Fehlerfall raus.'],
     ['PrivateTmp=no',
       'Cooldown-/Strike-/Lock-Dateien des Liquipedia-Schutzes liegen in tmpdir(). Heute laeuft --steps=local, der Pfad ist kalt — wer auf liquipedia-Steps umstellt, verliert mit PrivateTmp die Strike-Historie und laeuft in die bekannte IP-Sperre.'],
   ],
   'metastats-tft-pro-validator.service': [
-    ['ProtectHome=read-only', 'Wie fullsync: gh issue create.'],
     ['PrivateTmp=no', 'Wie fullsync: Liquipedia-Schutzdateien in tmpdir().'],
   ],
 };

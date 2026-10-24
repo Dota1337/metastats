@@ -88,9 +88,6 @@ SystemCallErrorNumber=EPERM
 # --- END metastats-hardening-floor ---
 # Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
 # bei Nicht-Listen-Direktiven die letzte Zuweisung):
-#   (Bis 24.10.2026 stand hier ProtectHome=read-only fuer `gh issue create` und
-#   /root/.config/gh. gh ist auf der Box nicht installiert und der Ordner fehlt —
-#   die Ausnahme oeffnete nur ganz /root. Es gilt der Boden: ProtectHome=yes.)
 #   Cooldown-/Strike-/Lock-Dateien des Liquipedia-Schutzes liegen in tmpdir(). Heute laeuft --steps=local, der Pfad ist kalt — wer auf liquipedia-Steps umstellt, verliert mit PrivateTmp die Strike-Historie und laeuft in die bekannte IP-Sperre.
 PrivateTmp=no
 

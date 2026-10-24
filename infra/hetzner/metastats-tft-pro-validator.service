@@ -58,7 +58,6 @@ SystemCallErrorNumber=EPERM
 # --- END metastats-hardening-floor ---
 # Ausnahmen dieser Unit (stehen bewusst NACH dem Boden — systemd nimmt
 # bei Nicht-Listen-Direktiven die letzte Zuweisung):
-#   (ProtectHome=read-only fuer gh entfernt wie in fullsync, 24.10.2026.)
 #   Wie fullsync: Liquipedia-Schutzdateien in tmpdir().
 PrivateTmp=no
 

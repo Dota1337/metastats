@@ -61,9 +61,14 @@ export const APPROVAL_SURVIVES_COMPACT = true;
  */
 export const PLAN_CHANGE_BLOCKS = false;
 
-/** Freigabe ueber den Trivial-Ausweg („trivial" / „spot-fix" im Prompt)? */
+/**
+ * Freigabe ueber den Trivial-Ausweg („trivial" / „spot-fix" im Prompt)?
+ * Seit Runde 10 (24.10.2026) ein eigenes Feld, das prompt-submit.mjs setzt —
+ * vorher die Suche nach dem Wort in `approvedBy`, also in den ersten 60 Zeichen
+ * des Prompts: „Go, aber nicht trivial" galt dort als Trivial-Freigabe.
+ */
 export function isTrivialApproval(s) {
-  return /\b(trivial|spot-?fix)\b/i.test(String(s?.approvedBy || ''));
+  return s?.trivial === true;
 }
 
 function statePath(sessionId) {
@@ -91,7 +96,7 @@ export function writeState(sessionId, patch) {
 }
 
 export function clearApproval(sessionId, why) {
-  writeState(sessionId, { approvedAt: null, planHash: null, promptsSinceApproval: 0, clearedBy: why || null });
+  writeState(sessionId, { approvedAt: null, planHash: null, promptsSinceApproval: 0, trivial: false, clearedBy: why || null });
 }
 
 /** Globaler (nicht session-gebundener) Zustand — z.B. wann der Drift-Audit zuletzt lief. */

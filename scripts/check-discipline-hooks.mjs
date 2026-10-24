@@ -16,6 +16,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pruefeHooks } from './hooks/lib/hook-load.mjs';
 
 const SRC = 'infra/claude-settings/hooks.json';
 // Runde 5 (2026-09-01): PreToolUse ist zurueck, jetzt als scripts/hooks/write-gate.mjs.
@@ -112,6 +113,15 @@ if (!existsSync(AG_SRC)) {
     if (!quelle.includes(f)) problems.push(`${join(AG_DST, f)} hat keine Quelle mehr in ${AG_SRC} — von Hand loeschen, setup-hooks raeumt nicht auf.`);
   }
 }
+
+// Registriert und vorhanden heisst nicht ladbar (Runde 10, 24.10.2026): eine
+// fehlende Bibliothek oder ein umbenannter Import laesst den Hook mit Exit 1
+// sterben, und Claude Code laeuft ohne ihn weiter. Die Schalter
+// (disableAllHooks, WRITE_GATE=0 in den Einstellungen) sind nur Warnungen —
+// der Notausgang soll das Hochladen der Reparatur nicht sperren.
+const geladen = pruefeHooks(process.cwd());
+for (const f of geladen.fehler) problems.push(`nicht ladbar: ${f}`);
+for (const w of geladen.warnungen) console.warn(`  WARNUNG: ${w}`);
 
 if (problems.length) {
   console.error('Disziplin-Hooks unvollstaendig:');

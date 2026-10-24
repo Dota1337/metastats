@@ -295,6 +295,81 @@ test('Maschinen-Prompts zaehlen das Freigabe-Fenster nicht leer', async () => {
   rmSync(project, { recursive: true, force: true });
 });
 
+// --- Runde 10: Sicherheitsdurchsicht 24.10.2026 -------------------------------
+
+test('freigabe-aus-rueckfrage: Rueckfrage und Vorbehalt erteilen keine Freigabe', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  for (const [i, prompt] of ['Ist das trivial?', 'Ok, aber mach X anders', 'das ist nicht trivial'].entries()) {
+    runHook('prompt-submit.mjs', project, { session_id: `s40-${i}`, prompt });
+    assert.equal(readSessionState(project, `s40-${i}`).approvedAt ?? null, null, prompt);
+  }
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('"Code: trivial …" loescht die alte Freigabe und erteilt eine Trivial-Freigabe', async () => {
+  const project = makeProject({ plan: '# Plan ohne Review' });
+  approve(project, 's41');
+  runHook('prompt-submit.mjs', project, { session_id: 's41', prompt: 'Code: trivial, Tippfehler im Footer' });
+  const s = readSessionState(project, 's41');
+  assert.ok(s.approvedAt, 'Trivial-Freigabe fehlt');
+  assert.equal(s.trivial, true);
+  // Trivial heisst: kein Review-Nachweis im Plan noetig.
+  assert.equal(gate(project, 's41', { file_path: join(project, 'app', 'x.ts') }), 'allow');
+  // Normales "go" ist keine Trivial-Freigabe — dann zaehlt der Plan wieder.
+  approve(project, 's41', 'go');
+  assert.equal(readSessionState(project, 's41').trivial, false);
+  assert.equal(gate(project, 's41', { file_path: join(project, 'app', 'x.ts') }), 'deny');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('gate-faellt-offen-bei-fehlender-datei: ohne Bibliothek laut durchlassen', () => {
+  // Kopie des echten Gates OHNE lib/ daneben — genau der Fall einer fehlenden Datei.
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  const kopie = join(project, 'hooks-kopie');
+  mkdirSync(kopie, { recursive: true });
+  writeFileSync(join(kopie, 'write-gate.mjs'), readFileSync(join(HOOKS, 'write-gate.mjs')));
+  const out = execFileSync(process.execPath, [join(kopie, 'write-gate.mjs')], {
+    input: JSON.stringify({ session_id: 's42', tool_name: 'Write', tool_input: { file_path: join(project, 'app', 'x.ts') } }),
+    env: { ...process.env, CLAUDE_PROJECT_DIR: project },
+    encoding: 'utf8',
+  });
+  const r = JSON.parse(out);
+  assert.match(r.systemMessage, /Schreib-Gate defekt/);
+  assert.match(r.hookSpecificOutput.additionalContext, /ungeprueft durchgelassen/);
+  assert.equal(r.hookSpecificOutput.permissionDecision, undefined);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('schreibziel-ohne-arbeitsordner: das Gate rechnet vom Arbeitsordner des Befehls', () => {
+  const project = makeProject({ plan: PLAN_MIT_REVIEW });
+  mkdirSync(join(project, 'scripts'), { recursive: true });
+  const out = runHook('write-gate.mjs', project, {
+    session_id: 's43', tool_name: 'Bash', cwd: join(project, 'scripts'), tool_input: { command: 'echo x > ../app/x.ts' },
+  });
+  assert.equal(decision(out), 'deny');
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('antwortbremse-schweigt-ohne-verlauf: einmal je Sitzung sichtbar', () => {
+  const project = makeProject();
+  const erst = runHook('answer-check.mjs', project, { session_id: 's44', transcript_path: join(project, 'gibt-es-nicht.jsonl') });
+  assert.match(erst.systemMessage || '', /ohne Gespraechsverlauf/);
+  const zweit = runHook('answer-check.mjs', project, { session_id: 's44', transcript_path: join(project, 'gibt-es-nicht.jsonl') });
+  assert.equal(zweit.systemMessage, undefined);
+  rmSync(project, { recursive: true, force: true });
+});
+
+test('kernregeln-fehlen-still: Start und Compact melden fehlende Kernregeln', () => {
+  const project = makeProject();
+  rmSync(join(project, 'infra', 'claude-settings', 'discipline.md'));
+  const start = runHook('session-start.mjs', project, { session_id: 's45', source: 'resume' });
+  assert.match(start.hookSpecificOutput?.additionalContext || '', /discipline\.md ist nicht lesbar/);
+  const compact = runHook('post-compact.mjs', project, { session_id: 's45' });
+  assert.match(compact.hookSpecificOutput?.additionalContext || '', /discipline\.md ist nicht lesbar/);
+  assert.match(compact.systemMessage || '', /FEHLER/);
+  rmSync(project, { recursive: true, force: true });
+});
+
 test('echte User-Prompts zaehlen weiterhin mit', async () => {
   const project = makeProject();
   const { approvalStatus, MAX_PROMPTS_PER_APPROVAL } = await loadState(project);

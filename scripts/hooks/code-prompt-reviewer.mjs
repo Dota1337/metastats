@@ -13,6 +13,7 @@
 // soll der Reminder kommen.
 
 import { readFileSync } from 'node:fs';
+import { isTrivialPrompt } from './lib/prompt-words.mjs';
 
 let input;
 try {
@@ -29,16 +30,17 @@ if (!/^Code\s*:/i.test(prompt)) process.exit(0);
 
 // Trivial-Marker → kein Reminder. Bewusst restriktive Liste, nur eindeutige
 // Cases. Bei Unsicherheit (z.B. "Code: refactor minGames" — könnte Pattern-
-// Impact haben) feuert der Reminder.
+// Impact haben) feuert der Reminder. Seit Runde 10 (24.10.2026) mit denselben
+// Grenzen wie die Freigabe (lib/prompt-words.mjs): kurz, keine Frage, kein
+// Vorbehalt, nicht verneint. Vorher schaltete ein einziges „typo" irgendwo in
+// einem langen Auftrag die Erinnerung ab.
 const TRIVIAL_MARKERS = [
-  /\btrivial\b/i,
-  /\bspot[- ]?fix\b/i,
+  /\bspot[- ]fix\b/i,
   /\btypo\b/i,
   /\b(fix|change|update) (a |the )?(comment|wording|label|i18n|string)\b/i,
   /\bonly (i18n|texts?|translations?)\b/i,
 ];
-const isTrivial = TRIVIAL_MARKERS.some(re => re.test(prompt));
-if (isTrivial) process.exit(0);
+if (isTrivialPrompt(prompt, TRIVIAL_MARKERS)) process.exit(0);
 
 // Reminder als zusätzlicher Konversations-Kontext. Geht direkt in die User-
 // Message-Pipeline und ist für den Assistant sichtbar.

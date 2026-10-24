@@ -50,10 +50,11 @@
       "titel": "Ohne lesbaren Gespraechsverlauf prueft die Antwort-Bremse gar nichts",
       "ort": "scripts/hooks/answer-check.mjs (fehlender transcript_path, nicht lesbare Datei)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "answer-check.mjs Zeile 58-59 'if (!path) process.exit(0)' und Zeile 62-66 try/catch um readFileSync mit process.exit(0) im catch, unveraendert seit 19.09.",
+      "status": "behoben",
+      "belegt_mit": "answer-check.mjs meldet fehlenden oder unlesbaren Gespraechsverlauf einmal je Sitzung als systemMessage (Merker verlaufFehltGemeldet im Sitzungszustand). Test 'antwortbremse-schweigt-ohne-verlauf' in state.test.mjs (erste Meldung da, zweite still).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "answer-check.mjs Zeile 58-59 'if (!path) process.exit(0)' und Zeile 62-66 try/catch um readFileSync mit process.exit(0) im catch, unveraendert seit 19.09."
     },
     {
       "id": "ausnahme-traegt-nicht:app/api/summoner",
@@ -148,10 +149,11 @@
       "titel": "Eine Datei per ssh vom Server ins Repo zu holen, sieht das Gate nicht",
       "ort": "scripts/hooks/lib/gate-policy.mjs (REMOTE, pathsWrittenByShell)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Probe pathsWrittenByShell: 'ssh box cat /x' mit Umleitung nach app/lib/x.ts ergibt [], 'gh api repos/a/b/contents/c' mit derselben Umleitung ebenfalls [], 'cat /x' mit derselben Umleitung blockt. gate-policy.mjs Zeile 331 verlaesst den Abschnitt bei ssh/scp/rsync/docker/kubectl/vercel/gh, bevor Zeile 337 die Umleitungen prueft.",
+      "status": "behoben",
+      "belegt_mit": "Umleitungen bei ssh/docker/… zaehlen (macht die lokale Shell), lokale Ziele von scp/rsync/docker cp/kubectl cp, vercel env pull (Standard .env.local), vercel pull/link/build, gh run/release download, repo clone, pr checkout. Test 'fernbefehl-umleitung-unerkannt' mit Gegenprobe (ssh box \"… > scripts/y\" bleibt offen).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe pathsWrittenByShell: 'ssh box cat /x' mit Umleitung nach app/lib/x.ts ergibt [], 'gh api repos/a/b/contents/c' mit derselben Umleitung ebenfalls [], 'cat /x' mit derselben Umleitung blockt. gate-policy.mjs Zeile 331 verlaesst den Abschnitt bei ssh/scp/rsync/docker/kubectl/vercel/gh, bevor Zeile 337 die Umleitungen prueft."
     },
     {
       "id": "freier-patch-parameter:app/lib/tft-supabase-reader",
@@ -169,10 +171,11 @@
       "titel": "Eine kurze Rueckfrage wie 'Ist das trivial?' oder 'Ok, aber ...' zaehlt als Freigabe",
       "ort": "scripts/hooks/prompt-submit.mjs (SHORT, APPROVAL, TRIVIAL), scripts/hooks/write-gate.mjs (Trivial-Ausweg)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probe mit den Regeln, die direkt aus prompt-submit.mjs gelesen wurden (Zeile 21, 26, 27): 'ok, aber mach X anders', 'Ja, was kostet das?' und 'Ok. Warum ist die Seite langsam?' sind kurz und tragen ein Freigabe-Wort, 'Ist das trivial?' und 'Warum ist das kein spot-fix?' sind kurz und tragen ein Trivial-Wort. Zeile 52 setzt dann approvedAt, und write-gate.mjs Zeile 83 ueberspringt bei 'trivial' im Freigabe-Text die Plan-Pruefung ganz. Der Kommentar prompt-submit.mjs Zeile 18-20 nennt 'ok, aber mach X anders' ausdruecklich als Nicht-Freigabe.",
+      "status": "behoben",
+      "belegt_mit": "scripts/hooks/lib/prompt-words.mjs: Freigabe und Trivial-Ausweg nur bis 120 Zeichen, ohne Fragezeichen, ohne Vorbehalt (aber/jedoch/allerdings/…), Trivial nicht verneint. Trivial-Status als eigenes Feld 'trivial' statt Wortsuche in approvedBy; 'Code: trivial …' erteilt jetzt die Trivial-Freigabe. Tests prompt-words.test.mjs und state.test.mjs (Rueckfrage, Code: trivial).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe mit den Regeln, die direkt aus prompt-submit.mjs gelesen wurden (Zeile 21, 26, 27): 'ok, aber mach X anders', 'Ja, was kostet das?' und 'Ok. Warum ist die Seite langsam?' sind kurz und tragen ein Freigabe-Wort, 'Ist das trivial?' und 'Warum ist das kein spot-fix?' sind kurz und tragen ein Trivial-Wort. Zeile 52 setzt dann approvedAt, und write-gate.mjs Zeile 83 ueberspringt bei 'trivial' im Freigabe-Text die Plan-Pruefung ganz. Der Kommentar prompt-submit.mjs Zeile 18-20 nennt 'ok, aber mach X anders' ausdruecklich als Nicht-Freigabe."
     },
     {
       "id": "freigabe-selbst-ausstellen:git-metastats-discipline",
@@ -201,20 +204,22 @@
       "titel": "Fehlt eine Gate-Datei oder hat sie einen Tippfehler, laeuft jede Aenderung ungebremst durch, und der Start-Check merkt es nicht",
       "ort": "scripts/hooks/write-gate.mjs (Importe), scripts/hooks/session-start.mjs (ERWARTETE_HOOKS)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "write-gate.mjs Zeile 19-21 laedt state.mjs, gate-policy.mjs und search-policy.mjs ausserhalb jedes try. Probe: node mit fehlendem Import endet mit Exit-Code 1 (gemessen). Claude Code sperrt bei PreToolUse nur bei Exit 2 oder deny-JSON, jeder andere Fehler laesst den Aufruf durch (dokumentiertes Verhalten, nicht live gemessen). scripts/hooks/ ist ohne Plan schreibbar (gate-policy.mjs Zeile 70, Test gate-policy.test.mjs Zeile 70-73). session-start.mjs Zeile 213-215 prueft nur, ob der Dateiname in settings.json steht, nicht ob die Datei existiert oder laedt. Erst der pre-push faengt es: .git/hooks/pre-push Zeile 63 (npm test) und Zeile 166 (check-discipline-hooks.mjs, das laut Zeile 57-61 nur die Einstiegsskripte aus hooks.json auf Existenz prueft, nicht lib/).",
+      "status": "behoben",
+      "belegt_mit": "write-gate.mjs laedt jede Bibliothek einzeln dynamisch; faellt eine aus, laesst es LAUT durch (systemMessage + additionalContext, keine Entscheidung) — live beobachtet 24.10.2026 waehrend des Umbaus. Neue Ladepruefung scripts/hooks/lib/hook-load.mjs (node --check, relative Importe, importierte Namen gegen Exporte, auch nach dynamischem import) laeuft bei jedem Sitzungsstart und im pre-push (check-discipline-hooks.mjs). Tests in hook-load.test.mjs und state.test.mjs ('ohne Bibliothek laut durchlassen').",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "write-gate.mjs Zeile 19-21 laedt state.mjs, gate-policy.mjs und search-policy.mjs ausserhalb jedes try. Probe: node mit fehlendem Import endet mit Exit-Code 1 (gemessen). Claude Code sperrt bei PreToolUse nur bei Exit 2 oder deny-JSON, jeder andere Fehler laesst den Aufruf durch (dokumentiertes Verhalten, nicht live gemessen). scripts/hooks/ ist ohne Plan schreibbar (gate-policy.mjs Zeile 70, Test gate-policy.test.mjs Zeile 70-73). session-start.mjs Zeile 213-215 prueft nur, ob der Dateiname in settings.json steht, nicht ob die Datei existiert oder laedt. Erst der pre-push faengt es: .git/hooks/pre-push Zeile 63 (npm test) und Zeile 166 (check-discipline-hooks.mjs, das laut Zeile 57-61 nur die Einstiegsskripte aus hooks.json auf Existenz prueft, nicht lib/)."
     },
     {
       "id": "gate-selbst-schreibweise:gate-policy",
       "titel": "Mit anderer Gross-/Kleinschreibung kann sich der Assistent die Freigabe selbst ausstellen",
       "ort": "scripts/hooks/lib/gate-policy.mjs (GATE_SELBST, isExempt, toRel)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probe am 24.10. (reine Funktion, liest nur): isExempt(toRel(Projekt + '/.git/METASTATS-DISCIPLINE/s.json')) ergibt true, kleingeschrieben false. Ebenso .git/CONFIG true (config false) und .git/Hooks/pre-push true (hooks false). 'test -d .git/METASTATS-DISCIPLINE' und 'test -f .git/CONFIG' treffen im echten Repo die vorhandenen Stellen, Windows unterscheidet die Schreibweise nicht. Ursache: GATE_SELBST (gate-policy.mjs Zeile 31-32) vergleicht mit Gross-/Kleinschreibung, danach ist .git/ pauschal frei (Zeile 65). Die Verweis-Aufloesung in toRel rettet nur die verlinkte settings.json (Probe .claude/SETTINGS.json bleibt gesperrt).",
+      "status": "behoben",
+      "belegt_mit": "scripts/hooks/lib/gate-policy.mjs: GATE_SELBST mit /i, toRel vergleicht unter Windows gefaltet und streicht NTFS-Zusaetze (::$DATA, :strom, Punkt/Leerzeichen am Ende). Tests 'gate-selbst-schreibweise' (2) in gate-policy.test.mjs, u. a. toRel('C:/PROJEKT/.CLAUDE/SETTINGS.JSON') = '.claude/settings.json' und 'cd .git && echo x > config:strom' blockt.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe am 24.10. (reine Funktion, liest nur): isExempt(toRel(Projekt + '/.git/METASTATS-DISCIPLINE/s.json')) ergibt true, kleingeschrieben false. Ebenso .git/CONFIG true (config false) und .git/Hooks/pre-push true (hooks false). 'test -d .git/METASTATS-DISCIPLINE' und 'test -f .git/CONFIG' treffen im echten Repo die vorhandenen Stellen, Windows unterscheidet die Schreibweise nicht. Ursache: GATE_SELBST (gate-policy.mjs Zeile 31-32) vergleicht mit Gross-/Kleinschreibung, danach ist .git/ pauschal frei (Zeile 65). Die Verweis-Aufloesung in toRel rettet nur die verlinkte settings.json (Probe .claude/SETTINGS.json bleibt gesperrt)."
     },
     {
       "id": "gate-warnung-schweigt:session-start",
@@ -253,20 +258,22 @@
       "titel": "Eine Zeile in der lokalen Einstellungsdatei schaltet alle Waechter ab, ohne Plan und ohne Spur im Repo",
       "ort": "scripts/hooks/lib/gate-policy.mjs (isExempt), scripts/hooks/session-start.mjs (ERWARTETE_HOOKS-Pruefung)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probe: isExempt(toRel('.claude/settings.local.json')) ergibt true, C:/Users/dtaub/.claude/settings.json ebenfalls true, .claude/settings.json dagegen false. 'git check-ignore -v .claude/settings.local.json' trifft .gitignore:50, 'ls -la .claude' zeigt die Datei als Verweis nach Dropbox/Metastats/repo-config. Das installierte Claude Code kennt den Schalter: grep -a -o -F disableAllHooks auf bin/claude.exe liefert 3 Treffer. session-start.mjs Zeile 208 und check-discipline-hooks.mjs Zeile 64 lesen nur .claude/settings.json, Grep nach 'disableAllHooks|settings.local' in check-discipline-hooks.mjs: 0 Treffer. Nicht live ausprobiert (haette Schreiben in .claude/ verlangt), ob Claude Code beim Schreiben dieser Datei selbst nachfragt.",
+      "status": "behoben",
+      "belegt_mit": ".claude/settings.local.json ist Gate-Stelle (GATE_SELBST/GATE_PFADE, Test 'hooks-abschaltbar-settings-local'). Dazu meldet scripts/hooks/lib/hook-load.mjs#schalter disableAllHooks und env WRITE_GATE/SEARCH_GATE/PROCESS_WATCHER=0 in .claude/settings{,.local}.json und ~/.claude/settings.json bei jedem Sitzungsstart als gate-warnung und im pre-push als Warnung (Test in hook-load.test.mjs).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe: isExempt(toRel('.claude/settings.local.json')) ergibt true, C:/Users/dtaub/.claude/settings.json ebenfalls true, .claude/settings.json dagegen false. 'git check-ignore -v .claude/settings.local.json' trifft .gitignore:50, 'ls -la .claude' zeigt die Datei als Verweis nach Dropbox/Metastats/repo-config. Das installierte Claude Code kennt den Schalter: grep -a -o -F disableAllHooks auf bin/claude.exe liefert 3 Treffer. session-start.mjs Zeile 208 und check-discipline-hooks.mjs Zeile 64 lesen nur .claude/settings.json, Grep nach 'disableAllHooks|settings.local' in check-discipline-hooks.mjs: 0 Treffer. Nicht live ausprobiert (haette Schreiben in .claude/ verlangt), ob Claude Code beim Schreiben dieser Datei selbst nachfragt."
     },
     {
       "id": "inline-shell-unerkannt:gate-policy",
       "titel": "Befehle, die in 'bash -c' oder 'powershell -Command' verpackt sind, prueft das Gate nicht",
       "ort": "scripts/hooks/lib/gate-policy.mjs (INLINE, zusatzSchreibwege)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Probe pathsWrittenByShell: bash -c mit 'rm app/lib/x.ts' ergibt [], powershell -Command mit 'Remove-Item app/lib/x.ts' ergibt [], 'rm app/lib/x.ts' allein blockt. zusatzSchreibwege prueft den Code hinter -c nur auf Node-Schreibbefehle (gate-policy.mjs Zeile 306-309 gegen WRITE_CALLS Zeile 189), nicht als Shell-Befehl, und powershell/pwsh fehlen in INLINE (Zeile 169).",
+      "status": "behoben",
+      "belegt_mit": "pathsWrittenByShell loest bash/sh -c, Skriptdateien, Heredoc an eine Shell, powershell/pwsh -Command/-EncodedCommand/-File, cmd /c, eval/Invoke-Expression und $(…) in doppelten Anfuehrungszeichen rekursiv auf (Tiefe 3). Test 'inline-shell-unerkannt' mit 11 Faellen plus Gegenprobe.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe pathsWrittenByShell: bash -c mit 'rm app/lib/x.ts' ergibt [], powershell -Command mit 'Remove-Item app/lib/x.ts' ergibt [], 'rm app/lib/x.ts' allein blockt. zusatzSchreibwege prueft den Code hinter -c nur auf Node-Schreibbefehle (gate-policy.mjs Zeile 306-309 gegen WRITE_CALLS Zeile 189), nicht als Shell-Befehl, und powershell/pwsh fehlen in INLINE (Zeile 169)."
     },
     {
       "id": "keine-bremse:app/api/companion/v1/lobby",
@@ -295,10 +302,11 @@
       "titel": "Fehlt die Regeldatei, spielen Start- und Compact-Hook still keine Kernregeln ein",
       "ort": "scripts/hooks/post-compact.mjs, scripts/hooks/session-start.mjs",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "post-compact.mjs Zeile 19-20 und session-start.mjs Zeile 80-83 nehmen bei fehlender infra/claude-settings/discipline.md einen leeren Text, ohne Eintrag in den Meldungen, session-start.mjs Zeile 125 ueberspringt dann auch die Kopie nach .claude/rules/00-kernregeln.md. Die Datei ist ohne Plan aenderbar (gate-policy.mjs Zeile 76, User-Entscheid 2026-08-17).",
+      "status": "behoben",
+      "belegt_mit": "session-start.mjs und post-compact.mjs melden fehlende infra/claude-settings/discipline.md als gate-warnung im Kontext und als FEHLER in der Statuszeile; beide laden lib/state.mjs dynamisch und melden auch dessen Ausfall. Test 'kernregeln-fehlen-still' in state.test.mjs.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "post-compact.mjs Zeile 19-20 und session-start.mjs Zeile 80-83 nehmen bei fehlender infra/claude-settings/discipline.md einen leeren Text, ohne Eintrag in den Meldungen, session-start.mjs Zeile 125 ueberspringt dann auch die Kopie nach .claude/rules/00-kernregeln.md. Die Datei ist ohne Plan aenderbar (gate-policy.mjs Zeile 76, User-Entscheid 2026-08-17)."
     },
     {
       "id": "klartext-token:metastats-refresh-api",
@@ -401,20 +409,22 @@
       "titel": "Der uebliche PowerShell-Schreibweg und jedes Skript hinter einem Pipe-Zeichen laufen am Gate vorbei",
       "ort": "scripts/hooks/lib/gate-policy.mjs (splitSegments, zusatzSchreibwege)",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probe pathsWrittenByShell: 'Get-Content a.txt | Set-Content app/lib/x.ts' ergibt [], 'x | Out-File app/lib/y.ts' ergibt [], 'x | Add-Content app/lib/y.ts' ergibt [], dagegen blockt 'Set-Content app/lib/x.ts x'. 'echo x | node scripts/codemod-accent.mjs --write' ergibt [], derselbe Aufruf ohne Pipe blockt. Ursache: splitSegments trennt nicht am einfachen Pipe-Zeichen (gate-policy.mjs Zeile 236), zusatzSchreibwege kennt dahinter nur tee, dd, awk und Inline-Code (Zeile 291-312). Der Test 'PowerShell-Kanal ist zu' (gate-policy.test.mjs Zeile 168-172) prueft nur Befehle, die mit dem Cmdlet beginnen.",
+      "status": "behoben",
+      "belegt_mit": "Gemeinsame Zerlegung scripts/hooks/lib/shell-words.mjs (Pipes, Umleitungen als eigene Woerter, Textbloecke); Schreiber hinter einer Pipe, xargs, find -exec/-delete, [IO.File]::Write*, Set-Content/Out-File mit Parameter-Auswertung. Test 'pipe-schreibweg-unerkannt' und 'PowerShell: Wert-Parameter …'. Korpus 24.10.2026 (5.568 Aufrufe aus 15 Transcripts): neu 168 echte Schreiber erkannt, die das alte Gate uebersah.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe pathsWrittenByShell: 'Get-Content a.txt | Set-Content app/lib/x.ts' ergibt [], 'x | Out-File app/lib/y.ts' ergibt [], 'x | Add-Content app/lib/y.ts' ergibt [], dagegen blockt 'Set-Content app/lib/x.ts x'. 'echo x | node scripts/codemod-accent.mjs --write' ergibt [], derselbe Aufruf ohne Pipe blockt. Ursache: splitSegments trennt nicht am einfachen Pipe-Zeichen (gate-policy.mjs Zeile 236), zusatzSchreibwege kennt dahinter nur tee, dd, awk und Inline-Code (Zeile 291-312). Der Test 'PowerShell-Kanal ist zu' (gate-policy.test.mjs Zeile 168-172) prueft nur Befehle, die mit dem Cmdlet beginnen."
     },
     {
       "id": "plan-pruefung-faellt-offen:gate-policy",
       "titel": "Ist die Plan-Datei nicht lesbar, gilt der Plan als geprueft",
       "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion planQuality",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "gate-policy.mjs Zeile 138-143: jeder Lesefehler ausser 'Datei fehlt' gibt ok: true zurueck, festgeschrieben im Test gate-policy.test.mjs Zeile 268 (EACCES ergibt ok).",
+      "status": "behoben",
+      "belegt_mit": "planQuality liefert bei jedem Lesefehler ausser ENOENT ok:false mit 'Plan-Datei nicht lesbar (CODE)'. Test 'planQuality verlangt Verdicts UND drei Alternativen' prueft EACCES.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "gate-policy.mjs Zeile 138-143: jeder Lesefehler ausser 'Datei fehlt' gibt ok: true zurueck, festgeschrieben im Test gate-policy.test.mjs Zeile 268 (EACCES ergibt ok)."
     },
     {
       "id": "planpruefung-faellt-offen-aus:plan-current",
@@ -530,10 +540,11 @@
       "titel": "Skripte mit den neueren Node-Schreibbefehlen gelten fuer das Gate als rein lesend",
       "ort": "scripts/hooks/lib/gate-policy.mjs (WRITE_CALLS)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Probe pathsWrittenByShell mit gestelltem Skriptinhalt: writeFile aus node:fs/promises ergibt [], cpSync ergibt [], node -e mit promises.writeFile ergibt [], die Sync-Variante blockt. WRITE_CALLS (gate-policy.mjs Zeile 189) kennt nur die Sync-Funktionen, createWriteStream und .write(. Grep nach 'writeFile(|cpSync(|symlinkSync(' unter scripts/: nur gate-policy.test.mjs, die getrackten Skripte sind heute also nicht betroffen.",
+      "status": "behoben",
+      "belegt_mit": "WRITE_CALLS erkennt fs/promises (fsp.writeFile, await rm(…)), cpSync/symlinkSync/linkSync/truncateSync, Python shutil/os/pathlib; stdout/stderr.write bleibt offen. Test 'schreib-api-unerkannt' (7 Faelle + Gegenprobe). Dazu Code ueber stdin (node -/python3 - mit Heredoc oder Pipe).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe pathsWrittenByShell mit gestelltem Skriptinhalt: writeFile aus node:fs/promises ergibt [], cpSync ergibt [], node -e mit promises.writeFile ergibt [], die Sync-Variante blockt. WRITE_CALLS (gate-policy.mjs Zeile 189) kennt nur die Sync-Funktionen, createWriteStream und .write(. Grep nach 'writeFile(|cpSync(|symlinkSync(' unter scripts/: nur gate-policy.test.mjs, die getrackten Skripte sind heute also nicht betroffen."
     },
     {
       "id": "schreiben-am-waechter-vorbei:app/lib/tft-rank-history",
@@ -551,10 +562,11 @@
       "titel": "Nach einem cd in einen Unterordner gelten Pfade mit ../ als ausserhalb des Projekts",
       "ort": "scripts/hooks/write-gate.mjs (Aufruf pathsWrittenByShell)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "write-gate.mjs Zeile 41 gibt der Suchsperre den echten Arbeitsordner (input.cwd), Zeile 62 rechnet Schreibziele aber immer ab PROJECT_DIR. Probe: 'sed -i s/a/b/ ../app/page.tsx' ergibt das Ziel '../app/page.tsx', isExempt dafuer true. Steht die Shell seit einem frueheren Aufruf in scripts/, trifft derselbe Befehl D:/Metastats/metastats/app/page.tsx (das Bash-Werkzeug der Hauptsitzung behaelt den Arbeitsordner zwischen Aufrufen).",
+      "status": "behoben",
+      "belegt_mit": "write-gate.mjs uebergibt den Arbeitsordner des Befehls (Hook-Eingabe cwd) und die Shell-Art; cd/pushd/Set-Location und Variablen ($TEMP, ${S}, $env:X, %X%, ~, Join-Path) werden aufgeloest. Tests 'schreibziel-ohne-arbeitsordner' (gate-policy.test.mjs) und der Hook-Test mit cwd=scripts in state.test.mjs.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "write-gate.mjs Zeile 41 gibt der Suchsperre den echten Arbeitsordner (input.cwd), Zeile 62 rechnet Schreibziele aber immer ab PROJECT_DIR. Probe: 'sed -i s/a/b/ ../app/page.tsx' ergibt das Ziel '../app/page.tsx', isExempt dafuer true. Steht die Shell seit einem frueheren Aufruf in scripts/, trifft derselbe Befehl D:/Metastats/metastats/app/page.tsx (das Bash-Werkzeug der Hauptsitzung behaelt den Arbeitsordner zwischen Aufrufen)."
     },
     {
       "id": "selbst-abruf-ueber-host-kopf:app/api/champions",
@@ -635,20 +647,22 @@
       "titel": "Ein Kommentar im Skript reicht, damit es als harmlos durchgeht",
       "ort": "scripts/hooks/lib/gate-policy.mjs, Funktion onlyTmpWrites",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "Probe 24.10.: onlyTmpWrites mit einer Schreibzeile plus '// tmpdir' ergibt true, dieselbe Zeile ohne Kommentar false. Die Pruefung ist unveraendert ein Textvergleich je Zeile (gate-policy.mjs Zeile 200-204).",
+      "status": "behoben",
+      "belegt_mit": "onlyTmpWrites entfernt Block- und Zeilenkommentare, bevor es nach dem Temp-Bezug sucht. Test 'tmp-ausnahme-per-kommentar' (// tmpdir und /* tmpdir */ blocken).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probe 24.10.: onlyTmpWrites mit einer Schreibzeile plus '// tmpdir' ergibt true, dieselbe Zeile ohne Kommentar false. Die Pruefung ist unveraendert ein Textvergleich je Zeile (gate-policy.mjs Zeile 200-204)."
     },
     {
       "id": "trivial-marker-ohne-laengengrenze:code-prompt-reviewer",
       "titel": "Ein einziges Wort irgendwo im Auftrag schaltet die Review-Erinnerung ab",
       "ort": "scripts/hooks/code-prompt-reviewer.mjs, TRIVIAL_MARKERS",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Probelauf 24.10. (Hook nur mit stdin, schreibt keine Datei): ein 459 Zeichen langer 'Code:'-Auftrag (Pipeline-Umbau, neue Tabelle, RPC, Migration) liefert 1032 Byte Erinnerung, derselbe Auftrag mit ' typo' am Ende 0 Byte. TRIVIAL_MARKERS (code-prompt-reviewer.mjs Zeile 33-41) ohne Laengengrenze, prompt-submit.mjs Zeile 21 hat dagegen 120 Zeichen.",
+      "status": "behoben",
+      "belegt_mit": "code-prompt-reviewer.mjs nutzt isTrivialPrompt aus lib/prompt-words.mjs mit seinen zusaetzlichen Markern (typo, i18n, …) — dieselben Grenzen wie die Freigabe. Test 'trivial-marker-ohne-laengengrenze' in prompt-words.test.mjs.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probelauf 24.10. (Hook nur mit stdin, schreibt keine Datei): ein 459 Zeichen langer 'Code:'-Auftrag (Pipeline-Umbau, neue Tabelle, RPC, Migration) liefert 1032 Byte Erinnerung, derselbe Auftrag mit ' typo' am Ende 0 Byte. TRIVIAL_MARKERS (code-prompt-reviewer.mjs Zeile 33-41) ohne Laengengrenze, prompt-submit.mjs Zeile 21 hat dagegen 120 Zeichen."
     },
     {
       "id": "unausgerollte-hilfsskripte:usr-local-bin",

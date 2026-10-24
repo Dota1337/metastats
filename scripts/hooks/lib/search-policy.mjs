@@ -17,19 +17,13 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { toNativePath } from './gate-policy.mjs';
+import { toNativePath, textbloecke, zerlege, befehlsWoerter, befehlsName } from './shell-words.mjs';
 
 /** Groesste erlaubte Zahl in einer Wiederholung `{n,m}` bzw. `\{n,m\}`. */
 export const WIEDERHOLUNG_MAX = 100;
 
 /** Befehle, deren Argumente woanders laufen oder keine Dateisuche sind. */
 const FREMD = new Set(['ssh', 'scp', 'rsync', 'docker', 'kubectl', 'vercel', 'gh', 'git']);
-
-/** Vorsaetze, nach denen erst der eigentliche Befehl kommt. */
-const VORSATZ = new Set([
-  'time', 'command', 'exec', 'builtin', 'nohup', 'sudo', 'then', 'do', 'else',
-  'elif', 'if', 'while', 'until', '!', '{', '}',
-]);
 
 const GREP_LANG_MIT_WERT = new Set([
   '--regexp', '--file', '--include', '--exclude', '--exclude-dir', '--exclude-from',
@@ -44,152 +38,8 @@ const GCI_MIT_WERT = ['path', 'literalpath', 'pspath', 'lp', 'filter', 'include'
   'exclude', 'attributes', 'depth', 'erroraction', 'ea', 'warningaction', 'wa',
   'outvariable', 'ov', 'errorvariable', 'ev', 'pipelinevariable', 'pv'];
 
-// ------------------------------------------------------------------ Zerlegen
-
-/** Heredoc-Inhalte entfernen — ein Commit-Text mit „grep -r“ ist keine Suche. */
-function ohneHeredocs(cmd) {
-  const aus = [];
-  const offen = [];
-  for (const zeile of cmd.split('\n')) {
-    if (offen.length) {
-      if (zeile.replace(/\r$/, '').trim() === offen[0]) offen.shift();
-      continue;
-    }
-    aus.push(zeile);
-    const re = /(?<!<)<<-?(?!<)\s*(['"]?)([A-Za-z_][\w-]*)\1/g;
-    let m;
-    while ((m = re.exec(zeile))) offen.push(m[2]);
-  }
-  return aus.join('\n');
-}
-
-/** PowerShell-Here-Strings `@'…'@` / `@"…"@` entfernen. */
-function ohneHereStrings(cmd) {
-  return cmd.replace(/@(['"])\r?\n[\s\S]*?\r?\n\1@/g, "''");
-}
-
-/**
- * Zerlegt eine Kommandozeile in Abschnitte (an `; | & ( ) \n` usw.) und jeden
- * Abschnitt in Woerter `{ v, q, q0, glob }`: v = Wert ohne Anfuehrungszeichen,
- * q = irgendein Teil stand in Anfuehrungszeichen, q0 = das erste Zeichen,
- * glob = ein unmaskiertes `* ? [` kam vor.
- */
-function zerlege(cmd, shell) {
-  const pwsh = shell === 'pwsh';
-  const esc = pwsh ? '`' : '\\';
-  const trenner = pwsh ? '\n;|&(){}' : '\n;|&()`';
-  const abschnitte = [];
-  let woerter = [];
-  let w = null;
-  const neu = (quoted) => { w ??= { v: '', q: false, q0: quoted, glob: false }; };
-  const zeichen = (c, quoted) => {
-    neu(quoted);
-    w.v += c;
-    if (quoted) w.q = true;
-    else if (c === '*' || c === '?' || c === '[') w.glob = true;
-  };
-  const wortEnde = () => { if (w) { woerter.push(w); w = null; } };
-  const abschnittEnde = () => { wortEnde(); if (woerter.length) abschnitte.push(woerter); woerter = []; };
-
-  for (let i = 0; i < cmd.length; i++) {
-    const c = cmd[i];
-    if (c === esc) {
-      const n = cmd[i + 1];
-      if (n === undefined) continue;
-      i++;
-      if (n === '\n' || (n === '\r' && cmd[i + 1] === '\n')) { if (n === '\r') i++; continue; }
-      zeichen(n, true);
-      continue;
-    }
-    if (c === "'") {
-      const ende = cmd.indexOf("'", i + 1);
-      const stop = ende === -1 ? cmd.length : ende;
-      neu(true);
-      w.q = true;
-      w.v += cmd.slice(i + 1, stop);
-      i = stop;
-      continue;
-    }
-    if (c === '"') {
-      neu(true);
-      w.q = true;
-      let j = i + 1;
-      while (j < cmd.length && cmd[j] !== '"') {
-        if (cmd[j] === esc && j + 1 < cmd.length) {
-          // bash: in "…" maskiert \ nur $ ` " \ und Zeilenumbruch.
-          if (pwsh || '$`"\\\n'.includes(cmd[j + 1])) { w.v += cmd[j + 1]; j += 2; continue; }
-        }
-        w.v += cmd[j];
-        j++;
-      }
-      i = j;
-      continue;
-    }
-    if (c === '\r') continue;
-    if (c === ' ' || c === '\t') { wortEnde(); continue; }
-    if (trenner.includes(c)) {
-      // `2>&1`, `&>`, `>&2` sind Umleitungen, keine Trenner.
-      if (c === '&' && (cmd[i - 1] === '>' || cmd[i - 1] === '<' || cmd[i + 1] === '>')) {
-        zeichen(c, false);
-        continue;
-      }
-      abschnittEnde();
-      continue;
-    }
-    zeichen(c, false);
-  }
-  abschnittEnde();
-  return abschnitte;
-}
-
-/** Umleitungen entfernen, Vorsaetze ueberspringen. Liefert die Woerter ab dem Befehl. */
-function befehlsWoerter(woerter) {
-  const t = [];
-  for (let i = 0; i < woerter.length; i++) {
-    const w = woerter[i];
-    const m = !w.q0 && w.v.match(/^(\d*|&)(>>?|<<?<?|>&|<&|>\|)(.*)$/s);
-    if (m) {
-      if (m[3] === '') i++;
-      continue;
-    }
-    t.push(w);
-  }
-  let i = 0;
-  while (i < t.length) {
-    const v = t[i].v;
-    if (!t[i].q0 && /^[A-Za-z_]\w*=/.test(v)) { i++; continue; }
-    if (VORSATZ.has(v)) { i++; continue; }
-    if (v === 'env' || v === 'stdbuf') {
-      i++;
-      while (i < t.length && (t[i].v.startsWith('-') || /^[A-Za-z_]\w*=/.test(t[i].v))) {
-        if (t[i].v === '-u' || t[i].v === '-C') i++;
-        i++;
-      }
-      continue;
-    }
-    if (v === 'nice') {
-      i++;
-      if (t[i]?.v === '-n') i += 2;
-      else if (/^(-n?-?\d+|--adjustment=.*)$/.test(t[i]?.v || '')) i++;
-      continue;
-    }
-    if (v === 'timeout') {
-      i++;
-      while (i < t.length && t[i].v.startsWith('-')) {
-        if (t[i].v === '-s' || t[i].v === '-k') i++;
-        i++;
-      }
-      i++; // Dauer
-      continue;
-    }
-    break;
-  }
-  return t.slice(i);
-}
-
-function befehlsName(v) {
-  return v.split(/[\\/]/).pop().toLowerCase().replace(/\.exe$/, '');
-}
+// Zerlegung (Heredocs, Here-Strings, Woerter, Vorsaetze): ./shell-words.mjs,
+// gemeinsam mit der Schreibsperre in gate-policy.mjs (Runde 10, 24.10.2026).
 
 // ------------------------------------------------------------------ Pfade
 
@@ -459,7 +309,7 @@ export function checkSearch(toolName, command, cwd, opts = {}) {
   const shell = /^bash$/i.test(toolName || '') ? 'bash' : /^powershell$/i.test(toolName || '') ? 'pwsh' : null;
   if (!shell || typeof command !== 'string' || !command) return null;
   const ctx = kontext(cwd || opts.projectDir, opts);
-  const text = shell === 'pwsh' ? ohneHereStrings(command) : ohneHeredocs(command);
+  const text = textbloecke(command, shell).text;
   let basis = ctx.cwd;
 
   for (const woerter of zerlege(text, shell)) {

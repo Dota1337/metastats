@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isExempt, toRel, planQuality, pathsWrittenByShell, toNativePath } from './gate-policy.mjs';
+import { isExempt, toRel, planQuality, pathsWrittenByShell, toNativePath, onlyTmpWrites } from './gate-policy.mjs';
 
 const P = 'C:/projekt';
 const rels = (cmd, read) =>
@@ -264,8 +264,11 @@ test('planQuality verlangt Verdicts UND drei Alternativen', () => {
   assert.equal(planQuality('x', () => '## Verdicts\n- metastats-architect: PASS\n').ok, false);
   const enoent = () => { const e = new Error('nope'); e.code = 'ENOENT'; throw e; };
   assert.equal(planQuality('x', enoent).why, 'keine Plan-Datei');
-  // Anderer Fehler darf sich NICHT als "kein Plan" tarnen.
-  assert.equal(planQuality('x', () => { throw new Error('EACCES'); }).ok, true);
+  // Anderer Fehler darf sich NICHT als "kein Plan" tarnen — und seit 24.10.2026
+  // auch nicht als bestandener Plan (plan-pruefung-faellt-offen).
+  const eacces = () => { const e = new Error('nope'); e.code = 'EACCES'; throw e; };
+  assert.equal(planQuality('x', eacces).ok, false);
+  assert.match(planQuality('x', eacces).why, /nicht lesbar \(EACCES\)/);
 });
 
 // ------------------------------------------------- Lockerung 2026-09-01 (B8)
@@ -305,4 +308,172 @@ test('Routine-Ops: Key-Rotation laeuft, das Skript selbst bleibt gesperrt', () =
   assert.equal(isExempt('scripts/refresh-riot-key.mjs'), false);
   // Nachbarskripte erben nichts.
   assert.equal(blocks('node scripts/refresh-highelo-marketvalues.mjs', schreibend), true);
+});
+
+// ------------------------------------------- Runde 10: Sicherheitsdurchsicht 24.10.2026
+//
+// Je Befund ein Test, und zu jedem die Gegenprobe. Die Zerlegung ist seit
+// dieser Runde dieselbe wie die der Suchsperre (shell-words.mjs).
+
+const ENV = { TEMP: 'C:/Users/u/AppData/Local/Temp', USERPROFILE: 'C:/Users/u' };
+const relsMit = (cmd, opts = {}, read) =>
+  pathsWrittenByShell(cmd, P, read, 0, { env: ENV, home: 'C:/Users/u', ...opts })
+    .map((c) => toRel(c.path, P, c.base));
+const blocksMit = (cmd, opts, read) => relsMit(cmd, opts, read).some((r) => !isExempt(r));
+const ps = (cmd, read) => blocksMit(cmd, { shell: 'pwsh' }, read);
+
+test('gate-selbst-schreibweise: Gate-Stellen ohne Ruecksicht auf Gross-/Kleinschreibung', () => {
+  for (const r of ['.CLAUDE/Settings.json', '.Git/Hooks/pre-push', '.git/CONFIG', '.git/Metastats-Discipline/x']) {
+    assert.equal(isExempt(r), false, r);
+  }
+  assert.equal(isExempt('.claude/PLAN-current.md'), true);
+});
+
+test('gate-selbst-schreibweise: Windows-Schreibweisen derselben Datei', { skip: process.platform !== 'win32' }, () => {
+  assert.equal(toRel('C:/PROJEKT/.CLAUDE/SETTINGS.JSON', P), '.claude/settings.json');
+  assert.equal(toRel('C:/projekt/.claude/settings.json::$DATA', P), '.claude/settings.json');
+  assert.equal(toRel('C:/projekt/.claude/settings.json.', P), '.claude/settings.json');
+  assert.equal(toRel('C:/projekt/.git/config:strom', P), '.git/config');
+  assert.equal(blocksMit('echo {} > .claude/SETTINGS.json'), true);
+  assert.equal(blocksMit('cd .git && echo x > config:strom'), true);
+});
+
+test('hooks-abschaltbar-settings-local: settings.local.json ist eine Gate-Stelle', () => {
+  assert.equal(isExempt('.claude/settings.local.json'), false);
+  assert.equal(blocksMit('echo {} > .claude/settings.local.json'), true);
+  assert.equal(ps("Set-Content .claude/settings.local.json '{}'"), true);
+});
+
+test('pipe-schreibweg-unerkannt: Schreiber hinter einer Pipe', () => {
+  assert.equal(ps('Get-Content x | Set-Content app/y.ts'), true);
+  assert.equal(ps('echo x | Out-File app/z.ts'), true);
+  assert.equal(ps("@'\nx\n'@ | Set-Content -Path app/y.ts -Encoding utf8"), true);
+  assert.equal(blocksMit('cat x | xargs rm'), true);
+  assert.equal(blocksMit('find app -name "*.ts" -delete'), true);
+  assert.equal(blocksMit('find app -name "*.ts" -exec rm {} +'), true);
+  // Gegenprobe: lesende Pipes und Temp-Ziele
+  assert.equal(ps('npm test 2>&1 | Out-File $env:TEMP\\t.txt'), false);
+  assert.equal(ps('Get-Content app/x.ts | Select-String foo'), false);
+  assert.equal(ps('Get-ChildItem app | Out-Null'), false);
+  assert.equal(blocksMit('find app -name "*.ts" -exec grep -l foo {} +'), false);
+  assert.equal(blocksMit('git ls-files | xargs wc -l'), false);
+});
+
+test('PowerShell: Wert-Parameter sind keine Ziele, Pfad-Parameter schon', () => {
+  assert.deepEqual(relsMit('Set-Content .claude/plan-progress.md -Value done', { shell: 'pwsh' }), ['.claude/plan-progress.md']);
+  assert.deepEqual(relsMit('Set-Content -Path app/x.ts -Encoding utf8 -Value 1', { shell: 'pwsh' }), ['app/x.ts']);
+  assert.deepEqual(relsMit('Copy-Item app/a.ts -Destination app/b.ts', { shell: 'pwsh' }), ['app/b.ts']);
+  assert.equal(ps('New-Item -ItemType File -Name x.ts'), true);
+  assert.equal(ps("[IO.File]::WriteAllText('app/x.ts', 'a')"), true);
+  assert.equal(ps('$null = New-Item -ItemType Directory app/neu'), true);
+  assert.equal(ps('Get-Content app/x.ts | Tee-Object -Variable inhalt'), false);
+  assert.equal(ps('Set-Item env:WRITE_GATE 1'), false);
+  assert.equal(ps("$p = Join-Path $env:TEMP 'x.txt'; Set-Content $p 1"), false);
+  assert.equal(ps("[IO.File]::ReadAllText('app/x.ts')"), false);
+});
+
+test('inline-shell-unerkannt: bash -c, powershell -Command, cmd /c, eval, kodiert', () => {
+  assert.equal(blocksMit('bash -c "echo a > app/x.ts"'), true);
+  assert.equal(blocksMit("sh -lc 'rm app/x.ts'"), true);
+  assert.equal(blocksMit('powershell -Command "Set-Content app/x.ts 1"'), true);
+  assert.equal(blocksMit('pwsh -NoProfile -c "Remove-Item app/x.ts"'), true);
+  const kodiert = Buffer.from('Set-Content app/x.ts 1', 'utf16le').toString('base64');
+  assert.equal(blocksMit(`powershell -EncodedCommand ${kodiert}`), true);
+  assert.equal(ps('cmd /c "del app\\x.ts"'), true);
+  assert.equal(blocksMit('eval "rm app/x.ts"'), true);
+  assert.equal(blocksMit('echo "$(rm app/x.ts)"'), true);
+  assert.equal(ps('Invoke-Expression "Remove-Item app/x.ts"'), true);
+  // Gegenprobe
+  assert.equal(blocksMit('bash -c "git status"'), false);
+  assert.equal(blocksMit('powershell -Command "Get-ChildItem app"'), false);
+});
+
+test('Heredoc: Daten bleiben Daten, Code wird geprueft', () => {
+  const commit = 'git commit -m "$(cat <<\'EOF\'\nfix: a | tee app/x.ts\n> durch "zitat"\nEOF\n)"';
+  assert.deepEqual(relsMit(commit), []);
+  assert.deepEqual(relsMit("git commit -F - <<'EOF'\nrm app/x.ts > y\nEOF"), []);
+  assert.equal(blocksMit("node - <<'EOF'\nrequire('fs').writeFileSync('app/x.ts','')\nEOF"), true);
+  assert.equal(blocksMit("python3 - <<EOF\nopen('app/x','w').write('a')\nEOF"), true);
+  assert.equal(blocksMit("cat <<'EOF' | node -\nrequire('fs').writeFileSync('app/x.ts','')\nEOF"), true);
+  assert.equal(blocksMit("bash <<'EOF'\nrm app/x.ts\nEOF"), true);
+  assert.equal(blocksMit("cat > app/x.ts <<'EOF'\ninhalt\nEOF"), true);
+  // Gegenprobe
+  assert.equal(blocksMit("node - <<'EOF'\nconsole.log(require('fs').readFileSync('app/x.ts','utf8'))\nEOF"), false);
+  assert.equal(blocksMit("cat > \"$TEMP/x.txt\" <<'EOF'\ninhalt\nEOF"), false);
+});
+
+test('fernbefehl-umleitung-unerkannt: lokale Ziele von Fernbefehlen', () => {
+  assert.equal(blocksMit('ssh box cat /opt/x > app/y.ts'), true);
+  assert.equal(blocksMit('scp box:/opt/x.mjs app/a.ts'), true);
+  assert.equal(blocksMit('scp -i key box:/opt/x.mjs scripts/'), true);
+  assert.equal(blocksMit('rsync -a box:/opt/dir/ app/'), true);
+  assert.equal(blocksMit('vercel env pull'), true);
+  assert.equal(blocksMit('vercel env pull .env.production'), true);
+  assert.equal(blocksMit('docker cp ctr:/x app/x'), true);
+  assert.equal(blocksMit('gh run download 123'), true);
+  // Gegenprobe: alles, was nur entfernt schreibt
+  assert.equal(blocksMit('ssh box "cd /opt/x && echo a > scripts/y"'), false);
+  assert.equal(blocksMit('scp app/a.ts box:/opt/a.ts'), false);
+  assert.equal(blocksMit('ssh box "systemctl status x" > "$TEMP/s.txt"'), false);
+  assert.equal(blocksMit('gh pr view 30'), false);
+  assert.equal(blocksMit('vercel env ls'), false);
+});
+
+test('schreib-api-unerkannt: neuere Node- und Python-Schreibbefehle', () => {
+  for (const code of [
+    "import {promises as fsp} from 'fs'; await fsp.writeFile('app/x','')",
+    "import {rm} from 'fs/promises'; await rm('app', {recursive:true})",
+    "require('fs').cpSync('a','app/b')",
+    "require('fs').symlinkSync('a','app/b')",
+    "import shutil; shutil.copy('a','app/b')",
+    "import os; os.remove('app/x')",
+    "from pathlib import Path; Path('app/x').write_text('a')",
+  ]) assert.equal(blocksMit('node scripts/x.mjs', {}, () => code), true, code);
+  assert.equal(blocksMit('node scripts/x.mjs', {}, () => "process.stdout.write('a')"), false);
+});
+
+test('tmp-ausnahme-per-kommentar: ein Kommentar macht kein Skript harmlos', () => {
+  const trick = () => "import {writeFileSync} from 'fs';\nwriteFileSync('app/x.ts', y) // tmpdir";
+  assert.equal(blocksMit('node scripts/x.mjs', {}, trick), true);
+  const trick2 = () => "import {writeFileSync} from 'fs';\n/* tmpdir */ writeFileSync('app/x.ts', y)";
+  assert.equal(blocksMit('node scripts/x.mjs', {}, trick2), true);
+  assert.equal(onlyTmpWrites("writeFileSync(join(tmpdir(), 'x'), y) // ok"), true);
+});
+
+test('schreibziel-ohne-arbeitsordner: Pfade gelten relativ zum Arbeitsordner des Befehls', () => {
+  assert.equal(blocksMit('echo x > ../app/x.ts', { base: 'C:/projekt/scripts' }), true);
+  assert.equal(blocksMit('cd scripts && rm ../app/x.ts'), true);
+  assert.equal(blocksMit('cd scripts && sed -i s/a/b/ ../app/x.ts'), true);
+  // Gegenprobe: Variablen, die aus dem Projekt herausfuehren
+  assert.equal(blocksMit('node x.mjs > "$TEMP/out.txt"'), false);
+  assert.equal(blocksMit('S="$TEMP/w"; echo x > "$S/a.txt"'), false);
+  assert.equal(blocksMit('echo x > ~/notiz.txt'), false);
+  assert.equal(blocksMit('T=$(mktemp); echo x > $T'), true);   // Wert unbekannt: lieber ein Hinweis
+});
+
+test('Routine-Ops: der Pruefer-Schritt 0 laeuft vor der Freigabe', () => {
+  const schreibend = () => 'import {writeFileSync} from "fs"; writeFileSync(f, k);';
+  assert.equal(blocksMit('node scripts/agentdb/ensure-daemon.mjs --quiet', {}, schreibend), false);
+  assert.equal(isExempt('scripts/agentdb/ensure-daemon.mjs'), false);
+});
+
+test('Korpus-Abgleich 24.10.2026: Luecken und Fehlalarme aus echten Aufrufen', () => {
+  // Echte Schreiber, die das alte Gate nicht sah
+  assert.equal(blocksMit('git checkout HEAD -- app/components/SideDrawer.tsx'), true);
+  assert.equal(blocksMit('F="app/x.tsx"; git checkout HEAD -- "$F"'), true);
+  assert.equal(blocksMit('git stash apply'), true);
+  // Fehlalarme des alten Gates
+  assert.equal(blocksMit('curl -s https://x -o "$TMPDIR/c.json"', { env: {} }), false);
+  assert.equal(blocksMit('H=$(cat "$S/boxhost.txt"); scp -q a.mjs "$H:/root/a.mjs"'), false);
+  assert.equal(blocksMit('H=root@37.27.219.140; E=/mnt/v; scp a.mjs "$H:$E/a.mjs"'), false);
+  assert.equal(blocksMit("sed -n 's/`a`/b/p' app/x.ts"), false);
+  assert.equal(blocksMit('git checkout -b neu'), false);
+  // Skript im Scratchpad, das neben sich schreibt
+  const neben = () => 'echo x > "$(dirname "$0")/out.txt"';
+  assert.equal(blocksMit('bash C:/Users/u/AppData/Local/Temp/s/w.sh', {}, neben), false);
+  assert.equal(blocksMit('bash scripts/w.sh', {}, neben), true);
+});
+
+test('nie geschlossenes Anfuehrungszeichen verschluckt keinen Befehl', () => {
+  assert.equal(blocksMit('echo "a ; rm app/x.ts'), true);
 });

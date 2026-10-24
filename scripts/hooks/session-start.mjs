@@ -16,9 +16,17 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync, mkdirSy
 import { join } from 'node:path';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { PROJECT_DIR, readInput, readState, writeState, pruneOldState, clearApproval, readGlobal, writeGlobal, APPROVAL_SURVIVES_COMPACT, isTrivialApproval } from './lib/state.mjs';
+// lib/state.mjs dynamisch: ein Fehler darin liess bis 24.10.2026 den ganzen
+// Start-Hook sterben — ohne Kernregeln und ohne jede Warnung
+// (Sicherheitsdurchsicht, kernregeln-fehlen-still). Jetzt laeuft der Rest weiter
+// und meldet den Ausfall.
+const PROJECT_DIR = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+let st = null;
+let stFehler = '';
+try { st = await import('./lib/state.mjs'); } catch (err) { stFehler = String(err?.message || err).split('\n')[0]; }
 
-const input = readInput();
+let input = {};
+try { input = JSON.parse(readFileSync(0, 'utf8')); } catch { input = {}; }
 const source = String(input.source || '');
 const sessionId = input.session_id;
 
@@ -28,6 +36,10 @@ const wantsMemory = source !== 'resume';
 
 const parts = [];
 const notes = [];
+if (!st) {
+  notes.push(`FEHLER: lib/state.mjs nicht ladbar (${stFehler})`);
+  parts.push(`<gate-warnung>scripts/hooks/lib/state.mjs laesst sich nicht laden (${stFehler}). Freigaben werden in dieser Sitzung weder gesetzt noch geprueft, das Schreib-Gate laesst alles ungeprueft durch. Sag dem User diesen Befund und repariere scripts/hooks/ zuerst.</gate-warnung>`);
+}
 
 // --- Tier-1-Memory-Bundle -------------------------------------------------
 const home = process.env.USERPROFILE || process.env.HOME || '';
@@ -78,8 +90,12 @@ if (wantsMemory && existsSync(memDir)) {
 
 // --- Kernregeln ans Ende des Kontexts -------------------------------------
 const rules = join(PROJECT_DIR, 'infra', 'claude-settings', 'discipline.md');
-if (existsSync(rules)) {
+try {
   parts.push(readFileSync(rules, 'utf8'));
+} catch (err) {
+  // Bis 24.10.2026 still uebersprungen (kernregeln-fehlen-still).
+  notes.push(`FEHLER: Kernregeln nicht lesbar (${err?.code || err?.message})`);
+  parts.push(`<gate-warnung>infra/claude-settings/discipline.md ist nicht lesbar (${err?.code || err?.message}) — die Kernregeln sind in dieser Sitzung NICHT eingespielt. Sag dem User diesen Befund.</gate-warnung>`);
 }
 
 // --- Freigabe-Zustand ------------------------------------------------------
@@ -96,20 +112,20 @@ if (existsSync(rules)) {
 // Ausnahme von der Ausnahme: der Trivial-Ausweg hat keine Themengrenze und
 // stirbt weiterhin am Compact. Erkannt am Wort, nicht am fehlenden Plan-Hash —
 // ein frueh gegebenes „go" hat oft noch keinen Plan (27.09.2026).
-if (sessionId) {
-  if (source === 'compact' && APPROVAL_SURVIVES_COMPACT) {
-    const s = readState(sessionId);
-    if (s.approvedAt && !isTrivialApproval(s)) {
-      writeState(sessionId, { survivedCompact: true });
+if (st && sessionId) {
+  if (source === 'compact' && st.APPROVAL_SURVIVES_COMPACT) {
+    const s = st.readState(sessionId);
+    if (s.approvedAt && !st.isTrivialApproval(s)) {
+      st.writeState(sessionId, { survivedCompact: true });
       notes.push('Plan-Freigabe ueber den Compact hinweg erhalten');
     } else if (s.approvedAt) {
-      clearApproval(sessionId, 'Compact — Trivial-Freigabe verfaellt');
+      st.clearApproval(sessionId, 'Compact — Trivial-Freigabe verfaellt');
     }
   } else {
-    clearApproval(sessionId, `Session-Start (${source || 'unbekannt'})`);
+    st.clearApproval(sessionId, `Session-Start (${source || 'unbekannt'})`);
   }
 }
-pruneOldState();
+st?.pruneOldState();
 
 // --- Kernregeln in den Prefix ---------------------------------------------
 // Bis 2026-09-01 wurden die Kernregeln bei JEDEM Prompt neu angehaengt (2.601
@@ -224,27 +240,53 @@ try {
   // sperrt das Gate seit derselben Durchsicht selbst (toRel loest den Verweis
   // auf) — gegen eine Aenderung VON AUSSEN hilft nur, sie zu melden.
   const jetzt = createHash('sha256').update(roh.replace(/\r\n/g, '\n')).digest('hex').slice(0, 12);
-  const vorher = readGlobal().settingsFingerprint || '';
+  const vorher = st?.readGlobal().settingsFingerprint || '';
   if (vorher && vorher !== jetzt) {
     parts.push(`<gate-warnung>.claude/settings.json hat sich seit der letzten Session geaendert (Fingerabdruck ${vorher} -> ${jetzt}). Diese Datei entscheidet, welche Gates ueberhaupt laufen. Sag dem User diesen Befund.</gate-warnung>`);
   }
-  if (vorher !== jetzt) writeGlobal({ settingsFingerprint: jetzt });
+  if (st && vorher !== jetzt) st.writeGlobal({ settingsFingerprint: jetzt });
 } catch {
   // Keine lesbare settings.json: der Drift-Check im pre-push meldet das ohnehin.
 }
 
+// --- Laesst sich jeder Hook laden, und ist keiner abgeschaltet? -----------
+// Seit Runde 10 (24.10.2026). Registriert heisst nicht ladbar: ein Hook mit
+// fehlender Bibliothek oder umbenanntem Import stirbt mit Exit 1, und Claude
+// Code laeuft ohne ihn weiter (gate-faellt-offen-bei-fehlender-datei). Dazu die
+// Schalter, die alle Waechter auf einmal abstellen (disableAllHooks in
+// .claude/settings.local.json, hooks-abschaltbar-settings-local). Eigener
+// Prozess mit Frist: stirbt die Pruefung, steht der Start-Hook trotzdem.
+try {
+  const out = execFileSync(process.execPath, [join(PROJECT_DIR, 'scripts', 'hooks', 'check-hook-load.mjs'), '--json'], {
+    cwd: PROJECT_DIR, timeout: 30_000, encoding: 'utf8', windowsHide: true,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: PROJECT_DIR },
+  });
+  const r = JSON.parse(out);
+  if (r.fehler?.length) {
+    notes.push(`FEHLER: ${r.fehler.length} Hook-Ladefehler`);
+    parts.push(`<gate-warnung>Diese Hooks lassen sich nicht laden und fallen in dieser Sitzung still aus: ${r.fehler.join('; ')}. Sag dem User diesen Befund und repariere scripts/hooks/ zuerst.</gate-warnung>`);
+  }
+  if (r.warnungen?.length) {
+    notes.push(`WARNUNG: ${r.warnungen.length} Waechter-Schalter gesetzt`);
+    parts.push(`<gate-warnung>Waechter abgeschaltet: ${r.warnungen.join('; ')}. Sag dem User diesen Befund.</gate-warnung>`);
+  }
+} catch (err) {
+  notes.push('FEHLER: Hook-Ladepruefung gescheitert');
+  parts.push(`<gate-warnung>Die Ladepruefung der Hooks (scripts/hooks/check-hook-load.mjs) ist gescheitert (${String(err?.message || err).split('\n')[0]}). Ob alle Waechter laufen, ist ungeprueft. Sag dem User diesen Befund.</gate-warnung>`);
+}
+
 
 // --- Woechentlicher Drift-Audit -------------------------------------------
-const g = readGlobal();
+const g = st?.readGlobal() || {};
 const lastAudit = g.lastAuditRun ? Date.parse(g.lastAuditRun) : 0;
-if (source === 'startup' && Date.now() - lastAudit > 7 * 864e5) {
+if (st && source === 'startup' && Date.now() - lastAudit > 7 * 864e5) {
   try {
     const out = execFileSync(process.execPath, [join(PROJECT_DIR, 'scripts', 'drift-audit.mjs')], {
       cwd: PROJECT_DIR, timeout: 60_000, encoding: 'utf8',
     });
     parts.push(`<drift-audit hinweis="woechentlicher Compliance-Report. Zeig dem User die GESAMT-Zeile und sag, ob sich die Werte gegen die Baseline verbessert oder verschlechtert haben.">\n${out}\n</drift-audit>`);
     notes.push('Wochen-Drift-Audit gelaufen');
-    writeGlobal({ lastAuditRun: new Date().toISOString() });
+    st.writeGlobal({ lastAuditRun: new Date().toISOString() });
   } catch {
     // Kein Transcript, kein Node, egal — der Audit ist Diagnose, kein Gate.
   }

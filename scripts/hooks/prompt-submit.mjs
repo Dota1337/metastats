@@ -7,33 +7,45 @@
 // 2. Die Kernregeln ans Ende des Kontexts haengen. AGENTS.md steht am Kopf und
 //    verliert in langen Sessions gegen die Rezenz; hier landet der Text direkt
 //    vor der Antwort.
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { PROJECT_DIR, readInput, readState, writeState, clearApproval, planHash } from './lib/state.mjs';
+import { readInput, readState, writeState, clearApproval, planHash } from './lib/state.mjs';
+import { isApprovalPrompt, isTrivialPrompt, isNewTopic, isMachinePrompt } from './lib/prompt-words.mjs';
 
 const input = readInput();
 const sessionId = input.session_id;
 const prompt = String(input.prompt || '').trim();
 
-// Kurz genug, um eine reine Freigabe zu sein. „ok, aber mach X anders" ist
-// keine Freigabe des vorgelegten Plans, sondern ein neuer Auftrag — deshalb
-// die Laengenschranke statt eines blossen Praefix-Matches.
-const SHORT = prompt.length <= 120;
-// `k`, `jo` und `mach` sind hier bewusst NICHT dabei: sie kamen in keiner der
-// bisher erteilten Freigaben vor (`.git/metastats-discipline/*.json` am
-// 2026-09-01: go, Go, "Ja und go", "Go B", "Go Freigabe", "Passt, …"), sind aber
-// die haeufigsten Anfaenge normaler Auftraege („mach weiter mit X").
-const APPROVAL = /^\s*(go|ok|okay|passt|freigabe|freigegeben|los|ja|yes|approved|genehmigt)\b/i;
-const TRIVIAL = /\b(trivial|spot-?fix)\b/i;
-const NEW_TOPIC = /^\s*code\s*:/i;
-// Prompts, die nicht vom User stammen: Subagent-Fertigmeldungen, Hook-Reminder,
-// Bash-Echos. Sie kommen ueber denselben Kanal an und duerfen niemals eine
-// Freigabe erzeugen. Belegt eingetreten (2026-09-01): in
-// `.git/metastats-discipline/060ef0f3-….json` steht `approvedBy:
-// "<task-notification>…"` — eine 18k Zeichen lange Agent-Meldung enthielt das
-// Wort „trivial" und hat sich damit selbst freigegeben, weil TRIVIAL frueher
-// ausserhalb der Laengenschranke geprueft wurde.
-const MACHINE = /^\s*</.test(prompt);
+// Was als Freigabe, Trivial-Ausweg, neues Thema oder Maschinen-Meldung zaehlt,
+// steht seit Runde 10 (24.10.2026) in lib/prompt-words.mjs — samt Laengengrenze,
+// Rueckfrage-, Vorbehalts- und Verneinungs-Regel und den Belegen dazu.
+const MACHINE = isMachinePrompt(prompt);
+const APPROVAL = isApprovalPrompt(prompt);
+const TRIVIAL = isTrivialPrompt(prompt);
+
+/**
+ * Freigabe setzen. Ein zweites „ok" zum selben Plan erneuert das 8er-Fenster,
+ * aber NICHT den absoluten Deckel: sonst waere jede beilaeufige Zustimmung eine
+ * Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn es gar
+ * keine Freigabe mehr gab — geloescht durch neues `Code:`-Thema oder
+ * Sessiongrenze. Frueher reichte ein geaenderter Plan-Hash; seit
+ * Plan-Aenderungen nicht mehr blocken, haette stilles Umschreiben plus
+ * beilaeufiges „ja" den Deckel sonst wieder aufgefuellt (logic-flow-critic,
+ * 27.09.2026). Ein abgelaufener Deckel bleibt abgelaufen, bis das Thema neu
+ * per `Code:` aufgemacht wird.
+ */
+function freigeben(trivial) {
+  const s = readState(sessionId);
+  const fresh = !s.approvedAt;
+  writeState(sessionId, {
+    approvedAt: new Date().toISOString(),
+    planHash: planHash(),
+    promptsSinceApproval: 0,
+    promptsSinceFirstApproval: fresh ? 0 : (s.promptsSinceFirstApproval || 0),
+    approvedBy: prompt.slice(0, 60),
+    trivial,
+    clearedBy: null,
+    survivedCompact: fresh ? false : Boolean(s.survivedCompact),
+  });
+}
 
 if (sessionId) {
   if (MACHINE) {
@@ -45,31 +57,16 @@ if (sessionId) {
     // erlaubten Prompts — die Review, die AGENTS.md vorschreibt, hat also die
     // Freigabe fuer die anschliessende Implementation aufgezehrt. Genau daran
     // ist Runde 4 gescheitert (reference_discipline_hooks.md).
-  } else if (NEW_TOPIC.test(prompt) && !(SHORT && APPROVAL.test(prompt.replace(NEW_TOPIC, '')))) {
+  } else if (isNewTopic(prompt) && !APPROVAL) {
     // Neuer `Code:`-Task = neues Thema. Alte Freigabe verfaellt, und zwar
     // sichtbar: der Assistant sieht den Grund im Gate-Text wieder.
     clearApproval(sessionId, 'neuer Code:-Task — alte Freigabe verfallen');
-  } else if (SHORT && (APPROVAL.test(prompt.replace(NEW_TOPIC, '')) || TRIVIAL.test(prompt))) {
-    // Ein zweites „ok" zum selben Plan erneuert das 8er-Fenster, aber NICHT
-    // den absoluten Deckel: sonst waere jede beilaeufige Zustimmung eine
-    // Verlaengerung ohne Ende. Zurueckgesetzt wird der Deckel nur, wenn es
-    // gar keine Freigabe mehr gab — geloescht durch neues `Code:`-Thema oder
-    // Sessiongrenze. Frueher reichte ein geaenderter Plan-Hash; seit
-    // Plan-Aenderungen nicht mehr blocken, haette stilles Umschreiben plus
-    // beilaeufiges „ja" den Deckel sonst wieder aufgefuellt (logic-flow-critic,
-    // 27.09.2026). Ein abgelaufener Deckel bleibt abgelaufen, bis das Thema neu
-    // per `Code:` aufgemacht wird.
-    const s = readState(sessionId);
-    const fresh = !s.approvedAt;
-    writeState(sessionId, {
-      approvedAt: new Date().toISOString(),
-      planHash: planHash(),
-      promptsSinceApproval: 0,
-      promptsSinceFirstApproval: fresh ? 0 : (s.promptsSinceFirstApproval || 0),
-      approvedBy: prompt.slice(0, 60),
-      clearedBy: null,
-      survivedCompact: fresh ? false : Boolean(s.survivedCompact),
-    });
+    // „Code: trivial, Tippfehler in X" ist neues Thema UND Trivial-Ausweg. Bis
+    // 24.10.2026 loeschte er nur die alte Freigabe und erteilte keine — der
+    // vom User gewaehlte Ausweg lief ins Leere.
+    if (TRIVIAL) freigeben(true);
+  } else if (APPROVAL || TRIVIAL) {
+    freigeben(TRIVIAL);
   } else {
     const s = readState(sessionId);
     writeState(sessionId, {

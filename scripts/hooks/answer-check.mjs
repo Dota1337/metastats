@@ -55,14 +55,31 @@ const COMPLETENESS_RE = /(das (ist|war) (jetzt )?alles|alle (probleme|fehler|f(a
 const input = readInput();
 if (input.stop_hook_active) process.exit(0); // Schleifenschutz
 
+/**
+ * Ohne Gespraechsverlauf prueft keine der vier Bremsen etwas. Bis 24.10.2026
+ * endete der Hook dann still (antwortbremse-schweigt-ohne-verlauf). Jetzt
+ * einmal je Sitzung eine sichtbare Meldung — nicht bei jeder Antwort, sonst
+ * nervt sie und wird abgeschaltet.
+ */
+function ohneVerlauf(grund) {
+  const s = readState(input.session_id);
+  if (!s.verlaufFehltGemeldet) {
+    writeState(input.session_id, { verlaufFehltGemeldet: true });
+    process.stdout.write(JSON.stringify({
+      systemMessage: `[metastats] Antwort-Bremse ohne Gespraechsverlauf (${grund}) — Laenge, unbelegte Zahlen und ungepruefte Fragen werden in dieser Sitzung nicht geprueft.`,
+    }));
+  }
+  process.exit(0);
+}
+
 const path = input.transcript_path;
-if (!path) process.exit(0);
+if (!path) ohneVerlauf('kein Pfad uebergeben');
 
 let lines;
 try {
   lines = readFileSync(path, 'utf8').split('\n').filter(Boolean);
-} catch {
-  process.exit(0);
+} catch (err) {
+  ohneVerlauf(`nicht lesbar: ${err?.code || err?.message}`);
 }
 
 // Rueckwaerts bis zur letzten ECHTEN User-Nachricht. Tool-Results kommen

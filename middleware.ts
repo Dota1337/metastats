@@ -60,6 +60,14 @@ function notFound(req: NextRequest, lang: PrefixLang | null): NextResponse {
 }
 
 export async function middleware(req: NextRequest, event: NextFetchEvent) {
+  // --- Publisher-Kopf ohne gueltiges Geheimnis → 403 ---------------------
+  // Nicht still als Besucher weiterreichen: ein Publisher, der so behandelt
+  // wird, bekaeme seinen eigenen Vorrat zurueck und schriebe ihn eingefroren
+  // neu (app/lib/snapshot-publisher.mjs). Besucher schicken den Kopf nie.
+  if (req.headers.has(PUBLISHER_HEADER) && !publisherTokenValid((n: string) => req.headers.get(n), process.env[PUBLISHER_TOKEN_ENV])) {
+    return NextResponse.json({ error: 'publisher_rejected' }, { status: 403, headers: { ...SEC, 'Cache-Control': 'no-store' } });
+  }
+
   // --- Sprach-Adressen ---------------------------------------------------
   const route = langRoute(req.nextUrl.pathname);
   // Gesperrt: zuerst, vor allem anderen — ein Vorsatz darf nie am Login-Zweig

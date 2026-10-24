@@ -10,7 +10,7 @@
 // SNAPSHOT_PUBLISHER_TOKEN (Vercel und /etc/metastats-crawler/env).
 //
 // Angenommen wird es an genau zwei Stellen mit derselben Pruefung: in der
-// Middleware (entfernt falsche Koepfe, meldet die Annahme mit
+// Middleware (Publisher-Kopf ohne gueltiges Geheimnis → 403, sonst Annahme per
 // PUBLISHER_ACCEPTED_HEADER zurueck) und in isSnapshotPublisher. Die Box prueft
 // vor jedem Lauf, ob die Annahme ankommt, und bricht sonst mit Exit 1 ab —
 // ein abgelehnter Publisher wuerde still eingefrorene Daten neu hochladen.

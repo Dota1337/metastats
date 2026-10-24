@@ -5,12 +5,38 @@ import {
   EXPLORER_RANKS, EXPLORER_RANK_STAGES, LATEST_PATCH, barPatches, rankStageOf, stageRanks,
   type ExplorerMeta, type ExplorerQuery, type ExplorerRank, type ExplorerRankStage,
 } from '../../../lib/tft-explorer-query';
-import { seg } from './explorer-ui';
 
 // Grundmenge: Patch, Region, Rang. Seit 25.10.2026 drei Knoepfe mit
 // Aufklappfenster vorn in der Filterleiste (ExplorerFilters, PlainChip); hier
 // stehen Beschriftung und Fensterinhalt. Die Auswahl kommt aus dem, was im
 // Speicher tatsaechlich liegt (meta), nicht aus festen Listen.
+
+// Menuezeile (User 25.10.2026: Auswahl untereinander): ganze Zeile klickbar,
+// gewaehlt = Akzent. Handy mind. 40 px zum Antippen.
+const rowCls = (on: boolean) =>
+  `w-full flex items-center gap-2 px-2 py-1.5 max-sm:min-h-10 rounded text-[13px] text-left ${
+    on ? 'bg-accent-a15 text-fg-bright' : 'text-fg-secondary hover:bg-surface-overlay hover:text-fg-primary'}`;
+
+// Kaestchen fuer die Mehrfachwahl (Patch).
+function Box({ on }: { on: boolean }) {
+  return (
+    <span aria-hidden="true" className={`w-3.5 h-3.5 shrink-0 rounded-sm border flex items-center justify-center text-[10px] leading-none ${
+      on ? 'bg-accent-a60 border-accent-a60 text-fg-bright' : 'border-border-default'}`}>
+      {on ? '✓' : ''}
+    </span>
+  );
+}
+
+// box = Mehrfachwahl mit Kaestchen links, sonst Haken rechts (eine Wahl).
+function MenuItem({ on, box = false, onClick, children }: { on: boolean; box?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" className={rowCls(on)} aria-pressed={on} onClick={onClick}>
+      {box && <Box on={on} />}
+      <span className="truncate">{children}</span>
+      {!box && on && <span aria-hidden="true" className="ml-auto text-accent">✓</span>}
+    </button>
+  );
+}
 
 export const RANK_LABEL: Record<ExplorerRank, TranslationKey> = {
   CHALLENGER: 'tft.bucket.challenger',
@@ -85,24 +111,21 @@ export function PatchOptions({ query, setQuery, meta, resolvedPatch }: Scope & {
 
   return (
     <>
-      <button type="button" className={seg(isLatest)} aria-pressed={isLatest} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
+      <MenuItem box on={isLatest} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
         {patchHint(t, isLatest ? resolvedPatch : null)}
-      </button>
+      </MenuItem>
       {showBar && bar.map(p => {
         const on = !isLatest && !isAll && query.patches.includes(p);
-        return (
-          <button key={p} type="button" className={seg(on)} aria-pressed={on} onClick={() => togglePatch(p)}>
-            {p}
-          </button>
-        );
+        return <MenuItem key={p} box on={on} onClick={() => togglePatch(p)}>{p}</MenuItem>;
       })}
       {loosePatches && (
-        <span className={`${seg(true)} inline-flex items-center gap-1.5 pr-1`}>
-          {loosePatches}
+        <div className={`${rowCls(true)} pr-1`}>
+          <Box on />
+          <span className="truncate">{loosePatches}</span>
           <button type="button" onClick={dropLoose}
             aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
-            className="text-fg-muted hover:text-fg-primary">{'×'}</button>
-        </span>
+            className="ml-auto px-1 text-fg-muted hover:text-fg-primary">{'×'}</button>
+        </div>
       )}
     </>
   );
@@ -117,13 +140,9 @@ export function RegionOptions({ query, setQuery, meta, onPick }: Scope & { meta:
   const pick = (region: string) => { setQuery({ ...query, region }); onPick(); };
   return (
     <>
-      <button type="button" className={seg(query.region === 'all')} aria-pressed={query.region === 'all'} onClick={() => pick('all')}>
-        {t('tft.filter.allRegions')}
-      </button>
+      <MenuItem on={query.region === 'all'} onClick={() => pick('all')}>{t('tft.filter.allRegions')}</MenuItem>
       {regions.map(r => (
-        <button key={r} type="button" className={seg(query.region === r)} aria-pressed={query.region === r} onClick={() => pick(r)}>
-          {regionShortLabel(r)}
-        </button>
+        <MenuItem key={r} on={query.region === r} onClick={() => pick(r)}>{regionShortLabel(r)}</MenuItem>
       ))}
     </>
   );
@@ -135,13 +154,9 @@ export function RankOptions({ query, setQuery, onPick }: Scope & { onPick: () =>
   const pick = (ranks: ExplorerRank[]) => { setQuery({ ...query, ranks }); onPick(); };
   return (
     <>
-      <button type="button" className={seg(stage === 'all')} aria-pressed={stage === 'all'} onClick={() => pick([])}>
-        {t('tft.filter.allRanks')}
-      </button>
+      <MenuItem on={stage === 'all'} onClick={() => pick([])}>{t('tft.filter.allRanks')}</MenuItem>
       {EXPLORER_RANK_STAGES.map(s => (
-        <button key={s} type="button" className={seg(stage === s)} aria-pressed={stage === s} onClick={() => pick(stageRanks(s))}>
-          {t(STAGE_LABEL[s])}
-        </button>
+        <MenuItem key={s} on={stage === s} onClick={() => pick(stageRanks(s))}>{t(STAGE_LABEL[s])}</MenuItem>
       ))}
     </>
   );

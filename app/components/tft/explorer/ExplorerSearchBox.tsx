@@ -26,6 +26,15 @@ export function OptIcon({ src, alt, className = 'w-6 h-6', border }: { src: stri
   return <img src={src} alt={alt} title={alt} loading="lazy" className={`${className} rounded object-cover shrink-0`} style={border ? { boxShadow: `inset 0 0 0 1.5px ${border}` } : undefined} />;
 }
 
+// Aufklapp-Pfeil fuer Suchfeld, Knoepfe der Filterleiste und Bausteine; offen = nach oben.
+export function Chevron({ open, className = 'w-4 h-4' }: { open: boolean; className?: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" className={`${className} shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const quick = 'px-1.5 py-0.5 rounded border border-border-subtle text-[11px] text-fg-secondary hover:border-accent-a50 hover:text-fg-bright';
 
 type BrowseTab = 'units' | ItemBucket | 'traits';
@@ -255,9 +264,7 @@ export default function ExplorerSearchBox({
           onMouseDown={e => e.preventDefault()}
           onClick={() => { if (showBrowse) close(); else { setText(''); setOpen(true); onFocus?.(); } }}
           className="w-7 h-7 flex items-center justify-center shrink-0 rounded text-fg-muted hover:text-fg-primary">
-          <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-4 h-4 transition-transform ${showBrowse ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Chevron open={showBrowse} />
         </button>
         <div className="flex shrink-0 rounded border border-border-subtle overflow-hidden" role="group">
           {(['and', 'or'] as const).map(m => (

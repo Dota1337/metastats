@@ -16,7 +16,7 @@ import {
   PICK_KINDS, applyPhrase, applyPick, canAdd, chosenIds, normText, pickKey, removeEverywhere,
   type LastRef, type Op, type PhraseTerm, type Pick,
 } from './explorer-search';
-import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
+import ExplorerSearchBox, { Chevron, ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
 import { PatchOptions, RankOptions, RegionOptions, patchHint, patchValue, rankValue, regionValue } from './ExplorerScope';
 import { seg } from './explorer-ui';
 import { useFilterDrag } from './explorer-drag';
@@ -324,21 +324,21 @@ export default function ExplorerFilters({
   return (
     <div ref={wrapRef} className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
-        <PlainChip value={patchValue(query, t)} hint={patchHint(t, resolvedPatch)}
+        <PlainChip value={patchValue(query, t)} hint={patchHint(t, resolvedPatch)} size="menu"
           open={open === 'pt'} onToggle={() => toggle('pt')} onClear={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
-          <Row label={t('tft.filter.patch')}>
+          <Row label={t('tft.filter.patch')} stack>
             <PatchOptions query={query} setQuery={setQuery} meta={meta} resolvedPatch={resolvedPatch} />
           </Row>
         </PlainChip>
-        <PlainChip value={regionValue(query)} hint={t('tft.filter.allRegions')}
+        <PlainChip value={regionValue(query)} hint={t('tft.filter.allRegions')} size="menu"
           open={open === 'rg'} onToggle={() => toggle('rg')} onClear={() => setQuery({ ...query, region: 'all' })}>
-          <Row label={t('tft.filter.region')}>
+          <Row label={t('tft.filter.region')} stack>
             <RegionOptions query={query} setQuery={setQuery} meta={meta} onPick={close} />
           </Row>
         </PlainChip>
-        <PlainChip value={rankValue(query, t)} hint={t('tft.filter.allRanks')}
+        <PlainChip value={rankValue(query, t)} hint={t('tft.filter.allRanks')} size="menu"
           open={open === 'rk'} onToggle={() => toggle('rk')} onClear={() => setQuery({ ...query, ranks: [] })}>
-          <Row label={t('tft.filter.bucket')}>
+          <Row label={t('tft.filter.bucket')} stack>
             <RankOptions query={query} setQuery={setQuery} onPick={close} />
           </Row>
         </PlainChip>
@@ -373,7 +373,7 @@ export default function ExplorerFilters({
             ))}
           </Row>
         </PlainChip>
-        <PlainChip label={t('tft.explorer.x.board')} value={boardValue} wide
+        <PlainChip label={t('tft.explorer.x.board')} value={boardValue} size="wide"
           open={open === 'bc'} onToggle={() => toggle('bc')} onClear={() => setQuery({ ...query, bc: [], tags: [] })}>
           {BOARD_ROWS.map(sec => (
             <div key={sec.head} className="space-y-2">
@@ -509,11 +509,13 @@ function Chip({
           className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 min-h-10 text-fg-primary ${drag ?'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
           {excluded && <span className="text-pos-loss no-underline">{t('tft.explorer.x.without')}</span>}
           {label}
+          {/* Pfeil nur, wenn ein Fenster aufgeht (Synergie mit einer Stufe hat keins). */}
+          {children ? <Chevron open={open} className="w-3.5 h-3.5 text-fg-muted" /> : null}
         </button>
         <button type="button" onClick={onRemove} aria-label={removeLabel} title={removeLabel}
           className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
       </div>
-      {open && children && <Popover wide={wide}>{children}</Popover>}
+      {open && children && <Popover size={wide ? 'wide' : 'normal'}>{children}</Popover>}
     </div>
   );
 }
@@ -535,7 +537,16 @@ function placePopover(el: HTMLDivElement | null) {
   if (shift > 0.5) el.style.transform = `translateX(-${shift}px)`;
 }
 
-function Popover({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
+// Breite/Hoehe nur ab sm, darunter bleibt das Blatt unten. menu = Patch/Region/Rang
+// untereinander (25.10.2026); 16 Regionen ~480 px, darum Hoehe begrenzt.
+const POPOVER_SIZE = {
+  normal: 'sm:w-[20rem]',
+  wide: 'sm:w-[26rem] sm:max-h-[70vh] sm:overflow-y-auto',
+  menu: 'sm:w-56 sm:max-h-[70vh] sm:overflow-y-auto',
+} as const;
+type PopoverSize = keyof typeof POPOVER_SIZE;
+
+function Popover({ children, size = 'normal' }: { children: React.ReactNode; size?: PopoverSize }) {
   const ref = useRef<HTMLDivElement>(null);
   // Nach jeder Darstellung messen: der Baustein waechst beim Bearbeiten
   // (Item-Bilder im Namen) und kann umbrechen.
@@ -548,8 +559,7 @@ function Popover({ children, wide = false }: { children: React.ReactNode; wide?:
   return (
     // Handy: als Blatt am unteren Rand, sonst ragt es neben einem rechten Baustein aus dem Bild.
     <div ref={ref}
-      className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${
-      wide ? 'sm:w-[26rem] sm:max-h-[70vh] sm:overflow-y-auto' : 'sm:w-[20rem]'}`}>
+      className={`z-30 rounded-lg border border-border-subtle bg-surface-raised p-3 shadow-xl space-y-3 max-sm:fixed max-sm:inset-x-3 max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:overflow-y-auto sm:absolute sm:left-0 sm:top-full sm:mt-1 ${POPOVER_SIZE[size]}`}>
       {children}
     </div>
   );
@@ -558,8 +568,8 @@ function Popover({ children, wide = false }: { children: React.ReactNode; wide?:
 // Patch / Region / Rang / Level / Platz / Brett: immer da; gesetzt = hervorgehoben
 // mit ×. hint = Standardwert ohne Hervorhebung (Patch/Region/Rang, ohne label).
 function PlainChip({
-  label, value, hint, open, onToggle, onClear, children, wide = false,
-}: { label?: string; value: string | null; hint?: string; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode; wide?: boolean }) {
+  label, value, hint, open, onToggle, onClear, children, size = 'normal',
+}: { label?: string; value: string | null; hint?: string; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode; size?: PopoverSize }) {
   const { t } = useI18n();
   return (
     <div className="relative">
@@ -569,13 +579,14 @@ function PlainChip({
           {label}
           {value ? <span className="text-fg-bright tabular-nums truncate max-w-[16rem]">{value}</span>
             : hint && <span className="text-fg-primary tabular-nums truncate max-w-[16rem]">{hint}</span>}
+          <Chevron open={open} className="w-3.5 h-3.5 text-fg-muted" />
         </button>
         {value && (
           <button type="button" onClick={onClear} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
             className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
         )}
       </div>
-      {open && <Popover wide={wide}>{children}</Popover>}
+      {open && <Popover size={size}>{children}</Popover>}
     </div>
   );
 }
@@ -600,11 +611,12 @@ function MinExact({ exact, set, disabled }: { exact: boolean; set: (e: boolean) 
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+// stack = Menuezeilen untereinander (Patch/Region/Rang), sonst Knoepfe nebeneinander.
+function Row({ label, children, stack = false }: { label: string; children: React.ReactNode; stack?: boolean }) {
   return (
     <div className="space-y-1">
       <div className="text-[11px] text-fg-muted">{label}</div>
-      <div className="flex flex-wrap items-center gap-1">{children}</div>
+      <div className={stack ? 'flex flex-col gap-0.5' : 'flex flex-wrap items-center gap-1'}>{children}</div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson } from '../../../../lib/api-cache';
 import { previousPatchOf } from '../../../../lib/snapshot-matrix';
 import { readRouteMirror, withSnapshotHeader } from '../../../../lib/route-mirror-read';
+import { publicError } from '../../../../lib/public-error';
 
 // W2-A: Region-Divergence — pro Comp den KR vs EU vs NA Vergleich.
 // Default-Window 7 Tage: KR-Crawls ziehen oft mit Verzögerung nach, ein
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
   if (mirrored) return withSnapshotHeader(cachedJson(mirrored), 'regions', true);
 
   const { searchParams } = new URL(request.url);
-  const days = Math.max(1, Math.min(14, parseInt(searchParams.get('days') || '7', 10)));
+  const days = parseBoundedInt(searchParams.get('days'), { min: 1, max: 14, fallback: 7 });
   const minGames = parseBoundedInt(searchParams.get('min'), { min: 10, max: 100000, fallback: 100 });
   // Diese Route parst ihre Buckets bewusst selbst (kein resolveFilters), teilt
   // sich aber denselben Set-Start-Effekt: mit dem Set-Pin hat master_plus zum
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
   const buckets = expandBuckets(bucketRaw);
   // Label nur zurueckspiegeln, wenn es auch wirklich gegriffen hat — sonst
   // taucht ein erfundener Wert in der Antwort und im Cache-Key auf.
-  const bucketLabel = BUCKET_GROUPS[bucketRaw] ? bucketRaw : buckets.join(',');
+  const bucketLabel = Object.hasOwn(BUCKET_GROUPS, bucketRaw) ? bucketRaw : buckets.join(',');
   const patchParam = searchParams.get('patch') || 'any';
   let patch: string | null = null;
   if (patchParam === 'current' || patchParam === 'previous') {
@@ -111,6 +112,6 @@ export async function GET(request: NextRequest) {
       comps: enriched,
     }), 'regions', false);
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, comps: [], error: publicError('tft/regions/divergence', e, 'stats_unavailable') }, { status: 502 });
   }
 }

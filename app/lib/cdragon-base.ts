@@ -53,8 +53,11 @@ export function safeCdragonUrl(segments: string[]): string | null {
   // Zweite Schranke nach dem URL-Bau. Die Segment-Pruefung oben deckt den
   // dekodierten Normalfall ab; diese hier faengt alles, was `new URL()` noch
   // umschreibt, bevor daraus ein Fetch wird.
+  // Ordner-Schranke ein zweites Mal NACH dem URL-Bau: `%2e%2e` als Segment
+  // besteht die Pruefung oben und wird erst hier zu einer Ebene hoch
+  // (Sicherheitsdurchsicht 24.10.2026: assets/maps/%2e%2e/%2e%2e/data/x.png).
   const url = new URL(path, CDRAGON_GAME_BASE);
-  if (!url.href.startsWith(CDRAGON_GAME_BASE)) return null;
+  if (!CDRAGON_PATH_PREFIXES.some((p) => url.href.startsWith(CDRAGON_GAME_BASE + p))) return null;
   if (url.search || url.hash) return null;
   return url.href;
 }

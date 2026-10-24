@@ -2,6 +2,7 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/marktwert/movers?region=euw1&direction=up|down&window=7&limit=20
 //
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/marktwert/movers', error, 'db_error') }, { status: 500 });
   }
 
   const movers = (data || []).map((row: any) => ({

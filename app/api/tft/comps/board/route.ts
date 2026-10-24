@@ -24,6 +24,7 @@ import {
   buildCompBoards, compBoardPlants, compPositioning, parseGuideParam, type BoardSource, type CellShares,
 } from '../../../../lib/tft-comp-board';
 import type { CompanionBoardCell, CompanionEarlyBoard, CompanionPositioning } from '../../../../lib/companion-types';
+import { publicError } from '../../../../lib/public-error';
 
 export const maxDuration = 60;
 
@@ -142,6 +143,6 @@ export async function GET(request: NextRequest) {
       ? cachedJson(out, { cache: cacheControlForPatches(patches) })
       : cachedJson(out, { degraded: true });
   } catch (e) {
-    return degraded(e instanceof Error ? e.message : 'board_failed', 503);
+    return degraded(publicError('tft/comps/board', e, 'board_failed'), 503);
   }
 }

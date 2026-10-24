@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // Returns the (patch, set) pairs that have rows in the Supabase tables in
 // the last N days. Frontend uses this to populate the patch dropdown.
@@ -13,6 +14,6 @@ export async function GET(request: NextRequest) {
     const patches = await getAvailablePatches(days);
     return cachedJson({ hasData: patches.length > 0, patches });
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, patches: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, patches: [], error: publicError('tft/available-patches', e, 'stats_unavailable') }, { status: 502 });
   }
 }

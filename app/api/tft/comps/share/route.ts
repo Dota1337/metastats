@@ -3,16 +3,20 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { randomUUID } from 'node:crypto';
 import { sanitizePlacements } from '../../../../lib/tft-public-comps';
+import { checkRateLimit } from '../../../../lib/rate-limit';
+import { resolveCommunityAuthor, setAuthorCookie } from '../../../../lib/community-author';
 
 // POST /api/tft/comps/share
 // Body: { name, placements, oppPlacements?, traitLabel?, carryUnit?, authorHandle? }
 // placements[i]: { cell, characterId, items?, star? } — Pruefung in
 // tft-public-comps.ts (Felder 0–27 je einmal, 3 Items, Stern 2–4).
-// Anonymous-friendly: no auth, but a cookie-stored authorToken identifies
-// the submitter for (a) "delete your own" and (b) rate-limiting.
+// Anonymous-friendly: no auth. Die Kennung kommt aus community-author.ts
+// (unterschriebenes Cookie, sonst aus der IP abgeleitet) — ausgedachte oder
+// weggeworfene Cookies ergeben keinen neuen Autor mehr.
 //
 // Rate limit: max 5 comps per author_token per 24h, enforced by counting
 // existing rows. Cheap because (author_token, created_at) is indexed.
+// Davor eine Bremse je IP gegen schnelle Folgen von Aufrufen.
 
 const MAX_NAME_LENGTH = 60;
 const MAX_HANDLE_LENGTH = 24;
@@ -36,6 +40,9 @@ function slugify(name: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  const limited = checkRateLimit(req, { key: 'tft-comps-share', max: 10, windowMs: 10 * 60_000 });
+  if (limited) return limited;
+
   let body: any;
   try {
     body = await req.json();
@@ -55,12 +62,9 @@ export async function POST(req: NextRequest) {
   const carryUnit = sanitizeStr(body.carryUnit, 80);
   const authorHandle = sanitizeStr(body.authorHandle, MAX_HANDLE_LENGTH);
 
-  // Author token from cookie or freshly minted. Cookie is set in response
-  // so subsequent submissions and upvotes pick it up automatically.
-  let authorToken = req.cookies.get('tft_author_token')?.value || '';
-  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(authorToken)) {
-    authorToken = randomUUID().replace(/-/g, '');
-  }
+  const author = await resolveCommunityAuthor(req);
+  if (!author) return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  const authorToken = author.id;
 
   // Rate limit per author_token (24h rolling window)
   const since = new Date(Date.now() - 86_400_000).toISOString();
@@ -70,7 +74,8 @@ export async function POST(req: NextRequest) {
     .eq('author_token', authorToken)
     .gte('created_at', since);
   if (countErr) {
-    return NextResponse.json({ error: 'count_failed', detail: countErr.message }, { status: 500 });
+    console.error('[tft/comps/share] count failed:', countErr.message);
+    return NextResponse.json({ error: 'count_failed' }, { status: 500 });
   }
   if ((count ?? 0) >= DAILY_SUBMIT_CAP) {
     return NextResponse.json({ error: 'rate_limited', cap: DAILY_SUBMIT_CAP }, { status: 429 });
@@ -92,17 +97,11 @@ export async function POST(req: NextRequest) {
     .select('id, slug')
     .single();
   if (error) {
-    return NextResponse.json({ error: 'insert_failed', detail: error.message }, { status: 500 });
+    console.error('[tft/comps/share] insert failed:', error.message);
+    return NextResponse.json({ error: 'insert_failed' }, { status: 500 });
   }
 
   const res = NextResponse.json({ id: data.id, slug: data.slug });
-  // 1-year cookie, HttpOnly so JS can't read but the browser still includes it
-  res.cookies.set('tft_author_token', authorToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 365 * 86_400,
-    path: '/',
-  });
+  setAuthorCookie(res, author);
   return res;
 }

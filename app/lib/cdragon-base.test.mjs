@@ -13,6 +13,10 @@ test('weist alles zurueck, was aus der Base herausfuehrt', () => {
     seg('assets/maps/../../../etc/passwd'),
     seg('assets/maps/..'),
     seg('../assets/maps/tft/icons/x.png'),
+    // Kodierte Punkte: bestehen die Segment-Pruefung, new URL() macht daraus
+    // Ebenen hoch (Sicherheitsdurchsicht 24.10.2026).
+    ['assets', 'maps', '%2e%2e', '%2e%2e', 'data', 'x.png'],
+    ['assets', 'ux', '%2E%2E', 'x.png'],
     ['assets', 'maps', '', 'x.png'],
     ['assets\\maps\\x.png'],
     ['assets/maps/x.png\0.png'],

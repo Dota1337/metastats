@@ -14,6 +14,7 @@ import {
   fullDayComplete, dataWindow, addDays, transitionDataPatch, patchFilterCoversWindow,
 } from './snapshot-matrix';
 import { loadManifestWindow, peekManifestCurrent, type ManifestWindow } from './snapshot-lookup';
+import { parseBoundedInt, parsePatch } from './query-params';
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -132,7 +133,8 @@ const ALLOWED_REGION_VALUES = new Set(ALL_REGIONS.map(r => r.toLowerCase()));
 // Expand a filter param like "all" or "euw1,kr" into a flat region list.
 export function expandRegions(param: string | null): string[] {
   if (!param || param === 'all') return REGION_GROUPS.all;
-  if (REGION_GROUPS[param]) return REGION_GROUPS[param];
+  // hasOwn: ?region=constructor / __proto__ traf sonst Object.prototype.
+  if (Object.hasOwn(REGION_GROUPS, param)) return REGION_GROUPS[param];
   const picked = param.split(',')
     .map(s => s.trim().toLowerCase())
     .filter(s => ALLOWED_REGION_VALUES.has(s));
@@ -141,7 +143,7 @@ export function expandRegions(param: string | null): string[] {
 
 export function expandBuckets(param: string | null): string[] {
   if (!param || param === 'all') return BUCKET_GROUPS.all;
-  if (BUCKET_GROUPS[param]) return BUCKET_GROUPS[param];
+  if (Object.hasOwn(BUCKET_GROUPS, param)) return BUCKET_GROUPS[param];
   const picked = param.split(',')
     .map(s => s.trim().toLowerCase())
     .filter(s => ALLOWED_BUCKET_VALUES.has(s));
@@ -356,7 +358,7 @@ export async function resolveFilters(
   const publisher = !!opts.publisher;
   const manifestP = publisher ? null : loadManifestWindow().catch(() => null);
   const dataEndP = resolveDataEnd(searchParams.get('end'), publisher, manifestP ?? undefined).catch(() => null);
-  const regionLabel = searchParams.get('region') || 'all';
+  const rawRegionLabel = searchParams.get('region') || 'all';
   // C3 (2026-07-04): single-tier `diamond` has no snapshot coverage and was the
   // highest-traffic 521-causer on the heavy detoast RPCs. diamond_plus is its
   // strict superset (diamond+master+GM+chall) and IS snapshot-covered. Coerce
@@ -373,13 +375,26 @@ export async function resolveFilters(
     ? await resolveDefaultBucket()
     : tftStatsBucket(searchParams.get('bucket') || DEFAULT_BUCKET);
   // Alte Links ?bucket=master / diamond / emerald … → die X+-Gruppe (2026-09-13).
-  const bucketLabel = rawBucket;
-  const requestedDays = Math.max(1, Math.min(7, parseInt(searchParams.get('days') || '3', 10)));
-  const patchParam = searchParams.get('patch') || 'current';
+  const rawBucketLabel = rawBucket;
+  const requestedDays = parseBoundedInt(searchParams.get('days'), { min: 1, max: 7, fallback: 3 });
+  // Nur Aliase oder echte Patch-Form (query-params.ts); alles andere wie ohne
+  // Angabe. Vorher erzeugte jeder erfundene Wert eine eigene Abfrage am Vorrat
+  // vorbei (Sicherheitsdurchsicht 24.10.2026).
+  const rawPatch = searchParams.get('patch');
+  const patchParam = rawPatch === 'previous' || rawPatch === 'any' ? rawPatch : parsePatch(rawPatch, 'current')!;
   const setParam = searchParams.get('set');
 
-  const regions = expandRegions(regionLabel);
-  const buckets = expandBuckets(bucketLabel);
+  const regions = expandRegions(rawRegionLabel);
+  const buckets = expandBuckets(rawBucketLabel);
+  // Label nur zurueckspiegeln, wenn es gegriffen hat — ein erfundener Wert
+  // (?region=constructor) faellt wie seine Liste auf den Standard zurueck und
+  // trifft damit auch denselben Vorrat statt einer eigenen Live-Abfrage.
+  const regionLabel = Object.hasOwn(REGION_GROUPS, rawRegionLabel)
+    ? rawRegionLabel
+    : (regions === REGION_GROUPS.all ? 'all' : regions.join(','));
+  const bucketLabel = Object.hasOwn(BUCKET_GROUPS, rawBucketLabel)
+    ? rawBucketLabel
+    : (buckets === BUCKET_GROUPS.master_plus ? 'master_plus' : buckets.join(','));
   let patches = await getAvailablePatches();
   const manifest = manifestP ? await manifestP : null;
   // Das Manifest kennt schon einen Patch, den die gemerkte Liste nicht hat →
@@ -392,9 +407,11 @@ export async function resolveFilters(
   // (gemessen: Units/Items/Traits/Comps lieferten reine Set-17-Listen, weil
   // Set 17 im Fenster noch das groessere Volumen hatte). `?set=any` bleibt als
   // bewusstes Opt-out fuer setuebergreifende Auswertung.
+  // Andere Werte als `any` oder ein Set von 1 bis zum laufenden → laufendes Set.
+  const setInt = setParam && /^\d{1,2}$/.test(setParam) ? Number(setParam) : NaN;
   const setNumber = setParam === 'any'
     ? null
-    : (setParam ? parseInt(setParam, 10) : CURRENT_SET);
+    : (setInt >= 1 && setInt <= CURRENT_SET ? setInt : CURRENT_SET);
   // displayPatch = der konkrete Patch-String, den die Seite nennt.
   // patch (Daten-Patch) = displayPatch, ausser in der Uebergangszeit nach einem
   //   Patchwechsel (transitionDataPatch): dann der Patch des Manifests, bis der

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../lib/ddragon-version-server';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
+import { trustedSelfOrigin } from '../../lib/self-origin';
 
 export async function GET(request: NextRequest) {
   try {
-    const origin = new URL(request.url).origin;
+    const origin = trustedSelfOrigin(new URL(request.url));
 
     // Load champion stats
     let topChampions: { id: string; name: string; games: number; winRate: number; role: string }[] = [];

@@ -20,6 +20,16 @@ const WAVE_MS = 1050;
 // generate ~1 match every 30 min so 5 min is fresh enough.
 const STALE_AFTER_MINUTES_DEFAULT = 5;
 
+// Lehnt Riot die Match-Liste ab (erfundene Kennung, Limit, Ausfall), fragt
+// diese Instanz dieselbe Kennung 60 s lang nicht erneut und schreibt keine
+// Zustandszeile (Sicherheitsdurchsicht 24.10.2026: vorher legte jeder Aufruf
+// mit ausgedachter Kennung eine Zeile in tft_player_fetch_state an).
+const RIOT_REJECT_TTL_MS = 60_000;
+const riotRejected = new Map<string, number>();
+// Gleichzeitige Aufrufe fuer denselben Spieler teilen sich einen Lauf — der
+// Erstbesuch holt bis zu 1000 Matches.
+const inflight = new Map<string, Promise<RefreshResult>>();
+
 export interface CachedMatch {
   match_id: string;
   set_number: number;
@@ -62,6 +72,25 @@ export async function refreshPlayerCache(
   region: string,
   opts: RefreshOpts,
 ): Promise<RefreshResult> {
+  const key = `${region}|${puuid}`;
+  const now = Date.now();
+  if ((riotRejected.get(key) ?? 0) > now) return { cached: 0, newMatches: 0, skippedFresh: false };
+  if (riotRejected.size > 5000) {
+    for (const [k, until] of riotRejected) if (until <= now) riotRejected.delete(k);
+  }
+  const running = inflight.get(key);
+  if (running && !opts.force) return running;
+  const run = refreshPlayerCacheOnce(puuid, region, opts, key).finally(() => inflight.delete(key));
+  inflight.set(key, run);
+  return run;
+}
+
+async function refreshPlayerCacheOnce(
+  puuid: string,
+  region: string,
+  opts: RefreshOpts,
+  key: string,
+): Promise<RefreshResult> {
   const log = opts.log || (() => {});
   const regional = getRegionalRouting(region);
   const maxStale = opts.maxStaleMinutes ?? STALE_AFTER_MINUTES_DEFAULT;
@@ -78,6 +107,10 @@ export async function refreshPlayerCache(
   //    what's already cached, not the full history. If we find we're
   //    missing the whole list, we'll keep paginating below.
   const recentIds = await fetchIds(regional, puuid, opts.riotApiKey, 0, 200);
+  if (recentIds == null) {
+    riotRejected.set(key, Date.now() + RIOT_REJECT_TTL_MS);
+    return { cached: 0, newMatches: 0, skippedFresh: false };
+  }
   if (recentIds.length === 0) {
     await upsertFetchState(puuid, region, null, 0);
     return { cached: 0, newMatches: 0, skippedFresh: false };
@@ -96,7 +129,7 @@ export async function refreshPlayerCache(
     const fullIds = [...recentIds];
     for (let start = 200; start < 1000; start += 200) {
       const page = await fetchIds(regional, puuid, opts.riotApiKey, start, 200);
-      if (page.length === 0) break;
+      if (!page || page.length === 0) break;
       fullIds.push(...page);
       if (page.length < 200) break;
     }
@@ -287,18 +320,19 @@ function supaHeaders() {
 
 // ── Riot wrappers ──────────────────────────────────────────────────────────
 
-async function fetchIds(regional: string, puuid: string, apiKey: string, start: number, count: number): Promise<string[]> {
+/** null = Riot hat abgelehnt (Kennung unbekannt, Limit, Ausfall); [] = Spieler ohne Matches. */
+async function fetchIds(regional: string, puuid: string, apiKey: string, start: number, count: number): Promise<string[] | null> {
   const r = await riotFetch(
-    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}`,
+    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${encodeURIComponent(puuid)}/ids?count=${count}&start=${start}`,
     apiKey,
   );
-  if (!r.ok) return [];
+  if (!r.ok) return null;
   const ids = await r.json();
-  return Array.isArray(ids) ? ids : [];
+  return Array.isArray(ids) ? ids : null;
 }
 
 async function fetchDetail(regional: string, matchId: string, apiKey: string, attempt = 0): Promise<any | null> {
-  const r = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${matchId}`, apiKey);
+  const r = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${encodeURIComponent(matchId)}`, apiKey);
   if (r.ok) return r.json();
   if (r.status === 429 && attempt < 2) {
     const retryAfter = parseInt(r.headers.get('retry-after') || '2', 10);

@@ -15,6 +15,7 @@ import {
   companionPreflight, earlyBoards, toCompanionComp, type CompanionCompsResponse, type CompPairInput,
 } from '../../../../lib/companion-api';
 import { fetchCompMatchups } from '../../../../lib/tft-comp-matchups-server';
+import { trustedSelfOrigin } from '../../../../lib/self-origin';
 
 export const maxDuration = 60;
 
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
 
   const [res, assets] = await Promise.all([
     compsGET(new NextRequest(inner)),
-    fetch(`${origin}/tft-assets.json`).then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null)).catch(() => null),
+    fetch(`${trustedSelfOrigin(request.nextUrl)}/tft-assets.json`).then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null)).catch(() => null),
   ]);
   if (!res.ok) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'comps_unavailable' }, { status: 503, ...NO_STORE });

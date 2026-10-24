@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../../../lib/supabase';
-import { randomUUID } from 'node:crypto';
+import { checkRateLimit } from '../../../../../../lib/rate-limit';
+import { resolveCommunityAuthor, setAuthorCookie } from '../../../../../../lib/community-author';
 
 // POST /api/tft/comps/community/[id]/upvote
 // PK (comp_id, author_token) on tft_public_comp_upvotes ensures one vote
-// per cookie. Insert returns conflict → already voted, decrement vs increment
+// per Kennung (community-author.ts: unterschriebenes Cookie, sonst aus der IP
+// abgeleitet). Insert returns conflict → already voted, decrement vs increment
 // not supported (no toggle), keep flow simple.
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const limited = checkRateLimit(req, { key: 'tft-comps-upvote', max: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
   const { id } = await ctx.params;
   if (!/^[a-f0-9-]{20,}$/.test(id)) {
     return NextResponse.json({ error: 'invalid_id' }, { status: 400 });
   }
 
-  let authorToken = req.cookies.get('tft_author_token')?.value || '';
-  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(authorToken)) {
-    authorToken = randomUUID().replace(/-/g, '');
-  }
+  const author = await resolveCommunityAuthor(req);
+  if (!author) return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  const authorToken = author.id;
 
   // Insert into upvotes table — PK conflict means already voted.
   const { error: voteErr } = await supabaseAdmin
@@ -31,16 +35,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         .eq('id', id)
         .maybeSingle();
       const res = NextResponse.json({ ok: true, upvotes: data?.upvotes ?? 0, alreadyVoted: true });
-      res.cookies.set('tft_author_token', authorToken, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 365 * 86_400,
-        path: '/',
-      });
+      setAuthorCookie(res, author);
       return res;
     }
-    return NextResponse.json({ error: voteErr.message }, { status: 500 });
+    console.error('[tft/comps/upvote] insert failed:', voteErr.message);
+    return NextResponse.json({ error: 'vote_failed' }, { status: 500 });
   }
 
   // Increment denormalized counter — race-condition tolerant via the
@@ -60,12 +59,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const res = NextResponse.json({ ok: true, upvotes: newCount });
-  res.cookies.set('tft_author_token', authorToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 365 * 86_400,
-    path: '/',
-  });
+  setAuthorCookie(res, author);
   return res;
 }

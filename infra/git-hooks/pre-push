@@ -214,6 +214,16 @@ if ! node scripts/check-write-routes.mjs; then
   exit 1
 fi
 
+# --- Fehlertexte nach aussen ----------------------------------------------
+# Rohtext aus Supabase/Box gehoert ins Server-Log, nicht in die Antwort
+# (publicError, Sicherheitsdurchsicht 24.10.2026).
+echo "[pre-push] Checking Fehlertexte ..."
+if ! node scripts/check-error-leaks.mjs; then
+  echo ""
+  echo "Rohtext in Fehlerantwort — push blocked."
+  exit 1
+fi
+
 # --- Zeilenschutz in Migrationen -----------------------------------------
 # Jede Tabelle in public braucht RLS, sonst ist sie ueber den Anon-Schluessel
 # aus dem Browser les- und schreibbar (Supabase-Warnung 2026-09-29, 0079).

@@ -224,14 +224,6 @@ async function fetchPlayerRanked(puuid, region) {
     : null;
   return rankedSolo;
 }
-async function fetchAccount(puuid, regional) {
-  const r = await riot.fetchJson(
-    `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
-    { safe: true },
-  );
-  if (!r || r._status) return null;
-  return { gameName: r.gameName, tagLine: r.tagLine };
-}
 
 // ─ Challenger-Plaetze je Region, 10 Min zwischengespeichert ────────────────
 // Ein Abruf liefert die ganze Liga; bei mehreren Refreshes kurz hintereinander
@@ -284,6 +276,19 @@ async function refreshOnePlayer(puuid, region) {
 
   const ctx = getRegionCtx(region);
 
+  // 0) Kennt Riot die Kennung? Sonst schrieben Schritt 1 und 3 fuer jede
+  //    erfundene Kennung eine Zustands- und eine Saisonzeile (Sicherheits-
+  //    durchsicht 24.10.2026). Das Konto braucht Schritt 4 ohnehin — kein
+  //    zusaetzlicher Riot-Aufruf.
+  const known = await riot.fetchJson(
+    `https://${getAccountRouting(region)}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`,
+    { safe: true },
+  );
+  if (!known || known._status) {
+    const unknown = known?._status === 400 || known?._status === 404;
+    throw Object.assign(new Error(unknown ? 'unknown_player' : 'riot_unavailable'), { status: unknown ? 404 : 503 });
+  }
+
   // 1) Cache refresh (Hetzner-PG, with Supabase mirror of new rows)
   await refreshPlayerMatchCache(pool, puuid, region, regional, riot, { force: true });
 
@@ -311,7 +316,7 @@ async function refreshOnePlayer(puuid, region) {
     await markUnrated(puuid, region, setNumber, null, 'unranked');
     return { ok: true, rated: false, reason: 'unranked', sampleSize: matches.length };
   }
-  const account = await fetchAccount(puuid, getAccountRouting(region));
+  const account = { gameName: known.gameName, tagLine: known.tagLine };
 
   // Tabellenplatz frisch aus der Challenger-Liste (10 Min je Region
   // zwischengespeichert). Bis 2026-09-27 wurde hier der letzte gespeicherte

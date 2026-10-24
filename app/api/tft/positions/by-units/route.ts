@@ -5,6 +5,7 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { isKnownUnitId } from '../../../../lib/tft-classify-comp';
 import { CURRENT_SET } from '../../../../lib/current-set';
+import { publicError } from '../../../../lib/public-error';
 
 // Returns position shares per (unit, cell) for a comma-separated set of
 // units. The comp-detail page hits this with its typicalUnits list to render
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
       .select('unit, cell, observations')
       .in('unit', missing);
     if (r.error && used.size === 0) {
-      return cachedJson({ hasData: false, units: {}, error: r.error.message });
+      return cachedJson({ hasData: false, units: {}, error: publicError('tft/positions/by-units', r.error, 'db_error') });
     }
     for (const [unit, cells] of Object.entries(toShares(r.data || []))) {
       result[unit] = cells;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/marktwert/teams?region=euw1&limit=20
 //
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     p_limit: limit,
   });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: publicError('tft/marktwert/teams', error, 'db_error') }, { status: 500 });
 
   const teams = (data || []).map((row: any) => ({
     team: row.team,

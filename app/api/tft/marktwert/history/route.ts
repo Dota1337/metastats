@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { CURRENT_SET_START_DATE } from '../../../../lib/current-set';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/marktwert/history?puuid=...&region=euw1&days=30
 // /api/tft/marktwert/history?puuid=...&region=euw1&from=2026-04-15
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/marktwert/history', error, 'db_error') }, { status: 500 });
   }
 
   // RPC returns newest first; the chart wants oldest→newest for left→right

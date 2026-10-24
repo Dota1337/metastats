@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // TFT-specific patch notes. Sources the patch list from our daily-stats
 // crawl (`get_tft_available_patches` RPC) and maps each patch number to its
@@ -78,6 +79,6 @@ export async function GET() {
       source: 'tft-supabase + riot-news-url-pattern',
     }, { cache: SLOW_CACHE_CONTROL, degraded: patches.length === 0 });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message || 'patch notes load failed' }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/patch-notes', e, 'patch notes load failed') }, { status: 500 });
   }
 }

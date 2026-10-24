@@ -4,6 +4,7 @@ import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias, DEGRADED
 import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-lookup';
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '../../../lib/stats-patch-display';
+import { publicError } from '../../../lib/public-error';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -103,6 +104,6 @@ export async function GET(request: NextRequest) {
         return resp;
       }
     }
-    return NextResponse.json({ hasData: false, traits: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, traits: [], error: publicError('tft/traits', e, 'stats_unavailable') }, { status: 502 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/tournaments
 //   List: optional status/region/tier/set filters via query params.
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   if (slug) {
     const { data, error } = await supabaseAdmin.rpc('get_tft_tournament_detail', { p_id: slug });
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: publicError('tft/tournaments', error, 'db_error') }, { status: 500 });
     const row = (data || [])[0] || null;
     // Laufendes Turnier: die Live-Tabelle wird stuendlich neu geholt
     // (scripts/fetch-tft-live-standings.mjs) — 5 min Edge-Cache statt 6 h.
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     p_set: setNum ? parseInt(setNum, 10) : null,
     p_limit: limit,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: publicError('tft/tournaments', error, 'db_error') }, { status: 500 });
 
   return cachedJson({
     tournaments: data || [],

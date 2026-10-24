@@ -5,6 +5,7 @@ import { riotFetch } from '../../../lib/riot-fetch';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
 import { LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../../lib/rank-groups';
 import { readRouteMirror, withSnapshotHeader } from '../../../lib/route-mirror-read';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/leaderboard?region=euw1&tier=CHALLENGER
 // /api/tft/leaderboard?region=euw1&tier=GOLD&division=II&page=3
@@ -207,7 +208,7 @@ export async function GET(request: NextRequest) {
     try {
       return await allRegionsResponse(tier, searchParams.get('page'), apiKey);
     } catch (err: any) {
-      return NextResponse.json({ error: err.message }, { status: 500 });
+      return NextResponse.json({ error: publicError('tft/leaderboard', err, 'leaderboard_failed') }, { status: 500 });
     }
   }
   if (!isAll && !isGroup && !TIERS.has(tier)) return bad(`Tier ${tier} nicht unterstuetzt.`, 'bad_tier');
@@ -328,6 +329,6 @@ export async function GET(request: NextRequest) {
       { cache: STATS_CACHE_CONTROL_FRESH, degraded: players.length === 0 },
     ), 'leaderboard', false);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/leaderboard', err, 'leaderboard_failed') }, { status: 500 });
   }
 }

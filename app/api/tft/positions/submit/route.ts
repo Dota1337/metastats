@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { companionAuthFailure } from '@/app/lib/companion-auth';
+import { publicError } from '../../../../lib/public-error';
+import { checkRateLimit } from '../../../../lib/rate-limit';
 
 // Companion-app endpoint. Accepts batched board observations from the
 // Overwolf TFT GEP listener and writes them into tft_position_observations.
@@ -99,6 +101,13 @@ export async function POST(request: NextRequest) {
     return reply({ error: 'service unavailable' }, 503);
   }
 
+  // Das App-Geheimnis ist oeffentlich (companion-auth.ts) — gegen Spam von
+  // einer Adresse hilft nur die Bremse je IP. Eine Partie schickt einen
+  // Aufruf je Runde, 60/min reicht weit.
+  if (checkRateLimit(request, { key: 'companion-positions', max: 60, windowMs: 60_000 })) {
+    return reply({ error: 'rate_limited' }, 429);
+  }
+
   // Read body once as raw text so we can HMAC the exact bytes the client
   // signed. Re-parse to JSON afterwards.
   const rawBody = await request.text();
@@ -164,7 +173,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (error) {
-    return reply({ error: error.message }, 500);
+    return reply({ error: publicError('tft/positions/submit', error, 'db_error') }, 500);
   }
 
   return reply({ ok: true, accepted: rows.length }, 200);

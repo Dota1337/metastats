@@ -69,6 +69,10 @@ function escapeLike(v: string): string {
 }
 
 async function playersRow(fullName: string): Promise<Lookup<LolPlayerRow>> {
+  // PostgREST liest `*` in like/ilike als `%` — ein Stern in der Adresse fand
+  // sonst einen fremden Spieler. Riot-Namen enthalten keinen Stern (gemessen
+  // 24.10.2026: 0 von 1.660 Zeilen in players), also gibt es dazu keinen Treffer.
+  if (fullName.includes('*')) return { known: false };
   const { data, error } = await supabaseAdmin
     .from('players')
     .select('id, summoner_name, region, tier, rank, market_value, summoner_level, profile_icon_id')

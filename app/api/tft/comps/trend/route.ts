@@ -3,6 +3,7 @@ import { callRpc, expandRegions, expandBuckets, resolveDataEnd } from '../../../
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { selectFamilyMembers, familyKeyForMerge } from '../../../../lib/tft-comp-family-merge';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/comps/trend
 //   ?slug=<cluster_key>&region=<group|exact>&bucket=<group|exact>&days=N
@@ -98,6 +99,6 @@ export async function GET(request: NextRequest) {
       points,
     }, { cache: cacheControl });
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, points: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, points: [], error: publicError('tft/comps/trend', e, 'stats_unavailable') }, { status: 502 });
   }
 }

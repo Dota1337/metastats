@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { CURRENT_SET } from './current-set';
 import { TFT_RANK_GROUPS, tftStatsBucket } from './rank-groups';
+import { isValidRegion } from './regions';
 
 interface CacheEntry<T> { data: T; mtime: number }
 const cache = new Map<string, CacheEntry<any>>();
@@ -38,13 +39,17 @@ function readCached<T>(path: string): T | null {
 // in dem Fall null; die Aufrufer haben dafuer bereits einen Pfad (Rueckfall
 // auf den set-korrekten RPC bzw. leerer Zustand). Lieber keine Zahl als die
 // Zahl des Vorsets.
+// Nur echte Plattform-Regionen werden zum Dateinamen (Sicherheitsdurchsicht
+// 24.10.2026: ?region=../../../package fuehrte aus public/ heraus).
 export function loadTftStats(region: string) {
+  if (!isValidRegion(region)) return null;
   const data = readCached<any>(join(process.cwd(), 'public', `tft-stats-${region.toLowerCase()}.json`));
   if (data && typeof data.set === 'number' && data.set !== CURRENT_SET) return null;
   return data;
 }
 
 export function loadTftGraph(region: string) {
+  if (!isValidRegion(region)) return null;
   return readCached<any>(join(process.cwd(), 'public', `tft-graph-${region.toLowerCase()}.json`));
 }
 
@@ -110,8 +115,8 @@ export function mergeStatsEntries(a: unknown, b: unknown): unknown {
 export function pickBucketEntry(buckets: any, bucket: string): any {
   if (!buckets) return null;
   // Vorhandener Eintrag (all, master_plus, Einzelrang) hat Vorrang.
-  if (buckets[bucket]) return buckets[bucket];
-  const members = TFT_RANK_GROUPS[bucket];
+  if (Object.hasOwn(buckets, bucket) && buckets[bucket]) return buckets[bucket];
+  const members = Object.hasOwn(TFT_RANK_GROUPS, bucket) ? TFT_RANK_GROUPS[bucket] : undefined;
   if (members) {
     return members.reduce<unknown>((acc, m) => mergeStatsEntries(acc, buckets[m] ?? null), null) || null;
   }
@@ -127,11 +132,12 @@ export function pickBucketEntry(buckets: any, bucket: string): any {
 // The fallback under-counts by ~3% because byComp drops clusters below
 // minCompGames=8, but it's the closest available proxy and stable across runs.
 export function bucketParticipants(stats: any, bucket: string): number {
-  if (stats?.participantsByBucket?.[bucket] != null) {
+  if (stats?.participantsByBucket && Object.hasOwn(stats.participantsByBucket, bucket)
+    && stats.participantsByBucket[bucket] != null) {
     return stats.participantsByBucket[bucket];
   }
   // Rang-Gruppe ohne eigenen Eintrag: Teilnehmer der Einzelraenge addieren.
-  const members = TFT_RANK_GROUPS[bucket];
+  const members = Object.hasOwn(TFT_RANK_GROUPS, bucket) ? TFT_RANK_GROUPS[bucket] : undefined;
   if (members && stats?.participantsByBucket) {
     return members.reduce((s, m) => s + (Number(stats.participantsByBucket[m]) || 0), 0);
   }

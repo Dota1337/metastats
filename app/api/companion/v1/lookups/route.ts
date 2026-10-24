@@ -2,6 +2,7 @@
 // fuer die Overwolf-App. Aendert sich nur mit Set bzw. Patch.
 import { NextRequest } from 'next/server';
 import type { TftAssetsBundle } from '../../../../lib/tft-cdragon';
+import { trustedSelfOrigin } from '../../../../lib/self-origin';
 import {
   COMPANION_API_VERSION, companionJson, companionPreflight, toCompanionLookups,
 } from '../../../../lib/companion-api';
@@ -11,7 +12,7 @@ export function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
-  const assets = await fetch(`${request.nextUrl.origin}/tft-assets.json`)
+  const assets = await fetch(`${trustedSelfOrigin(request.nextUrl)}/tft-assets.json`)
     .then(r => (r.ok ? r.json() as Promise<TftAssetsBundle> : null))
     .catch(() => null);
   if (!assets) {

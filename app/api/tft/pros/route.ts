@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { cachedJson, SLOW_CACHE_CONTROL } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/pros
 //
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
       .select('*')
       .eq('puuid', puuid)
       .maybeSingle();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: publicError('tft/pros', error, 'db_error') }, { status: 500 });
     // Kein Edge-Cache fuer den Einzelabruf: der Schluesselraum ist eine PUUID
     // pro Spieler und damit praktisch unbegrenzt. Jeder Eintrag waere ein
     // eigener Cache-Key mit Trefferquote nahe null — nur Ballast, gegen den
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     p_min_confidence: minConfidence,
     p_limit: limit,
   });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return NextResponse.json({ error: publicError('tft/pros', error, 'db_error') }, { status: 500 });
 
   // Aggregate counts for filter chips and tab badges. Cheap second query — same
   // table, no join. Tab badges (classCounts) span ALL classifications so each

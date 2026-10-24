@@ -21,6 +21,7 @@ import {
   previousPatchOf,
   type MetaPulseVelocityRow,
 } from '../../../lib/snapshot-matrix';
+import { publicError } from '../../../lib/public-error';
 
 // Drei Datenbank-Abfragen parallel.
 export const maxDuration = 60;
@@ -284,6 +285,6 @@ export async function GET(request: NextRequest) {
     res.headers.set('x-snapshot', `meta-pulse:diff=${snapshotHits},velocity=${velocityHit ? 1 : 0}`);
     return res;
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, error: publicError('tft/meta-pulse', e, 'stats_unavailable') }, { status: 502 });
   }
 }

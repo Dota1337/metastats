@@ -3,6 +3,7 @@ import { fetchHetznerProsByComp } from '../../../../lib/tft-hetzner-matches';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/pros/by-comp?family=<trait>__<carry>&set=17
 // ODER /api/tft/pros/by-comp?cluster=<trait>@<level>_<carry>&set=17
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     .not('puuid', 'is', null);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/pros/by-comp', error, 'db_error') }, { status: 500 });
   }
   const proRows = (pros || []) as ProRow[];
   const puuids = proRows.map(r => r.puuid).filter((p): p is string => !!p);
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       topN,
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    const message = publicError('tft/pros/by-comp', err, 'hetzner_unreachable');
     return NextResponse.json({ error: message }, { status: 502 });
   }
 

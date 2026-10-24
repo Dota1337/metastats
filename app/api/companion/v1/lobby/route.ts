@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { searchExactNames } from '../../../../lib/tft-player-search-server';
 import { fetchHetznerPlayerMatches } from '../../../../lib/tft-hetzner-matches';
 import { CURRENT_SET } from '../../../../lib/current-set';
+import { checkRateLimit } from '../../../../lib/rate-limit';
 import {
   COMPANION_API_VERSION, companionJson, companionPreflight, pickLobbyAccount, toLobbyEntry,
   type CompanionLobbyEntry, type CompanionLobbyResponse,
@@ -30,6 +31,12 @@ export function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
+  // Bis zu 8 Namenssuchen plus eine Box-Abfrage je Aufruf. Die 429 geht ueber
+  // companionJson, sonst fehlen der App die CORS-Koepfe und sie sieht nur
+  // einen Netzwerkfehler.
+  if (checkRateLimit(request, { key: 'companion-lobby', max: 20, windowMs: 60_000 })) {
+    return companionJson({ v: COMPANION_API_VERSION, error: 'rate_limited' }, { status: 429, ...NO_STORE });
+  }
   const sp = request.nextUrl.searchParams;
   const names = [...new Set((sp.get('names') || '').split(',').map(s => s.trim()).filter(Boolean))];
   const region = (sp.get('region') || '').trim().toLowerCase();

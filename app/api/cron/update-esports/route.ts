@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../../lib/supabase';
 import { cronAuthFailure } from '../../../lib/cron-auth';
+import { publicError } from '../../../lib/public-error';
 import { lolesportsJson, lolesportsKeyMissingResponse } from '../../../lib/lolesports';
 
 const API = 'https://esports-api.lolesports.com/persisted/gw/';
@@ -110,8 +111,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json({
-      error: 'Esports update failed',
-      details: String(error),
+      error: publicError('cron/update-esports', error, 'Esports update failed'),
     }, { status: 500 });
   }
 }

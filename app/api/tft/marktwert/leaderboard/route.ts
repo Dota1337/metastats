@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { expandLolTier } from '../../../../lib/rank-groups';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/marktwert/leaderboard?region=euw1&limit=100&tier=CHALLENGER
 //
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/marktwert/leaderboard', error, 'db_error') }, { status: 500 });
   }
 
   let players = (data || []).map((row: any) => ({

@@ -19,6 +19,7 @@ import {
 import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
 import { compactDeltaRows, loadPatchDeltaBlobs } from '../../../lib/patch-delta-server';
 import { compAssignForPair } from '../../../lib/comp-assign-server';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
 //
@@ -193,7 +194,7 @@ export async function GET(request: NextRequest) {
     res.headers.set('x-snapshot', `patch-diff=${fromBlob === 2 ? 'blob' : fromBlob === 1 ? 'mixed' : 'live'}`);
     return res;
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, winners: [], losers: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, winners: [], losers: [], error: publicError('tft/patch-diff', e, 'stats_unavailable') }, { status: 502 });
   }
 }
 

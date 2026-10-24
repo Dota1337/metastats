@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { publicError } from '../../../../lib/public-error';
 import tftSet from '../../../../../public/tft-set.json' with { type: 'json' };
 
 // /api/tft/marktwert/peaks?puuid=...
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     .order('set_number', { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/marktwert/peaks', error, 'db_error') }, { status: 500 });
   }
 
   const names = buildSetNames();

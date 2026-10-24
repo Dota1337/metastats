@@ -5,6 +5,7 @@ import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
 import { addUnitCounts, compBuildHash } from '../../../../lib/tft-comp-build-group';
 import { CURRENT_SET } from '../../../../lib/current-set';
+import { publicError } from '../../../../lib/public-error';
 
 // Variants-Switcher API: returns all sub-cluster variants of a comp family.
 //
@@ -263,7 +264,7 @@ export async function GET(request: NextRequest) {
       { headers: cacheHeaders(cacheControl) },
     );
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'unknown';
+    const msg = publicError('tft/comps/variants', err, 'variants_failed');
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

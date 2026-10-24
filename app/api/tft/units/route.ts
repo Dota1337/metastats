@@ -11,6 +11,7 @@ import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '..
 import { computeShares } from '../../../lib/tft-shares';
 // Seltene Einheiten ans Ende — gleiche Reihenfolge wie die Startdaten der Seite.
 import { sortUnitsRareLast } from '../../../lib/tft-list-sort';
+import { publicError } from '../../../lib/public-error';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -293,6 +294,6 @@ export async function GET(request: NextRequest) {
         return resp;
       }
     }
-    return NextResponse.json({ hasData: false, units: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, units: [], error: publicError('tft/units', e, 'stats_unavailable') }, { status: 502 });
   }
 }

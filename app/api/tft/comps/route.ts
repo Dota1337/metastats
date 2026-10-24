@@ -49,6 +49,7 @@ import {
   listKey,
   precomputedEntryUsable,
 } from '../../../lib/snapshot-matrix';
+import { publicError } from '../../../lib/public-error';
 
 // C3 (2026-07-04): the snapshot publisher fetches this route per permutation;
 // a heavy detoast perm (diamond_plus kr/asia/7d, ~22s) exceeds the Vercel Node
@@ -1003,7 +1004,7 @@ export async function GET(request: NextRequest) {
       resp.headers.set(FALLBACK_HEADER, fallback.tag);
       return resp;
     }
-    return NextResponse.json({ hasData: false, comps: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, comps: [], error: publicError('tft/comps', e, 'stats_unavailable') }, { status: 502 });
   }
 }
 

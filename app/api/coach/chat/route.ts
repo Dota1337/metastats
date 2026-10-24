@@ -4,6 +4,7 @@ import { checkRateLimit } from '../../../lib/rate-limit';
 import { TFT_COACH_ENABLED } from '../../../lib/feature-flags';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { fetchHetznerPlayerMatches } from '../../../lib/tft-hetzner-matches';
+import { publicError } from '../../../lib/public-error';
 
 // POST /api/coach/chat
 // Body: { messages: [{role, content}], puuid?, region?, set? }
@@ -132,7 +133,7 @@ Keep responses under 200 words unless the user asks for a deep dive.${playerCtx 
             }
           }
         } catch (e: any) {
-          controller.enqueue(encoder.encode(`\n\n[error: ${e.message || 'stream_failed'}]`));
+          controller.enqueue(encoder.encode(`\n\n[error: ${publicError('coach/chat', e, 'stream_failed')}]`));
         } finally {
           controller.close();
         }
@@ -147,6 +148,6 @@ Keep responses under 200 words unless the user asks for a deep dive.${playerCtx 
       },
     });
   } catch (e: any) {
-    return NextResponse.json({ error: 'anthropic_error', detail: e.message }, { status: 502 });
+    return NextResponse.json({ error: publicError('coach/chat', e, 'anthropic_error') }, { status: 502 });
   }
 }

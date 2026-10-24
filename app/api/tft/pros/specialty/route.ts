@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchHetznerPlayerMatches } from '../../../../lib/tft-hetzner-matches';
 import { classifyComp } from '../../../../lib/tft-classify-comp';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/pros/specialty?puuid=...
 //
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     // type-safe (we only read fields declared on CachedMatch).
     rows = matches as CachedMatch[];
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    const message = publicError('tft/pros/specialty', err, 'hetzner_unreachable');
     return NextResponse.json({ error: message }, { status: 502 });
   }
   if (rows.length === 0) {

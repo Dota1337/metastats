@@ -3,6 +3,7 @@ import { getAvailablePatches, resolveFilters } from '../../../../lib/tft-supabas
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
 import { FAMILY_KEY_RE, duelOf, opponentsOf, splitOpponents, type MatchupEdge } from '../../../../lib/tft-comp-matchups';
 import { compRepresentatives, fetchCompMatchups } from '../../../../lib/tft-comp-matchups-server';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/comps/duel?a=<fam>[,<fam>]&b=<fam>[,<fam>]&region=&bucket=&days=
 //
@@ -56,6 +57,6 @@ export async function GET(request: NextRequest) {
       b: has ? side(famsB, famsA) : null,
     }, { cache: cacheControl });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+    return NextResponse.json({ error: publicError('tft/comps/duel', e, 'stats_unavailable') }, { status: 502 });
   }
 }

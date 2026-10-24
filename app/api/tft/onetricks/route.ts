@@ -3,6 +3,7 @@ import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { fetchHetznerPlayerCompHistogram, fetchHetznerMarketvaluePool } from '../../../lib/tft-hetzner-matches';
 import type { CompHistogramCluster } from '../../../lib/tft-hetzner-matches';
 import { cachedJson, STATS_CACHE_CONTROL, cacheHeaders } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/onetricks?region=euw1&minShare=0.6
 //
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       final_value: p.finalValue,
     }));
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'hetzner_pool_unreachable';
+    const message = publicError('tft/onetricks', err, 'hetzner_pool_unreachable');
     return NextResponse.json({ error: message }, { status: 502 });
   }
   if (candidates.length === 0) {
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
     });
     for (const p of histogram.players) perPuuid.set(p.puuid, p.clusters);
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
+    const message = publicError('tft/onetricks', err, 'hetzner_unreachable');
     return NextResponse.json({ error: message }, { status: 502 });
   }
 

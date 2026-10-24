@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '../../../../lib/rate-limit';
+import { parseRegion } from '../../../../lib/regions';
+import { publicError } from '../../../../lib/public-error';
+
+const PUUID_RE = /^[A-Za-z0-9_-]{20,100}$/;
+// Feste Codes der Box (scripts/refresh-api-server.mjs handleRefresh/refreshOnePlayer).
+const BOX_ERROR_CODES = new Set(['rate_limited', 'unknown_player', 'riot_unavailable', 'unauthorized', 'not_found', 'invalid_json']);
 
 // On-demand single-player marketvalue refresh. The actual crunch happens
 // on the Hetzner crawler box — this route just authenticates the caller,
@@ -31,9 +37,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
   const puuid = (body.puuid || '').trim();
-  const region = (body.region || '').trim().toLowerCase();
-  if (!puuid || !region) {
+  const rawRegion = (body.region || '').trim().toLowerCase();
+  if (!puuid || !rawRegion) {
     return NextResponse.json({ error: 'puuid_and_region_required' }, { status: 400 });
+  }
+  // Nur echte Kennungen und Regionen an die Box: dort loest jeder Aufruf
+  // Riot-Abrufe und Schreiben in zwei Datenbanken aus.
+  const region = parseRegion(rawRegion);
+  if (!PUUID_RE.test(puuid) || !region) {
+    return NextResponse.json({ error: 'invalid_puuid_or_region' }, { status: 400 });
   }
 
   let upstream: Response;
@@ -50,14 +62,21 @@ export async function POST(req: NextRequest) {
       signal: AbortSignal.timeout(90_000),
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'upstream_unreachable';
-    return NextResponse.json({ error: 'upstream_error', message }, { status: 502 });
+    console.error('[tft/marktwert/refresh] box failed:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'upstream_error' }, { status: 502 });
   }
 
   const data = await upstream.json().catch(() => ({}));
   const retryAfter = upstream.headers.get('retry-after');
-  return NextResponse.json(data, {
-    status: upstream.status,
-    headers: retryAfter ? { 'Retry-After': retryAfter } : undefined,
-  });
+  const headers = retryAfter ? { 'Retry-After': retryAfter } : undefined;
+  if (!upstream.ok) {
+    // Die Box schreibt bei unerwarteten Fehlern err.message in ihre Antwort —
+    // nur ihre festen Codes gehen weiter (publicError).
+    const code = typeof data?.error === 'string' && BOX_ERROR_CODES.has(data.error)
+      ? data.error
+      : publicError('tft/marktwert/refresh', data?.error, 'upstream_error');
+    const body = typeof data?.retryAfter === 'number' ? { error: code, retryAfter: data.retryAfter } : { error: code };
+    return NextResponse.json(body, { status: upstream.status, headers });
+  }
+  return NextResponse.json(data, { status: upstream.status, headers });
 }

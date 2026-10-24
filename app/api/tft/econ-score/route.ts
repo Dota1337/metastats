@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailablePatches } from '../../../lib/tft-supabase-reader';
 import { fetchHetznerPlayerMatches, fetchHetznerPeerBaseline } from '../../../lib/tft-hetzner-matches';
+import { checkRateLimit } from '../../../lib/rate-limit';
 
 // /api/tft/econ-score?puuid=X
 // Sprint 5.4 — Econ-Discipline-Score. Compares the player's average
 // gold_left at death against a peer baseline.
 
 const STANDARD_RANKED_QUEUE = 1100;
+const PUUID_RE = /^[A-Za-z0-9_-]{20,100}$/;
 
 export async function GET(request: NextRequest) {
+  // Zwei schwere Abfragen auf der Box je Aufruf (Spieler + Vergleichsgruppe).
+  const limited = checkRateLimit(request, { key: 'tft-econ-score', max: 10, windowMs: 60_000 });
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const puuid = searchParams.get('puuid');
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
+  if (!PUUID_RE.test(puuid)) return NextResponse.json({ error: 'puuid invalid' }, { status: 400 });
   const setParam = searchParams.get('set');
   // Default to the current set so BOTH the player and peer queries stay
   // set-scoped — the peer query without set_number scans the whole cache and
@@ -33,8 +39,8 @@ export async function GET(request: NextRequest) {
     });
     rows = matches.map(m => ({ goldLeft: m.goldLeft ?? 0, placement: m.placement, level: m.level }));
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'hetzner_unreachable';
-    return NextResponse.json({ error: message }, { status: 502 });
+    console.error('[tft/econ-score] box failed:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'hetzner_unreachable' }, { status: 502 });
   }
   if (rows.length < 5) {
     return NextResponse.json({ puuid, hasData: false, reason: 'insufficient_samples', games: rows.length });

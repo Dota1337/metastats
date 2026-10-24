@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { resolveFilters, callRpc, getAvailablePatches, rpcWindowArgs } from '../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
+import { publicError } from '../../../lib/public-error';
 
 // /api/tft/trait-unitcount?name=TFT17_Stargazer&region=all&bucket=master_plus
 //
@@ -54,6 +55,6 @@ export async function GET(request: NextRequest) {
 
     return cachedJson({ hasData: points.length > 0, name, points }, { cache: cacheControl });
   } catch (e: any) {
-    return NextResponse.json({ hasData: false, points: [], error: e.message }, { status: 502 });
+    return NextResponse.json({ hasData: false, points: [], error: publicError('tft/trait-unitcount', e, 'stats_unavailable') }, { status: 502 });
   }
 }

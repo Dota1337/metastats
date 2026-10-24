@@ -24,9 +24,10 @@
 // einer Datei, die sich selbst fortschreibt.
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join, sep } from 'node:path';
+import { join, sep, basename } from 'node:path';
 
 const WURZEL = join('app', 'api');
+const BIBLIOTHEKEN = join('app', 'lib');
 
 // Schreib-Aufrufe auf dem Supabase-Client. .rpc() steht bewusst NICHT hier:
 // die allermeisten RPCs lesen nur, und jeden Aufruf einzeln zu begruenden waere
@@ -37,6 +38,30 @@ const WURZEL = join('app', 'api');
 // loescht mit Schluessel (`memo.delete(key)`) und ist kein DB-Schreiben; das
 // hat am 03.10.2026 die Comp-Route faelschlich rot gemacht.
 const SCHREIBT = /\.(insert|upsert|update)\s*\(|\.delete\s*\(\s*(\)|\{)/;
+
+// Schreibende Bibliotheken (seit 24.10.2026): vorher meldete der Waechter
+// player-stats als nicht-schreibend, obwohl die Route ueber
+// tft-player-cache.ts und tft-rank-history.ts in vier Tabellen schreibt. Eine
+// Route, die eine solche Bibliothek aus app/lib einbindet, zaehlt jetzt als
+// schreibend. .update( steht auch in createHmac(...).update(...) — Client-
+// Schreiben zaehlt deshalb nur, wenn die Datei den Supabase-Client benutzt.
+// Rohes Schreiben: POST/PATCH/DELETE hoechstens 8 Zeilen nach einer Adresse
+// /rest/v1/<Tabelle>; /rest/v1/rpc/ ist ein Funktionsaufruf und zaehlt nicht.
+const NUTZT_CLIENT = /supabaseAdmin|from\s+['"]\.\/supabase['"]/;
+const ROHE_METHODE = /method:\s*['"](POST|PATCH|DELETE|PUT)['"]/;
+const REST_TABELLE = /\/rest\/v1\/(?!rpc\/)[a-z_]/;
+
+// Box-Endpunkte, die schreiben (scripts/refresh-api-server.mjs: /refresh-player
+// legt Match-Cache, Saison- und Marktwert-Zeilen an). Eine Route, die sie
+// aufruft, schreibt mittelbar.
+const BOX_SCHREIBT = /\/refresh-player\b/;
+
+function bibliothekSchreibt(src) {
+  if (NUTZT_CLIENT.test(src) && SCHREIBT.test(src)) return true;
+  const zeilen = src.split('\n');
+  return zeilen.some((z, i) => ROHE_METHODE.test(z)
+    && zeilen.slice(Math.max(0, i - 8), i + 1).some((v) => REST_TABELLE.test(v)));
+}
 
 // Anerkannte Zugangspruefungen. Erweitern ist erlaubt — aber nur um etwas, das
 // den Aufrufer wirklich prueft, nicht um ein selbst ausgestelltes Cookie.
@@ -52,17 +77,33 @@ const PRUEFUNGEN = [
 
 const AUSNAHMEN = {
   'app/api/summoner/route.ts':
-    'Legt beim Abruf die eigenen Match-Daten ab (Cache-Fuellung). Schreibt nur ' +
-    'in Zeilen des angefragten Spielers, keine Fremddaten, kein Loeschen.',
+    'Legt beim Abruf die Daten des angefragten Spielers ab (Cache-Fuellung): ' +
+    'players-Zeile und ranked_stats dieses Spielers (alte Rang-Zeilen werden ' +
+    'dabei ersetzt, delete + insert je player_id). Haengt die Besucher-UUID aus ' +
+    'dem Cookie an searched_by — nur UUID-Format, hoechstens die juengsten 100. ' +
+    'Keine Zeilen anderer Spieler. Bremse je IP (checkRateLimit).',
   'app/api/player-season-stats/route.ts':
     'Legt die berechnete Saison-Zeile des angefragten Spielers ab. Gleiches ' +
     'Muster wie /api/summoner: Ergebnis-Cache, keine Fremddaten.',
   'app/api/tft/comps/share/route.ts':
     'Oeffentliches Einreichen von Comps ist gewollt. Gedrosselt ueber 5 Eintraege ' +
-    'je author_token in 24 h, Zaehlung gegen die Datenbank.',
+    'je Kennung in 24 h (Zaehlung gegen die Datenbank) plus Bremse je IP. Die ' +
+    'Kennung stellt der Server aus (community-author.ts: unterschriebenes Cookie, ' +
+    'sonst aus der IP abgeleitet) — ausgedachte Cookies zaehlen nicht.',
   'app/api/tft/comps/community/[id]/upvote/route.ts':
     'Oeffentliches Hochstimmen ist gewollt. Ein Primaerschluessel auf ' +
-    '(comp_id, author_token) laesst genau eine Stimme zu.',
+    '(comp_id, author_token) laesst genau eine Stimme je Kennung zu; die Kennung ' +
+    'stellt der Server aus (community-author.ts), plus Bremse je IP.',
+  'app/api/tft/player-stats/route.ts':
+    'Fuellt ueber tft-player-cache.ts und tft-rank-history.ts den Match- und ' +
+    'Rang-Zwischenspeicher des angefragten Spielers (nur dessen Zeilen). ' +
+    'Geschrieben wird nur, was Riot fuer diese Kennung liefert: Kennung im ' +
+    'Riot-Format, Riot-Fehler schreiben keine Zustandszeile, Bremse je IP.',
+  'app/api/tft/marktwert/refresh/route.ts':
+    'Knopf „Marktwert aktualisieren" auf der Spielerseite, oeffentlich gewollt. ' +
+    'Die Box schreibt nur Zeilen des Spielers, den Riot zur Kennung kennt ' +
+    '(refreshOnePlayer prueft das Konto vor dem ersten Schreiben). Kennung im ' +
+    'Riot-Format, Region aus der Positivliste, Bremse je IP, Box sperrt je Spieler 60 s.',
 };
 
 function routen(dir) {
@@ -73,6 +114,30 @@ function routen(dir) {
     else if (e === 'route.ts') out.push(p);
   }
   return out;
+}
+
+function dateien(dir) {
+  const out = [];
+  for (const e of readdirSync(dir)) {
+    const p = join(dir, e);
+    if (statSync(p).isDirectory()) out.push(...dateien(p));
+    else if (/\.(ts|tsx|mjs)$/.test(e) && !/\.test\./.test(e)) out.push(p);
+  }
+  return out;
+}
+
+const schreibendeBibliotheken = dateien(BIBLIOTHEKEN)
+  .filter((p) => bibliothekSchreibt(readFileSync(p, 'utf8')))
+  .map((p) => basename(p).replace(/\.(ts|tsx|mjs)$/, ''));
+
+// Import aus app/lib, mit oder ohne Endung: from '../../../lib/tft-player-cache'.
+function bindetSchreibendeEin(src) {
+  const importe = [...src.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
+  return importe.some((pfad) => {
+    const teile = pfad.split('/');
+    const name = teile.at(-1).replace(/\.(ts|tsx|mjs)$/, '');
+    return teile.at(-2) === 'lib' && schreibendeBibliotheken.includes(name);
+  });
 }
 
 const alle = routen(WURZEL).map((p) => p.split(sep).join('/'));
@@ -87,7 +152,7 @@ const benutzteAusnahmen = new Set();
 
 for (const p of alle) {
   const src = readFileSync(p, 'utf8');
-  if (!SCHREIBT.test(src)) continue;
+  if (!SCHREIBT.test(src) && !bindetSchreibendeEin(src) && !BOX_SCHREIBT.test(src)) continue;
 
   if (p.startsWith('app/api/internal/')) {
     gedeckt.push(`${p} — unter internal/`);
@@ -129,4 +194,5 @@ if (totAusnahmen.length) {
 
 if (fehler) process.exit(1);
 
-console.log(`  Schreib-Routen geprueft (${gedeckt.length} von ${alle.length} schreiben, alle gedeckt).`);
+console.log(`  Schreib-Routen geprueft (${gedeckt.length} von ${alle.length} schreiben, alle gedeckt; ` +
+  `schreibende Bibliotheken: ${schreibendeBibliotheken.join(', ') || 'keine'}).`);

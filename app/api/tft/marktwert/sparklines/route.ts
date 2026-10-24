@@ -2,6 +2,7 @@ import { CURRENT_SET } from '../../../../lib/current-set';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
+import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/marktwert/sparklines?region=euw1&limit=100&days=14
 //
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     p_set: CURRENT_SET,
   });
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: publicError('tft/marktwert/sparklines', error, 'db_error') }, { status: 500 });
   }
 
   // Flat rows (ordered puuid, date) → per-puuid series, oldest→newest.

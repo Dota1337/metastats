@@ -13,9 +13,13 @@ import { secretMissing } from './secret-policy';
 // steht genau einmal im Baum.
 //
 // Das gemeinsame Geheimnis ist nicht wirklich geheim: es liegt in der
-// ausgelieferten App, wer sie auspackt, hat es. Zusammen mit dem Zeitfenster
-// von fuenf Minuten und dem eindeutigen Schluessel auf der Beobachtungstabelle
-// macht es Wiedereinspielen und Spam aber teuer genug.
+// ausgelieferten App, wer sie auspackt, hat es. Die Signatur haelt deshalb nur
+// Gelegenheitsaufrufe fern. Das Zeitfenster von fuenf Minuten ist NICHT mit
+// unterschrieben und bremst Wiedereinspielen nicht — eine Signatur darueber
+// braechte nichts, weil jeder mit dem Geheimnis sie neu berechnen kann
+// (Sicherheitsdurchsicht 24.10.2026, bewusst akzeptiert). Gegen Doppeltes
+// schuetzt der eindeutige Schluessel auf der Beobachtungstabelle, gegen Spam
+// die Bremse je IP in der Route.
 
 const TIMESTAMP_WINDOW_MS = 5 * 60 * 1000;
 

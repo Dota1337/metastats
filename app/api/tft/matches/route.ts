@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // bogus query can't fan out into 120 Riot match-v1 calls in one request.
     ids = idsParam.split(',').map(s => s.trim()).filter(Boolean).slice(0, 30);
   } else if (puuid) {
-    const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?start=${start}&count=${count}`;
+    const url = `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${encodeURIComponent(puuid)}/ids?start=${start}&count=${count}`;
     const res = await riotFetch(url, apiKey);
     if (!res.ok) return NextResponse.json({ matches: [], error: `match list HTTP ${res.status}` }, { status: 502 });
     ids = await res.json();
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
   for (let i = 0; i < ids.length; i += batchSize) {
     const batch = ids.slice(i, i + batchSize);
     const results = await Promise.all(batch.map(async id => {
-      const res = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}`, apiKey);
+      const res = await riotFetch(`https://${regional}.api.riotgames.com/tft/match/v1/matches/${encodeURIComponent(id)}`, apiKey);
       return res.ok ? res.json() : null;
     }));
     for (const raw of results) {

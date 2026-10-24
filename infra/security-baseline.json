@@ -60,40 +60,44 @@
       "titel": "Die schriftliche Ausnahme fuer die Spielersuche verspricht keine Fremddaten und kein Loeschen - beides stimmt weiterhin nicht",
       "ort": "app/api/summoner/route.ts (Ausnahme in scripts/check-write-routes.mjs)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "scripts/check-write-routes.mjs:53-66 Begruendung: Schreibt nur in Zeilen des angefragten Spielers, keine Fremddaten, kein Loeschen. Dagegen app/api/summoner/route.ts:100 und :533 ranked_stats delete mit eq player_id; :168-173 und :476-487 (Upsert danach) haengen den Cookie-Wert visitor_id ohne Format-, Laengen- oder Mengengrenze an players.searched_by an; das Cookie setzt der Browser selbst (app/HomeClient.tsx:66-69). Seit 19.09. behoben: das Schreiben in champion_stats (Grep champion_stats in app/api/summoner/route.ts: 0 Treffer), deshalb jetzt niedrig statt mittel.",
+      "status": "behoben",
+      "belegt_mit": "summoner/route.ts: visitor_id nur im UUID-Format, searched_by hoechstens die juengsten 100 (gemessen 24.10.: max. 6 je Spieler, 1660 Spieler, nichts wird gekuerzt). Begruendung in check-write-routes.mjs ehrlich: nennt das Ersetzen der ranked_stats-Zeilen und searched_by.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "scripts/check-write-routes.mjs:53-66 Begruendung: Schreibt nur in Zeilen des angefragten Spielers, keine Fremddaten, kein Loeschen. Dagegen app/api/summoner/route.ts:100 und :533 ranked_stats delete mit eq player_id; :168-173 und :476-487 (Upsert danach) haengen den Cookie-Wert visitor_id ohne Format-, Laengen- oder Mengengrenze an players.searched_by an; das Cookie setzt der Browser selbst (app/HomeClient.tsx:66-69). Seit 19.09. behoben: das Schreiben in champion_stats (Grep champion_stats in app/api/summoner/route.ts: 0 Treffer), deshalb jetzt niedrig statt mittel."
     },
     {
       "id": "box-fehlertext-in-antwort:app/lib/tft-hetzner-matches",
       "titel": "Fehlertexte des eigenen Hetzner-Servers wandern ueber die Bibliothek bis in die Antwort an den Browser",
       "ort": "app/lib/tft-hetzner-matches.ts",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "tft-hetzner-matches.ts:74, 137, 176, 226, 256, 330 haengen bis zu 200 Zeichen der Box-Antwort an die Fehlermeldung. Die Box schreibt dort err.message hinein (scripts/refresh-api-server.mjs:1066-1067, payload = { error: err.message oder internal }). Ausgabe an den Browser: app/api/tft/econ-score/route.ts:36-37, app/api/tft/pros/specialty/route.ts:53-54, app/api/tft/pros/by-comp/route.ts:69-70, app/api/tft/onetricks/route.ts:75-76 und 95-96 (jeweils error: message mit err.message).",
+      "status": "behoben",
+      "belegt_mit": "econ-score, pros/by-comp, pros/specialty, onetricks, marktwert/refresh geben nur feste Codes aus (hetzner_unreachable u. a.), Rohtext ins Log.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-hetzner-matches.ts:74, 137, 176, 226, 256, 330 haengen bis zu 200 Zeichen der Box-Antwort an die Fehlermeldung. Die Box schreibt dort err.message hinein (scripts/refresh-api-server.mjs:1066-1067, payload = { error: err.message oder internal }). Ausgabe an den Browser: app/api/tft/econ-score/route.ts:36-37, app/api/tft/pros/specialty/route.ts:53-54, app/api/tft/pros/by-comp/route.ts:69-70, app/api/tft/onetricks/route.ts:75-76 und 95-96 (jeweils error: message mit err.message)."
     },
     {
       "id": "db-fehlertext-in-antwort:app/lib/tft-player-cache",
       "titel": "Scheitert das Speichern im Spieler-Zwischenspeicher, geht der vollstaendige Datenbank-Fehlertext an den Browser",
       "ort": "app/lib/tft-player-cache.ts (upsertMatchRows, upsertFetchState)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "tft-player-cache.ts:209 throw new Error(`match cache upsert failed: HTTP ${res.status} ${await res.text()}`) und :233 dasselbe fuer fetch_state - anders als tft-supabase-reader.ts:579 ohne Laengenkappung. app/api/tft/player-stats/route.ts:68-69 gibt e.message als 'cache refresh failed: ...' mit Status 502 an den Browser. Moeglicher Ausloeser (abgeleitet, nicht geprueft): eine Kennung mit Steuerzeichen landet ungeprueft in upsertFetchState (Zeile 81-83).",
+      "status": "behoben",
+      "belegt_mit": "player-stats gibt nur noch 'cache refresh failed' aus, der Supabase-Text geht ins Log (publicError-Muster, console.error).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-player-cache.ts:209 throw new Error(`match cache upsert failed: HTTP ${res.status} ${await res.text()}`) und :233 dasselbe fuer fetch_state - anders als tft-supabase-reader.ts:579 ohne Laengenkappung. app/api/tft/player-stats/route.ts:68-69 gibt e.message als 'cache refresh failed: ...' mit Status 502 an den Browser. Moeglicher Ausloeser (abgeleitet, nicht geprueft): eine Kennung mit Steuerzeichen landet ungeprueft in upsertFetchState (Zeile 81-83)."
     },
     {
       "id": "db-fehlertext-in-antwort:app/lib/tft-supabase-reader",
       "titel": "Im Fehlerfall geht der Originaltext der Datenbank an den Browser - und der Fehler laesst sich gezielt ausloesen",
       "ort": "app/lib/tft-supabase-reader.ts (callRpc)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "tft-supabase-reader.ts:579 throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`). Routen geben e.message unveraendert aus (Grep 'error: (e|err|error).message' in app/api): units/route.ts:296, items/route.ts:204, comps/route.ts:1006, traits/route.ts:106, meta-pulse/route.ts:287, patch-diff/route.ts:196, trait-unitcount/route.ts:57, regions/divergence/route.ts:114, comps/trend/route.ts:101, comps/duel/route.ts:59, available-patches/route.ts:16. Ausloeser: ?bucket=constructor oder ?region=constructor (prototyp-treffer:expandRegions) -> RPC ohne Pflichtargument -> PostgREST-Antwort mit Funktionsname und Parameterliste; abgeleitet aus Code und Migrationssignatur, nicht live abgefragt.",
+      "status": "behoben",
+      "belegt_mit": "Alle Stats-Routen geben statt e.message den Code stats_unavailable aus (publicError); check-error-leaks.mjs haelt das im pre-push.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-supabase-reader.ts:579 throw new Error(`RPC ${fn} failed: HTTP ${res.status} ${body.slice(0, 300)}`). Routen geben e.message unveraendert aus (Grep 'error: (e|err|error).message' in app/api): units/route.ts:296, items/route.ts:204, comps/route.ts:1006, traits/route.ts:106, meta-pulse/route.ts:287, patch-diff/route.ts:196, trait-unitcount/route.ts:57, regions/divergence/route.ts:114, comps/trend/route.ts:101, comps/duel/route.ts:59, available-patches/route.ts:16. Ausloeser: ?bucket=constructor oder ?region=constructor (prototyp-treffer:expandRegions) -> RPC ohne Pflichtargument -> PostgREST-Antwort mit Funktionsname und Parameterliste; abgeleitet aus Code und Migrationssignatur, nicht live abgefragt."
     },
     {
       "id": "doppelte-migrationsnummer-wird-still-uebersprungen",
@@ -131,10 +135,11 @@
       "titel": "34 oeffentliche Routen geben rohe Datenbank- oder Dienst-Fehlertexte an den Browser weiter",
       "ort": "app/api (u. a. app/api/tft/comps/route.ts, tft/units, tft/items, tft/traits, tft/comps/variants, tft/player-stats, tft/econ-score, tft/comps/share)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Grep nach error/detail mit .message bzw. error: msg/message in app/api: 34 Dateien; davon nicht oeffentlich app/api/internal/revalidate (HMAC) und app/api/coach/chat (abgeschaltet), bleiben 32. Dazu ohne Muster-Treffer: app/api/tft/player-stats/route.ts:69 (cache refresh failed plus e.message, enthaelt den vollen Supabase-Antworttext aus app/lib/tft-player-cache.ts:209 und :233) und app/api/tft/marktwert/refresh/route.ts:54. Beispiele: app/api/tft/comps/route.ts:1006, tft/units/route.ts:296, tft/items/route.ts:204, tft/traits/route.ts:106, tft/comps/variants/route.ts:147 und :267 (Supabase-Antwort, 200 Zeichen), tft/comps/share/route.ts:73 und :95, tft/comps/community/[id]/upvote/route.ts:43, tft/econ-score/route.ts:37 (Fehlertext der Box). Neu seit 19.09.: tft/comps/trend:101, tft/comps/duel:59, tft/comps/board:145, tft/positions/by-units:143, tft/meta-pulse:287, tft/patch-diff:196.",
+      "status": "behoben",
+      "belegt_mit": "app/lib/public-error.ts publicError(): Rohtext ins Server-Log, fester Code nach aussen; 33 Stellen in 31 Routen umgestellt. Neuer Waechter scripts/check-error-leaks.mjs im pre-push: 'Fehlertexte geprueft (86 Routen, keine Rohtexte nach aussen)', Test scripts/check-error-leaks.test.mjs.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Grep nach error/detail mit .message bzw. error: msg/message in app/api: 34 Dateien; davon nicht oeffentlich app/api/internal/revalidate (HMAC) und app/api/coach/chat (abgeschaltet), bleiben 32. Dazu ohne Muster-Treffer: app/api/tft/player-stats/route.ts:69 (cache refresh failed plus e.message, enthaelt den vollen Supabase-Antworttext aus app/lib/tft-player-cache.ts:209 und :233) und app/api/tft/marktwert/refresh/route.ts:54. Beispiele: app/api/tft/comps/route.ts:1006, tft/units/route.ts:296, tft/items/route.ts:204, tft/traits/route.ts:106, tft/comps/variants/route.ts:147 und :267 (Supabase-Antwort, 200 Zeichen), tft/comps/share/route.ts:73 und :95, tft/comps/community/[id]/upvote/route.ts:43, tft/econ-score/route.ts:37 (Fehlertext der Box). Neu seit 19.09.: tft/comps/trend:101, tft/comps/duel:59, tft/comps/board:145, tft/positions/by-units:143, tft/meta-pulse:287, tft/patch-diff:196."
     },
     {
       "id": "fernbefehl-umleitung-unerkannt:gate-policy",
@@ -151,10 +156,11 @@
       "titel": "Ein frei erfundener Patch- oder Set-Wert loest bei jedem Aufruf eine eigene Datenbankabfrage am Zwischenspeicher vorbei aus",
       "ort": "app/lib/tft-supabase-reader.ts (resolveFilters, resolvePatchFromList)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Zeile 378 patchParam = searchParams.get('patch') roh; Zeile 549 resolvePatchFromList gibt jeden Wert ausser current/previous unveraendert zurueck; Zeile 412-414 wird er zum patchFilter. Zeile 395-397 set = parseInt ohne Grenze. Die Datei sagt selbst (Zeile 124-128), dass jeder erfundene Wert 'eine eigene DB-Abfrage und einen eigenen Cache-Key' erzeugt, und schliesst das nur fuer Region und Rang. app/lib/query-params.ts:4-9 nennt genau '?patch=17.<zufallszahl>' als billigen Missbrauch und bietet parsePatch an - benutzt nur von app/api/tft/regions/divergence/route.ts:5 (Grep nach Importen von query-params in app/). Ein gesetzter patchFilter umgeht zudem den Vorrat: units/route.ts:112 'filters.patchFilter != null ? null : await lookupSnapshot(...)'. Betroffen sind die 10 Routen mit resolveFilters (Grep). Die echte Patchliste liegt in resolveFilters bereits vor (Zeile 383), gegen sie wird nicht geprueft.",
+      "status": "behoben",
+      "belegt_mit": "resolveFilters: patch nur current/previous/any oder Patch-Form (query-params.ts parsePatch), sonst current; set nur any oder 1..CURRENT_SET, sonst laufendes Set; days per parseBoundedInt. Lokal gemessen: ?patch=17.99999&set=999 -> Filter patch 18.5b, set 18.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Zeile 378 patchParam = searchParams.get('patch') roh; Zeile 549 resolvePatchFromList gibt jeden Wert ausser current/previous unveraendert zurueck; Zeile 412-414 wird er zum patchFilter. Zeile 395-397 set = parseInt ohne Grenze. Die Datei sagt selbst (Zeile 124-128), dass jeder erfundene Wert 'eine eigene DB-Abfrage und einen eigenen Cache-Key' erzeugt, und schliesst das nur fuer Region und Rang. app/lib/query-params.ts:4-9 nennt genau '?patch=17.<zufallszahl>' als billigen Missbrauch und bietet parsePatch an - benutzt nur von app/api/tft/regions/divergence/route.ts:5 (Grep nach Importen von query-params in app/). Ein gesetzter patchFilter umgeht zudem den Vorrat: units/route.ts:112 'filters.patchFilter != null ? null : await lookupSnapshot(...)'. Betroffen sind die 10 Routen mit resolveFilters (Grep). Die echte Patchliste liegt in resolveFilters bereits vor (Zeile 383), gegen sie wird nicht geprueft."
     },
     {
       "id": "freigabe-aus-rueckfrage:prompt-submit",
@@ -264,20 +270,22 @@
       "titel": "Die Lobby-Abfrage der App nimmt bis zu 8 Namen je Aufruf ohne Mengenbremse und fragt dafuer Datenbank und Box",
       "ort": "app/api/companion/v1/lobby/route.ts",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/api/companion/v1/lobby/route.ts:17 MAX_NAMES = 8, :42-47 je Name searchExactNames, :56-58 fetchHetznerPlayerMatches. Grep companionAuthFailure bzw. checkRateLimit in app/api/companion: 0 Treffer; middleware.ts:183 nimmt api/companion vom Middleware-Lauf aus.",
+      "status": "behoben",
+      "belegt_mit": "checkRateLimit 20/min je IP; die 429 geht ueber companionJson (CORS-Koepfe bleiben).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/companion/v1/lobby/route.ts:17 MAX_NAMES = 8, :42-47 je Name searchExactNames, :56-58 fetchHetznerPlayerMatches. Grep companionAuthFailure bzw. checkRateLimit in app/api/companion: 0 Treffer; middleware.ts:183 nimmt api/companion vom Middleware-Lauf aus."
     },
     {
       "id": "keine-bremse:app/api/tft/econ-score",
       "titel": "Die Spar-Wertung fragt fuer jede beliebige Spieler-ID ohne Mengenbremse die Box ab",
       "ort": "app/api/tft/econ-score/route.ts",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/api/tft/econ-score/route.ts:13-14 puuid nur auf Vorhandensein geprueft, :29 an fetchHetznerPlayerMatches, Grep checkRateLimit in der Datei: 0 Treffer, :37 Fehlertext der Box (app/lib/tft-hetzner-matches.ts:74) in der Antwort.",
+      "status": "behoben",
+      "belegt_mit": "checkRateLimit 10/min je IP + PUUID-Format (lokal: ?puuid=abc -> 400).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/tft/econ-score/route.ts:13-14 puuid nur auf Vorhandensein geprueft, :29 an fetchHetznerPlayerMatches, Grep checkRateLimit in der Datei: 0 Treffer, :37 Fehlertext der Box (app/lib/tft-hetzner-matches.ts:74) in der Antwort."
     },
     {
       "id": "kernregeln-fehlen-still:post-compact",
@@ -304,20 +312,22 @@
       "titel": "Jeder kann sich mit einer einzigen Kopfzeile als Vorrats-Publisher ausgeben und damit die Schutzpolster vor der Datenbank abschalten",
       "ort": "app/lib/snapshot-lookup.ts (isSnapshotPublisher), wirksam in 9 Routen und app/lib/route-mirror-read.ts",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "app/lib/snapshot-lookup.ts:157-158 return request.headers.get('x-snapshot-publisher') === '1' - kein Geheimnis, keine Signatur; der Kommentar darueber (:155-156) begruendet die Kopfzeile damit, dass ein Query-Parameter 'jedem erlauben wuerde, den Cushion zu umgehen' - eine Kopfzeile kann aber jeder genauso setzen. Die Box schickt nur diese Kopfzeile ohne weiteren Nachweis: scripts/publish-snapshot-bundle.mjs:269, scripts/publish-route-mirrors.mjs:65, scripts/publish-lol-builds.mjs:92. middleware.ts:34-38 entfernt von aussen nur x-ms-lang. Grep 'x-snapshot-publisher|isSnapshotPublisher' -> 9 Routen werten sie aus (tft/comps, tft/units, tft/items, tft/traits, tft/detail-builds, tft/comps/families, champions/[id]/builds, tournaments, tournaments/standings). Wirkung: app/api/tft/comps/route.ts:843 gibt 25 s statt 8 s Datenbankzeit, obwohl :836-842 festhaelt 'Nutzer bleiben bewusst bei 8 s - C1/C3 (521-Schutz auf 1-Core-Compute) haengt daran'; app/lib/tft-supabase-reader.ts:504-505 nimmt &end= bis 30 Tage zurueck an, :642-661 umgeht Prozess-Speicher und Negativ-Speicher; app/lib/route-mirror-read.ts:30 und app/api/tournaments/route.ts:56-57 umgehen Datei und 30-min-Speicher; app/api/champions/[id]/builds/route.ts:244-251 antwortet dann no-store (keine Edge-Kopie); units/items/traits schalten die Notreserve ab (units/route.ts:285, items/route.ts:195, traits/route.ts:97). Nicht gegen die Live-Seite abgefeuert, nur im Code nachgewiesen.",
+      "status": "behoben",
+      "belegt_mit": "Commits c0ac4d5b + 7b3358e4: Vorrecht nur mit x-snapshot-publisher-token == SNAPSHOT_PUBLISHER_TOKEN (app/lib/snapshot-publisher.mjs publisherTokenValid, Vergleich in konstanter Zeit, mind. 32 Zeichen). Live gemessen 24.10.2026 00:39 UTC: curl -H 'x-snapshot-publisher: 1' https://www.metastats.gg/api/tft/sets/current -> 403 publisher_rejected; von der Box mit Geheimnis -> 200 + x-snapshot-publisher-accepted: 1; Route-Spiegel danach 18/18 bzw. 1/1 gespeichert.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/lib/snapshot-lookup.ts:157-158 return request.headers.get('x-snapshot-publisher') === '1' - kein Geheimnis, keine Signatur; der Kommentar darueber (:155-156) begruendet die Kopfzeile damit, dass ein Query-Parameter 'jedem erlauben wuerde, den Cushion zu umgehen' - eine Kopfzeile kann aber jeder genauso setzen. Die Box schickt nur diese Kopfzeile ohne weiteren Nachweis: scripts/publish-snapshot-bundle.mjs:269, scripts/publish-route-mirrors.mjs:65, scripts/publish-lol-builds.mjs:92. middleware.ts:34-38 entfernt von aussen nur x-ms-lang. Grep 'x-snapshot-publisher|isSnapshotPublisher' -> 9 Routen werten sie aus (tft/comps, tft/units, tft/items, tft/traits, tft/detail-builds, tft/comps/families, champions/[id]/builds, tournaments, tournaments/standings). Wirkung: app/api/tft/comps/route.ts:843 gibt 25 s statt 8 s Datenbankzeit, obwohl :836-842 festhaelt 'Nutzer bleiben bewusst bei 8 s - C1/C3 (521-Schutz auf 1-Core-Compute) haengt daran'; app/lib/tft-supabase-reader.ts:504-505 nimmt &end= bis 30 Tage zurueck an, :642-661 umgeht Prozess-Speicher und Negativ-Speicher; app/lib/route-mirror-read.ts:30 und app/api/tournaments/route.ts:56-57 umgehen Datei und 30-min-Speicher; app/api/champions/[id]/builds/route.ts:244-251 antwortet dann no-store (keine Edge-Kopie); units/items/traits schalten die Notreserve ab (units/route.ts:285, items/route.ts:195, traits/route.ts:97). Nicht gegen die Live-Seite abgefeuert, nur im Code nachgewiesen."
     },
     {
       "id": "like-platzhalter:app/lib/player-lookup-server",
       "titel": "Ein Stern im Spielernamen der Adresse kann als Platzhalter wirken, die Seite haelt dann einen fremden Spieler fuer den gesuchten",
       "ort": "app/lib/player-lookup-server.ts (playersRow / lolPlayersLookup)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/lib/player-lookup-server.ts:67-69 escapeLike maskiert nur Backslash, % und _; :75 .ilike('summoner_name', escapeLike(fullName)) mit .limit(1) (:77), ein Treffer gilt als known: true (:83). node_modules/@supabase/postgrest-js/dist/index.mjs:1749-1750 reicht das Muster unveraendert als 'ilike.<muster>' weiter. Dass PostgREST '*' in like/ilike als Ersatz fuer '%' liest, ist dokumentiertes PostgREST-Verhalten, in diesem Lauf aber NICHT gegen die Datenbank gemessen (keine Abfrage abgesetzt). Name und Tag kommen roh aus der Adresse (app/lib/og/slugs.ts:41-47 parseLolPlayerSlug) und landen in Seitentitel, Ueberschrift und noindex-Entscheidung (app/lib/seo/player-data.ts:19-27) sowie im Vorschaubild mit Rang und Marktwert (app/lib/og/data.ts:160-178). Gleiche Maskierung in app/api/summoner/route.ts:588-589, dort aber .limit(2) und nur bei genau einem Treffer (:600) verwertet.",
+      "status": "behoben",
+      "belegt_mit": "playersRow: Name mit * gilt als nicht gefunden (gemessen 24.10.: 0 von 1660 Zeilen in players mit *).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/lib/player-lookup-server.ts:67-69 escapeLike maskiert nur Backslash, % und _; :75 .ilike('summoner_name', escapeLike(fullName)) mit .limit(1) (:77), ein Treffer gilt als known: true (:83). node_modules/@supabase/postgrest-js/dist/index.mjs:1749-1750 reicht das Muster unveraendert als 'ilike.<muster>' weiter. Dass PostgREST '*' in like/ilike als Ersatz fuer '%' liest, ist dokumentiertes PostgREST-Verhalten, in diesem Lauf aber NICHT gegen die Datenbank gemessen (keine Abfrage abgesetzt). Name und Tag kommen roh aus der Adresse (app/lib/og/slugs.ts:41-47 parseLolPlayerSlug) und landen in Seitentitel, Ueberschrift und noindex-Entscheidung (app/lib/seo/player-data.ts:19-27) sowie im Vorschaubild mit Rang und Marktwert (app/lib/og/data.ts:160-178). Gleiche Maskierung in app/api/summoner/route.ts:588-589, dort aber .limit(2) und nur bei genau einem Treffer (:600) verwertet."
     },
     {
       "id": "netzbindung:metastats-refresh-api",
@@ -354,20 +364,22 @@
       "titel": "Eine Hilfsfunktion holt eine Datei von einer Adresse, die der Aufrufer bestimmt - sie wird weiterhin nirgends benutzt",
       "ort": "app/lib/pro-players.ts (loadProData/findProPlayer)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/lib/pro-players.ts:29-30 fetch mit `${origin}/pro-players.json`, origin kommt als Parameter von findProPlayer (:63). Aufrufer-Suche (Grep 'findProPlayer|pro-players' ueber das Repo ohne node_modules): nur die Definition app/lib/pro-players.ts:63 und der alte Eintrag in infra/security-baseline.json; die Seiten (leaderboard/page.tsx:11, player/[slug]/PlayerClient.tsx:14, tft/player/[slug]/TftPlayerClient.tsx:16) nutzen ausschliesslich loadProLookup (fester Pfad '/pro-players.json', :75) und lookupPro.",
+      "status": "behoben",
+      "belegt_mit": "findProPlayer und loadProData (Abruf ueber Aufrufer-origin) entfernt; es gab keinen Aufrufer.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/lib/pro-players.ts:29-30 fetch mit `${origin}/pro-players.json`, origin kommt als Parameter von findProPlayer (:63). Aufrufer-Suche (Grep 'findProPlayer|pro-players' ueber das Repo ohne node_modules): nur die Definition app/lib/pro-players.ts:63 und der alte Eintrag in infra/security-baseline.json; die Seiten (leaderboard/page.tsx:11, player/[slug]/PlayerClient.tsx:14, tft/player/[slug]/TftPlayerClient.tsx:16) nutzen ausschliesslich loadProLookup (fester Pfad '/pro-players.json', :75) und lookupPro."
     },
     {
       "id": "pfad-aus-region:app/lib/tft-stats-loader",
       "titel": "Ein Regionsname aus der Adresse laesst den Server beliebige .json-Dateien der Installation einlesen, sobald der Datenbank-Weg scheitert - und das Scheitern laesst sich von aussen ausloesen",
       "ort": "app/lib/tft-stats-loader.ts (loadTftStats), erreicht ueber app/lib/tft-detail-payload.ts (fileCore) aus app/api/tft/units/route.ts und app/api/tft/items/route.ts",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "tft-stats-loader.ts:42 join(process.cwd(),'public',`tft-stats-${region.toLowerCase()}.json`) ohne jede Pruefung. Einziger Aufrufer (Grep 'loadTftStats|loadTftGraph' in app/): tft-detail-payload.ts:154 fileCore, nur wenn coreKnown=false (Zeile 168 und 196). Die Routen reichen die Region roh durch: units/route.ts:90 und items/route.ts:42 (searchParams.get('region') ... toLowerCase()); coreKnown bleibt false, sobald im try-Block etwas wirft (units/route.ts:102-140, items/route.ts:52-89). Pfadprobe: node -e join(cwd,'public','tft-stats-'+'../../../package'+'.json') -> D:/Metastats/metastats/package.json, existsSync true. Ausloeser von aussen (abgeleitet, nicht live abgefragt): ?bucket=constructor macht expandBuckets zu einer Funktion (Probe gegen den echten Code, siehe prototyp-treffer:expandRegions), p_buckets faellt beim JSON.stringify aus dem RPC-Koerper, get_tft_unit_stats hat fuer p_buckets keinen Default (supabase/migrations/0095_tft_full_day_window.sql:744) -> PostgREST PGRST202, ein Verhalten, auf das sich tft-comp-matchups-server.ts:41-42 selbst verlaesst -> catch -> fileCore mit der rohen Region. loadTftGraph (Zeile 47-49) hat 0 Aufrufer. Gegenueber dem 19.09. enger: die Routen rufen den Lader nicht mehr direkt, nur noch im Fehlerzweig.",
+      "status": "behoben",
+      "belegt_mit": "loadTftStats/loadTftGraph pruefen isValidRegion (Positivliste REGIONAL_ROUTING) vor dem Dateinamen, sonst null.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-stats-loader.ts:42 join(process.cwd(),'public',`tft-stats-${region.toLowerCase()}.json`) ohne jede Pruefung. Einziger Aufrufer (Grep 'loadTftStats|loadTftGraph' in app/): tft-detail-payload.ts:154 fileCore, nur wenn coreKnown=false (Zeile 168 und 196). Die Routen reichen die Region roh durch: units/route.ts:90 und items/route.ts:42 (searchParams.get('region') ... toLowerCase()); coreKnown bleibt false, sobald im try-Block etwas wirft (units/route.ts:102-140, items/route.ts:52-89). Pfadprobe: node -e join(cwd,'public','tft-stats-'+'../../../package'+'.json') -> D:/Metastats/metastats/package.json, existsSync true. Ausloeser von aussen (abgeleitet, nicht live abgefragt): ?bucket=constructor macht expandBuckets zu einer Funktion (Probe gegen den echten Code, siehe prototyp-treffer:expandRegions), p_buckets faellt beim JSON.stringify aus dem RPC-Koerper, get_tft_unit_stats hat fuer p_buckets keinen Default (supabase/migrations/0095_tft_full_day_window.sql:744) -> PostgREST PGRST202, ein Verhalten, auf das sich tft-comp-matchups-server.ts:41-42 selbst verlaesst -> catch -> fileCore mit der rohen Region. loadTftGraph (Zeile 47-49) hat 0 Aufrufer. Gegenueber dem 19.09. enger: die Routen rufen den Lader nicht mehr direkt, nur noch im Fehlerzweig."
     },
     {
       "id": "pfad-ausbruch:app/api/champions/builds",
@@ -416,50 +428,55 @@
       "titel": "Die Ordner-Schranke des Bild-Proxys laesst sich mit kodierten Punkten umgehen - der Weg bleibt aber im oeffentlichen CommunityDragon-Spielordner",
       "ort": "app/lib/cdragon-base.ts (safeCdragonUrl), genutzt von app/api/img/[...p]/route.ts:86",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "Probelauf mit der echten Funktion (node, Skript scratchpad/audit-probe/cdragon.mjs importiert app/lib/cdragon-base.ts): safeCdragonUrl(['assets','maps','%2e%2e','%2e%2e','data','x.png']) -> https://raw.communitydragon.org/latest/game/data/x.png; drei Ebenen hoch bis plugins -> null; woertliches '..' -> null. Ursache: :46 lehnt nur woertliches '.'/'..' ab, :50 prueft den Ordner VOR new URL(), das '%2e%2e' als Ebene-hoch aufloest; :56-57 prueft danach nur noch die Basis, nicht mehr den Ordner. Der Kommentar :15-18 nennt die Ordner-Liste als die Schranke gegen 'CommunityDragons kompletten Baum'. Ungeprueft: ob Next einen solchen Abschnitt (z. B. als %252e%252e) bis in params durchreicht.",
+      "status": "behoben",
+      "belegt_mit": "safeCdragonUrl prueft die Ordner-Liste nach new URL() erneut. Test cdragon-base.test.mjs mit %2e%2e/%2E%2E; lokal /api/img/cdragon/assets/maps/%2e%2e/%2e%2e/data/x.png -> 404.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Probelauf mit der echten Funktion (node, Skript scratchpad/audit-probe/cdragon.mjs importiert app/lib/cdragon-base.ts): safeCdragonUrl(['assets','maps','%2e%2e','%2e%2e','data','x.png']) -> https://raw.communitydragon.org/latest/game/data/x.png; drei Ebenen hoch bis plugins -> null; woertliches '..' -> null. Ursache: :46 lehnt nur woertliches '.'/'..' ab, :50 prueft den Ordner VOR new URL(), das '%2e%2e' als Ebene-hoch aufloest; :56-57 prueft danach nur noch die Basis, nicht mehr den Ordner. Der Kommentar :15-18 nennt die Ordner-Liste als die Schranke gegen 'CommunityDragons kompletten Baum'. Ungeprueft: ob Next einen solchen Abschnitt (z. B. als %252e%252e) bis in params durchreicht."
     },
     {
       "id": "prototyp-treffer:expandRegions",
       "titel": "Ein Filterwert wie 'constructor' trifft eine eingebaute Eigenschaft statt der Liste und laesst jede Statistik-Abfrage gezielt scheitern",
       "ort": "app/lib/tft-supabase-reader.ts (expandRegions, expandBuckets)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Zeile 28-32 REGION_GROUPS und 38-58 BUCKET_GROUPS sind einfache Objektliterale; Zeile 135 'if (REGION_GROUPS[param]) return REGION_GROUPS[param]' und Zeile 144 dasselbe fuer BUCKET_GROUPS stehen VOR der Positivliste (Zeile 136-138 bzw. 145-147). Probe gegen den echten Code (node --import ./scripts/lib/ts-test-hook.mjs, Probe-Skript danach geloescht): expandRegions('constructor') -> typeof function, JSON.stringify({p_regions}) -> {}; expandBuckets(tftStatsBucket('constructor')) -> function, JSON -> {}; '__proto__' -> Object.prototype. resolveFilters uebernimmt das ungeprueft (Zeile 381-382). Hochgestuft von hinweis auf niedrig: der Treffer ist der Schalter, mit dem pfad-aus-region:app/lib/tft-stats-loader und db-fehlertext-in-antwort:app/lib/tft-supabase-reader von aussen ausgeloest werden.",
+      "status": "behoben",
+      "belegt_mit": "expandRegions/expandBuckets, divergence-Route und pickBucketEntry/bucketParticipants mit Object.hasOwn; Label faellt mit der Liste auf den Standard. Lokal gemessen: ?region=constructor&bucket=__proto__ -> 200, filters.region all, bucket master_plus.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Zeile 28-32 REGION_GROUPS und 38-58 BUCKET_GROUPS sind einfache Objektliterale; Zeile 135 'if (REGION_GROUPS[param]) return REGION_GROUPS[param]' und Zeile 144 dasselbe fuer BUCKET_GROUPS stehen VOR der Positivliste (Zeile 136-138 bzw. 145-147). Probe gegen den echten Code (node --import ./scripts/lib/ts-test-hook.mjs, Probe-Skript danach geloescht): expandRegions('constructor') -> typeof function, JSON.stringify({p_regions}) -> {}; expandBuckets(tftStatsBucket('constructor')) -> function, JSON -> {}; '__proto__' -> Object.prototype. resolveFilters uebernimmt das ungeprueft (Zeile 381-382). Hochgestuft von hinweis auf niedrig: der Treffer ist der Schalter, mit dem pfad-aus-region:app/lib/tft-stats-loader und db-fehlertext-in-antwort:app/lib/tft-supabase-reader von aussen ausgeloest werden."
     },
     {
       "id": "publisher-kopf-ohne-pruefung:app/lib/snapshot-lookup",
       "titel": "Jeder Fremde kann sich per Kopfzeile als Vorrats-Rechner ausgeben und damit die schweren Live-Abfragen mit langem Zeitlimit an Vorrat, Spiegel und Notreserve vorbei ausloesen",
       "ort": "app/lib/snapshot-lookup.ts (isSnapshotPublisher), wirksam in 12 Routen: app/api/tft/comps, tft/comps/families, tft/detail-builds, tft/units, tft/items, tft/traits, tft/leaderboard, tft/rising, tft/regions/divergence, tournaments, tournaments/standings, champions/[id]/builds",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "app/lib/snapshot-lookup.ts:157-159 prueft nur, ob die Kopfzeile x-snapshot-publisher gleich 1 ist, kein Geheimnis. middleware.ts:36-41 (forward) entfernt nur x-ms-lang, die Kopfzeile kommt von aussen durch. Grep x-snapshot-publisher in app/ und scripts/: gesetzt nur von scripts/publish-snapshot-bundle.mjs:269, scripts/publish-route-mirrors.mjs:65, scripts/publish-lol-builds.mjs:92 (jeweils ohne Token) und intern app/api/tft/comps/families/route.ts:34. Grep isSnapshotPublisher bzw. readRouteMirror in app/: 12 Routen, app/lib/route-mirror-read.ts:30 ueberspringt mit der Kopfzeile den Spiegel. Wirkung laut Code: app/api/tft/comps/route.ts:838-843 (25 s statt 8 s; Kommentar: der C1/C3-Schutz der 1-Kern-Datenbank haengt an den 8 s), app/api/tft/units/route.ts:193-215 (25 s, Fehler schlagen durch), app/api/tft/detail-builds/route.ts:12-14 und :33-37 (Live-Abfrage ueber alle Units; Kommentar: zu schwer, um sie jedem Aufrufer zu oeffnen), app/api/tft/comps/families/route.ts:9-10 und :30-36 (Kommentar: sonst koennte jeder Aufruf die schwere Listen-Abfrage ausloesen), app/lib/tft-supabase-reader.ts:350-358, :537-540, :638-661 (Manifest-Fenster, Wartezeit und Negativ-Cache uebersprungen). Widerspricht app/lib/snapshot-lookup.ts:155-156 (Bewusst KEIN oeffentlicher Query-Parameter: der wuerde jedem erlauben, den Cushion zu umgehen) - eine Kopfzeile ist genauso oeffentlich wie ein Query-Parameter. Nicht live gemessen (kein Lasttest gegen Produktion).",
+      "status": "behoben",
+      "belegt_mit": "app/lib/snapshot-lookup.ts isSnapshotPublisher ruft publisherTokenValid; middleware.ts lehnt Kopf ohne gueltiges Geheimnis mit 403 ab. Test app/lib/snapshot-publisher.test.mjs (8 Faelle). Live-Messung siehe kopfzeile-als-vorrecht:x-snapshot-publisher.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/lib/snapshot-lookup.ts:157-159 prueft nur, ob die Kopfzeile x-snapshot-publisher gleich 1 ist, kein Geheimnis. middleware.ts:36-41 (forward) entfernt nur x-ms-lang, die Kopfzeile kommt von aussen durch. Grep x-snapshot-publisher in app/ und scripts/: gesetzt nur von scripts/publish-snapshot-bundle.mjs:269, scripts/publish-route-mirrors.mjs:65, scripts/publish-lol-builds.mjs:92 (jeweils ohne Token) und intern app/api/tft/comps/families/route.ts:34. Grep isSnapshotPublisher bzw. readRouteMirror in app/: 12 Routen, app/lib/route-mirror-read.ts:30 ueberspringt mit der Kopfzeile den Spiegel. Wirkung laut Code: app/api/tft/comps/route.ts:838-843 (25 s statt 8 s; Kommentar: der C1/C3-Schutz der 1-Kern-Datenbank haengt an den 8 s), app/api/tft/units/route.ts:193-215 (25 s, Fehler schlagen durch), app/api/tft/detail-builds/route.ts:12-14 und :33-37 (Live-Abfrage ueber alle Units; Kommentar: zu schwer, um sie jedem Aufrufer zu oeffnen), app/api/tft/comps/families/route.ts:9-10 und :30-36 (Kommentar: sonst koennte jeder Aufruf die schwere Listen-Abfrage ausloesen), app/lib/tft-supabase-reader.ts:350-358, :537-540, :638-661 (Manifest-Fenster, Wartezeit und Negativ-Cache uebersprungen). Widerspricht app/lib/snapshot-lookup.ts:155-156 (Bewusst KEIN oeffentlicher Query-Parameter: der wuerde jedem erlauben, den Cushion zu umgehen) - eine Kopfzeile ist genauso oeffentlich wie ein Query-Parameter. Nicht live gemessen (kein Lasttest gegen Produktion)."
     },
     {
       "id": "puuid-ungekapselt-in-riot-url",
       "titel": "Vom Aufrufer kommende Spieler- und Match-IDs gehen weiterhin ungekapselt in Riot-Adressen",
       "ort": "app/api/mastery/route.ts, app/api/tft/player-stats/route.ts, app/api/tft/matches/route.ts",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "Grep nach riotFetch mit puuid/ids/matchId im Adress-Text in app/api: app/api/mastery/route.ts:23 sowie app/api/tft/player-stats/route.ts:91 und :372 mit puuid vom Aufrufer; app/api/tft/matches/route.ts:44 (puuid) und :62 (id aus dem Parameter ids, :42 nur getrimmt). Die uebrigen Treffer (leaderboard:273, tft/marktwert:101-102, tft/summoner:97 und :121-123) nutzen IDs aus Riot-Antworten. Seit 19.09. behoben: app/api/live-game/route.ts:31 und app/api/matches/route.ts:24 kodieren mit encodeURIComponent (Grep encodeURIComponent(puuid) in app/api).",
+      "status": "behoben",
+      "belegt_mit": "encodeURIComponent in app/api/mastery/route.ts, app/api/tft/player-stats/route.ts (Konto + Liga), app/api/tft/matches/route.ts (puuid + Match-ID). Die uebrigen Stellen pruefen das Format per PUUID_RE (live-game/ranks, leaderboard/resolve, tft/summoner) oder nutzen IDs aus Riot-Antworten.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "Grep nach riotFetch mit puuid/ids/matchId im Adress-Text in app/api: app/api/mastery/route.ts:23 sowie app/api/tft/player-stats/route.ts:91 und :372 mit puuid vom Aufrufer; app/api/tft/matches/route.ts:44 (puuid) und :62 (id aus dem Parameter ids, :42 nur getrimmt). Die uebrigen Treffer (leaderboard:273, tft/marktwert:101-102, tft/summoner:97 und :121-123) nutzen IDs aus Riot-Antworten. Seit 19.09. behoben: app/api/live-game/route.ts:31 und app/api/matches/route.ts:24 kodieren mit encodeURIComponent (Grep encodeURIComponent(puuid) in app/api)."
     },
     {
       "id": "riot-kontingent-ohne-bremse:app/lib/tft-player-cache",
       "titel": "Ein einziger anonymer Aufruf kann rund tausend Abrufe mit dem TFT-Produktionsschluessel ausloesen",
       "ort": "app/lib/tft-player-cache.ts (refreshPlayerCache)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "tft-player-cache.ts:94-107 holt beim ersten Besuch bis zu 1000 Match-IDs (5 Seiten a 200), Zeile 123-137 laedt jedes fehlende Match einzeln in Wellen zu 20 je 1,05 s. Der 5-Minuten-Riegel (Zeile 70-75) greift nur fuer dieselbe Kennung. Aufrufer app/api/tft/player-stats/route.ts ohne Bremse (grep -n nach checkRateLimit und rateLimit -> 0 Treffer), Deckel nur maxDuration = 60 (Zeile 24). Derselbe Schluessel RIOT_API_KEY_TFT treibt den Dauerdienst auf der Box (scripts/refresh-api-server.mjs:140). Echte Kennungen stehen offen in Profil-Links (app/lib/tft-player-search.ts:23-27 setzt ?puuid=).",
+      "status": "behoben",
+      "belegt_mit": "app/api/tft/player-stats/route.ts: checkRateLimit 30/min je IP und PUUID-Format {20,100} vor jedem Riot-Abruf (lokal gemessen: ?puuid=abc -> 400 bad_puuid). tft-player-cache.ts: Riot-Ablehnung sperrt die Kennung 60 s je Instanz, gleichzeitige Aufrufe teilen einen Lauf.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-player-cache.ts:94-107 holt beim ersten Besuch bis zu 1000 Match-IDs (5 Seiten a 200), Zeile 123-137 laedt jedes fehlende Match einzeln in Wellen zu 20 je 1,05 s. Der 5-Minuten-Riegel (Zeile 70-75) greift nur fuer dieselbe Kennung. Aufrufer app/api/tft/player-stats/route.ts ohne Bremse (grep -n nach checkRateLimit und rateLimit -> 0 Treffer), Deckel nur maxDuration = 60 (Zeile 24). Derselbe Schluessel RIOT_API_KEY_TFT treibt den Dauerdienst auf der Box (scripts/refresh-api-server.mjs:140). Echte Kennungen stehen offen in Profil-Links (app/lib/tft-player-search.ts:23-27 setzt ?puuid=)."
     },
     {
       "id": "rls-fehlt:lol_player_match_cache",
@@ -476,20 +493,22 @@
       "titel": "Die Spielerkennung aus der Adresse wird unveraendert in die Riot-Adresse eingesetzt",
       "ort": "app/lib/tft-player-cache.ts (fetchIds)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "tft-player-cache.ts:292 `.../matches/by-puuid/${puuid}/ids?count=...` ohne encodeURIComponent; Zeile 301 matchId ebenso (stammt aber aus Riots eigener Liste). Aufrufer app/api/tft/player-stats/route.ts:41 nimmt puuid roh, Zeile 45 prueft nur auf leer, keine Laengengrenze (zum Vergleich app/api/tft/player-tournaments/route.ts:8 mit Laengengrenze 100). Teilweise behoben: die Region ist seit player-stats/route.ts:42 durch parseRegion abgesichert, der Region-Teil aus Zeile 154 ist damit erledigt. Dieselbe Bibliothek kodiert puuid in ihren Supabase-Abfragen (Zeile 154, 167, 177).",
+      "status": "behoben",
+      "belegt_mit": "tft-player-cache.ts fetchIds/fetchDetail mit encodeURIComponent; player-stats prueft das Format vorher.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "tft-player-cache.ts:292 `.../matches/by-puuid/${puuid}/ids?count=...` ohne encodeURIComponent; Zeile 301 matchId ebenso (stammt aber aus Riots eigener Liste). Aufrufer app/api/tft/player-stats/route.ts:41 nimmt puuid roh, Zeile 45 prueft nur auf leer, keine Laengengrenze (zum Vergleich app/api/tft/player-tournaments/route.ts:8 mit Laengengrenze 100). Teilweise behoben: die Region ist seit player-stats/route.ts:42 durch parseRegion abgesichert, der Region-Teil aus Zeile 154 ist damit erledigt. Dieselbe Bibliothek kodiert puuid in ihren Supabase-Abfragen (Zeile 154, 167, 177)."
     },
     {
       "id": "route-loest-schreiben-aus:app/api/tft/marktwert/refresh",
       "titel": "Die Marktwert-Aktualisierung laesst jeden fuer beliebige Spieler-IDs Schreibvorgaenge auf der Box ausloesen; der Schreib-Waechter sieht das nicht",
       "ort": "app/api/tft/marktwert/refresh/route.ts, scripts/refresh-api-server.mjs",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/api/tft/marktwert/refresh/route.ts:18 oeffentliches POST ohne Zugangspruefung, :24 nur Bremse im Instanz-Speicher (10/min je IP), :33-36 puuid und region nur getrimmt, :41-47 mit Bearer-Token an die Box, :59 Antwort der Box unveraendert durchgereicht. Auf der Box scripts/refresh-api-server.mjs:300 upsertSeasonStats und :370 insert into tft_player_marketvalue_snapshots. node scripts/check-write-routes.mjs zaehlt die Route nicht mit (8 von 90). Die 60-s-Sperre je Spieler steht nur im Kommentar :8, auf der Box ungeprueft.",
+      "status": "behoben",
+      "belegt_mit": "Route prueft PUUID-Format und Region (parseRegion), Fehlertexte der Box nur als feste Codes. Box: scripts/refresh-api-server.mjs refreshOnePlayer fragt vor dem ersten Schreiben das Riot-Konto ab und bricht bei unbekannter Kennung mit 404 unknown_player ab. check-write-routes zaehlt die Route jetzt mit (Ausnahme mit Begruendung).",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/tft/marktwert/refresh/route.ts:18 oeffentliches POST ohne Zugangspruefung, :24 nur Bremse im Instanz-Speicher (10/min je IP), :33-36 puuid und region nur getrimmt, :41-47 mit Bearer-Token an die Box, :59 Antwort der Box unveraendert durchgereicht. Auf der Box scripts/refresh-api-server.mjs:300 upsertSeasonStats und :370 insert into tft_player_marketvalue_snapshots. node scripts/check-write-routes.mjs zaehlt die Route nicht mit (8 von 90). Die 60-s-Sperre je Spieler steht nur im Kommentar :8, auf der Box ungeprueft."
     },
     {
       "id": "sandbox-aus:metastats-daily-crawl-execstartpre",
@@ -516,10 +535,11 @@
       "titel": "Der Waechter meldet alle Schreib-Routen als gedeckt, obwohl eine offene Route ueber zwei Bibliotheken in vier Tabellen schreibt, loescht und aendert - auch fuer erfundene Spielerkennungen",
       "ort": "app/lib/tft-rank-history.ts, app/lib/tft-player-cache.ts, aufgerufen aus app/api/tft/player-stats/route.ts",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "node scripts/check-write-routes.mjs -> Ausgabe 'Schreib-Routen geprueft (8 von 90 schreiben, alle gedeckt)', Exit 0. Der Waechter liest nur app/api/**/route.ts (check-write-routes.mjs:29 und :39). grep -nE mit dem Schreibmuster SCHREIBT aus check-write-routes.mjs:39 auf app/api/tft/player-stats/route.ts -> 0 Treffer. Schreibstellen per rohem fetch mit dem Allmachts-Schluessel (supaHeaders: tft-player-cache.ts:281-286, tft-rank-history.ts:290-292): tft-player-cache.ts:199 (tft_player_match_cache POST) und :218 (tft_player_fetch_state POST); tft-rank-history.ts:228 (tft_player_rank_history DELETE), :251 (tft_player_rank_backfill_state POST), :276 (tft_player_rank_history POST), :658 (tft_player_rank_history PATCH). Route ohne Zugangspruefung und ohne Bremse (grep -n nach checkRateLimit und rateLimit in player-stats/route.ts -> 0 Treffer). Neu belegt: tft-player-cache.ts:80-83 schreibt bei leerer Riot-Antwort eine fetch_state-Zeile mit der rohen, unbegrenzt langen Kennung; leer ist die Antwort fuer jede ungueltige Kennung, weil fetchIds in Zeile 295 bei jedem Fehlerstatus eine leere Liste liefert.",
+      "status": "behoben",
+      "belegt_mit": "scripts/check-write-routes.mjs erkennt schreibende Bibliotheken in app/lib (Supabase-Client oder rohes POST/PATCH/DELETE auf /rest/v1/<Tabelle>) und Routen, die sie einbinden; dazu Aufrufe des Box-Endpunkts /refresh-player. Ausgabe: '10 von 90 schreiben, alle gedeckt; schreibende Bibliotheken: tft-player-cache, tft-rank-history'. Gegenprobe ohne Ausnahme fuer player-stats -> Exit 1. Riot-Fehler schreiben keine Zustandszeile mehr (fetchIds -> null).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "node scripts/check-write-routes.mjs -> Ausgabe 'Schreib-Routen geprueft (8 von 90 schreiben, alle gedeckt)', Exit 0. Der Waechter liest nur app/api/**/route.ts (check-write-routes.mjs:29 und :39). grep -nE mit dem Schreibmuster SCHREIBT aus check-write-routes.mjs:39 auf app/api/tft/player-stats/route.ts -> 0 Treffer. Schreibstellen per rohem fetch mit dem Allmachts-Schluessel (supaHeaders: tft-player-cache.ts:281-286, tft-rank-history.ts:290-292): tft-player-cache.ts:199 (tft_player_match_cache POST) und :218 (tft_player_fetch_state POST); tft-rank-history.ts:228 (tft_player_rank_history DELETE), :251 (tft_player_rank_backfill_state POST), :276 (tft_player_rank_history POST), :658 (tft_player_rank_history PATCH). Route ohne Zugangspruefung und ohne Bremse (grep -n nach checkRateLimit und rateLimit in player-stats/route.ts -> 0 Treffer). Neu belegt: tft-player-cache.ts:80-83 schreibt bei leerer Riot-Antwort eine fetch_state-Zeile mit der rohen, unbegrenzt langen Kennung; leer ist die Antwort fuer jede ungueltige Kennung, weil fetchIds in Zeile 295 bei jedem Fehlerstatus eine leere Liste liefert."
     },
     {
       "id": "schreibziel-ohne-arbeitsordner:write-gate",
@@ -536,10 +556,11 @@
       "titel": "Drei Routen laden eigene Dateien ueber die Adresse, die der Aufrufer im Host-Kopf mitschickt",
       "ort": "app/api/homepage-stats/route.ts, app/api/companion/v1/comps/route.ts, app/api/companion/v1/lookups/route.ts",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/api/homepage-stats/route.ts:7 origin aus request.url, Netzabruf dagegen :13, :59, :60, :67; app/api/companion/v1/comps/route.ts:71 und :82 sowie app/api/companion/v1/lookups/route.ts:14 holen tft-assets.json ueber request.nextUrl.origin. Seit 19.09. behoben: app/api/champions/route.ts (Grep origin bzw. fetch: 0 Treffer). Die uebrigen origin-Nutzer (companion/v1/units:30, items:29, comp:48-56 und :80-87, player:36-40 und :58-63, tft/comps/board:73-81, tft/comps/families:32-34) bauen nur interne NextRequest-Objekte ohne Netzabruf.",
+      "status": "behoben",
+      "belegt_mit": "app/lib/self-origin.ts trustedSelfOrigin: nur eigene Hosts (metastats.gg, VERCEL_URL/BRANCH/PRODUCTION, lokal nur ausserhalb Produktion), sonst https://www.metastats.gg. Genutzt in homepage-stats, companion/v1/comps, companion/v1/lookups. Lokal mit Host: evil.example -> 200 mit echten Daten.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/homepage-stats/route.ts:7 origin aus request.url, Netzabruf dagegen :13, :59, :60, :67; app/api/companion/v1/comps/route.ts:71 und :82 sowie app/api/companion/v1/lookups/route.ts:14 holen tft-assets.json ueber request.nextUrl.origin. Seit 19.09. behoben: app/api/champions/route.ts (Grep origin bzw. fetch: 0 Treffer). Die uebrigen origin-Nutzer (companion/v1/units:30, items:29, comp:48-56 und :80-87, player:36-40 und :58-63, tft/comps/board:73-81, tft/comps/families:32-34) bauen nur interne NextRequest-Objekte ohne Netzabruf."
     },
     {
       "id": "shell-schreibwege-unerkannt:gate-policy",
@@ -660,30 +681,33 @@
       "titel": "Die Grenze 5 geteilte Comps pro Tag greift nicht: ohne Cookie gilt jeder Aufruf als neuer Autor",
       "ort": "app/api/tft/comps/share/route.ts",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "app/api/tft/comps/share/route.ts:60-63 fehlendes oder ungueltiges Cookie ergibt einen neuen randomUUID; die Zaehlung :67-71 je author_token findet dann 0 und der Insert :82 laeuft mit supabaseAdmin. Grep checkRateLimit in der Datei: 0 Treffer (keine Bremse je IP).",
+      "status": "behoben",
+      "belegt_mit": "app/lib/community-author.ts: Kennung nur aus unterschriebenem Cookie (HMAC) oder aus der IP abgeleitet; ausgedachte Cookies zaehlen nicht, weggeworfene ergeben dieselbe Kennung je IP. Alte Cookies nur, wenn die Kennung schon in der DB steht. Plus checkRateLimit 10/10 min je IP. Test app/lib/community-author.test.mjs (5 Faelle).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/tft/comps/share/route.ts:60-63 fehlendes oder ungueltiges Cookie ergibt einen neuen randomUUID; die Zaehlung :67-71 je author_token findet dann 0 und der Insert :82 laeuft mit supabaseAdmin. Grep checkRateLimit in der Datei: 0 Treffer (keine Bremse je IP)."
     },
     {
       "id": "wirkungslose-drossel:app/api/tft/comps/upvote",
       "titel": "Die Regel eine Stimme pro Person greift nicht: ohne Cookie zaehlt jeder Aufruf als neue Stimme",
       "ort": "app/api/tft/comps/community/[id]/upvote/route.ts",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "app/api/tft/comps/community/[id]/upvote/route.ts:16-19 fehlendes Cookie ergibt einen neuen randomUUID, der Insert :22-24 mit Schluessel (comp_id, author_token) kollidiert daher nie, Zaehler plus 1 :49-59. Grep checkRateLimit in der Datei: 0 Treffer. Die Stimmenzahl wird ausgeliefert (app/api/tft/comps/community/route.ts:37).",
+      "status": "behoben",
+      "belegt_mit": "upvote/route.ts nutzt resolveCommunityAuthor (siehe share) — eine Stimme je Kennung, Kennung je IP ohne gueltiges Cookie; plus checkRateLimit 30/min je IP. Datenschutzerklaerung (legal.privacy.cookiesText, 6 Sprachen) nennt das Cookie tft_author_token jetzt.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/api/tft/comps/community/[id]/upvote/route.ts:16-19 fehlendes Cookie ergibt einen neuen randomUUID, der Insert :22-24 mit Schluessel (comp_id, author_token) kollidiert daher nie, Zaehler plus 1 :49-59. Grep checkRateLimit in der Datei: 0 Treffer. Die Stimmenzahl wird ausgeliefert (app/api/tft/comps/community/route.ts:37)."
     },
     {
       "id": "zeitstempel-ohne-signatur:app/lib/companion-auth",
       "titel": "Das Fuenf-Minuten-Fenster der Companion-Pruefung ist nicht unterschrieben und bremst Wiedereinspielen deshalb nicht",
       "ort": "app/lib/companion-auth.ts (companionAuthFailure)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "app/lib/companion-auth.ts:60-61 prueft die Kopfzeile x-companion-timestamp nur gegen die Uhr, :64 prueft die Signatur ausschliesslich ueber rawBody (verifySignature :22-34). Gegenstueck in der App: apps/overwolf-app/src/windows/background.ts:108-109 signiert nur e.body und setzt den Zeitstempel getrennt daneben. Der Kommentar :15-18 begruendet die Pruefung aber mit 'Zusammen mit dem Zeitfenster von fuenf Minuten ... macht es Wiedereinspielen und Spam aber teuer genug'.",
+      "status": "akzeptiert",
+      "belegt_mit": "Bewusst so gelassen: das App-Geheimnis steckt in der ausgelieferten Overwolf-App und ist damit oeffentlich. Eine Signatur ueber den Zeitstempel kann jeder mit demselben Geheimnis neu berechnen, sie wuerde Wiedereinspielen nicht verhindern. Schutz bleiben Bremse je IP und die Pruefung der Inhalte; den irrefuehrenden Kommentar korrigiert companion-auth.ts.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "app/lib/companion-auth.ts:60-61 prueft die Kopfzeile x-companion-timestamp nur gegen die Uhr, :64 prueft die Signatur ausschliesslich ueber rawBody (verifySignature :22-34). Gegenstueck in der App: apps/overwolf-app/src/windows/background.ts:108-109 signiert nur e.body und setzt den Zeitstempel getrennt daneben. Der Kommentar :15-18 begruendet die Pruefung aber mit 'Zusammen mit dem Zeitfenster von fuenf Minuten ... macht es Wiedereinspielen und Spam aber teuer genug'."
     }
   ]
 }

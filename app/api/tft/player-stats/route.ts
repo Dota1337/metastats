@@ -7,6 +7,7 @@ import { getAccountRouting, parseRegion } from '../../../lib/regions';
 import { isExcludedUnit } from '../../../lib/tft-excluded';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { riotFetch } from '../../../lib/riot-fetch';
+import { checkRateLimit } from '../../../lib/rate-limit';
 
 // Player season-stats endpoint.
 // Reads from tft_player_match_cache. On every request we refresh the cache
@@ -36,13 +37,24 @@ function getCurrentSet(): number | null {
   }
 }
 
+// Riot-PUUIDs sind 78 Zeichen; der Rahmen ist bewusst weiter (wie live-game/ranks).
+const PUUID_RE = /^[A-Za-z0-9_-]{20,100}$/;
+
 export async function GET(request: NextRequest) {
+  // Erstbesuch eines Spielers holt bis zu 1000 Matches mit dem TFT-
+  // Produktionsschluessel — ohne Bremse koennte ein Aufrufer mit wechselnden
+  // Kennungen das Riot-Kontingent der Box leerziehen.
+  const limited = checkRateLimit(request, { key: 'tft-player-stats', max: 30, windowMs: 60_000 });
+  if (limited) return limited;
   const { searchParams } = new URL(request.url);
   const puuid = searchParams.get('puuid');
   const region = parseRegion(searchParams.get('region'), { fallback: 'euw1' });
   const apiKey = process.env.RIOT_API_KEY_TFT;
   if (!apiKey) return NextResponse.json({ error: 'Riot API Key fehlt' }, { status: 503 });
   if (!puuid) return NextResponse.json({ error: 'puuid required' }, { status: 400 });
+  if (!PUUID_RE.test(puuid)) {
+    return NextResponse.json({ error: 'puuid invalid', code: 'bad_puuid' }, { status: 400, headers: { 'Cache-Control': 'no-store' } });
+  }
   if (!region) {
     return NextResponse.json(
       { error: 'Ungültige Region', code: 'bad_region' },
@@ -66,7 +78,8 @@ export async function GET(request: NextRequest) {
     try {
       await refreshPlayerCache(puuid, region, { riotApiKey: apiKey });
     } catch (e: any) {
-      return NextResponse.json({ error: `cache refresh failed: ${e.message}` }, { status: 502 });
+      console.error('[tft/player-stats] cache refresh failed:', e?.message);
+      return NextResponse.json({ error: 'cache refresh failed' }, { status: 502 });
     }
   }
 
@@ -88,7 +101,7 @@ export async function GET(request: NextRequest) {
   try {
     const regional = getAccountRouting(region);
     const accRes = await riotFetch(
-      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${puuid}`,
+      `https://${regional}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${encodeURIComponent(puuid)}`,
       apiKey,
     );
     if (accRes.ok) {
@@ -369,7 +382,7 @@ async function buildCompareExtras(
   let rank: { tier: string; rank: string; lp: number } | null = null;
   if (isCurrentSet) {
     try {
-      const r = await riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${puuid}`, apiKey);
+      const r = await riotFetch(`https://${region}.api.riotgames.com/tft/league/v1/by-puuid/${encodeURIComponent(puuid)}`, apiKey);
       if (r.ok) {
         const all = await r.json();
         const solo = Array.isArray(all) ? all.find((x: { queueType?: string }) => x.queueType === 'RANKED_TFT') : null;

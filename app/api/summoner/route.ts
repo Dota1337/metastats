@@ -14,6 +14,24 @@ import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
 // gewerteten Basiswert (marketvalue.ts), das Tor muss deshalb hier sitzen.
 const MIN_SPLIT_GAMES = 10;
 
+// Besucher-Kennung fuer „zuletzt gesucht" (recent-players). Das Cookie setzt
+// der Browser selbst (HomeClient.tsx: crypto.randomUUID) — nur UUIDs zaehlen,
+// und je Spieler bleiben die juengsten MAX_SEARCHED_BY (Sicherheitsdurchsicht
+// 24.10.2026; gemessen: hoechstens 6 Eintraege je Spieler).
+const VISITOR_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_SEARCHED_BY = 100;
+
+function visitorFrom(request: NextRequest): string | null {
+  const v = request.cookies.get('visitor_id')?.value;
+  return v && VISITOR_RE.test(v) ? v : null;
+}
+
+function withVisitor(list: string[] | null | undefined, visitor: string | null): string[] {
+  const out = list || [];
+  if (!visitor || out.includes(visitor)) return out;
+  return [...out, visitor].slice(-MAX_SEARCHED_BY);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const name = searchParams.get('name') || '';
@@ -165,13 +183,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Track visitor
-    const visitorId = request.cookies.get('visitor_id')?.value;
-    if (visitorId) {
-      const searchedBy = cached.searched_by || [];
-      if (!searchedBy.includes(visitorId)) {
-        searchedBy.push(visitorId);
-        await supabase.from('players').update({ searched_by: searchedBy }).eq('id', cached.id);
-      }
+    const visitorId = visitorFrom(request);
+    if (visitorId && !(cached.searched_by || []).includes(visitorId)) {
+      await supabase.from('players').update({ searched_by: withVisitor(cached.searched_by, visitorId) }).eq('id', cached.id);
     }
 
     return NextResponse.json({
@@ -473,7 +487,7 @@ export async function GET(request: NextRequest) {
       : null;
 
     // === Step 5: Persist to Supabase ===
-    const visitorId = request.cookies.get('visitor_id')?.value;
+    const visitorId = visitorFrom(request);
 
     const { data: existingPlayer } = await supabase
       .from('players')
@@ -481,10 +495,7 @@ export async function GET(request: NextRequest) {
       .eq('puuid', account.puuid)
       .single();
 
-    const searchedBy = existingPlayer?.searched_by || [];
-    if (visitorId && !searchedBy.includes(visitorId)) {
-      searchedBy.push(visitorId);
-    }
+    const searchedBy = withVisitor(existingPlayer?.searched_by, visitorId);
 
     const { data: player, error: upsertError } = await supabase
       .from('players')

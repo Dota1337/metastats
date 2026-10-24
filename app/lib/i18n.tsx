@@ -3333,6 +3333,7 @@ const translations = {
   'tft.explorer.x.and': t6('und', 'and', '\uADF8\uB9AC\uACE0', '\u4E14', 'y', 'et'),
   'tft.explorer.x.or': t6('oder', 'or', '\uB610\uB294', '\u6216', 'o', 'ou'),
   'tft.explorer.x.searchAll': t6('Unit, Item oder Synergie suchen', 'Search unit, item or trait', '\uC720\uB2DB, \uC544\uC774\uD15C, \uC2DC\uB108\uC9C0 \uAC80\uC0C9', '\u641C\u7D22\u5F08\u5B50\u3001\u88C5\u5907\u6216\u7F81\u7ECA', 'Buscar unidad, objeto o sinergia', 'Rechercher une unit\u00E9, un objet ou une synergie'),
+  'tft.explorer.x.searchShort': t6('Unit, Item, Synergie', 'Unit, item, trait', '유닛, 아이템, 시너지', '弈子、装备、羁绊', 'Unidad, objeto, sinergia', 'Unité, objet, synergie'),
   'tft.explorer.x.browse': t6('Liste \u00F6ffnen', 'Open list', '\uBAA9\uB85D \uC5F4\uAE30', '\u6253\u5F00\u5217\u8868', 'Abrir lista', 'Ouvrir la liste'),
   'tft.explorer.x.apply': t6('\u00DCbernehmen', 'Apply', '\uC801\uC6A9', '\u5E94\u7528', 'Aplicar', 'Appliquer'),
   'tft.explorer.x.notFound': t6('Nicht gefunden', 'Not found', '\uCC3E\uC744 \uC218 \uC5C6\uC74C', '\u672A\u627E\u5230', 'No encontrado', 'Introuvable'),

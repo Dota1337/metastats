@@ -80,6 +80,20 @@ export default function ExplorerSearchBox({
     inputRef.current?.blur();
     inputRef.current?.focus();
   }, [focusKey]);
+  // Passt der volle Platzhalter nicht ins Feld (Handy 375 px: Feld 167 px, Text 203 px), steht die Kurzform da.
+  const [shortPh, setShortPh] = useState(false);
+  useEffect(() => {
+    const el = inputRef.current;
+    const ctx = typeof ResizeObserver === 'undefined' ? null : document.createElement('canvas').getContext('2d');
+    if (!el || !ctx) return;
+    const full = t('tft.explorer.x.searchAll');
+    const ro = new ResizeObserver(() => {
+      ctx.font = getComputedStyle(el).font;
+      setShortPh(ctx.measureText(full).width > el.clientWidth);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [t]);
   // Schliessen setzt zurueck: jedes neue Oeffnen beginnt bei den Units.
   const close = () => { setOpen(false); setTab('units'); setAct(null); };
   useEffect(() => {
@@ -224,7 +238,7 @@ export default function ExplorerSearchBox({
           onChange={e => { setText(e.target.value); setOpen(true); setHi(null); setMissed([]); }}
           onFocus={() => { if (!skipOpen.current) setOpen(true); onFocus?.(); }}
           onClick={() => setOpen(true)}
-          placeholder={t('tft.explorer.x.searchAll')}
+          placeholder={t(shortPh ? 'tft.explorer.x.searchShort' : 'tft.explorer.x.searchAll')}
           aria-label={t('tft.explorer.x.searchAll')}
           role="combobox"
           aria-expanded={showDrop || showBrowse}

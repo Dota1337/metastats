@@ -5,10 +5,12 @@ import {
   EXPLORER_RANKS, EXPLORER_RANK_STAGES, LATEST_PATCH, barPatches, rankStageOf, stageRanks,
   type ExplorerMeta, type ExplorerQuery, type ExplorerRank, type ExplorerRankStage,
 } from '../../../lib/tft-explorer-query';
+import { seg } from './explorer-ui';
 
-// Grundmenge: Patch und Region hier, der Rang (ExplorerRanks) steht seit
-// 24.10.2026 in der Filterleiste rechts neben der Suche. Die Auswahl kommt aus
-// dem, was im Speicher tatsaechlich liegt (meta), nicht aus festen Listen.
+// Grundmenge: Patch, Region, Rang. Seit 25.10.2026 drei Knoepfe mit
+// Aufklappfenster vorn in der Filterleiste (ExplorerFilters, PlainChip); hier
+// stehen Beschriftung und Fensterinhalt. Die Auswahl kommt aus dem, was im
+// Speicher tatsaechlich liegt (meta), nicht aus festen Listen.
 
 export const RANK_LABEL: Record<ExplorerRank, TranslationKey> = {
   CHALLENGER: 'tft.bucket.challenger',
@@ -27,25 +29,39 @@ const STAGE_LABEL: Record<ExplorerRankStage, TranslationKey> = {
   emerald_plus: 'tft.filter.emeraldPlus',
 };
 
-const chip = (on: boolean) =>
-  `px-3 py-2 rounded-md text-xs border transition-colors whitespace-nowrap ${
-    on ? 'bg-accent-a15 border-accent-a50 text-fg-bright' : 'bg-surface-base border-border-subtle text-fg-secondary hover:text-fg-primary'
-  }`;
+type T = ReturnType<typeof useI18n>['t'];
+type Scope = { query: ExplorerQuery; setQuery: (q: ExplorerQuery) => void };
 
-export default function ExplorerScope({
-  query, setQuery, meta, resolvedPatch,
-}: {
-  query: ExplorerQuery;
-  setQuery: (q: ExplorerQuery) => void;
-  meta: ExplorerMeta | null;
-  resolvedPatch: string | null;
-}) {
+const isLatestQ = (q: ExplorerQuery) => q.patches[0] === LATEST_PATCH;
+
+// Knopf-Beschriftung: value = Abweichung vom Standard (hervorgehoben, mit ×),
+// hint = Standard (Neuester Patch / Alle Regionen / Alle Raenge), voll lesbar,
+// weil er alle Zahlen darunter bestimmt.
+export function patchValue(q: ExplorerQuery, t: T): string | null {
+  if (isLatestQ(q)) return null;
+  return q.patches.length === 0 ? t('tft.explorer.x.patch.all') : `${t('tft.filter.patch')} ${q.patches.join(', ')}`;
+}
+export const patchHint = (t: T, resolvedPatch: string | null) =>
+  `${t('tft.explorer.x.patch.latest')}${resolvedPatch ? ` · ${resolvedPatch}` : ''}`;
+
+export const regionValue = (q: ExplorerQuery) => (q.region === 'all' ? null : regionShortLabel(q.region));
+
+// Stufen statt Einzelraenge. Eine Auswahl, die keine Stufe ist (alter Link,
+// Klick im Reiter Rang), steht als Wert auf dem Knopf und laesst sich per × entfernen.
+export function rankValue(q: ExplorerQuery, t: T): string | null {
+  const stage = rankStageOf(q.ranks);
+  if (stage === 'all') return null;
+  return stage ? t(STAGE_LABEL[stage])
+    : EXPLORER_RANKS.filter(r => q.ranks.includes(r)).map(r => t(RANK_LABEL[r])).join(', ');
+}
+
+// Mehrfachwahl: Fenster bleibt offen. Leiste = aktuelle Patch-Familie + vorige
+// (barPatches). Ohne meta (erstes Laden, Abfrage gescheitert) stehen die
+// gewaehlten Patches dort, damit die Auswahl sichtbar und abwaehlbar bleibt.
+export function PatchOptions({ query, setQuery, meta, resolvedPatch }: Scope & { meta: ExplorerMeta | null; resolvedPatch: string | null }) {
   const { t } = useI18n();
-  const isLatest = query.patches[0] === LATEST_PATCH;
+  const isLatest = isLatestQ(query);
   const isAll = query.patches.length === 0;
-  // Leiste: aktuelle Patch-Familie + vorige Familie (barPatches). Ohne meta
-  // (erstes Laden, Abfrage gescheitert) stehen die gewaehlten Patches dort,
-  // damit die Auswahl sichtbar und abwaehlbar bleibt und nichts springt.
   const bar = meta ? barPatches(meta.patches.map(p => p.patch)) : isLatest || isAll ? [] : query.patches;
   const showBar = meta ? bar.length > 1 : bar.length > 0;
   const inBar = (p: string) => showBar && bar.includes(p);
@@ -57,8 +73,8 @@ export default function ExplorerScope({
     const next = cur.includes(p) ? cur.filter(x => x !== p) : [...cur, p];
     setQuery({ ...query, patches: next.length ? next.sort() : [LATEST_PATCH] });
   };
-  // Auswahl ausserhalb der Leiste (alte Links, Unit-Seite) als eigener Knopf
-  // wie beim Einzelrang. × behaelt die gewaehlten Leisten-Patches, sonst Neuester.
+  // Auswahl ausserhalb der Leiste (alte Links, Unit-Seite) als eigener Knopf.
+  // × behaelt die gewaehlten Leisten-Patches, sonst Neuester.
   const loosePatches = isLatest ? null
     : isAll ? t('tft.explorer.x.patch.all')
       : query.patches.filter(p => !inBar(p)).join(', ') || null;
@@ -66,89 +82,67 @@ export default function ExplorerScope({
     const keep = isAll ? [] : query.patches.filter(inBar);
     setQuery({ ...query, patches: keep.length ? keep : [LATEST_PATCH] });
   };
+
   return (
-    // Ab lg nebeneinander; passt es nicht, rutscht die Region in die naechste Zeile statt unsichtbar abzuschneiden.
-    <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-3 lg:gap-x-5 lg:gap-y-3">
-      <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
-        <span className="text-fg-muted text-xs mr-1 shrink-0">{t('tft.filter.patch')}</span>
-        <button type="button" className={chip(isLatest)} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
-          {t('tft.explorer.x.patch.latest')}{isLatest && resolvedPatch ? ` · ${resolvedPatch}` : ''}
-        </button>
-        {showBar && bar.map(p => (
-          <button key={p} type="button" className={chip(!isLatest && !isAll && query.patches.includes(p))}
-            onClick={() => togglePatch(p)}>
+    <>
+      <button type="button" className={seg(isLatest)} aria-pressed={isLatest} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
+        {patchHint(t, isLatest ? resolvedPatch : null)}
+      </button>
+      {showBar && bar.map(p => {
+        const on = !isLatest && !isAll && query.patches.includes(p);
+        return (
+          <button key={p} type="button" className={seg(on)} aria-pressed={on} onClick={() => togglePatch(p)}>
             {p}
           </button>
-        ))}
-        {loosePatches && (
-          <span className={`${chip(true)} inline-flex items-center gap-1.5 pr-1.5`}>
-            {loosePatches}
-            <button type="button" onClick={dropLoose}
-              aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
-              className="text-fg-muted hover:text-fg-primary">{'×'}</button>
-          </span>
-        )}
-      </div>
-
-      <label className="flex items-center gap-2 shrink-0">
-        <span className="text-fg-muted text-xs">{t('tft.filter.region')}</span>
-        <select
-          value={query.region}
-          onChange={e => setQuery({ ...query, region: e.target.value })}
-          // Feste Hoehe wie die Knoepfe: Safari legt sonst ~10 px auf den Innenabstand drauf (44 statt 34).
-          className="h-[34px] bg-surface-base border border-border-subtle rounded-md text-xs text-fg-primary px-3 py-0"
-        >
-          <option value="all">{t('tft.filter.allRegions')}</option>
-          {(meta?.regions ?? []).map(r => (
-            <option key={r.region} value={r.region}>{regionShortLabel(r.region)}</option>
-          ))}
-          {query.region !== 'all' && !(meta?.regions ?? []).some(r => r.region === query.region) && (
-            <option value={query.region}>{regionShortLabel(query.region)}</option>
-          )}
-        </select>
-      </label>
-    </div>
-  );
-}
-
-// Rang-Stufen statt Einzelraenge. Eine Auswahl, die keine Stufe ist (alter Link,
-// Klick im Reiter Rang), steht als eigener Knopf daneben und laesst sich entfernen.
-// onPick: die Filterleiste schliesst damit offene Level/Platz/Brett-Fenster,
-// weil der Klick jetzt innerhalb der Leiste liegt.
-export function ExplorerRanks({
-  query, setQuery, onPick, className = '',
-}: {
-  query: ExplorerQuery;
-  setQuery: (q: ExplorerQuery) => void;
-  onPick?: () => void;
-  className?: string;
-}) {
-  const { t } = useI18n();
-  const stage = rankStageOf(query.ranks);
-  const looseRanks = stage === null
-    ? EXPLORER_RANKS.filter(r => query.ranks.includes(r)).map(r => t(RANK_LABEL[r])).join(', ')
-    : null;
-  const pick = (ranks: ExplorerRank[]) => { onPick?.(); setQuery({ ...query, ranks }); };
-
-  return (
-    <div className={`flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${className}`}>
-      <button type="button" className={chip(stage === 'all')} aria-pressed={stage === 'all'} onClick={() => pick([])}>
-        {t('tft.filter.allRanks')}
-      </button>
-      {EXPLORER_RANK_STAGES.map(s => (
-        <button key={s} type="button" className={chip(stage === s)} aria-pressed={stage === s}
-          onClick={() => pick(stageRanks(s))}>
-          {t(STAGE_LABEL[s])}
-        </button>
-      ))}
-      {looseRanks && (
-        <span className={`${chip(true)} inline-flex items-center gap-1.5 pr-1.5`}>
-          {looseRanks}
-          <button type="button" onClick={() => pick([])}
+        );
+      })}
+      {loosePatches && (
+        <span className={`${seg(true)} inline-flex items-center gap-1.5 pr-1`}>
+          {loosePatches}
+          <button type="button" onClick={dropLoose}
             aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
             className="text-fg-muted hover:text-fg-primary">{'×'}</button>
         </span>
       )}
-    </div>
+    </>
+  );
+}
+
+// Eine Wahl: onPick schliesst das Fenster.
+export function RegionOptions({ query, setQuery, meta, onPick }: Scope & { meta: ExplorerMeta | null; onPick: () => void }) {
+  const { t } = useI18n();
+  const regions = (meta?.regions ?? []).map(r => r.region);
+  // Region aus einem Link, die gerade nicht im Speicher liegt, bleibt waehlbar sichtbar.
+  if (query.region !== 'all' && !regions.includes(query.region)) regions.push(query.region);
+  const pick = (region: string) => { setQuery({ ...query, region }); onPick(); };
+  return (
+    <>
+      <button type="button" className={seg(query.region === 'all')} aria-pressed={query.region === 'all'} onClick={() => pick('all')}>
+        {t('tft.filter.allRegions')}
+      </button>
+      {regions.map(r => (
+        <button key={r} type="button" className={seg(query.region === r)} aria-pressed={query.region === r} onClick={() => pick(r)}>
+          {regionShortLabel(r)}
+        </button>
+      ))}
+    </>
+  );
+}
+
+export function RankOptions({ query, setQuery, onPick }: Scope & { onPick: () => void }) {
+  const { t } = useI18n();
+  const stage = rankStageOf(query.ranks);
+  const pick = (ranks: ExplorerRank[]) => { setQuery({ ...query, ranks }); onPick(); };
+  return (
+    <>
+      <button type="button" className={seg(stage === 'all')} aria-pressed={stage === 'all'} onClick={() => pick([])}>
+        {t('tft.filter.allRanks')}
+      </button>
+      {EXPLORER_RANK_STAGES.map(s => (
+        <button key={s} type="button" className={seg(stage === s)} aria-pressed={stage === s} onClick={() => pick(stageRanks(s))}>
+          {t(STAGE_LABEL[s])}
+        </button>
+      ))}
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
-  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, canonBoardCounts, carriersApiQs, carriersItemOf, filterCount, serializeExplorerQuery,
+  BOARD_TAGS, EXPLORER_LIMITS, ITEM_KINDS, LATEST_PATCH, canonBoardCounts, carriersApiQs, carriersItemOf, filterCount, serializeExplorerQuery,
   type BoardCountKey, type BoardTag, type ExplorerCarriersResponse, type ExplorerQuery, type ExplorerResponse, type ExplorerRow,
   type FilterGroup, type ItemFilter, type ItemKind, type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
@@ -17,7 +17,8 @@ import {
   type LastRef, type Op, type PhraseTerm, type Pick,
 } from './explorer-search';
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
-import { ExplorerRanks } from './ExplorerScope';
+import { PatchOptions, RankOptions, RegionOptions, patchHint, patchValue, rankValue, regionValue } from './ExplorerScope';
+import { seg } from './explorer-ui';
 import { useFilterDrag } from './explorer-drag';
 import type { DragSrc, Where } from './explorer-move';
 import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
@@ -27,10 +28,9 @@ import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/
 // Kaesten mit „oder" (Kasten = eins davon). Level, Platz und Brett bleiben eigene
 // Knoepfe. „ohne" und „keins davon" gibt es nur noch aus alten Links: sie werden
 // angezeigt und lassen sich entfernen, aber nicht mehr neu anlegen. Grenzen wie
-// in parseExplorerParams (EXPLORER_LIMITS). Rechts in derselben Zeile die
-// Rang-Stufen (24.10.2026): „Alle zurücksetzen" steht davor, weil es den Rang
-// nicht zuruecksetzt; ab xl rechtsbuendig, damit sie beim Erscheinen des Knopfs
-// nicht springen. Die Suche schrumpft dafuer bis auf ihre Mindestbreite.
+// in parseExplorerParams (EXPLORER_LIMITS). Vorn in derselben Zeile die
+// Grundmenge Patch · Region · Rang (25.10.2026, Inhalt in ExplorerScope), per
+// Strich abgesetzt: „Alle zurücksetzen" laesst sie bewusst stehen.
 
 const LEVELS = [6, 7, 8, 9, 10];
 const PLACES = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -70,9 +70,6 @@ function boardLabel(t: (k: TranslationKey) => string, k: BoardCountKey): string 
     default: return t('tft.explorer.x.bc.cost').replace('{n}', k.slice(1));
   }
 }
-
-const seg = (on: boolean) =>
-  `px-2 py-0.5 rounded text-xs border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
 
 const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
 
@@ -131,7 +128,7 @@ export default function ExplorerFilters({
   dataQuery: ExplorerQuery | null;
 }) {
   const { t } = useI18n();
-  const [open, setOpen] = useState<string | null>(null);   // "m:u:ID" | "0:i:ID" | "lv" | "pl" | "bc"
+  const [open, setOpen] = useState<string | null>(null);   // "m:u:ID" | "0:i:ID" | "pt" | "rg" | "rk" | "lv" | "pl" | "bc"
   const [mode, setMode] = useState<Op>('and');
   const [rawLast, setLast] = useState<LastRef | null>(null);
   const [focusKey, setFocusKey] = useState(0);
@@ -318,10 +315,32 @@ export default function ExplorerFilters({
     ...query.bc.map(e => (e.k === 'tr' ? boardLabel(t, 'tr') : `${spanText(e.n, e.nx, 0, String) ?? ''} ${boardLabel(t, e.k)}`)),
     ...query.tags.map(x => t(TAG_LABEL[x])),
   ].join(', ') || null;
+  const meta = data?.meta ?? null;
+  const resolvedPatch = data?.query?.patches?.length === 1 ? data.query.patches[0] : null;
+  const close = () => setOpen(null);
 
   return (
     <div ref={wrapRef} className="space-y-2.5">
       <div className="flex flex-wrap items-center gap-2">
+        <PlainChip value={patchValue(query, t)} hint={patchHint(t, resolvedPatch)}
+          open={open === 'pt'} onToggle={() => toggle('pt')} onClear={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
+          <Row label={t('tft.filter.patch')}>
+            <PatchOptions query={query} setQuery={setQuery} meta={meta} resolvedPatch={resolvedPatch} />
+          </Row>
+        </PlainChip>
+        <PlainChip value={regionValue(query)} hint={t('tft.filter.allRegions')}
+          open={open === 'rg'} onToggle={() => toggle('rg')} onClear={() => setQuery({ ...query, region: 'all' })}>
+          <Row label={t('tft.filter.region')}>
+            <RegionOptions query={query} setQuery={setQuery} meta={meta} onPick={close} />
+          </Row>
+        </PlainChip>
+        <PlainChip value={rankValue(query, t)} hint={t('tft.filter.allRanks')}
+          open={open === 'rk'} onToggle={() => toggle('rk')} onClear={() => setQuery({ ...query, ranks: [] })}>
+          <Row label={t('tft.filter.bucket')}>
+            <RankOptions query={query} setQuery={setQuery} onPick={close} />
+          </Row>
+        </PlainChip>
+        <span aria-hidden="true" className="hidden sm:block h-6 w-px mx-1 bg-border-default" />
         <PlainChip label={t('tft.explorer.x.playerLevel')} value={query.levels.length ? query.levels.join(', ') : null}
           open={open === 'lv'} onToggle={() => toggle('lv')} onClear={() => setQuery({ ...query, levels: [] })}>
           <Row label={t('tft.explorer.x.playerLevel')}>
@@ -392,9 +411,6 @@ export default function ExplorerFilters({
             {t('tft.explorer.resetAll')}
           </button>
         )}
-        {/* Handy: eigene volle, seitlich wischbare Zeile bis an den Rand wie die Patch-Leiste. */}
-        <ExplorerRanks query={query} setQuery={setQuery} onPick={() => setOpen(null)}
-          className="w-[calc(100%+2rem)] -mx-4 px-4 sm:w-auto sm:mx-0 sm:px-0 xl:ml-auto" />
       </div>
 
       {conds.length > 0 && (
@@ -537,10 +553,11 @@ function Popover({ children, wide = false }: { children: React.ReactNode; wide?:
   );
 }
 
-// Level / Platz / Brett: immer da; gesetzt = hervorgehoben mit ×.
+// Patch / Region / Rang / Level / Platz / Brett: immer da; gesetzt = hervorgehoben
+// mit ×. hint = Standardwert ohne Hervorhebung (Patch/Region/Rang, ohne label).
 function PlainChip({
-  label, value, open, onToggle, onClear, children, wide = false,
-}: { label: string; value: string | null; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode; wide?: boolean }) {
+  label, value, hint, open, onToggle, onClear, children, wide = false,
+}: { label?: string; value: string | null; hint?: string; open: boolean; onToggle: () => void; onClear: () => void; children: React.ReactNode; wide?: boolean }) {
   const { t } = useI18n();
   return (
     <div className="relative">
@@ -548,7 +565,8 @@ function PlainChip({
         <button type="button" onClick={onToggle} aria-expanded={open}
           className={`flex items-center gap-1.5 px-3 py-2 ${value ? 'text-fg-primary' : 'text-fg-secondary hover:text-fg-primary'}`}>
           {label}
-          {value && <span className="text-fg-bright tabular-nums truncate max-w-[16rem]">{value}</span>}
+          {value ? <span className="text-fg-bright tabular-nums truncate max-w-[16rem]">{value}</span>
+            : hint && <span className="text-fg-primary tabular-nums truncate max-w-[16rem]">{hint}</span>}
         </button>
         {value && (
           <button type="button" onClick={onClear} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}

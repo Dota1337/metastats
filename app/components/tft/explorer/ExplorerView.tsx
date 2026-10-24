@@ -5,7 +5,6 @@ import { loadTftAssets, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { useTftExplorer } from '../../../lib/useTftExplorer';
 import { hasBoardFilters } from '../../../lib/tft-explorer-query';
 import { buildExplorerOptions } from './explorer-options';
-import ExplorerScope from './ExplorerScope';
 import ExplorerFilters from './ExplorerFilters';
 import ExplorerSummary from './ExplorerSummary';
 import ExplorerResults from './ExplorerResults';
@@ -22,7 +21,6 @@ export default function ExplorerView() {
   const { query, setQuery, backToUnits, data, dataQuery, loading, stale, error, reload } = useTftExplorer();
 
   const hasFilters = hasBoardFilters(query);
-  const resolvedPatch = data?.query?.patches?.length === 1 ? data.query.patches[0] : null;
   const builtAt = data?.meta?.builtAt ? new Date(data.meta.builtAt) : null;
 
   return (
@@ -36,7 +34,6 @@ export default function ExplorerView() {
         )}
       </div>
 
-      <ExplorerScope query={query} setQuery={setQuery} meta={data?.meta ?? null} resolvedPatch={resolvedPatch} />
       <ExplorerFilters query={query} setQuery={setQuery} options={options} assets={assets} data={data} dataQuery={dataQuery} />
 
       {error ? (

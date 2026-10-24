@@ -23,7 +23,7 @@ const TAB_LABEL: Record<ExplorerTab, TranslationKey> = {
   rank: 'tft.explorer.x.tab.rank', games: 'tft.explorer.x.tab.games',
 };
 
-type SortKey = 'games' | 'share' | 'avg' | 'top4' | 'top1' | 'delta' | 'star3' | 'key';
+type SortKey = 'games' | 'avg' | 'top4' | 'top1' | 'delta' | 'star3' | 'key';
 const MIN_GAMES = [5, 30, 100, 500, 2000];
 const GOLD_ORDER = ['0', '1-9', '10-19', '20-29', '30-49', '50+'];
 
@@ -129,7 +129,7 @@ export default function ExplorerResults({
     }
     const val = (r: ExplorerRow): number => {
       switch (s.key) {
-        case 'games': case 'share': return r.games;
+        case 'games': return r.games;
         case 'avg': return r.avg;
         case 'top4': return r.top4;
         case 'top1': return r.top1;
@@ -206,13 +206,15 @@ export default function ExplorerResults({
     }
   };
 
-  const th = (key: SortKey, label: string, cls = '') => {
+  // sub = zweite, kleinere Kopfzeile; der Pfeil steht dann dort.
+  const th = (key: SortKey, label: string, cls = '', sub?: string) => {
     const active = sort?.key === key;
+    const arrow = active ? (sort!.dir === 1 ? ' ▲' : ' ▼') : '';
     return (
       <th className={`px-2 py-2 font-medium text-right whitespace-nowrap ${cls}`}>
         <button type="button" onClick={() => setSort({ key, dir: active && sort!.dir === -1 ? 1 : active ? -1 : key === 'avg' || key === 'delta' ? 1 : -1 })}
-          className={`hover:text-fg-primary ${active ? 'text-fg-bright' : ''}`}>
-          {label}{active ? (sort!.dir === 1 ? ' ▲' : ' ▼') : ''}
+          className={`hover:text-fg-primary ${active ? 'text-fg-bright' : ''} ${sub ? 'inline-flex flex-col items-end leading-tight' : ''}`}>
+          {sub ? <><span>{label}</span><span className="text-[11px]">{sub}{arrow}</span></> : `${label}${arrow}`}
         </button>
       </th>
     );
@@ -337,12 +339,12 @@ export default function ExplorerResults({
                   {t(keyHeader)}{sort?.key === 'key' ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
                 </button>
               </th>
-              {th('games', t('tft.explorer.sort.games'))}
-              {th('share', t('tft.explorer.x.share'), 'hidden sm:table-cell')}
-              {th('avg', t('tft.explorer.sort.avg'))}
               {showDelta && th('delta', t('tft.explorer.x.delta'))}
-              {t4 && th('top4', t('tft.explorer.sort.top4'), 'hidden sm:table-cell')}
+              {th('avg', t('tft.explorer.sort.avg'))}
               {t1 && th('top1', t('tft.explorer.sort.top1'), 'hidden md:table-cell')}
+              {t4 && th('top4', t('tft.explorer.sort.top4'), 'hidden sm:table-cell')}
+              {/* Anteil und Spiele sortieren gleich: eine Spalte, Anteil oben, Zahl darunter. */}
+              {th('games', t('tft.explorer.x.share'), '', t('tft.explorer.sort.games'))}
               {showStar3 && th('star3', '3★', 'hidden md:table-cell')}
               {tab === 'units' && <th className="px-2 py-2 w-8" />}
             </tr>
@@ -350,7 +352,7 @@ export default function ExplorerResults({
           <tbody>
             {!rowsFit && Array.from({ length: 8 }, (_, i) => (
               <tr key={`sk${i}`} className="border-b border-border-subtle last:border-0">
-                <td colSpan={9} className="px-3 py-1.5"><div className="h-8 rounded bg-surface-raised animate-pulse" /></td>
+                <td colSpan={8} className="px-3 py-1.5"><div className="h-8 rounded bg-surface-raised animate-pulse" /></td>
               </tr>
             ))}
             {rows.map(r => {
@@ -364,20 +366,22 @@ export default function ExplorerResults({
                   onClick={act ?? undefined}
                   className={`border-b border-border-subtle last:border-0 ${act ? 'cursor-pointer hover:bg-surface-raised' : ''} ${weak ? 'opacity-50' : ''} ${head ? 'bg-surface-raised' : ''}`}>
                   <td className="px-3 py-1.5 max-w-[14rem] sm:max-w-none">{nameCell(r)}</td>
-                  <td className="px-2 py-1.5 text-right text-fg-primary">{num(r.games)}</td>
-                  <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{refGames ? fmtPct(r.games / refGames) : '—'}</td>
-                  <td className="px-2 py-1.5 text-right text-fg-bright">
-                    {fmtAvg(r.avg)}
-                    <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
-                  </td>
                   {showDelta && (
                     <td className={`px-2 py-1.5 text-right ${deltaClass(d, dh)}`}>
                       {fmtDelta(d)}
                       {dh != null && <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
                     </td>
                   )}
-                  {t4 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
+                  <td className="px-2 py-1.5 text-right text-fg-bright">
+                    {fmtAvg(r.avg)}
+                    <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
+                  </td>
                   {t1 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{fmtPct(r.top1)}</td>}
+                  {t4 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
+                  <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                    <div className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</div>
+                    <div className="text-fg-muted text-[11px] leading-none">{num(r.games)}</div>
+                  </td>
                   {showStar3 && (
                     <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
                   )}
@@ -399,7 +403,7 @@ export default function ExplorerResults({
               );
             })}
             {data && rowsFit && rows.length === 0 && (
-              <tr><td colSpan={9} className="px-3 py-6 text-center text-fg-muted">{t('tft.explorer.noResults')}</td></tr>
+              <tr><td colSpan={8} className="px-3 py-6 text-center text-fg-muted">{t('tft.explorer.noResults')}</td></tr>
             )}
           </tbody>
         </table>

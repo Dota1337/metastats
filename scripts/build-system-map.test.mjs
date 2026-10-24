@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { systemctlActions, parseUnitText, EXEC_KEYS } from './build-system-map.mjs';
+import { systemctlActions, parseUnitText, EXEC_KEYS, shellStartEdges } from './build-system-map.mjs';
 
 test('systemctlActions: start/stop/restart sind Kanten, Abfragen nicht', () => {
   assert.deepEqual(systemctlActions('/bin/systemctl stop metastats-a.service'), [{ action: 'stop', unit: 'metastats-a.service' }]);
@@ -42,4 +42,15 @@ test('parseUnitText: systemctl stop im ExecStartPre wird Unit-Kante, Abfrage und
     via: 'systemctl-stop',
     exec: 'ExecStartPre',
   }]);
+});
+
+test('shellStartEdges: Starts aus Shell-Skripten, Kommentare und Abfragen nicht', () => {
+  const sh = [
+    '#   systemctl start metastats-caddy.service',
+    'state=$(systemctl is-active "${svc}.service") || true',
+    '  systemctl start --no-block metastats-daily-crawl-resume.service',
+  ].join('\n');
+  assert.deepEqual(shellStartEdges('infra/hetzner/w.sh', sh), [
+    { from: 'infra/hetzner/w.sh', to: 'metastats-daily-crawl-resume.service', via: 'systemctl-start' },
+  ]);
 });

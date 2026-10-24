@@ -2,16 +2,16 @@
 //   1. Hetzner systemd: `/healthz?detail=services` auf der Crawler-Box. Liefert
 //      dynamische Service-Liste mit ActiveState/SubState/Result/Timestamps.
 //   2. Supabase: row-counts via `pg_class.reltuples` (estimated, near-instant)
-//      + per-Day-COUNT(*) für heutige Schreibaktivität, gefiltert auf indizierten
-//      `day`-Column.
+//      + fuer die Comp-Tabelle der juengste Tag samt Zeilenzahl (Index auf `day`).
 //   3. Vercel-Blob Manifest: builtAt + Entry-Count.
 //
 // Status-Modell semantisch korrekt (Daily-Crawl ist 90 % `inactive/success`,
-// das ist `healthy` für oneshot — nicht „idle"). Cadence-Erwartungen sind pro
-// Service hardcoded weil sie aus systemd-Timer-Config kommen, nicht aus der DB.
+// das ist `healthy` für oneshot — nicht „idle"). Art und Frist je Dienst stehen
+// in app/lib/ops-services.ts, ein Test haelt sie gegen infra/system-map.json.
 
 import { NextRequest, NextResponse } from 'next/server';
 import apiMap from '../../../../infra/api-map.json';
+import { OPS_SERVICES } from '../../../lib/ops-services';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,35 +24,9 @@ const MANIFEST_URL = process.env.SNAPSHOT_MANIFEST_URL || '';
 
 const FETCH_TIMEOUT_MS = 5000;
 
-// Erwartete max. Cadence pro Service. Wenn der letzte erfolgreiche Lauf länger
-// als das zurückliegt, gilt der Service als `stalled`. Persistente Services
-// (refresh-api) müssen ActiveState=active sein.
-const SERVICE_EXPECTATIONS: Record<string, { kind: 'oneshot' | 'persistent'; maxAgeMs?: number }> = {
-  'metastats-refresh-api.service':           { kind: 'persistent' },
-  'metastats-caddy.service':                 { kind: 'persistent' },
-  'metastats-daily-crawl.service':           { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-snapshot-publisher.service':    { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-daily-crawl-catchup.service':   { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-companion-backfill.service':    { kind: 'oneshot', maxAgeMs: 30 * 60 * 1000 },
-  'metastats-position-aggregator.service':   { kind: 'oneshot', maxAgeMs: 30 * 60 * 1000 },
-  'metastats-build-check.service':           { kind: 'oneshot', maxAgeMs: 20 * 60 * 1000 },
-  'metastats-health.service':                { kind: 'oneshot', maxAgeMs: 10 * 60 * 1000 },
-  'metastats-tft-pro-validator.service':     { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-tft-pro-fullsync.service':      { kind: 'oneshot', maxAgeMs: 8 * 24 * 60 * 60 * 1000 },
-  'metastats-tft-pro-tpc-roster.service':    { kind: 'oneshot', maxAgeMs: 8 * 24 * 60 * 60 * 1000 },
-  'metastats-tft-pro-classify.service':      { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  // Ohne Eintrag gibt es keine Stall-Erkennung: stirbt der Timer, steht der
-  // Service ewig auf seinem letzten gruenen Lauf und niemand merkt es. Beim
-  // Vertragswaechter waere das die teuerste Variante davon — der Waechter, der
-  // nicht mehr wacht.
-  'metastats-contracts.service':             { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-marketvalue-snapshot.service':  { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
-  'metastats-meta-pulse-diffs.service':      { kind: 'oneshot', maxAgeMs: 3 * 60 * 60 * 1000 },
-  'metastats-crawler.service':               { kind: 'oneshot' }, // manual-trigger, keine erwartete Cadence
-  'metastats-lol-marketvalue.service':       { kind: 'oneshot' }, // manual-trigger
-};
-
-type ServiceStatus = 'healthy' | 'working' | 'stalled' | 'failed' | 'unknown';
+// 'inactive' = bewusst abgeschaltet oder noch nicht eingerichtet (Art
+// retired/prepared in ops-services.ts) — grau statt dauerhaft "verzoegert".
+type ServiceStatus = 'healthy' | 'working' | 'stalled' | 'failed' | 'unknown' | 'inactive';
 
 interface ServiceRecord {
   name: string;
@@ -81,14 +55,20 @@ interface ServiceView {
 }
 
 function classifyService(rec: ServiceRecord, now: number): ServiceView {
-  const expectation = SERVICE_EXPECTATIONS[rec.name];
+  const expectation = OPS_SERVICES[rec.name];
+  // Ohne Eintrag (neue Unit vor dem naechsten Deploy): als Einzellauf ohne
+  // Frist werten. Der Test in ops-services.test.mjs laesst das nicht lange zu.
   const kind = expectation?.kind || 'oneshot';
   const activeState = rec.activeState || 'unknown';
   const result = rec.result || 'unknown';
 
-  // Activating ist „working" — egal ob persistent oder oneshot.
+  // Activating ist „working" — egal welche Art, auch ein stillgelegter Dienst,
+  // den jemand von Hand startet.
   if (activeState === 'activating') {
     return baseView(rec, 'working', kind, expectation?.maxAgeMs || null, now);
+  }
+  if (kind === 'retired' || kind === 'prepared') {
+    return baseView(rec, 'inactive', kind, null, now);
   }
   // Persistente Services müssen aktiv sein, sonst sind sie failed.
   if (kind === 'persistent') {
@@ -151,8 +131,17 @@ async function fetchServices() {
 }
 
 // Schätzwerte aus pg_class — VACUUM/ANALYZE-genau, near-instant statt
-// COUNT(*) auf 35GB. Plus ein präzises COUNT(*) FILTER für heute, gefiltert
-// auf indizierten `day`-Column (Migration 0020 hat covering indizes).
+// COUNT(*) auf grossen Tabellen. Dazu fuer die Comp-Tabelle der juengste Tag
+// und dessen exakte Zeilenzahl: der Tageslauf schreibt den Vortag, "heute"
+// waere dort immer 0. Index (day, patch, set_number) aus Migration 0093,
+// gemessen 24.10.2026: juengster Tag 127–277 ms, Zaehlung 90–96 ms.
+//
+// Beim Marktwert gibt es bewusst keine Tageszahl: kein Index beginnt mit
+// snapshot_date, die Zaehlung las jedes Mal alle ~2,4 Mio Zeilen (4,6 s, oft
+// ueber der 5-s-Frist, dann stand "—"). Und der juengste Tag je Region taeuscht:
+// einzelne Aktualisierungen ueber den Knopf legen schon den naechsten Tag an
+// (euw1 24.10. mit 71 Zeilen, waehrend der Lauf noch den 23. schrieb). Ob der
+// Marktwert frisch ist, zeigt der Dienst-Knoten des Laufs.
 async function fetchDbCounts() {
   if (!SUPA_URL || !SUPA_KEY) throw new Error('supabase env missing');
   const tables = [
@@ -160,14 +149,13 @@ async function fetchDbCounts() {
     'tft_player_marketvalue_snapshots',
     'tft_player_match_cache',
   ];
-  // Schätzung über REST nicht direkt möglich → via RPC. Wir nutzen die
-  // existierenden /rest/v1/<table>?select=count Endpoints mit dem
-  // `count=estimated` Prefer-Header — PostgREST liest dann reltuples statt
-  // COUNT(*). 100x schneller auf großen Tabellen.
-  const counts: Record<string, { estimated: number | null; today: number | null }> = {};
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
+  // Schätzung über REST: `count=estimated` liest reltuples statt COUNT(*).
+  const counts: Record<string, { estimated: number | null; latestDay: string | null; latestDayRows: number | null }> = {};
   await Promise.all(tables.map(async tbl => {
     let estimated: number | null = null;
-    let today: number | null = null;
+    let latestDay: string | null = null;
+    let latestDayRows: number | null = null;
     try {
       const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0`, {
         headers: {
@@ -182,26 +170,22 @@ async function fetchDbCounts() {
         if (m && m[1] !== '*') estimated = parseInt(m[1], 10);
       }
     } catch { /* leave null */ }
-    // Today: nur Tabellen mit `day` Column.
-    if (tbl !== 'tft_player_match_cache') {
+    if (tbl === 'tft_daily_comp_stats') {
       try {
-        const todayIso = new Date().toISOString().slice(0, 10);
-        const isMv = tbl === 'tft_player_marketvalue_snapshots';
-        const dayCol = isMv ? 'snapshot_date' : 'day';
-        // Marktwerte: nur bewertete Zeilen zaehlen, "nicht bewertet" ist keine Bewertung.
-        const ratedFilter = isMv ? '&rated=is.true' : '';
-        const res = await fetchWithTimeout(
-          `${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0&${dayCol}=eq.${todayIso}${ratedFilter}`,
-          { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, Prefer: 'count=exact' } },
-        );
-        const range = res.headers.get('content-range');
-        if (range) {
-          const m = /\/(\d+)$/.exec(range);
-          if (m) today = parseInt(m[1], 10);
+        const res = await fetchWithTimeout(`${SUPA_URL}/rest/v1/${tbl}?select=day&order=day.desc&limit=1`, { headers });
+        const rows = res.ok ? await res.json() as Array<{ day: string }> : [];
+        latestDay = rows[0]?.day ?? null;
+        if (latestDay) {
+          const c = await fetchWithTimeout(
+            `${SUPA_URL}/rest/v1/${tbl}?select=*&limit=0&day=eq.${latestDay}`,
+            { headers: { ...headers, Prefer: 'count=exact' } },
+          );
+          const m = /\/(\d+)$/.exec(c.headers.get('content-range') || '');
+          if (m) latestDayRows = parseInt(m[1], 10);
         }
       } catch { /* leave null */ }
     }
-    counts[tbl] = { estimated, today };
+    counts[tbl] = { estimated, latestDay, latestDayRows };
   }));
   return { counts, fetchedAt: new Date().toISOString() };
 }
@@ -259,7 +243,7 @@ async function fetchManifest() {
 
 export async function GET(req: NextRequest) {
   // Slice-Param: 'all' | 'services' | 'db' | 'manifest' | 'tables'. Erlaubt dem Client
-  // multi-tier Polling (Services 10s, DB 60s, Manifest 120s) ohne separate
+  // multi-tier Polling (Services 30s, DB 60s, Manifest 120s) ohne separate
   // Endpoints zu pflegen.
   const slice = req.nextUrl.searchParams.get('slice') || 'all';
   const want = (k: string) => slice === 'all' || slice === k;

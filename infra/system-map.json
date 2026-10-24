@@ -1206,6 +1206,26 @@
       "via": "spawn"
     },
     {
+      "from": "infra/hetzner/metastats-daily-crawl-catchup.sh",
+      "to": "metastats-daily-crawl-resume.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "infra/hetzner/metastats-daily-crawl-catchup.sh",
+      "to": "metastats-daily-crawl.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "infra/hetzner/metastats-daily-crawl-watchdog.sh",
+      "to": "metastats-daily-crawl-resume.service",
+      "via": "systemctl-start"
+    },
+    {
+      "from": "infra/hetzner/metastats-marketvalue-watchdog.sh",
+      "to": "metastats-marketvalue-snapshot.service",
+      "via": "systemctl-start"
+    },
+    {
       "from": "metastats-daily-crawl.service",
       "to": "metastats-marketvalue-snapshot.service",
       "via": "systemctl-stop",

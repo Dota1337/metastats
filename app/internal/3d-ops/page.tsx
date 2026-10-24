@@ -1,19 +1,14 @@
-'use client';
+import systemMap from '../../../infra/system-map.json';
+import contracts from '../../../infra/contracts.json';
+import { deriveTopology } from '../../lib/ops-topology';
+import OpsGraphLoader from './OpsGraphLoader';
 
-import dynamic from 'next/dynamic';
-
-// 3D-Bundle isoliert vom Public-Bundle — r3f/drei/d3-force-3d landen NUR in
-// dem on-demand geladenen Chunk für diese Page, nicht im Hauptbundle der
-// /tft/* und /lol/* Pages. ssr:false weil r3f auf window/canvas zugreift.
-const OpsGraph = dynamic(() => import('../../components/internal/OpsGraph'), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0f1c] text-gray-500 text-sm">
-      Loading 3D scene…
-    </div>
-  ),
-});
-
+// Server-Komponente: leitet den Aufbau der Box (wer startet wen, wer schreibt
+// wohin, wann laeuft was) aus den beiden erzeugten Karten ab und reicht nur
+// diese schlanke Liste an den Graphen weiter. Die Karten selbst bleiben auf
+// dem Server — im Browser-Bundle waeren das ~22 KB komprimiert, mit
+// Server-Pfaden, in einer Datei ohne Anmeldung (_next/static).
 export default function InternalOpsPage() {
-  return <OpsGraph />;
+  const topology = deriveTopology(systemMap, contracts.contracts);
+  return <OpsGraphLoader topology={topology} />;
 }

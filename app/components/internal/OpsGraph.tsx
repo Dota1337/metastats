@@ -14,6 +14,11 @@ import * as THREE from 'three';
 // (app/internal/3d-ops/page.tsx:8), die Karte landet also nur im internen
 // Bruchstueck des Bundles, nicht in dem der oeffentlichen Seiten.
 import apiMap from '../../../infra/api-map.json';
+// Art, Frist und Text je Dienst (gleiche Liste wie die Ops-Route), Zeitplaene
+// und Kanten kommen als `topology` von der Server-Seite (page.tsx), abgeleitet
+// aus infra/system-map.json + infra/contracts.json.
+import { OPS_SERVICES, MANIFEST_STALE_MS, MANIFEST_FAILED_MS, type OpsServiceKind } from '../../lib/ops-services';
+import { describeSchedule, type OpsTopology } from '../../lib/ops-topology';
 
 // Multi-Tier-Polling-Intervalle wie vom Perf-Critic empfohlen. Schreibrate
 // wird Client-side via localStorage gemerkt — kein Server-State nötig.
@@ -35,7 +40,8 @@ const POLL_RIOT_STATUS_MS = 60_000;
 // Types
 // =========================================================================
 
-type ServiceStatus = 'healthy' | 'working' | 'stalled' | 'failed' | 'unknown';
+// inactive — bewusst abgeschaltet oder noch nicht eingerichtet (ops-services.ts)
+type ServiceStatus = 'healthy' | 'working' | 'stalled' | 'failed' | 'unknown' | 'inactive';
 
 // Zustaende, die es nur fuer Kartenknoten gibt, nicht fuer Dienste:
 //   disabled — die Adresse ruft niemand mehr (oder ein Merker schaltet sie ab)
@@ -56,8 +62,15 @@ interface ServiceView {
   expectedMaxAgeMs: number | null;
 }
 
+interface DbCount {
+  estimated: number | null;
+  /** Juengster Tag in der Tabelle (nur Comp-Tabelle) und dessen Zeilenzahl. */
+  latestDay: string | null;
+  latestDayRows: number | null;
+}
+
 interface DbCounts {
-  counts: Record<string, { estimated: number | null; today: number | null }>;
+  counts: Record<string, DbCount>;
   fetchedAt: string;
 }
 
@@ -92,6 +105,7 @@ const STATUS_COLOR: Record<NodeStatus, string> = {
   stalled: '#f97316',
   failed:  '#ef4444',
   unknown: '#6b7280',
+  inactive: '#334155',
   disabled: '#dc2626',
   missing:  '#dc2626',
   empty:    '#6b7280',
@@ -103,6 +117,7 @@ const STATUS_LABEL: Record<NodeStatus, string> = {
   stalled: 'Verzögert',
   failed:  'Fehler',
   unknown: 'Unbekannt',
+  inactive: 'Nicht in Betrieb',
   disabled: 'Deaktiviert',
   missing:  'Fehlt in der Datenbank',
   empty:    'Leer',
@@ -112,44 +127,36 @@ const STATUS_LABEL: Record<NodeStatus, string> = {
 // Node-Beschreibungen — was tut jede Komponente in der Pipeline
 // =========================================================================
 
-const SERVICE_DESCRIPTIONS: Record<string, string> = {
-  'metastats-refresh-api.service':
-    'Persistenter HTTP-Server auf Port 4100. Bedient den /refresh-player-Button (Profil + Marktwert on-demand aktualisieren), liest Match-Cache + DB-Counts für das Ops-Dashboard.',
-  'metastats-daily-crawl.service':
-    'Daily-Aggregat-Crawler. Läuft 00:00 UTC, geht durch alle 17 Regionen, schreibt Daily-Stats in tft_daily_*_stats. Dauer typisch 9-12h. Kettet OnSuccess den Catchup + Snapshot-Publisher.',
-  'metastats-snapshot-publisher.service':
-    'Rendert nach jedem Daily-Crawl die Hot-Path-Permutationen aller Stats-APIs als statische JSON-Blobs nach Vercel-Blob. ~3 min Lauf, ~200 Snapshots. Ergebnis löst den ~1s-Cold-Start in /tft/* ab.',
-  'metastats-daily-crawl-catchup.service':
-    'Sicherheits-Hook. Wenn der Daily-Crawl Mitternacht überquert (>24h Lauf), wäre der nächste Tages-Trigger geschluckt — dieser Service detektiert das und startet sofort einen Nachhol-Lauf.',
-  'metastats-companion-backfill.service':
-    'Alle 10 Minuten. Verknüpft Overwolf-Companion-Position-Daten (LIVE_xxx synth-IDs) mit den echten Riot-Match-IDs sobald die Match in Match-V1 erscheint. Löscht Behelfs-Zeilen, die 48 h nach dem Hochladen noch offen sind.',
-  'metastats-position-aggregator.service':
-    'Alle 15 Minuten. Aggregiert tft_position_observations zu tft_position_comp_cell für die Position-Heatmaps in den Comp-Detail-Pages. Schreibt die Comp-Zuordnung an die Beobachtungen und ersetzt danach den Riot-Namen durch ein Pseudonym (spätestens 48 h nach dem Hochladen, sonst Exit 1).',
-  'metastats-build-check.service':
-    'Alle 10 Minuten. Prüft den Vercel-Build des jüngsten main-Commits; ist er gescheitert und der Commit jünger als 30 min, stößt ein leerer Commit einen neuen Build an (höchstens 1× je 30 min, 3× je 24 h).',
-  'metastats-health.service':
-    'Self-Health-Endpoint des Refresh-API-Servers. Periodischer Self-Test damit ein hängender Server-Prozess früh erkannt wird.',
-  'metastats-tft-pro-validator.service':
-    'Nightly. Validiert die Pro-Player-Accounts in public/pro-players.json gegen die 4 Quellen (trackingthepros, lolpros, op.gg, Riot-API). Markiert Roster-Wechsel.',
-  'metastats-tft-pro-fullsync.service':
-    'Freitags. Vollständiger Re-Crawl der Pro-Player-Datenbank aus Liquipedia + Cross-Validation. Updated tft_pro_players + Roster.',
-  'metastats-tft-pro-tpc-roster.service':
-    'Freitags. Crawlt competetft.com (TPC = TFT Pro Circuit) für offizielle Riot-Roster-Updates der Pro-Teams.',
-  'metastats-tft-pro-classify.service':
-    'Nightly. Klassifiziert TFT-Pro-Player nach Region + Sub-Region + Liga-Aktivität. Output speist die /tft/pros Page.',
-  'metastats-crawler.service':
-    'Legacy Marketvalue-Vollsweep. Seit 2026-06-16 deaktiviert (Timer masked, OnSuccess raus). Bleibt für ggf. manuellen Adhoc-Debug, sollte nicht automatisch starten.',
-  'metastats-lol-marketvalue.service':
-    'LoL-Marktwert-Crawler. Wird nur nach Riot-Dev-Key-Rotation getriggert (refresh-riot-key.mjs), kein Timer.',
+const KIND_LABEL: Record<OpsServiceKind, string> = {
+  persistent: 'Dauerdienst',
+  oneshot: 'Einzellauf',
+  event: 'Auf Anstoß',
+  retired: 'Stillgelegt',
+  prepared: 'Vorbereitet',
 };
 
+// Supabase-Tabellen (Knoten `db:`). Was dort nicht steht, bekommt den
+// Rueckfalltext in describeNode.
 const TABLE_DESCRIPTIONS: Record<string, string> = {
   'tft_daily_comp_stats':
-    'Tägliche Aggregat-Stats pro Comp-Cluster × Region × Bucket × Patch. Geschrieben vom Daily-Crawl, gelesen von /api/tft/comps. Inkl. typical_units, carry_items, death-round-Histogramm, Skill-Cap-Buckets.',
+    'Tageswerte je Comp, Region, Rang und Patch — die Grundlage der Comp-Seiten. Der Tageslauf schreibt immer den Vortag, deshalb steht hier der jüngste Tag statt "heute".',
   'tft_player_marketvalue_snapshots':
-    'Daily-Snapshots der Marktwerte aller D2+-Spieler. Pro puuid × region × snapshot_date eine Zeile. Skill-Score-Multiplier × Base-Value = final_value. Snapshot-First, kein Live-Calc.',
+    'Spiegel der TFT-Marktwerte, aus dem die Seite liest: eine Zeile je Spieler, Region und Tag. Gerechnet wird auf der Box; der Spiegel-Dienst überträgt alle 6 Stunden, der Knopf "Aktualisieren" schreibt einzelne Spieler sofort.',
   'tft_player_match_cache':
-    'Per-Spieler Match-Cache (35 GB Volume-Tablespace). Quelle für Match-History, Pro-Specialty, Coach-Analyse. Wird vom Refresh-API + Marketvalue-Crawler gefüllt. Liegt auf Hetzner-PG, nicht Supabase.',
+    'Supabase-Kopie des Partien-Speichers. Bekommt die neuen Partien, die die Box holt, und wird jeden Morgen von einem GitHub-Lauf für die Top-Spieler vorgewärmt. Gelesen von den Spielerseiten und den Positions-Karten. Der vollständige Bestand liegt auf der Box.',
+};
+
+// Tabellen in der Datenbank der Box (Knoten `boxdb:`). Fuer sie gibt es im
+// Dashboard keine Live-Zahl — die Ops-Route fragt nur Supabase.
+const BOX_TABLE_DESCRIPTIONS: Record<string, string> = {
+  'tft_player_match_cache':
+    'Partien-Speicher auf der Box, rund 48 GB — die vollständige Quelle aller gesammelten TFT-Partien. Neue Partien gehen zusätzlich an die Supabase-Kopie (außer bei der Rangliste).',
+  'tft_player_marketvalue_snapshots':
+    'TFT-Marktwerte auf der Box. Hier schreibt der tägliche Marktwert-Lauf; die Seite liest den Spiegel in Supabase.',
+  'tft_ladder_daily':
+    'Tägliche Rangliste von Smaragd bis Challenger. Grundlage der Aufsteiger-Seite.',
+  'lol_match_participant_raw':
+    'Rohablage der gesammelten LoL-Partien. Daraus verdichtet der Builds-Dienst die Champion-Builds je Rang.',
 };
 
 const API_DESCRIPTIONS: Record<string, string> = {
@@ -165,14 +172,19 @@ const API_DESCRIPTIONS: Record<string, string> = {
 
 function describeNode(node: NodeData): string {
   if (node.id.startsWith('svc:')) {
-    return SERVICE_DESCRIPTIONS[node.serviceName || ''] || 'Hetzner-Service, keine Beschreibung hinterlegt.';
+    return OPS_SERVICES[node.serviceName || '']?.text
+      || 'Dienst der Box, in app/lib/ops-services.ts noch ohne Eintrag (der Test schlägt beim nächsten Push an).';
   }
   if (node.id.startsWith('db:')) {
     const tbl = node.id.replace('db:', '');
-    return TABLE_DESCRIPTIONS[tbl] || 'Supabase-Tabelle, keine Beschreibung hinterlegt.';
+    return TABLE_DESCRIPTIONS[tbl] || 'Tabelle in Supabase. Wer sie liest und schreibt, steht unten in den Abhängigkeiten.';
+  }
+  if (node.id.startsWith('boxdb:')) {
+    const tbl = node.id.replace('boxdb:', '');
+    return BOX_TABLE_DESCRIPTIONS[tbl] || 'Tabelle in der Datenbank der Box. Für sie gibt es im Dashboard keine Live-Zahl.';
   }
   if (node.id === 'blob:manifest') {
-    return 'Snapshot-Bundle auf Vercel-Blob. Manifest listet alle vorgerenderten JSON-Permutationen mit Build-Zeit. Der Snapshot-Publisher schreibt es nach jedem Daily-Crawl neu — die API-Routes lesen es zuerst, fallen erst bei Miss auf Live-RPC.';
+    return 'Die Vorab-Antworten der Statistik-Seiten als Dateien. Der Publisher baut sie nach jedem Tageslauf neu; die Seiten lesen zuerst hier und fragen nur bei einer Lücke die Datenbank. Gelb ab 26 Stunden (ein Lauf fehlt), rot ab 3 Tagen (Grenze des Laufzeit-Vertrags).';
   }
   if (node.id.startsWith('grp:')) {
     return `Sammelknoten fuer alle Adressen unter /api/${node.group}. Klick klappt den Bereich auf und zeigt jede Adresse einzeln mit ihren eigenen Verbindungen.`;
@@ -194,7 +206,7 @@ function describeNode(node: NodeData): string {
     return 'Quelle ausserhalb unserer Systeme. Faellt sie aus, fehlen genau die Daten, die von hier kommen — deshalb steht sie im Bild.';
   }
   if (node.id === 'box:hetzner') {
-    return 'Der eigene Server. Er beherbergt die Crawler-Dienste, den Match-Zwischenspeicher und den Aktualisierungs-Server auf Port 4100, den einige Schnittstellen direkt anfragen.';
+    return 'Der eigene Server. Auf ihm laufen alle Sammel- und Rechendienste, die eigene Datenbank mit dem Partien-Speicher, und der Aktualisierungs-Dienst, den einige Schnittstellen direkt anfragen.';
   }
   if (node.id === 'user') {
     return 'Endpoint der Pipeline. Browser-Requests auf metastats.gg landen über Vercel-Edge bei den API-Routes — die meisten Hits bekommen einen Snapshot-Treffer und antworten unter 300 ms.';
@@ -457,7 +469,9 @@ interface NodeData {
   /** Nur bei Sammelknoten und den Adressen darin: der Bereichsname. */
   group?: string;
   serviceName?: string;
-  raw?: ServiceView | { estimated: number | null; today: number | null } | ManifestInfo | null;
+  /** Zeitplan des Timers in Alltagssprache, falls der Dienst einen hat. */
+  schedule?: string;
+  raw?: ServiceView | DbCount | ManifestInfo | null;
 }
 
 type EdgeKind = 'write' | 'read' | 'serve' | 'request' | 'trigger' | 'call' | 'fetch';
@@ -549,7 +563,23 @@ function resolveApiId(id: string, expanded: Set<string>, byId: Map<string, ApiMa
   return expanded.has(g) ? id : groupId(g);
 }
 
-function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: NodeData[]; edges: EdgeData[] } {
+/** Eine Zeile Zustand in Alltagssprache statt `inactive/dead · result=success`. */
+function serviceDetail(s: ServiceView): string {
+  const kind = OPS_SERVICES[s.name]?.kind;
+  if (s.status === 'inactive') return KIND_LABEL[kind ?? 'retired'];
+  if (s.status === 'working') return 'läuft gerade';
+  if (kind === 'persistent') return s.activeState === 'active' ? 'läuft dauerhaft' : `steht (${s.activeState})`;
+  const outcome = s.result === 'success' ? 'zuletzt erfolgreich' : `letzter Lauf: ${s.result}`;
+  return outcome + (s.ageSinceLastRunMs ? ` · vor ${humanAge(s.ageSinceLastRunMs)}` : '');
+}
+
+/** `2026-10-22` → `22.10.` */
+function dayLabel(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${d}.${m}.`;
+}
+
+function buildGraph(snap: Snapshot | null, expanded: Set<string>, topo: OpsTopology): { nodes: NodeData[]; edges: EdgeData[] } {
   // Kein `if (!snap) return []` mehr: der statische Teil (Schnittstellen,
   // Tabellen, Funktionen, Dateien, fremde Quellen) steht in der Karte und
   // braucht keine Live-Abfrage. Ohne diese Zeile war die Seite bis zur ersten
@@ -565,6 +595,7 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
 
   // Layer 5 — die Box und die Dienste, die darauf laufen
   for (const s of services) {
+    const sched = topo.schedules[s.name];
     nodes.push({
       id: 'svc:' + s.name,
       kind: 'service',
@@ -573,8 +604,9 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
       layer: L_SVC,
       layerName: LAYER_NAMES[L_SVC],
       status: s.status,
-      detail: `${s.activeState}/${s.subState} · result=${s.result}` + (s.ageSinceLastRunMs ? ` · last ${humanAge(s.ageSinceLastRunMs)} ago` : ''),
+      detail: serviceDetail(s),
       rate: null,
+      schedule: sched ? describeSchedule(sched) : undefined,
       raw: s,
     });
   }
@@ -605,7 +637,8 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
     else if (rows === 0) { tblStatus = 'empty'; tblDetail = 'vorhanden, aber ohne Zeilen'; }
     else if (rows != null) {
       tblStatus = 'healthy';
-      tblDetail = `${fmt(rows)} Zeilen${c?.today != null ? ` · ${fmt(c.today)} heute` : ''}`;
+      tblDetail = `${fmt(rows)} Zeilen`
+        + (c?.latestDay && c.latestDayRows != null ? ` · ${fmt(c.latestDayRows)} am ${dayLabel(c.latestDay)}` : '');
     } else {
       tblStatus = 'unknown';
       tblDetail = t.declared ? 'keine Live-Zahl' : 'ohne Migration angelegt';
@@ -620,6 +653,23 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
       detail: tblDetail,
       rate,
       raw: c ?? null,
+    });
+  }
+
+  // Tabellen in der Datenbank der Box: alle, die ein Dienst dort schreibt oder
+  // liest. Grau, weil die Ops-Route nur Supabase fragt — eine gruene Kugel
+  // ohne Messung waere eine Behauptung.
+  const boxTables = [...new Set([...topo.writes, ...topo.reads].filter(w => w.backend === 'hetzner').map(w => w.table))].sort();
+  for (const tbl of boxTables) {
+    nodes.push({
+      id: `boxdb:${tbl}`,
+      kind: 'table',
+      label: `${tbl.replace('tft_', '')} (Box)`,
+      layer: L_DB,
+      layerName: 'Datenbank der Box',
+      status: 'unknown',
+      detail: 'auf der Box · keine Live-Zahl im Dashboard',
+      rate: null,
     });
   }
 
@@ -640,7 +690,7 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
   // Layer 2 — Snapshot-Bundle + die mitgelieferten Dateien
   const manifestAge = manifest ? Date.now() - new Date(manifest.builtAt).getTime() : null;
   const manifestStatus: ServiceStatus = manifest
-    ? manifestAge! < 26 * 3600_000 ? 'healthy' : manifestAge! < 50 * 3600_000 ? 'stalled' : 'failed'
+    ? manifestAge! < MANIFEST_STALE_MS ? 'healthy' : manifestAge! < MANIFEST_FAILED_MS ? 'stalled' : 'failed'
     : 'unknown';
   nodes.push({
     id: 'blob:manifest',
@@ -764,63 +814,33 @@ function buildGraph(snap: Snapshot | null, expanded: Set<string>): { nodes: Node
     if (n.layer === L_API) addEdge(n.id, 'user', 'request', n.kind === 'group');
   }
 
-  // Crawler-Services WRITE in DB-Tabellen.
-  // Jede dieser Linien ist eine Behauptung ueber echtes Schreiben und steht
-  // deshalb nur da, wenn sie im Skript hinter dem ExecStart nachweisbar ist.
-  // daily-crawl: die upsertRows()-Aufrufe in scripts/lib/tft-supabase-writer.mjs.
-  // tft_daily_augment_stats wird dort ebenfalls geschrieben, ist aber kein
-  // Knoten (keine Route liest sie) — addEdge verwirft die Kante still, das ist
-  // richtig so. tft_player_marketvalue_snapshots steht NICHT hier: der
-  // Daily-Crawl fasst die Tabelle nur zum Aufraeumen an (MAINTENANCE_TABLES),
-  // geschrieben wird sie vom Marktwert-Lauf.
-  for (const t of ['tft_daily_comp_stats', 'tft_daily_unit_stats', 'tft_daily_unit_top_items', 'tft_daily_unit_builds', 'tft_daily_item_stats',
-    'tft_daily_trait_stats', 'tft_daily_trait_unitcount_stats', 'tft_daily_comp_pairs',
-    'tft_daily_crawl_meta']) {
-    addEdge('svc:metastats-daily-crawl.service', `db:${t}`, 'write',
-      svcWorking('metastats-daily-crawl.service'));
+  // Dienste schreiben und lesen Tabellen. Die Linien kommen aus page.tsx
+  // (ops-topology.ts): Laufzeit-Vertraege, die jede Nacht gegen die Datenbank
+  // geprueft werden, plus wenige Handlinien mit Fundstelle im Code. Tabellen
+  // ohne Knoten (keine Route liest sie) verwirft addEdge still.
+  const tableNode = (w: { table: string; backend: string }) =>
+    w.backend === 'hetzner' ? `boxdb:${w.table}` : `db:${w.table}`;
+  for (const w of topo.writes) {
+    addEdge('svc:' + w.unit, tableNode(w), 'write', svcWorking(w.unit));
   }
-  // marketvalue-snapshot: der taegliche Marktwert-Lauf, INSERT ... ON CONFLICT
-  // in scripts/lib/tft-marketvalue-pipeline.mjs.
-  addEdge('svc:metastats-marketvalue-snapshot.service', 'db:tft_player_marketvalue_snapshots', 'write',
-    svcWorking('metastats-marketvalue-snapshot.service'));
-  // refresh-api schreibt on-demand in Match-Cache + Marketvalue-Snapshots
-  addEdge('svc:metastats-refresh-api.service', 'db:tft_player_match_cache', 'write', false);
-  addEdge('svc:metastats-refresh-api.service', 'db:tft_player_marketvalue_snapshots', 'write', false);
-  // crawler (Legacy-Marketvalue-Vollsweep) schreibt auch dorthin — nur aktiv wenn manuell getriggert
-  addEdge('svc:metastats-crawler.service', 'db:tft_player_match_cache', 'write',
-    svcWorking('metastats-crawler.service'));
-  addEdge('svc:metastats-crawler.service', 'db:tft_player_marketvalue_snapshots', 'write',
-    svcWorking('metastats-crawler.service'));
-  // companion-backfill traegt Platzierung + echte Riot-Match-ID in die
-  // Positions-Beobachtungen nach (PATCH auf tft_position_observations). Die
-  // fruehere Kante auf tft_player_match_cache war falsch — das Skript nennt
-  // die Tabelle an keiner Stelle.
-  addEdge('svc:metastats-companion-backfill.service', 'db:tft_position_observations', 'write',
-    svcWorking('metastats-companion-backfill.service'));
-  // position-aggregator: liest Beobachtungen + Match-Cache, schreibt die
-  // comp-gebundene Zellzahl.
-  addEdge('db:tft_position_observations', 'svc:metastats-position-aggregator.service', 'read',
-    svcWorking('metastats-position-aggregator.service'));
-  // Seit 10.10.2026 schreibt er auch zurueck: Zuordnung + Pseudonym (Datenschutz).
-  addEdge('svc:metastats-position-aggregator.service', 'db:tft_position_observations', 'write',
-    svcWorking('metastats-position-aggregator.service'));
-  addEdge('db:tft_player_match_cache', 'svc:metastats-position-aggregator.service', 'read',
-    svcWorking('metastats-position-aggregator.service'));
-  addEdge('svc:metastats-position-aggregator.service', 'db:tft_position_comp_cell', 'write',
-    svcWorking('metastats-position-aggregator.service'));
-
-  // Publisher READS aus DB (über die Live-API), schreibt nach Blob
-  addEdge('db:tft_daily_comp_stats', 'svc:metastats-snapshot-publisher.service', 'read',
-    svcWorking('metastats-snapshot-publisher.service'));
+  for (const r of topo.reads) {
+    addEdge(tableNode(r), 'svc:' + r.unit, 'read', svcWorking(r.unit));
+  }
   addEdge('svc:metastats-snapshot-publisher.service', 'blob:manifest', 'write',
     svcWorking('metastats-snapshot-publisher.service'));
 
-  // Trigger-Edges: OnSuccess-Ketten
-  addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-snapshot-publisher.service', 'trigger', false);
-  addEdge('svc:metastats-daily-crawl.service', 'svc:metastats-daily-crawl-catchup.service', 'trigger', false);
+  // Wer wen startet: OnSuccess/OnFailure und `systemctl start` aus den Skripten
+  // (infra/system-map.json). Der Laufpunkt zeigt, dass das Ziel gerade arbeitet.
+  for (const t of topo.triggers) {
+    addEdge('svc:' + t.from, 'svc:' + t.to, 'trigger', svcWorking(t.to));
+  }
 
-  // refresh-api serves User direkt (Refresh-Button-Pfad)
-  addEdge('svc:metastats-refresh-api.service', 'user', 'request', true);
+  // Besucher → Schnittstelle → Box → Aktualisierungs-Dienst. Er beantwortet
+  // die Anfragen an die Box und reicht die des Data Explorers an dessen
+  // Abfrage-Dienst weiter (refresh-api-server.mjs:516, nur 127.0.0.1:4110).
+  addEdge('svc:metastats-refresh-api.service', 'box:hetzner', 'serve', true);
+  addEdge('svc:metastats-explorer-api.service', 'svc:metastats-refresh-api.service', 'serve',
+    svcWorking('metastats-explorer-api.service'));
 
   return { nodes, edges };
 }
@@ -1269,8 +1289,12 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
           <div className="text-gray-500">Result</div>
           <div className="text-gray-300 font-mono">{raw.result}</div>
           {raw.kind && (<>
-            <div className="text-gray-500">Typ</div>
-            <div className="text-gray-300 font-mono">{raw.kind}</div>
+            <div className="text-gray-500">Art</div>
+            <div className="text-gray-300">{KIND_LABEL[raw.kind as OpsServiceKind] ?? raw.kind}</div>
+          </>)}
+          {node.schedule && (<>
+            <div className="text-gray-500">Zeitplan</div>
+            <div className="text-gray-300">{node.schedule}</div>
           </>)}
           {raw.lastRunStart && (<>
             <div className="text-gray-500">Letzter Start</div>
@@ -1285,8 +1309,8 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
             <div className="text-gray-300 font-mono">{humanAge(raw.ageSinceLastRunMs)}</div>
           </>)}
           {raw.expectedMaxAgeMs && (<>
-            <div className="text-gray-500">Erwartete Cadence</div>
-            <div className="text-gray-300 font-mono">≤ {humanAge(raw.expectedMaxAgeMs)}</div>
+            <div className="text-gray-500">Verzögert ab</div>
+            <div className="text-gray-300 font-mono">{humanAge(raw.expectedMaxAgeMs)} ohne Lauf</div>
           </>)}
         </div>
       )}
@@ -1295,8 +1319,12 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
         <div className="pt-2 border-t border-border-subtle grid grid-cols-2 gap-2 text-[11px]">
           <div className="text-gray-500">Rows (estimated)</div>
           <div className="text-gray-300 font-mono">{raw.estimated != null ? fmt(raw.estimated) : '—'}</div>
-          <div className="text-gray-500">Heute geschrieben</div>
-          <div className="text-gray-300 font-mono">{raw.today != null ? fmt(raw.today) : '—'}</div>
+          {raw.latestDay && (<>
+            <div className="text-gray-500">Jüngster Tag</div>
+            <div className="text-gray-300 font-mono">
+              {dayLabel(raw.latestDay)}{raw.latestDayRows != null ? ` · ${fmt(raw.latestDayRows)} Zeilen` : ''}
+            </div>
+          </>)}
           <div className="text-gray-500">Schreibrate</div>
           <div className="text-gray-300 font-mono">{node.rate != null ? `${node.rate.toFixed(1)}/s` : '—'}</div>
         </div>
@@ -1322,7 +1350,7 @@ function NodeDetailPanel({ node, edges, nodes, onClose, onSelectNode }: {
   );
 }
 
-export default function OpsGraph() {
+export default function OpsGraph({ topology }: { topology: OpsTopology }) {
   const { snap, lastUpdate } = useOpsSnapshot();
   const riotStatus = useRiotStatus();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -1337,7 +1365,7 @@ export default function OpsGraph() {
     return next;
   });
 
-  const graph = useMemo(() => buildGraph(snap, expanded), [snap, expanded]);
+  const graph = useMemo(() => buildGraph(snap, expanded, topology), [snap, expanded, topology]);
   const selectedNode = useMemo(
     () => (selectedId ? graph.nodes.find(n => n.id === selectedId) || null : null),
     [graph, selectedId],
@@ -1422,7 +1450,8 @@ export default function OpsGraph() {
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.fetch }} />holt extern</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-0.5" style={{ backgroundColor: EDGE_KIND_COLOR.request }} />wird angefragt</div>
         <div className="flex items-center gap-1.5 pt-1"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.disabled }} />deaktiviert / fehlt</div>
-        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.empty }} />leer</div>
+        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.empty }} />leer / keine Live-Zahl</div>
+        <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLOR.inactive }} />nicht in Betrieb</div>
       </div>
 
       <div className="absolute bottom-3 left-3 right-3 z-10 flex justify-between gap-3 text-[10px] text-gray-500 pointer-events-none">

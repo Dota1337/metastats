@@ -98,7 +98,10 @@ const EXTERNALS = [
 // die sonst als Phantom-Tabellen in der Karte landen wuerden.
 const RE_FROM = /\.from\(\s*'([a-z0-9_]+)'/g;
 const RE_RPC = /\.rpc\(\s*'([a-z0-9_]+)'/g;
-const RE_CALLRPC = /callRpc\s*(?:<[^>]*>)?\s*\(\s*'([a-z0-9_]+)'/g;
+// Typangabe darf verschachtelt sein: `callRpc<Array<{ a: number }>>('x'` —
+// `<[^>]*>` brach am ersten `>` ab, gemessen fehlten so zwei Funktionen
+// (comps/route.ts:144, tft-supabase-reader.ts:333). Keine Klammern innerhalb.
+const RE_CALLRPC = /callRpc\s*(?:<[^()]*?>)?\s*\(\s*'([a-z0-9_]+)'/g;
 const RE_REST_TABLE = /rest\/v1\/([a-z0-9_]+)[?`'"]/g;
 const RE_REST_RPC = /rest\/v1\/rpc\/([a-z0-9_]+)/g;
 // Tabellenname kommt aus einer Variablen — nicht aufloesbar.
@@ -185,7 +188,9 @@ function markersFor(file) {
 // 30 der 73 Routen sprechen die Datenbank nicht selbst an, sondern ueber ein
 // Modul aus app/lib. Ohne diesen Schritt haetten sie im Graphen keine einzige
 // Kante — und ein Knoten ohne Kante behauptet, die Route lese nichts.
-const RE_IMPORT = /(?:^|\n)\s*(?:import|export)\s[^;]*?from\s+'([^']+)'/g;
+// `import type` bringt zur Laufzeit keinen Code mit — die Marker eines nur
+// fuer Typen eingebundenen Moduls gehoeren nicht zur Route.
+const RE_IMPORT = /(?:^|\n)\s*(?:import|export)\s(?!type\s)[^;]*?from\s+'([^']+)'/g;
 
 function resolveImport(spec, fromFile) {
   let base;

@@ -133,6 +133,21 @@ export function parseUnitText(file, text) {
   return { unit, edges };
 }
 
+/**
+ * `systemctl start|stop|restart` aus einem Shell-Skript, Zeile fuer Zeile.
+ * Kommentarzeilen zaehlen nicht (install-caddy.sh nennt einen Befehl im Kopf).
+ */
+export function shellStartEdges(file, text) {
+  const edges = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (/^\s*#/.test(line)) continue;
+    for (const { action, unit } of systemctlActions(line)) {
+      edges.push({ from: file, to: unit, via: `systemctl-${action}` });
+    }
+  }
+  return edges;
+}
+
 function parseUnit(file) {
   return parseUnitText(file, read(resolve(UNIT_DIR, file)));
 }
@@ -217,7 +232,13 @@ function build() {
   // Kanten aus dem Code zuerst, dahinter die aus den Exec*-Zeilen der Units.
   // via `systemctl-start` aus einer Unit prueft check-system-map (Schritt 4)
   // genauso wie einen Start aus dem Code.
-  const scriptEdges = [...parseScriptEdges(), ...parsed.flatMap(p => p.edges)];
+  // Shell-Skripte der Units (infra/hetzner/*.sh) liest parseScriptEdges nicht;
+  // ohne diesen Schritt fehlten die Starts aus Watchdog und Catchup
+  // (daily-crawl-resume, marketvalue-snapshot) in der Karte und im Ops-Graphen.
+  const shellScripts = [...new Set(units.flatMap(u => u.scripts).filter(s => s.endsWith('.sh')))]
+    .filter(s => existsSync(resolve(ROOT, s)));
+  const shellEdges = shellScripts.flatMap(s => shellStartEdges(s, read(resolve(ROOT, s))));
+  const scriptEdges = [...parseScriptEdges(), ...shellEdges, ...parsed.flatMap(p => p.edges)];
 
   const contracts = JSON.parse(read(resolve(ROOT, 'infra', 'contracts.json'))).contracts;
   const contractsByOwner = {};

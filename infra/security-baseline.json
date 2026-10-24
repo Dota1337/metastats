@@ -19,8 +19,8 @@
       "titel": "Fremde duerfen die Rang-Verteilung des laufenden Sets weiterhin direkt bei der Datenbank anfragen",
       "ort": "supabase/migrations/0062_tft_set_bucket_coverage.sql",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "0062_tft_set_bucket_coverage.sql:29-30 \"grant execute on function get_tft_set_bucket_coverage(int, int) to anon, authenticated, service_role\". grep -n get_tft_set_bucket_coverage supabase/migrations/*.sql -> nur 0062:14, 0062:29 und ein Kommentar 0093:1, kein spaeterer Entzug. Rechte-Durchlauf (node-Simulation aller create/drop/grant/revoke in Reihenfolge, neue Funktion = Standardrecht fuer anon wie in 0095:24-25 gemessen): von 60 am Ende bestehenden Funktionen ist dies die einzige mit Aufrufrecht fuer anon. Einziger Aufrufer app/lib/tft-supabase-reader.ts:330-331 ueber callRpc mit dem Service-Schluessel.",
+      "status": "behoben",
+      "belegt_mit": "Behoben 24.10.2026 ~11:20 CEST: Migration 0104 live eingespielt. Gemessen (read-only): has_function_privilege(anon, get_tft_set_bucket_coverage(integer,integer), EXECUTE) = false, service_role = true; anon darf 0 Funktionen in public ausfuehren; Vertrag sicherheit/anon-lockout OK (rpcProbe abgelehnt). Befund vorher: 0062_tft_set_bucket_coverage.sql:29-30 \"grant execute on function get_tft_set_bucket_coverage(int, int) to anon, authenticated, service_role\". grep -n get_tft_set_bucket_coverage supabase/migrations/*.sql -> nur 0062:14, 0062:29 und ein Kommentar 0093:1, kein spaeterer Entzug. Rechte-Durchlauf (node-Simulation aller create/drop/grant/revoke in Reihenfolge, neue Funktion = Standardrecht fuer anon wie in 0095:24-25 gemessen): von 60 am Ende bestehenden Funktionen ist dies die einzige mit Aufrufrecht fuer anon. Einziger Aufrufer app/lib/tft-supabase-reader.ts:330-331 ueber callRpc mit dem Service-Schluessel.",
       "seit": "2026-09-19",
       "zuletzt_gesehen": "2026-10-24"
     },
@@ -29,8 +29,8 @@
       "titel": "23 Tabellen sind gegen Schreiben durch Fremde nur mit einem Riegel statt zwei gesperrt",
       "ort": "supabase/migrations/0055_revoke_anon_read.sql (+ 0066_revoke_anon_peaks.sql)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "0055:58-80 entzieht anon/authenticated nur SELECT (22 Tabellen + die Sicht tft_position_unit_cell), 0066:25 ebenso nur SELECT fuer tft_player_marketvalue_peaks. node-Durchlauf aller grant/revoke auf Tabellen ueber alle Migrationen: fuer keine dieser 23 Tabellen folgt spaeter ein \"revoke all\" (die Sicht und tft_pro_validation_log bekamen es in 0079:43-44). Dass neue Tabellen anon volle Rechte bekommen, steht in 0079:12-13 und 0022:3-4; 0090:22-24 hat dieselbe zweite Tuer fuer zwei andere Tabellen geschlossen. Zeilenschutz ist auf allen 23 an, Schreib-Regeln gibt es keine. Live-Rechte ungeprueft (statisch aus den Migrationen hergeleitet).",
+      "status": "behoben",
+      "belegt_mit": "Behoben 24.10.2026 ~11:20 CEST: Migration 0104 live. Gemessen: information_schema.role_table_grants fuer anon in public = 0 Zeilen (vorher Schreibrechte auf 27 Objekte); security_anon_leaks() meldet nur die gewollte Ausnahme matches/authenticated; Vertrag sicherheit/anon-lockout OK, 5 Live-Proben abgelehnt. Befund vorher: 0055:58-80 entzieht anon/authenticated nur SELECT (22 Tabellen + die Sicht tft_position_unit_cell), 0066:25 ebenso nur SELECT fuer tft_player_marketvalue_peaks. node-Durchlauf aller grant/revoke auf Tabellen ueber alle Migrationen: fuer keine dieser 23 Tabellen folgt spaeter ein \"revoke all\" (die Sicht und tft_pro_validation_log bekamen es in 0079:43-44). Dass neue Tabellen anon volle Rechte bekommen, steht in 0079:12-13 und 0022:3-4; 0090:22-24 hat dieselbe zweite Tuer fuer zwei andere Tabellen geschlossen. Zeilenschutz ist auf allen 23 an, Schreib-Regeln gibt es keine. Live-Rechte ungeprueft (statisch aus den Migrationen hergeleitet).",
       "seit": "2026-10-24",
       "zuletzt_gesehen": "2026-10-24"
     },
@@ -355,8 +355,8 @@
       "titel": "Der vorgeschriebene Notfall-Befehl bei wieder offenen Leserechten bricht mit Fehler ab und sperrt nichts",
       "ort": "infra/contracts.json (Vertrag sicherheit/anon-lockout) + supabase/migrations/0055_revoke_anon_read.sql",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "infra/contracts.json:583 schreibt bei Rot vor: \"Sofort 0055 erneut anwenden (node scripts/apply-migrations.mjs 0055)\". 0055 entzieht Rechte auf 35 Funktions-Signaturen (0055:86-120); 12 davon gibt es nicht mehr (node-Durchlauf create/drop ueber alle 105 Migrationen in Sortierreihenfolge): 0055:91 (geloescht in 0095:720), :92 (0060:49), :93 (0098:28), :99 (0095:810), :102 (0063:45), :104 (0063:72), :105 (0063:124), :110 (0064:25), :111 (0095:944), :115 (0095:885), :116 (0095:919), :118 (0095:743). REVOKE auf eine nicht vorhandene Funktion ist in Postgres ein Fehler (function ... does not exist). scripts/apply-migrations.mjs:58-63 faehrt die ganze Datei in einer Transaktion und rollt bei Fehler alles zurueck, damit auch die Regel-Loeschungen 0055:33-55 und die Lese-Entzuege 0055:58-80. Statisch hergeleitet, nicht live ausgefuehrt (wuerde die Datenbank aendern).",
+      "status": "behoben",
+      "belegt_mit": "Behoben 24.10.2026 ~11:20 CEST: Vertrag zeigt auf node scripts/anon-lockout.mjs (ruft security_anon_lockdown() aus 0104, nennt keine Namen). Probelauf nach 0104 vom User ausgefuehrt: vorher 4, nachher 4, 0 Rechte wuerden entzogen (nur matches/authenticated bleibt); Funktion live vorhanden (pg_proc 1 Treffer, nur postgres darf sie ausfuehren). Befund vorher: infra/contracts.json:583 schreibt bei Rot vor: \"Sofort 0055 erneut anwenden (node scripts/apply-migrations.mjs 0055)\". 0055 entzieht Rechte auf 35 Funktions-Signaturen (0055:86-120); 12 davon gibt es nicht mehr (node-Durchlauf create/drop ueber alle 105 Migrationen in Sortierreihenfolge): 0055:91 (geloescht in 0095:720), :92 (0060:49), :93 (0098:28), :99 (0095:810), :102 (0063:45), :104 (0063:72), :105 (0063:124), :110 (0064:25), :111 (0095:944), :115 (0095:885), :116 (0095:919), :118 (0095:743). REVOKE auf eine nicht vorhandene Funktion ist in Postgres ein Fehler (function ... does not exist). scripts/apply-migrations.mjs:58-63 faehrt die ganze Datei in einer Transaktion und rollt bei Fehler alles zurueck, damit auch die Regel-Loeschungen 0055:33-55 und die Lese-Entzuege 0055:58-80. Statisch hergeleitet, nicht live ausgefuehrt (wuerde die Datenbank aendern).",
       "seit": "2026-10-24",
       "zuletzt_gesehen": "2026-10-24"
     },
@@ -595,8 +595,8 @@
       "titel": "Jede neu angelegte Datenbank-Funktion ist zunaechst fuer Fremde aufrufbar, bis die Migration das ausdruecklich entzieht",
       "ort": "supabase/migrations/0079_rls_lockdown.sql",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "0079_rls_lockdown.sql:46-49 entzieht die Standardrechte der Rolle postgres nur on tables und on sequences, nicht on functions. Dass neu angelegte Funktionen auf PUBLIC/anon/authenticated stehen, ist im Projekt gemessen: 0095:24-25 (get_tft_comp_stats: vorher public, anon, authenticated, service_role), 0071:240-241 (anon und authenticated standen dadurch weiter auf EXECUTE, gemessen 13.09.), 0063:152-154. Aus genau dieser Luecke entstanden die Faelle durch Neuanlegen in 0060 (ohne revoke) und 0063 (nur from public). Mechanisch geprueft wird das nur in Selbstpruefungen einzelner Migrationen (0095:1079, 0102:348).",
+      "status": "behoben",
+      "belegt_mit": "Behoben 24.10.2026 ~11:20 CEST: Migration 0104 live. Gemessen pg_default_acl public: postgres/f = {postgres=X, service_role=X} (vorher mit anon=X, authenticated=X). Eintraege der Rolle supabase_admin bleiben: postgres ist kein Mitglied von supabase_admin (pg_has_role = false), Migrationen laufen als postgres, in public gehoeren supabase_admin 0 Funktionen und 0 Relationen. Befund vorher: 0079_rls_lockdown.sql:46-49 entzieht die Standardrechte der Rolle postgres nur on tables und on sequences, nicht on functions. Dass neu angelegte Funktionen auf PUBLIC/anon/authenticated stehen, ist im Projekt gemessen: 0095:24-25 (get_tft_comp_stats: vorher public, anon, authenticated, service_role), 0071:240-241 (anon und authenticated standen dadurch weiter auf EXECUTE, gemessen 13.09.), 0063:152-154. Aus genau dieser Luecke entstanden die Faelle durch Neuanlegen in 0060 (ohne revoke) und 0063 (nur from public). Mechanisch geprueft wird das nur in Selbstpruefungen einzelner Migrationen (0095:1079, 0102:348).",
       "seit": "2026-10-24",
       "zuletzt_gesehen": "2026-10-24"
     },

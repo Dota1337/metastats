@@ -30,9 +30,9 @@ jobs:
     env:
       RIOT_API_KEY_TFT: ${{ secrets.RIOT_API_KEY_TFT }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
 

@@ -34,9 +34,9 @@ jobs:
     # Der Lauf zieht ~96k Ergebniszeilen in ~190 Batches; 60 Min ist reichlich.
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm

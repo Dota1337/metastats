@@ -118,17 +118,37 @@ import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
+// Nur die Schluessel, die dieser Dienst samt seiner 17 importierten Dateien
+// liest (gemessen 24.10.2026). Er ist der einzige aus dem Internet erreichbare
+// Dienst der Box; die gemeinsame Env-Datei traegt 17 Geheimnisse, darunter
+// solche, die er nie braucht (Sicherheitsdurchsicht, geteilte-env-datei). Die
+// Unit reicht ihm seit derselben Durchsicht eine gefilterte Datei und sperrt die
+// gemeinsame — dieser Lader ist der zweite Riegel, z. B. beim Handstart.
+// Kommt ein neuer process.env-Zugriff dazu: hier UND in der Positivliste der
+// Unit (infra/hetzner/metastats-refresh-api.service) ergaenzen.
+const ENV_KEYS = [
+  'CONTRACTS_READ_TOKEN', 'CONTRACTS_STATUS_PATH', 'DATABASE_URL', 'EXPLORER_API_URL', 'MV_TIMING',
+  'NEXT_PUBLIC_SUPABASE_URL', 'REFRESH_API_PORT', 'REFRESH_API_TOKEN', 'RIOT_API_KEY_TFT',
+  'SUPABASE_SERVICE_ROLE_KEY',
+];
 function loadEnv() {
   const candidates = ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')];
   for (const path of candidates) {
-    if (!existsSync(path)) continue;
-    const text = readFileSync(path, 'utf8');
+    let text;
+    try {
+      if (!existsSync(path)) continue;
+      text = readFileSync(path, 'utf8');
+    } catch {
+      // EACCES: die Unit sperrt die gemeinsame Datei (InaccessiblePaths). Dann
+      // kommt alles Noetige ueber EnvironmentFile= — weiter zum naechsten Kandidaten.
+      continue;
+    }
     for (const line of text.split('\n')) {
       if (!line.includes('=') || line.startsWith('#')) continue;
       const i = line.indexOf('=');
       const k = line.slice(0, i).trim();
       const v = line.slice(i + 1).trim();
-      if (!process.env[k]) process.env[k] = v;
+      if (ENV_KEYS.includes(k) && !process.env[k]) process.env[k] = v;
     }
     break;
   }
@@ -991,6 +1011,14 @@ const server = http.createServer(async (req, res) => {
     if (!wantDetail) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify(base));
+    }
+    // Die Dienstliste nur mit Schluessel: ohne ihn sah jeder, welche Dienste
+    // wann liefen und welche gescheitert sind (Sicherheitsdurchsicht 24.10.2026,
+    // statusseite-ohne-zugang). Der einfache Lebenszeichen-Abruf bleibt offen —
+    // rotate-refresh-token und refresh-supabase-key pruefen damit den Neustart.
+    if (req.headers.authorization !== `Bearer ${AUTH_TOKEN}`) {
+      res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
     try {
       const services = await collectServiceStatus();

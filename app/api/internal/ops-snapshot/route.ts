@@ -135,7 +135,11 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 
 async function fetchServices() {
   const url = `${HETZNER_BASE.replace(/\/$/, '')}/healthz?detail=services`;
-  const res = await fetchWithTimeout(url);
+  // Die Dienstliste verlangt auf der Box den Schluessel (Sicherheitsdurchsicht
+  // 24.10.2026, statusseite-ohne-zugang) — ohne ihn sah jeder, welche Dienste
+  // wann liefen und welche gescheitert sind.
+  const token = process.env.REFRESH_API_TOKEN;
+  const res = await fetchWithTimeout(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
   if (!res.ok) throw new Error(`hetzner ${res.status}`);
   const data = await res.json();
   const now = Date.now();

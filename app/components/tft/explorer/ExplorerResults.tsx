@@ -381,7 +381,8 @@ export default function ExplorerResults({
                   {t4 && <td className="px-2 py-1.5 text-right text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
                     <div className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</div>
-                    <div className="text-fg-secondary text-[11px] leading-none">{num(r.games)}</div>
+                    {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird. */}
+                    <span className="block w-fit min-w-[3.75rem] sm:min-w-[4.5rem] ml-auto rounded bg-pos-win-a20 px-1.5 py-0.5 text-fg-primary text-xs sm:text-[13px] leading-none">{num(r.games)}</span>
                   </td>
                   {showStar3 && (
                     <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>

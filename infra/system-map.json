@@ -1443,7 +1443,7 @@
       "lol-matchfill/match-cache",
       "lol-builds/rohdaten-zulauf"
     ],
-    "supabase/migrations/0055_revoke_anon_read.sql": [
+    "supabase/migrations/0104_revoke_anon_writes.sql": [
       "sicherheit/anon-lockout"
     ],
     "metastats-lol-builds.service": [

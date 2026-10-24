@@ -30,7 +30,7 @@ const GOLD_ORDER = ['0', '1-9', '10-19', '20-29', '30-49', '50+'];
 const STARS = [1, 2, 3, 4];
 
 const seg = (on: boolean) =>
-  `px-2 py-0.5 rounded text-xs border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
+  `px-2 py-0.5 rounded text-sm border ${on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
 
 // Natuerliche Reihenfolge der Zahlen-Reiter (Level, Runde, Gold).
 function orderKey(tab: ExplorerTab, r: ExplorerRow): number {
@@ -222,23 +222,23 @@ export default function ExplorerResults({
     const label = labelOf(r);
     // Stufen-Zeile unter der Gesamt-Zeile: nur die Sterne, eingerueckt.
     if (grouped && r.sub != null) {
-      return <span className="pl-9 text-fg-secondary">{`${r.sub}★`}</span>;
+      return <span className="pl-10 text-fg-secondary">{`${r.sub}★`}</span>;
     }
     let icons: React.ReactNode = null;
     if (tab === 'units') {
       const cost = options.unitById.get(r.key)?.cost ?? 1;
       const src = unitImg(options, assets, r.key);
-      icons = src ? <img src={src} alt="" loading="lazy" className="w-7 h-7 rounded object-cover" style={{ boxShadow: `inset 0 0 0 1.5px ${costColor(cost)}` }} /> : null;
+      icons = src ? <img src={src} alt="" loading="lazy" className="w-8 h-8 shrink-0 rounded object-cover" style={{ boxShadow: `inset 0 0 0 1.5px ${costColor(cost)}` }} /> : null;
     } else if (tab === 'items' || tab === 'builds') {
-      icons = <span className="flex gap-0.5">{r.key.split('|').map(i => { const s = itemImg(options, assets, i); return s ? <img key={i} src={s} alt="" loading="lazy" className="w-6 h-6 rounded" /> : null; })}</span>;
+      icons = <span className="flex gap-0.5 shrink-0">{r.key.split('|').map(i => { const s = itemImg(options, assets, i); return s ? <img key={i} src={s} alt="" loading="lazy" className="w-7 h-7 rounded" /> : null; })}</span>;
     } else if (tab === 'traits' || tab === 'comps') {
       const id = tab === 'traits' ? r.key : r.key.split('__')[0];
       const s = traitImg(options, assets, id);
-      icons = s ? <img src={s} alt="" loading="lazy" className="w-5 h-5" /> : null;
+      icons = s ? <img src={s} alt="" loading="lazy" className="w-6 h-6 shrink-0" /> : null;
       if (tab === 'comps') {
         const carry = r.key.split('__')[1];
         const cs = carry ? unitImg(options, assets, carry) : null;
-        icons = <span className="flex items-center gap-1">{icons}{cs && <img src={cs} alt="" loading="lazy" className="w-6 h-6 rounded object-cover" />}</span>;
+        icons = <span className="flex items-center gap-1 shrink-0">{icons}{cs && <img src={cs} alt="" loading="lazy" className="w-7 h-7 rounded object-cover" />}</span>;
       }
     }
     return (
@@ -272,7 +272,7 @@ export default function ExplorerResults({
       {tab !== 'games' && <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2.5 border-b border-border-subtle">
         {tab === 'units' && (
           <div className="flex items-center gap-1">
-            <span className="text-xs text-fg-muted mr-1">{t('tft.explorer.x.split.star')}</span>
+            <span className="text-sm text-fg-muted mr-1">{t('tft.explorer.x.split.star')}</span>
             {STARS.map(n => {
               const on = query.stars.includes(n);
               return (
@@ -294,15 +294,15 @@ export default function ExplorerResults({
         )}
         {tab === 'items' && query.focus && (
           <button type="button" onClick={backToUnits}
-            className="px-2.5 py-1 rounded-md border border-border-subtle text-xs text-fg-secondary hover:text-fg-primary hover:border-accent-a40">
+            className="px-2.5 py-1 rounded-md border border-border-subtle text-sm text-fg-secondary hover:text-fg-primary hover:border-accent-a40">
             {'←'} {t('tft.explorer.x.tab.units')}
           </button>
         )}
         {focusApplies(tab) && (
           <label className="flex items-center gap-2">
-            <span className="text-xs text-fg-muted">{t('tft.explorer.x.focus')}</span>
+            <span className="text-sm text-fg-muted">{t('tft.explorer.x.focus')}</span>
             <select value={query.focus ?? ''} onChange={e => setQuery({ ...query, focus: e.target.value || null, combo: 1 })}
-              className="bg-surface-page border border-border-subtle rounded text-xs text-fg-primary px-2 py-1 max-w-[12rem]">
+              className="bg-surface-page border border-border-subtle rounded text-sm text-fg-primary px-2 py-1 max-w-[12rem]">
               <option value="">{'—'}</option>
               {options.units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
             </select>
@@ -318,9 +318,9 @@ export default function ExplorerResults({
           </div>
         )}
         <label className="flex items-center gap-2">
-          <span className="text-xs text-fg-muted">{t('tft.explorer.minGames')}</span>
+          <span className="text-sm text-fg-muted">{t('tft.explorer.minGames')}</span>
           <select value={minGames} onChange={e => setMinGames(Number(e.target.value))}
-            className="bg-surface-page border border-border-subtle rounded text-xs text-fg-primary px-2 py-1">
+            className="bg-surface-page border border-border-subtle rounded text-sm text-fg-primary px-2 py-1">
             {MIN_GAMES.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </label>
@@ -329,7 +329,7 @@ export default function ExplorerResults({
       {tab === 'games' ? (
         <ExplorerGames games={rowsFit ? (data?.games ?? []) : null} options={options} assets={assets} />
       ) : <div className="overflow-x-auto">
-        <table className="w-full text-xs tabular-nums">
+        <table className="w-full text-xs sm:text-sm tabular-nums">
           <thead className="text-fg-muted">
             <tr className="border-b border-border-subtle">
               <th className="px-3 py-2 font-medium text-left">
@@ -350,7 +350,7 @@ export default function ExplorerResults({
           <tbody>
             {!rowsFit && Array.from({ length: 8 }, (_, i) => (
               <tr key={`sk${i}`} className="border-b border-border-subtle last:border-0">
-                <td colSpan={9} className="px-3 py-1.5"><div className="h-7 rounded bg-surface-raised animate-pulse" /></td>
+                <td colSpan={9} className="px-3 py-1.5"><div className="h-8 rounded bg-surface-raised animate-pulse" /></td>
               </tr>
             ))}
             {rows.map(r => {
@@ -368,12 +368,12 @@ export default function ExplorerResults({
                   <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{refGames ? fmtPct(r.games / refGames) : '—'}</td>
                   <td className="px-2 py-1.5 text-right text-fg-bright">
                     {fmtAvg(r.avg)}
-                    <span className="text-fg-faint text-[10px] ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
+                    <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
                   </td>
                   {showDelta && (
                     <td className={`px-2 py-1.5 text-right ${deltaClass(d, dh)}`}>
                       {fmtDelta(d)}
-                      {dh != null && <span className="text-fg-faint text-[10px] ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
+                      {dh != null && <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
                     </td>
                   )}
                   {t4 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>}

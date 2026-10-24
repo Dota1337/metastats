@@ -25,7 +25,7 @@ function targetAt(x: number, y: number): { key: string; t: DropTarget } | null {
 
 // Die Kopie haengt neben dem Mauszeiger bzw. ueber dem Finger (sonst verdeckt er sie).
 function placeGhost(el: HTMLDivElement | null, x: number, y: number, touch: boolean) {
-  if (el) el.style.transform = `translate(${x + (touch ? -16 : 12)}px, ${y + (touch ? -52 : 12)}px)`;
+  if (el) el.style.transform = `translate(${x + (touch ? -16 : 12)}px, ${y + (touch ? -60 : 12)}px)`;
 }
 
 export function useFilterDrag({ query, fits, onDrop, onStart }: {
@@ -141,7 +141,7 @@ export function useFilterDrag({ query, fits, onDrop, onStart }: {
     // Ans Seitenende gehaengt: fixed waere unter einem verschobenen Vorfahren sonst versetzt.
     ghost: drag ? createPortal(
       <div ref={ghostRef} aria-hidden
-        className="fixed left-0 top-0 z-50 pointer-events-none flex items-center gap-1.5 rounded-md border border-accent-a50 bg-surface-raised px-1.5 py-1 text-xs text-fg-primary shadow-xl">
+        className="fixed left-0 top-0 z-50 pointer-events-none flex items-center gap-1.5 rounded-md border border-accent-a50 bg-surface-raised px-1.5 py-1 text-sm text-fg-primary shadow-xl">
         {drag.ghost}
       </div>,
       document.body,

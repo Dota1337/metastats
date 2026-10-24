@@ -73,7 +73,7 @@ function patchList<T extends { id: string }>(arr: T[], id: string, patch: Partia
   return patch === null ? arr.filter(f => f.id !== id) : arr.map(f => (f.id === id ? { ...f, ...patch } : f));
 }
 
-function Icon({ src, alt, className = 'w-6 h-6', border }: { src: string | null; alt: string; className?: string; border?: string }) {
+function Icon({ src, alt, className = 'w-8 h-8', border }: { src: string | null; alt: string; className?: string; border?: string }) {
   if (!src) return <span className={`${className} rounded bg-surface-overlay shrink-0`} />;
   return <img src={src} alt={alt} title={alt} loading="lazy" draggable={false} className={`${className} rounded object-cover shrink-0`} style={border ? { boxShadow: `inset 0 0 0 1.5px ${border}` } : undefined} />;
 }
@@ -183,7 +183,7 @@ export default function ExplorerFilters({
   const at = (g: number | null): Where => (g == null ? 'main' : g);
   // „ohne"-Bausteine und „keins davon"-Kaesten (nur alte Links) werden nicht gezogen.
   const movable = (g: number | null, f: { x?: boolean }) => !f.x && (g == null || query.groups[g]?.m === 'any');
-  const ghostOf = (img: string | null, name: string, border?: string) => <><Icon src={img} alt={name} border={border} /><span className="truncate max-w-[9rem]">{name}</span></>;
+  const ghostOf = (img: string | null, name: string, border?: string) => <><Icon src={img} alt={name} border={border} /><span className="truncate max-w-[10rem]">{name}</span></>;
   const sourceOf = (g: number | null, f: { x?: boolean }, src: DragSrc, ghost: React.ReactNode) =>
     (movable(g, f) ? dnd.source(src, ghost) : undefined);
 
@@ -199,8 +199,8 @@ export default function ExplorerFilters({
         drag={sourceOf(g, u, { kind: 'units', id: u.id, from: at(g) }, ghostOf(unitImg(options, assets, u.id), unitName(options, assets, u.id), border))}
         drop={dnd.target(drop)} over={dnd.isOver(drop)}
         label={<>
-          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={border} className="w-7 h-7" />
-          <span className="truncate max-w-[9rem]">{unitName(options, assets, u.id)}</span>
+          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={border} className="w-8 h-8" />
+          <span className="truncate max-w-[10rem]">{unitName(options, assets, u.id)}</span>
           {stars && <span className="text-gold-earnings">{stars}</span>}
           {cnt && <span className="text-fg-muted">{cnt}</span>}
           {u.c ? <span className="text-fg-muted">{'≥'}{u.c}{'×'}</span> : null}
@@ -209,10 +209,10 @@ export default function ExplorerFilters({
           {(u.it ?? []).map((i, n) => (
             <span key={`${i}${n}`} className="relative before:absolute before:-inset-1"
               {...sourceOf(g, u, { kind: 'unitItem', unit: u.id, from: at(g), index: n }, <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} />)}>
-              <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />
+              <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-5 h-5" />
             </span>
           ))}
-          {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-xs font-bold">{'∕'}</span></span>)}
+          {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-5 h-5" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-sm font-bold">{'∕'}</span></span>)}
         </>}>
         <UnitEditor u={u} set={p => setUnit(g, u.id, p)} options={options} assets={assets} inGroup={g != null} />
       </Chip>
@@ -225,8 +225,8 @@ export default function ExplorerFilters({
         onRemove={() => setItem(g, i.id, null)} removeLabel={t('tft.explorer.x.remove')}
         drag={sourceOf(g, i, { kind: 'items', id: i.id, from: at(g) }, ghostOf(itemImg(options, assets, i.id), itemName(options, assets, i.id)))}
         label={<>
-          <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} className="w-7 h-7" />
-          <span className="truncate max-w-[9rem]">{itemName(options, assets, i.id)}</span>
+          <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} className="w-8 h-8" />
+          <span className="truncate max-w-[10rem]">{itemName(options, assets, i.id)}</span>
           {i.n ? <span className="text-fg-muted">{'≥'}{i.n}{'×'}</span> : null}
         </>}>
         <ItemEditor i={i} set={p => setItem(g, i.id, p)} inGroup={g != null} />
@@ -242,8 +242,8 @@ export default function ExplorerFilters({
         onRemove={() => setTrait(g, tr.id, null)} removeLabel={t('tft.explorer.x.remove')}
         drag={sourceOf(g, tr, { kind: 'traits', id: tr.id, from: at(g) }, ghostOf(traitImg(options, assets, tr.id), traitName(options, assets, tr.id)))}
         label={<>
-          <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-6 h-6" />
-          <span className="truncate max-w-[9rem]">{traitName(options, assets, tr.id)}</span>
+          <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-7 h-7" />
+          <span className="truncate max-w-[10rem]">{traitName(options, assets, tr.id)}</span>
           {min != null && <span className="text-fg-muted">{tr.le ? '' : '≥'}{min}</span>}
         </>}>
         {(mins.length > 1 || tr.x) ? <TraitEditor tr={tr} set={p => setTrait(g, tr.id, p)} mins={mins} inGroup={g != null} /> : null}
@@ -260,12 +260,12 @@ export default function ExplorerFilters({
     return (
       <div key={`g${g}`} {...dnd.target(zone)} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed px-1.5 py-1 ${
         none ? 'border-pos-loss' : 'border-accent-a50'} ${active ? 'bg-accent-a8' : ''}`}>
-        {none && <span className="text-[11px] text-pos-loss">{t('tft.explorer.x.noneOf')}</span>}
+        {none && <span className="text-xs text-pos-loss">{t('tft.explorer.x.noneOf')}</span>}
         {members.map((m, i) => <Fragment key={i}>{i > 0 && !none && <Sep op="or" />}{m}</Fragment>)}
         {!none && groupSize(gr) < EXPLORER_LIMITS.groupMembers && (
           <button type="button" onClick={() => { setMode('or'); setLast(firstRef(gr, g)); setFocusKey(k => k + 1); }}
             aria-label={`+ ${t('tft.explorer.x.or')}`} title={`+ ${t('tft.explorer.x.or')}`}
-            className="w-7 h-7 flex items-center justify-center rounded border border-border-subtle text-xs text-fg-secondary hover:border-accent-a50 hover:text-fg-bright">+</button>
+            className="w-8 h-8 flex items-center justify-center rounded border border-border-subtle text-sm text-fg-secondary hover:border-accent-a50 hover:text-fg-bright">+</button>
         )}
         <button type="button" onClick={() => setQuery({ ...query, groups: query.groups.filter((_, i) => i !== g) })}
           aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
@@ -387,7 +387,7 @@ export default function ExplorerFilters({
 
 function Sep({ op }: { op: Op }) {
   const { t } = useI18n();
-  return <span className="text-[11px] text-fg-faint">{t(op === 'and' ? 'tft.explorer.x.and' : 'tft.explorer.x.or')}</span>;
+  return <span className="text-xs text-fg-faint">{t(op === 'and' ? 'tft.explorer.x.and' : 'tft.explorer.x.or')}</span>;
 }
 
 function Chip({
@@ -404,10 +404,10 @@ function Chip({
   const { t } = useI18n();
   return (
     <div className="relative" {...drop}>
-      <div className={`flex items-center rounded-md border text-xs ${
+      <div className={`flex items-center rounded-md border text-sm ${
         over ? 'border-accent-a50 bg-accent-a20' : excluded ? 'border-pos-loss bg-surface-base' : 'border-accent-a40 bg-accent-a8'}`}>
         <button type="button" onClick={onToggle} aria-expanded={open} {...drag}
-          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 min-h-9 text-fg-primary ${drag ?'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
+          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 min-h-10 text-fg-primary ${drag ?'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
           {excluded && <span className="text-pos-loss no-underline">{t('tft.explorer.x.without')}</span>}
           {label}
         </button>
@@ -754,14 +754,14 @@ function CoplayRow({
     : t('tft.explorer.x.coplaySel');
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-      <span className="text-[11px] text-fg-muted">{label}</span>
+      <span className="text-xs text-fg-muted">{label}</span>
       {rows.map(r => {
         const u = options.unitById.get(r.key)!;
         return (
           <button key={r.key} type="button" onClick={() => onAdd(r.key)} title={u.name}
-            className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-xs text-fg-primary hover:border-accent-a50">
-            <OptIcon src={u.img} alt={u.name} className="w-7 h-7" border={costColor(u.cost)} />
-            <span className="truncate max-w-[6rem]">{u.name}</span>
+            className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-sm text-fg-primary hover:border-accent-a50">
+            <OptIcon src={u.img} alt={u.name} className="w-8 h-8" border={costColor(u.cost)} />
+            <span className="truncate max-w-[7rem]">{u.name}</span>
             <span className="text-fg-muted tabular-nums">{Math.round((r.games / src.summary.games) * 100)}%</span>
           </button>
         );

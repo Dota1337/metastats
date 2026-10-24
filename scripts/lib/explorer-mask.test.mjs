@@ -155,14 +155,13 @@ test('maskQueue: ohne gedeckte und gesperrte Tage, neueste zuerst', () => {
   assert.deepEqual(maskQueue({ days, covered: days }), []);
 });
 
-test('Fristen: Rest-Budget, Tauschzeit, harte Grenze, Laufzeit-Alarm', () => {
+test('Fristen: Tauschzeit, harte Grenze, Laufzeit-Alarm — kein Teilsummen-Budget', () => {
   const t0 = Date.UTC(2026, 9, 8, 3, 0); // 03:00 UTC, Tausch erst am Folgetag 02:55
-  const aggStart = t0 + 600_000;
-  assert.equal(maskDeadlineMs({ aggStartMs: aggStart, t0Ms: t0, budgetS: 1200 }), aggStart + 1_200_000);
-  assert.equal(maskDeadlineMs({ aggStartMs: aggStart, t0Ms: t0, budgetS: 1200, capMs: t0 + 1_000_000 }), t0 + 1_000_000);
-  assert.equal(maskDeadlineMs({ aggStartMs: aggStart, t0Ms: t0, budgetS: 99_999 }), t0 + AGG_HARD_S * 1000);
-  const t1 = Date.UTC(2026, 9, 8, 1, 0); // 01:00 UTC → Tausch 02:55
-  assert.equal(maskDeadlineMs({ aggStartMs: t1, t0Ms: t1, budgetS: 99_999 }), Date.UTC(2026, 9, 8, 2, 55));
+  assert.equal(maskDeadlineMs({ t0Ms: t0 }), t0 + AGG_HARD_S * 1000);
+  assert.equal(maskDeadlineMs({ t0Ms: t0, capMs: t0 + 1_000_000 }), t0 + 1_000_000);
+  const t1 = Date.UTC(2026, 9, 8, 1, 35); // Nachtlauf 01:35 UTC → Tausch 02:55, egal wie lange die Teilsummen brauchen
+  assert.equal(maskDeadlineMs({ t0Ms: t1 }), Date.UTC(2026, 9, 8, 2, 55));
+  assert.equal(maskDeadlineMs({ t0Ms: t1, capMs: t1 + 60_000 }), t1 + 60_000);
   assert.equal(maskHardMs({ t0Ms: t0 }), t0 + AGG_HARD_S * 1000);
   assert.equal(maskHardMs({ t0Ms: t0, capMs: t0 + 5 }), t0 + 5);
 });

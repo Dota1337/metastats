@@ -276,12 +276,14 @@ export function maskQueue({ days, covered, skip = [] }) {
   return [...new Set(days)].filter((d) => !cov.has(d) && !sk.has(d)).sort().reverse();
 }
 
-// Frist fuer neue Tage, Uebernahme und ui-Nachrechnung: was vom Teilsummen-
-// Budget uebrig ist (gezaehlt ab Start der Teilsummen), hoechstens bis zur
-// Tauschfrist und zur harten Grenze; capMs = Obergrenze des Baus (Vollaufbau:
-// Laufzeit-Alarm minus Reserve).
-export function maskDeadlineMs({ aggStartMs, t0Ms, budgetS, capMs = null }) {
-  return Math.min(aggStartMs + budgetS * 1000, nextUtc(t0Ms, AGG_SWAP_UTC), maskHardMs({ t0Ms, capMs }));
+// Frist fuer neue Tage, Uebernahme und ui-Nachrechnung: bis zur Tauschfrist
+// und zur harten Grenze; capMs = Obergrenze des Baus (Vollaufbau:
+// Laufzeit-Alarm minus Reserve). Bis 24.10.2026 zaehlte zusaetzlich der Rest
+// des Teilsummen-Budgets (1200 s ab Start der Teilsummen) — nach einem
+// Teilsummen-Neuaufbau blieb den Masken nichts (21.–23.10. 0/46 Tage), waehrend
+// bis 02:55 UTC noch ~45 min frei waren.
+export function maskDeadlineMs({ t0Ms, capMs = null }) {
+  return Math.min(nextUtc(t0Ms, AGG_SWAP_UTC), maskHardMs({ t0Ms, capMs }));
 }
 
 // Frist fuer das Nachziehen gedeckter Tage (neue Partien): harte Grenze —

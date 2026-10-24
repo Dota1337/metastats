@@ -21,7 +21,7 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { aggBudgetS, aggCopyEstS, aggPartCap } from './explorer-agg.mjs';
+import { aggBudgetS, aggCopyEstS, aggPartCap, packDayParts, packDayPartsSql } from './explorer-agg.mjs';
 import { BLOCK_DAYS, lit, dLit, inList, cols, UNIT_COLS, TRAIT_COLS } from './explorer-agg-build.mjs';
 import {
   MASK_DATA_TABLES, MASK_TABLES, MASK_COLS, MASK_ORDER, MASK_SIG, MASK_FP_EMPTY, maskTablesDdl, maskSql, maskFp, maskFpAdd,
@@ -29,7 +29,7 @@ import {
 } from './explorer-mask.mjs';
 
 const TEMP_VIEWS = ['mk_b', 'mk_u', 'mk_t', 'mk_dm'];
-const TEMP_TABLES = ['mk_fd', 'mk_pm', 'mk_pb', 'mk_pu', 'mk_pt', 'mk_nb', 'mk_fb'];
+const TEMP_TABLES = ['mk_fd', 'mk_pmd', 'mk_pp', 'mk_pm', 'mk_pb', 'mk_pu', 'mk_pt', 'mk_nb', 'mk_fb'];
 // Tabellen mit Tageszeilen, die beim Entdecken eines Tages mit raus muessen.
 const DAY_TABLES = [...MASK_DATA_TABLES, 'mask_days'];
 
@@ -42,13 +42,13 @@ const DAY_TABLES = [...MASK_DATA_TABLES, 'mask_days'];
 // { path, oldFp, newFp } — vorige Datei und die Tages-Fingerabdruecke der
 // Teilsummen-Uebernahme (aggCarrySave/aggCarryMatch).
 export async function maskStep({
-  exec, all, log, outdb: o, mode, win, newBoards = 'nb', t0Ms, aggStartMs, files, compList, compHash, carry = null,
+  exec, all, log, outdb: o, mode, win, newBoards = 'nb', t0Ms, files, compList, compHash, carry = null,
   budgetRaw = process.env.AGG_BUDGET_S, masksEnv = process.env.AGG_MASKS, partCapRaw = process.env.AGG_PART_CAP,
   capMs = null, now = () => Date.now(),
 }) {
   const t1 = now();
   const res = {
-    token: null, covered: 0, total: 0, newDays: 0, carried: 0, partMatches: 0, partDays: 0, partCapped: 0, failed: [], uiRedone: 0,
+    token: null, covered: 0, locked: 0, total: 0, newDays: 0, carried: 0, partMatches: 0, partDays: 0, partCapped: 0, failed: [], uiRedone: 0,
     dropped: 0, s: 0, copyS: 0, calcS: 0, alarms: [], reason: null,
   };
   const n = async (sql) => Number((await all(sql))[0]?.n ?? 0);
@@ -139,9 +139,9 @@ export async function maskStep({
   }
 
   fs.writeFileSync(files.masktry, JSON.stringify({ pid: process.pid, startedAt: new Date(t1).toISOString() }));
-  // Neue Tage, Uebernahme, ui: nur Rest-Budget. Nachziehen gedeckter Tage:
+  // Neue Tage, Uebernahme, ui: bis zur Tauschfrist. Nachziehen gedeckter Tage:
   // harte Grenze, sonst verliert der Tag seine Deckung.
-  const deadlineMs = maskDeadlineMs({ aggStartMs, t0Ms, budgetS, capMs });
+  const deadlineMs = maskDeadlineMs({ t0Ms, capMs });
   const hardMs = maskHardMs({ t0Ms, capMs });
   const covered = new Set();
   // Tage aus vielen Tabellen loeschen: erst die Deckung entziehen (mask_days,
@@ -237,37 +237,55 @@ export async function maskStep({
     //    Tage mit altem comp_hash bekommen NULL (ui gemischt) → Schritt 7.
     const partDays = [...covered];
     if (partDays.length) {
-      await exec(`CREATE OR REPLACE TABLE mk_pm AS SELECT DISTINCT mid, day FROM ${newBoards} WHERE day IN (${inList(partDays)})`);
-      res.partMatches = await n('SELECT count(*) AS n FROM mk_pm');
+      await exec(`CREATE OR REPLACE TABLE mk_pmd AS SELECT DISTINCT mid, day FROM ${newBoards} WHERE day IN (${inList(partDays)})`);
+      res.partMatches = await n('SELECT count(*) AS n FROM mk_pmd');
     }
-    // Deckel (aggPartCap): zu viele Partien → ihre Tage entdecken, Schritt 6
-    // rechnet sie neu. Nach (g) liegt jede Partie an genau einem Tag.
+    // Portionen nach ganzen Tagen (packDayParts, Plan 24.10.2026): jeder Tag
+    // ist nach seiner Portion fertig, nur ein Tag ueber der Grenze wird geteilt.
+    // Nach (g) liegt jede Partie an genau einem Tag. AGG_PART_CAP=0: alle
+    // betroffenen Tage entdecken, Schritt 6 rechnet sie neu (Test).
     const partCap = aggPartCap(partCapRaw);
-    if (res.partMatches > partCap) {
-      const hit = await col('SELECT DISTINCT day::VARCHAR AS v FROM mk_pm ORDER BY 1');
+    if (res.partMatches && !partCap) {
+      const hit = await col('SELECT DISTINCT day::VARCHAR AS v FROM mk_pmd ORDER BY 1');
       await uncover(hit);
       res.partCapped = hit.length;
-      log(`Masken: Nachzug ${res.partMatches} Partien ueber der Grenze ${partCap} — ${hit.length} Tage entdeckt, Schritt 6 rechnet sie neu`);
+      log(`Masken: Nachzug ${res.partMatches} Partien, AGG_PART_CAP=0 — ${hit.length} Tage entdeckt, Schritt 6 rechnet sie neu`);
     }
-    if (res.partMatches && !res.partCapped) {
+    const parts = res.partMatches && partCap
+      ? packDayParts((await all('SELECT day::VARCHAR AS day, count(*) AS n FROM mk_pmd GROUP BY 1'))
+        .map((r) => ({ day: String(r.day), n: Number(r.n) })), partCap)
+      : [];
+    if (parts.length) await exec(`CREATE OR REPLACE TABLE mk_pp AS ${packDayPartsSql('mk_pmd', parts, partCap)}`);
+    // Erwarteter Fingerabdruck je nachgezogenem Tag: Anfangswert + Summe der
+    // Teil-Fingerabdruecke; am Ende gegen mask_days geprueft.
+    const fpWant = new Map();
+    // Tage mit Nachzug (ein geteilter Tag zaehlt einmal).
+    const partDone = new Set();
+    const late = [];
+    let halt = false;
+    let dirty = false;
+    for (let pi = 0; pi < parts.length; pi++) {
+      // Frist oder Fehler: Tage aller restlichen Portionen entdecken — auch
+      // einen geteilten Tag, dessen erste Portion schon durch ist.
+      if (halt || now() >= hardMs) { late.push(...parts[pi].days); continue; }
+      await exec(`CREATE OR REPLACE TABLE mk_pm AS SELECT mid FROM mk_pp WHERE part = ${pi}`);
       await exec(`CREATE OR REPLACE TABLE mk_pb AS SELECT bid, mid, day, placement FROM ${o}.boards WHERE mid IN (SELECT mid FROM mk_pm)`);
       await exec(`CREATE OR REPLACE TABLE mk_pu AS SELECT bid, ${cols(UNIT_COLS)} FROM ${o}.units WHERE bid IN (SELECT bid FROM mk_pb)`);
       await exec(`CREATE OR REPLACE TABLE mk_pt AS SELECT bid, ${cols(TRAIT_COLS)} FROM ${o}.traits WHERE bid IN (SELECT bid FROM mk_pb)`);
       await exec(`CREATE OR REPLACE TABLE mk_nb AS SELECT * FROM mk_pb WHERE bid IN (SELECT bid FROM ${newBoards})`);
       const gBad = await maskCheckG(all, { b: 'mk_pb', u: 'mk_pu', t: 'mk_pt' });
       const nfp = await maskFp(all, { b: 'mk_nb', u: 'mk_pu', t: 'mk_pt' });
-      const pdays = await col('SELECT DISTINCT day::VARCHAR AS v FROM mk_pm ORDER BY 1 DESC');
-      const late = [];
-      let stop = false;
-      let dirty = false;
-      for (const d of pdays) {
-        if (stop || now() >= hardMs) { late.push(d); continue; }
+      for (const d of parts[pi].days) {
+        // In einer frueheren Portion gescheitert (geteilter Tag): nichts mehr.
+        if (!covered.has(d)) continue;
+        if (halt || now() >= hardMs) { late.push(d); continue; }
         // Loesch-Vermerke des Vortags freigeben (siehe checkpoint).
         if (dirty) await checkpoint('Nachzug');
         dirty = true;
         const D = dLit(d);
         const oldFp = (await all(`SELECT fp FROM ${o}.mask_days WHERE day = ${D}`))[0]?.fp;
         const fullFp = maskFpAdd(oldFp, nfp.get(d) ?? MASK_FP_EMPTY);
+        fpWant.set(d, maskFpAdd(fpWant.get(d) ?? oldFp, nfp.get(d) ?? MASK_FP_EMPTY));
         if (gBad.has(d)) { await recordFail(d, fullFp, gBad.get(d)); continue; }
         await exec(`CREATE OR REPLACE TEMP VIEW mk_b AS SELECT * FROM mk_pb WHERE day = ${D}`);
         await exec('CREATE OR REPLACE TEMP VIEW mk_dm AS SELECT DISTINCT mid FROM mk_b');
@@ -282,7 +300,8 @@ export async function maskStep({
             `UPDATE ${o}.mask_days SET fp = ${lit(fullFp)},
               comp_hash = CASE WHEN comp_hash = ${lit(compHash)} THEN comp_hash ELSE NULL END WHERE day = ${D}`,
           ], () => maskCheckH(all, { o, D, b: 'mk_b', u: 'mk_pu', t: 'mk_pt', compList, mids: 'mk_dm' }));
-          res.partDays++;
+          partDone.add(d);
+          res.partDays = partDone.size;
         } catch (e) {
           if (e.check) { await recordFail(d, fullFp, e.message); continue; }
           // Unerwartet: Tag (und alle danach) entdecken — ohne die neuen
@@ -290,15 +309,32 @@ export async function maskStep({
           res.alarms.push(`Masken: Nachziehen ${d} gescheitert: ${e.message}`);
           log(`Masken: Nachziehen ${d} gescheitert (${e.message}) — Tag und Rest entdeckt`);
           late.push(d);
-          stop = true;
+          halt = true;
         }
       }
-      if (dirty) await checkpoint('Nachzug');
-      if (late.length) {
-        await uncover(late);
-        if (!stop) log(`Masken: Frist fuer das Nachziehen erreicht — ${late.length} Tage entdeckt (${late.join(', ')})`);
+      if (parts.length > 1) await memLog(`Nachzug Portion ${pi + 1}/${parts.length} (${parts[pi].n} Partien)`);
+    }
+    if (dirty) await checkpoint('Nachzug');
+    const lateDays = [...new Set(late)].filter((d) => covered.has(d)).sort().reverse();
+    if (lateDays.length) {
+      await uncover(lateDays);
+      if (!halt) log(`Masken: Frist fuer das Nachziehen erreicht — ${lateDays.length} Tage entdeckt (${lateDays.join(', ')})`);
+    }
+    // Gegenprobe: gespeicherter Fingerabdruck = Anfangswert + Teil-Fingerabdruecke.
+    // Faengt einen Tag, dessen Zeile in mask_days fehlte (UPDATE ohne Treffer)
+    // oder der eine Portion verpasst hat und trotzdem gedeckt blieb.
+    const want = [...fpWant].filter(([d]) => covered.has(d));
+    if (want.length) {
+      const got = new Map((await all(`SELECT day::VARCHAR AS d, fp FROM ${o}.mask_days WHERE day IN (${inList(want.map(([d]) => d))})`))
+        .map((r) => [String(r.d), r.fp]));
+      const off = want.filter(([d, fp]) => got.get(d) !== fp).map(([d]) => d);
+      if (off.length) {
+        await uncover(off);
+        res.alarms.push(`Masken: Nachzug-Fingerabdruck falsch an ${off.length} Tagen (${off.join(', ')}) — entdeckt`);
+        log(`Masken: Nachzug-Fingerabdruck falsch an ${off.join(', ')} — entdeckt, Schritt 6 rechnet sie neu`);
       }
     }
+    if (parts.length > 1) log(`Masken: Nachzug ${res.partMatches} Partien in ${parts.length} Portionen`);
 
     // 5) Gescheiterte Tage: neuer Versuch nur bei anderem Fingerabdruck.
     const failRows = await all(`SELECT day::VARCHAR AS d, fp FROM ${o}.mask_fail`);
@@ -446,6 +482,7 @@ export async function maskStep({
     await tx([`DELETE FROM ${o}.mask_meta`, `INSERT INTO ${o}.mask_meta VALUES (${lit(MASK_SIG)}, ${lit(token)})`]);
     res.token = token;
     res.covered = await n(`SELECT count(*) AS n FROM ${o}.mask_days`);
+    res.locked = await n(`SELECT count(*) AS n FROM ${o}.mask_fail`);
     res.total = days.length;
     if (res.failed.length) {
       res.alarms.push(`Masken: ${res.failed.length} Tage gescheitert (${res.failed.join('; ')})`);

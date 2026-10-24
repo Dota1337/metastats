@@ -121,17 +121,59 @@ export const AGG_BUDGET_DEFAULT_S = 1200;
 export const AGG_HARD_S = 8400;              // Unit-Zeitlimit 9000 s minus 600 s fuer Tausch + Pruefungen
 export const AGG_SWAP_UTC = [2, 55];         // Tausch + Vorwaermen vor Ende des Edge-Caches 03:30 UTC
 
-// Partie-Delta (Teilsummen) und Masken-Nachzug rechnen alle betroffenen
-// Partien in einem Zug. Nach Fehlnaechten sind das ein Vielfaches (14.10.:
-// 1.399.540 statt 133.287–143.410 je Nacht), der Teilsummen-Schritt lief da in
-// die Speichergrenze. Ueber der Grenze verlieren die betroffenen Tage ihre
-// Deckung und laufen durch die begrenzten Tages-Bloecke.
+// Partie-Delta (Teilsummen) und Masken-Nachzug: neue Partien auf gedeckten
+// Tagen. Nach Fehlnaechten sind das ein Vielfaches (14.10.: 1.399.540, der
+// Teilsummen-Schritt lief in die Speichergrenze). Seit 24.10.2026 in Portionen
+// von hoechstens AGG_PART_CAP Partien (packDayParts) statt alles-oder-nichts —
+// mit 300.000 als Grenze verloren am 20./22.10. 45/42 Tage ihre Deckung und die
+// Masken kamen tagelang nicht hinterher. 200.000: groesstes gemessenes Delta in
+// einem Zug war 220.469 (21.10.).
 // AGG_PART_CAP: leer/ungueltig → Vorgabe, 0 → jedes Delta entdeckt (Test).
-export const AGG_PART_CAP_DEFAULT = 300_000;
+export const AGG_PART_CAP_DEFAULT = 200_000;
 export function aggPartCap(raw) {
   if (raw == null || String(raw).trim() === '') return AGG_PART_CAP_DEFAULT;
   const n = Number(raw);
   return Number.isInteger(n) && n >= 0 ? n : AGG_PART_CAP_DEFAULT;
+}
+
+/**
+ * Portionen fuer das Nachziehen nach GANZEN Tagen: neueste Tage zuerst, Tage
+ * aufsummiert bis hoechstens cap Partien. Nur ein einzelner Tag ueber cap wird
+ * geteilt und bekommt ceil(n/cap) eigene Portionen, die (Zeilennummer − 1) /
+ * cap im SQL genau trifft (packDayPartsSql). So beruehrt jede Portion nur ihre
+ * Tage, und ein Tag ist nach seiner Portion fertig — ausser dem geteilten, der
+ * bei einer Frist mit den restlichen Portionen entdeckt wird.
+ * dayCounts: [{ day, n }], cap ≥ 1. Liefert [{ days, n }] in Reihenfolge.
+ */
+export function packDayParts(dayCounts, cap) {
+  if (!(Number.isInteger(cap) && cap >= 1)) throw new Error(`packDayParts: Grenze ${cap} ungueltig`);
+  const parts = [];
+  let cur = null;
+  const days = dayCounts.filter((d) => d.n > 0).sort((a, b) => (a.day < b.day ? 1 : a.day > b.day ? -1 : 0));
+  for (const { day, n } of days) {
+    if (n > cap) {
+      cur = null;
+      for (let left = n; left > 0; left -= cap) parts.push({ days: [day], n: Math.min(cap, left) });
+    } else if (cur && cur.n + n <= cap) {
+      cur.days.push(day);
+      cur.n += n;
+    } else {
+      cur = { days: [day], n };
+      parts.push(cur);
+    }
+  }
+  return parts;
+}
+
+// SELECT mid, part aus einer Tabelle (mid, day) — eine Zeile je Partie. Der
+// erste Index je Tag kommt aus packDayParts; ein geteilter Tag zaehlt nach mid
+// weiter (Portionen je hoechstens cap).
+export function packDayPartsSql(src, parts, cap) {
+  const first = new Map();
+  parts.forEach((p, i) => p.days.forEach((d) => { if (!first.has(d)) first.set(d, i); }));
+  const values = [...first].map(([d, i]) => `(DATE '${d}', ${i})`).join(', ');
+  return `SELECT m.mid, p.base + (row_number() OVER (PARTITION BY m.day ORDER BY m.mid) - 1) // ${cap} AS part
+    FROM ${src} m JOIN (VALUES ${values}) p(day, base) ON m.day = p.day`;
 }
 
 // AGG_BUDGET_S: leer/ungueltig → Vorgabe, 0 → Summen aus.

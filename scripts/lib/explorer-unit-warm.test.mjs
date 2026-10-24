@@ -32,7 +32,8 @@ test('unitsToWarm: nur Units gesamt ab Schwelle, meistgespielte zuerst, gedeckel
 
 // Plan 19.10.2026 S1/S6: Explorer-Auswahl und Vorschlags-Paare muessen genau die
 // Schluessel treffen, die die Seite nach einem Klick schickt.
-const { pickWarmBody, coplayPairBodies } = await import('./explorer-unit-warm.mjs');
+const { pickWarmBody, pickItemsWarmBody, coplayPairBodies } = await import('./explorer-unit-warm.mjs');
+const { followFocus } = await import('../../app/lib/tft-explorer-query.ts');
 const { LIMITS } = await import('./explorer-normalize.mjs');
 const { applyPick } = await import('../../app/components/tft/explorer/explorer-search.ts');
 const { COPLAY_MAX, coplayChosen, coplayPick } = await import('../../app/lib/tft-explorer-coplay.mjs');
@@ -53,6 +54,17 @@ const playable = (id) => id !== 'NOPE';
 test('Explorer-Auswahl: Vorwaermen trifft den Klick auf einen Suchtreffer', () => {
   const page = clickUnit(parseExplorerParams(new URLSearchParams('')), 'TFTX_Foo');
   assert.deepEqual(normalizeQuery(pickWarmBody('TFTX_Foo')), routeBody(page));
+});
+
+test('Explorer-Auswahl, Reiter Items: Vorwaermen trifft Suchtreffer + Wechsel auf Items (Traeger)', () => {
+  // Wie useTftExplorer.setQuery: jede Aenderung laeuft durch followFocus.
+  const start = parseExplorerParams(new URLSearchParams(''));
+  const picked = followFocus(start, clickUnit(start, 'TFTX_Foo'));
+  assert.equal(picked.focus, 'TFTX_Foo');
+  const items = followFocus(picked, { ...picked, tab: 'items' });
+  assert.deepEqual(normalizeQuery(pickItemsWarmBody('TFTX_Foo')), routeBody(items));
+  // Der Units-Reiter mit Traeger bleibt derselbe Schluessel wie ohne (f nur bei items/builds).
+  assert.deepEqual(normalizeQuery(pickWarmBody('TFTX_Foo')), routeBody(picked));
 });
 
 test('Vorschlags-Paare: jede Seiten-Auswahl liegt in den Paaren des Dienstes', () => {

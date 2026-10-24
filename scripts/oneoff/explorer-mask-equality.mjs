@@ -11,6 +11,10 @@
 //      Partien (Plaetze 5–8 fehlen) an D1..D4, alte Komponenten-Liste.
 //      "Heute": alles dazu, D0 raus → Nachzug, neuer Tag, Tag-Wegfall,
 //      ui-Nachrechnung. Muss Zeile fuer Zeile = R sein.
+//   AF Wie A, aber die harte Frist reisst nach der ersten Nachzug-Portion
+//      (nur bei mehreren Portionen, AGG_PART_CAP klein setzen): Tage der
+//      ersten Portion gedeckt und = R, Tage aller spaeteren (auch ein
+//      geteilter) entdeckt.
 //   C  Vollaufbau mit Uebernahme: vorige Datei ohne neue/halbe Partien, an
 //      D3 ein Stern verfaelscht; neue Datei mit neu vergebenen
 //      Board-Nummern. D3 wird neu gerechnet, der Rest uebernommen und um die
@@ -32,7 +36,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { maskStep } from '../lib/explorer-mask-build.mjs';
 import { MASK_DATA_TABLES, MASK_TABLES, MASK_SIG, STAR_VALUES, OVER_VALUES, maskMultiDaySql } from '../lib/explorer-mask.mjs';
 import { aggFingerprint, aggCarryMatch, lit, inList } from '../lib/explorer-agg-build.mjs';
-import { compListSql } from '../lib/explorer-agg.mjs';
+import { compListSql, aggPartCap, packDayParts } from '../lib/explorer-agg.mjs';
 import { readComponents, componentsHash } from '../lib/explorer-components.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -50,7 +54,7 @@ const addDay = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000)
 const { DuckDBInstance } = await import(pathToFileURL(DUCK).href);
 fs.mkdirSync(TMP, { recursive: true });
 const P = (f) => path.join(TMP, f);
-const TAGS = ['S', 'R', 'A', 'P', 'N', 'G', 'K', 'work'];
+const TAGS = ['S', 'R', 'A', 'AF', 'P', 'N', 'G', 'K', 'work'];
 const dbFile = (tag) => P(`${tag}.duckdb`);
 const files = (tag) => ({ maskwork: P(`${tag}.maskwork`), masktry: P(`${tag}.masktry`) });
 const rmTag = (tag) => {
@@ -130,7 +134,7 @@ try {
   };
   const run = async (tag, label, opts) => {
     const r = await maskStep({
-      exec, all, log, outdb: 'outdb', compList, compHash, t0Ms: Date.now(), aggStartMs: Date.now(),
+      exec, all, log, outdb: 'outdb', compList, compHash, t0Ms: Date.now(),
       budgetRaw: '99999', masksEnv: '1', files: files(tag), ...opts,
     });
     log(`${label}: Kennung ${r.token ? 'ja' : 'NEIN'}, ${r.covered}/${r.total} Tage, ${r.newDays} neu, ${r.carried} uebernommen,`
@@ -229,6 +233,14 @@ try {
   log(`A heute: ${await num('SELECT count(*)::DOUBLE AS v FROM nb')} neue Boards, ${expPmA} Partien auf gedeckten Tagen,`
     + ` davon ${mixedA} halbe Partien (gestern schon teilweise da)`);
   if (!mixedA) fail('A: keine halben Partien — Nachzug bestehender Partien ungetestet');
+  // Portionen wie der Schritt sie bildet; Kopie fuer AF (gleicher Stand).
+  const partsA = packDayParts((await all(`SELECT day::VARCHAR AS day, count(DISTINCT mid)::DOUBLE AS n FROM nb
+    WHERE day IN (${oldDaysA}) GROUP BY 1`)).map((r) => ({ day: String(r.day), n: Number(r.n) })), aggPartCap(process.env.AGG_PART_CAP) || 1);
+  log(`A heute: ${partsA.length} Portionen (${partsA.map((p) => `${p.days.join('+')}:${p.n}`).join(' | ')})`);
+  await exec('CHECKPOINT outdb');
+  await exec('DETACH outdb');
+  fs.copyFileSync(dbFile('A'), dbFile('AF'));
+  await exec(`ATTACH '${fwd(dbFile('A'))}' AS outdb`);
   const rA = await run('A', 'A heute', { mode: 'delta', win: win(D[1]), newBoards: 'nb' });
   want('A heute', rA, {
     token: true, reason: null, covered: 5, total: 5, newDays: 1, dropped: 1, partMatches: expPmA, partDays: expPdA,
@@ -236,8 +248,43 @@ try {
   });
   expect(await num('SELECT count(*)::DOUBLE AS v FROM outdb.mask_fail') === 0, 'A: mask_fail nicht leer');
   await compare('A');
-  for (const t of ['nb', 'sel_new', 'sel_half']) await exec(`DROP TABLE IF EXISTS ${t}`);
   await exec('DETACH outdb');
+
+  // ── AF: Frist reisst nach der ersten Portion ─────────────────────────────
+  if (partsA.length < 2) log('AF: nur eine Portion — uebersprungen (AGG_PART_CAP klein setzen)');
+  else {
+    await exec(`ATTACH '${fwd(dbFile('AF'))}' AS outdb`);
+    const later = new Set(partsA.slice(1).flatMap((p) => p.days));
+    const keepF = partsA[0].days.filter((d) => !later.has(d));
+    const t0F = Date.now();
+    let jump = false;
+    const rF = await run('AF', 'AF Frist nach Portion 1', {
+      mode: 'delta', win: win(D[1]), newBoards: 'nb', t0Ms: t0F,
+      log: (...a) => { if (String(a[0]).includes('Nachzug Portion 1/')) jump = true; log(...a); },
+      now: () => (jump ? t0F + 10 ** 10 : Date.now()),
+    });
+    want('AF', rF, { token: true, failed: 0, alarms: 0, covered: keepF.length });
+    const got = (await all('SELECT day::VARCHAR AS v FROM outdb.mask_days ORDER BY 1')).map((r) => String(r.v));
+    expect(JSON.stringify(got) === JSON.stringify([...keepF].sort()), `AF: gedeckt ${got.join(',')}, erwartet ${[...keepF].sort().join(',')}`);
+    log(`AF: gedeckt ${got.join(', ') || '—'}, entdeckt ${[...later].sort().join(', ')}`);
+    expect(await countMaskRows(` WHERE day NOT IN (SELECT day FROM outdb.mask_days)`) === 0, 'AF: Masken-Zeilen ausserhalb der Deckung');
+    if (keepF.length) {
+      // ui fehlt (Komponenten-Nachrechnung nach der Frist) — um/ut/uk und Fingerabdruck muessen = R sein.
+      const flt = ` WHERE day IN (${inList(keepF)})`;
+      for (const t of MASK_DATA_TABLES.filter((x) => x !== 'mask_ui')) {
+        const d = await one(`SELECT
+          (SELECT count(*) FROM (SELECT * FROM outdb.${t}${flt} EXCEPT ALL SELECT * FROM ref.${t}${flt}))::DOUBLE AS ab,
+          (SELECT count(*) FROM (SELECT * FROM ref.${t}${flt} EXCEPT ALL SELECT * FROM outdb.${t}${flt}))::DOUBLE AS ba,
+          (SELECT count(*) FROM ref.${t}${flt})::DOUBLE AS n`);
+        log(`AF ${t}: ${d.n} Zeilen, nur in AF ${d.ab}, nur in R ${d.ba}`);
+        if (d.ab || d.ba || !d.n) fail(`AF ${t} unterscheidet sich von R`);
+      }
+      const fpOff = await num(`SELECT count(*)::DOUBLE AS v FROM outdb.mask_days a JOIN ref.mask_days r USING (day) WHERE a.fp <> r.fp`);
+      expect(fpOff === 0, `AF: ${fpOff} Tage mit anderem Fingerabdruck als R`);
+    } else log('AF: erste Portion nur Teil eines geteilten Tages — nichts gedeckt zu vergleichen');
+    await exec('DETACH outdb');
+  }
+  for (const t of ['nb', 'sel_new', 'sel_half']) await exec(`DROP TABLE IF EXISTS ${t}`);
 
   // ── C: vorige Datei ──────────────────────────────────────────────────────
   await open('P');

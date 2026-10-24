@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   VARIANTS, keySelect, variantRowsSql, variantsForQuery, aggEligible, compListSql, AGG_SIG,
   aggBudgetS, nextUtc, aggCoveredDays, planAgg, aggDue, aggDaysFor, aggCopyEstS, aggDueForCopy,
-  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S, aggPartCap,
+  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S, aggPartCap, packDayParts, packDayPartsSql,
 } from './explorer-agg.mjs';
 
 const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
@@ -99,14 +99,71 @@ test('AGG_BUDGET_S: leer/ungueltig → 1200, 0 → aus', () => {
   assert.equal(aggBudgetS('300'), 300);
 });
 
-test('AGG_PART_CAP: leer/ungueltig → 300.000, 0 erlaubt, keine Bruchzahlen', () => {
-  assert.equal(aggPartCap(undefined), 300_000);
-  assert.equal(aggPartCap(''), 300_000);
-  assert.equal(aggPartCap('abc'), 300_000);
-  assert.equal(aggPartCap('-1'), 300_000);
-  assert.equal(aggPartCap('1.5'), 300_000);
+test('AGG_PART_CAP: leer/ungueltig → 200.000, 0 erlaubt, keine Bruchzahlen', () => {
+  assert.equal(aggPartCap(undefined), 200_000);
+  assert.equal(aggPartCap(''), 200_000);
+  assert.equal(aggPartCap('abc'), 200_000);
+  assert.equal(aggPartCap('-1'), 200_000);
+  assert.equal(aggPartCap('1.5'), 200_000);
   assert.equal(aggPartCap('0'), 0);
   assert.equal(aggPartCap('150000'), 150_000);
+});
+
+// Portionen pruefen wie der Bau sie nutzt: disjunkt, alles abgedeckt, je
+// Portion hoechstens cap, ganze Tage — nur ein Tag ueber cap wird geteilt,
+// und die Teil-Groessen sind genau die von (Zeilennummer − 1) / cap.
+function checkParts(counts, cap) {
+  const parts = packDayParts(counts, cap);
+  const seen = new Map();
+  parts.forEach((p, i) => {
+    assert.ok(p.n >= 1 && p.n <= cap, `Portion ${i}: ${p.n}`);
+    for (const d of p.days) seen.set(d, [...(seen.get(d) ?? []), i]);
+  });
+  for (const { day, n } of counts.filter((c) => c.n > 0)) {
+    const at = seen.get(day);
+    assert.ok(at, `${day} fehlt`);
+    if (n <= cap) assert.equal(at.length, 1, `${day} geteilt`);
+    else {
+      assert.equal(at.length, Math.ceil(n / cap), `${day} Teile`);
+      at.forEach((pi, j) => {
+        assert.deepEqual(parts[pi].days, [day], `${day} allein`);
+        assert.equal(pi, at[0] + j, `${day} Teile hintereinander`);
+        assert.equal(parts[pi].n, Math.min(cap, n - j * cap));
+      });
+    }
+  }
+  assert.equal(parts.reduce((a, p) => a + p.n, 0), counts.reduce((a, c) => a + c.n, 0));
+  return parts;
+}
+
+test('packDayParts: ganze Tage bis zur Grenze, neueste zuerst, grosser Tag allein geteilt', () => {
+  const c = (day, n) => ({ day: `2026-10-${day}`, n });
+  // 20.10. (436.024 Partien an 45 Tagen, gekuerzt): vorher alles-oder-nichts.
+  const parts = checkParts([c(10, 90_000), c(23, 150_000), c(22, 30_000), c(21, 20_000), c(20, 10_000)], 200_000);
+  assert.deepEqual(parts.map((p) => p.days), [['2026-10-23', '2026-10-22', '2026-10-21'], ['2026-10-20', '2026-10-10']]);
+  // Ein Tag ueber der Grenze: eigene Portionen, die offene Portion davor bleibt zu.
+  const big = checkParts([c(24, 5), c(23, 450_000), c(22, 7)], 200_000);
+  assert.deepEqual(big.map((p) => [p.days, p.n]), [
+    [['2026-10-24'], 5], [['2026-10-23'], 200_000], [['2026-10-23'], 200_000], [['2026-10-23'], 50_000], [['2026-10-22'], 7]]);
+  assert.deepEqual(packDayParts([], 200_000), []);
+  assert.deepEqual(packDayParts([c(1, 0)], 10), []);
+  assert.throws(() => packDayParts([c(1, 3)], 0));
+  // Zufaellige Faelle gegen die Regeln.
+  let seed = 7;
+  const rnd = (m) => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return seed % m; };
+  for (let k = 0; k < 200; k++) {
+    const cap = 1 + rnd(50);
+    const n = rnd(12);
+    checkParts(Array.from({ length: n }, (_, i) => ({ day: `2026-09-${String(10 + i).padStart(2, '0')}`, n: rnd(3 * cap) })), cap);
+  }
+});
+
+test('packDayPartsSql: erster Index je Tag, geteilter Tag zaehlt nach mid weiter', () => {
+  const parts = packDayParts([{ day: '2026-10-24', n: 3 }, { day: '2026-10-23', n: 25 }], 10);
+  const sql = packDayPartsSql('mk_pmd', parts, 10);
+  assert.match(sql, /VALUES \(DATE '2026-10-24', 0\), \(DATE '2026-10-23', 1\)\)/);
+  assert.match(sql, /\(row_number\(\) OVER \(PARTITION BY m\.day ORDER BY m\.mid\) - 1\) \/\/ 10 AS part/);
+  assert.match(sql, /FROM mk_pmd m JOIN/);
 });
 
 test('naechstes 02:55 UTC', () => {

@@ -51,6 +51,7 @@
 //
 // Aufruf: node scripts/build-explorer-store.mjs [--out=/pfad/explorer.duckdb]
 //         [--days=45] [--set=18] [--full]
+//         [--delta-only] (Vollaufbau faellig → Exit 0 ohne Bau, auch EXPLORER_DELTA_ONLY=1)
 //         Nur Test: [--limit=N] [--asof=YYYY-MM-DD] [--until=<ISO|ms>]
 //         (--until = obere Grenze fuer fetched_at). Ein Testlauf zwingt den
 //         naechsten echten Lauf zum Vollaufbau.
@@ -90,6 +91,10 @@ const OUT = arg('out', process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432
 const DAYS = Number(arg('days', '45'));
 const LIMIT = Number(arg('limit', '0'));
 const FULL = process.argv.includes('--full');
+// Nur Teil-Aufbau (Hand-Lauf am Tag): waere es ein Vollaufbau, endet der Lauf
+// vor dem Versuchs-Stempel mit Exit 0 — ein abgebrochener Vollaufbau sperrt
+// sonst den Wochen-Vollaufbau fuer diesen Code-Stand (decideMode, blocked).
+const DELTA_ONLY = process.argv.includes('--delta-only') || process.env.EXPLORER_DELTA_ONLY === '1';
 const ASOF = arg('asof', null);
 const UNTIL = arg('until', null);
 const DUCKDB_MODULE = process.env.EXPLORER_DUCKDB_MODULE
@@ -235,6 +240,22 @@ export function decideMode({ full = false, marker = false, prev, cur, patchChang
   return { mode: 'delta', reasons: [] };
 }
 export const CYCLE_REASON = 'Wochen-Vollaufbau';
+
+// Deckungs-Luecke als Alarm (Plan 24.10.2026): 21.–24.10. hatten die Masken
+// 0–9 von 46 Tagen, gefilterte Ansichten auf 18.4 liefen in die 15-s-Grenze —
+// und status.json meldete nichts. Nur im Teil-Aufbau (der Sonntags-Vollaufbau
+// wird abends fertig, die Masken fuellen sich in der Nacht danach), nur wenn der
+// Schritt lief (Kennung da; AGG_MASKS=0 / AGG_BUDGET_S=0 = gewollt aus).
+// Gesperrte Masken-Tage (mask_fail) sind bekannt und gemeldet, keine Luecke.
+export function coverageAlarms({ mode, agg, mask }) {
+  if (mode !== 'delta') return [];
+  const out = [];
+  if (agg.token && agg.covered < agg.total) out.push(`Teilsummen: nur ${agg.covered}/${agg.total} Tage gedeckt`);
+  if (mask.token && mask.covered + (mask.locked ?? 0) < mask.total) {
+    out.push(`Masken: nur ${mask.covered}/${mask.total} Tage gedeckt${mask.locked ? ` (${mask.locked} gesperrt)` : ''}`);
+  }
+  return out;
+}
 
 const gb = (b) => `${(b / GIB).toFixed(1)} GB`;
 // Platz-Pruefung nach decideMode und VOR dem Versuchs-Stempel: wird der Stempel
@@ -860,6 +881,13 @@ async function build({ t0, win, testRun, untilMs, files }) {
       + `${decision.disk ? `, Platte frei ${gb(decision.disk.freeBytes)} / noetig ${gb(decision.disk.needBytes)}` : ''})`);
     // Vollaufbau im Abendfenster darf laenger (Summen + Masken nach dem Kern);
     // nachts (nur Pflichtgruende) gilt die alte Grenze.
+    if (DELTA_ONLY && mode !== 'delta') {
+      log(`kein Bau: nur Teil-Aufbau verlangt (--delta-only), Art waere ${mode} — alte Datei bleibt`);
+      if (prevAttached) await run('DETACH prev');
+      close();
+      cleanup();
+      return 0;
+    }
     const totalAlarmS = mode === 'full' && inFullWindow(hourUtc) ? TOTAL_ALARM_FULL_S : TOTAL_ALARM_S;
     const alarms = [];
     if (modeDecision.blocked) alarms.push(`Vollaufbau gesperrt: mit Code ${code} schon gescheitert — Code aendern oder --full`);
@@ -1162,23 +1190,23 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // Tages-Teilsummen fuer die filterlosen Ansichten (Paket 5b). Liest die
     // alte meta (Kennung) und laeuft deshalb davor. Scheitert er, bleibt die
     // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
-    const tAgg = Date.now();
     const agg = await aggStep({
       exec: stepExec, all: stepAll, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
       compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry,
     });
     alarms.push(...agg.alarms);
 
-    // Platz-Masken fuer gefilterte Ansichten (Paket 6): nur im Rest des
-    // Teilsummen-Budgets, im Vollaufbau nie ueber den Laufzeit-Alarm. Liest
-    // ebenfalls die alte meta. Scheitert er, bleibt die Datei gueltig — ohne
-    // Masken, der Dienst rechnet dann wie bisher.
+    // Platz-Masken fuer gefilterte Ansichten (Paket 6): bis zur Tauschfrist,
+    // im Vollaufbau nie ueber den Laufzeit-Alarm. Liest ebenfalls die alte
+    // meta. Scheitert er, bleibt die Datei gueltig — ohne Masken, der Dienst
+    // rechnet dann wie bisher.
     const mask = await maskStep({
-      exec: stepExec, all: stepAll, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0, aggStartMs: tAgg,
+      exec: stepExec, all: stepAll, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0,
       files, compList, compHash, carry: carry ? maskCarry : null,
       capMs: mode === 'full' ? t0 + (totalAlarmS - 600) * 1000 : null,
     });
     alarms.push(...mask.alarms);
+    alarms.push(...coverageAlarms({ mode, agg, mask }));
     await dropCarry();
     tStep = Date.now();
 

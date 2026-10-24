@@ -31,6 +31,13 @@ export function pickWarmBody(unitId) {
   return { region: 'all', ranks: [], patches: ['latest'], units: [{ id: unitId }], tab: 'units' };
 }
 
+// Danach Reiter Items (Plan 24.10.2026): die gesuchte Unit ist Traeger
+// (followFocus), also die Items-Ansicht genau dieser Unit. ~34 KB je Antwort
+// (Ahri live 24.10.), kalt 0,3–1,1 s.
+export function pickItemsWarmBody(unitId) {
+  return { ...pickWarmBody(unitId), tab: 'items', focus: unitId };
+}
+
 // Vorschlags-Paare (S6): die Seite laesst nur spielbare Units zu
 // (tftPlayableChampions), der Dienst kennt die Liste nicht und rechnet deshalb
 // ein paar Partner mehr — eine Obermenge der Seiten-Auswahl.

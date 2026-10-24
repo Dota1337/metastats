@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import {
   AGG_SIG, VARIANTS, variantRowsSql, aggBudgetS, aggPartCap, aggCoveredDays, planAgg, aggDue, aggCopyEstS, aggDueForCopy, aggCarryDays,
+  packDayParts, packDayPartsSql, AGG_HARD_S,
 } from './explorer-agg.mjs';
 
 export const AGG_SUM_COLS = ['m1', 'n1', 's1', 't4', 't1', 'ss11', 'sn11', 'nn11', 's1S', 's1N', 'n1S', 'n1N', 'n3'];
@@ -274,22 +275,47 @@ export async function aggStep({
     //    ist alt = nicht in newBoards (Schluessel k schon in der vorigen
     //    Datei; der Fingerabdruck hat diese Boards je Tag als gleich belegt).
     if (keep.length) {
-      await exec(`CREATE OR REPLACE TABLE ag_pm AS SELECT DISTINCT mid FROM ${newBoards} WHERE day IN (${inList(keep)})`);
-      res.partMatches = await n('SELECT count(*) AS n FROM ag_pm');
+      await exec(`CREATE OR REPLACE TABLE ag_pmd AS SELECT DISTINCT mid, day FROM ${newBoards} WHERE day IN (${inList(keep)})`);
+      res.partMatches = await n('SELECT count(*) AS n FROM ag_pmd');
+      // Eine Partie an zwei Tagen laege in zwei Portionen und zaehlte doppelt
+      // (Pruefung (d) faende es erst am Ende).
+      const multi = res.partMatches - await n('SELECT count(DISTINCT mid) AS n FROM ag_pmd');
+      if (multi) throw new Error(`Partie-Delta: ${multi} Partien an mehr als einem Tag`);
     }
-    // Deckel (aggPartCap): zu viele Partien → ihre Tage entdecken, Schritt 5
-    // rechnet sie in Bloecken neu.
-    const partCap = aggPartCap(partCapRaw);
-    if (res.partMatches > partCap) {
-      const hit = await col(`SELECT DISTINCT day::VARCHAR AS v FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm) ORDER BY 1`);
-      if (hit.length) await tx(['agg_rows', 'agg_head', 'agg_days'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(hit)})`));
+    // Tage entdecken: Schritt 5 rechnet sie in Bloecken neu.
+    const uncover = async (hit) => {
+      if (!hit.length) return;
+      await tx(['agg_rows', 'agg_head', 'agg_days'].map((t) => `DELETE FROM ${o}.${t} WHERE day IN (${inList(hit)})`));
       const h = new Set(hit);
       keep = keep.filter((d) => !h.has(d));
       rankDays = rankDays.filter((d) => !h.has(d));
-      res.partCapped = hit.length;
-      log(`Teilsummen: Partie-Delta ${res.partMatches} Partien ueber der Grenze ${partCap} — ${hit.length} Tage entdeckt, die Bloecke rechnen sie neu`);
+      res.partCapped += hit.length;
+    };
+    // Portionen nach ganzen Tagen (packDayParts), je Portion der Delta-Block.
+    // AGG_PART_CAP=0: alle betroffenen Tage entdecken (Test).
+    const partCap = aggPartCap(partCapRaw);
+    const parts = res.partMatches && partCap > 0
+      ? packDayParts((await all('SELECT day::VARCHAR AS day, count(*) AS n FROM ag_pmd GROUP BY 1'))
+        .map((r) => ({ day: String(r.day), n: Number(r.n) })), partCap)
+      : [];
+    if (res.partMatches && !partCap) {
+      const hit = await col('SELECT DISTINCT day::VARCHAR AS v FROM ag_pmd ORDER BY 1');
+      await uncover(hit);
+      log(`Teilsummen: Partie-Delta ${res.partMatches} Partien, AGG_PART_CAP=0 — ${hit.length} Tage entdeckt, die Bloecke rechnen sie neu`);
     }
-    if (res.partMatches && !res.partCapped) {
+    if (parts.length) await exec(`CREATE OR REPLACE TABLE ag_pp AS ${packDayPartsSql('ag_pmd', parts, partCap)}`);
+    // Frist wie beim Masken-Nachzug: harte Grenze. Gerissen → Tage aller
+    // restlichen Portionen entdecken, auch einen halb nachgezogenen geteilten.
+    const hardMs = t0Ms + AGG_HARD_S * 1000;
+    for (let pi = 0; pi < parts.length; pi++) {
+      if (now() >= hardMs) {
+        const hit = [...new Set(parts.slice(pi).flatMap((p) => p.days))].sort();
+        await uncover(hit);
+        log(`Teilsummen: Frist fuer das Partie-Delta erreicht — ${parts.length - pi} von ${parts.length} Portionen offen, ${hit.length} Tage entdeckt`);
+        break;
+      }
+      const tp = now();
+      await exec(`CREATE OR REPLACE TABLE ag_pm AS SELECT mid FROM ag_pp WHERE part = ${pi}`);
       const fLit = dLit(win.f);
       const oldWhere = carry ? `bid NOT IN (SELECT bid FROM ${newBoards})` : `bid < ${startBid}`;
       await exec(`CREATE OR REPLACE TABLE ag_pb AS SELECT ${cols(BOARD_COLS)} FROM ${o}.boards WHERE mid IN (SELECT mid FROM ag_pm)`);
@@ -332,6 +358,13 @@ export async function aggStep({
         `DELETE FROM ${o}.agg_head WHERE day IN (SELECT day FROM ag_ad)`,
         `INSERT INTO ${o}.agg_head BY NAME SELECT * FROM ag_mh WHERE matches <> 0`,
       ]);
+      if (parts.length > 1) {
+        // Loesch-Vermerke der Portion freigeben (siehe Masken, 16 KiB je Block).
+        await exec(`CHECKPOINT ${o}`);
+        const p = parts[pi];
+        log(`Teilsummen: Partie-Delta Portion ${pi + 1}/${parts.length}: ${p.n} Partien,`
+          + ` ${p.days[p.days.length - 1]}..${p.days[0]} (${((now() - tp) / 1000).toFixed(1)} s)`);
+      }
     }
 
     // 4) Rang-Zeilen gedeckter Tage ab der Frost-Grenze immer neu.

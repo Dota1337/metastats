@@ -4,7 +4,7 @@ import {
   scheduleRanges, addDays, daysBetween, buildWindow, dayPatchRows, diffDayPatch, decideMode, scanAlarm, lockIsStale, rawSql, filesFor,
   SCRIPT_VERSION, inFullWindow, buildCodeHash, CODE_FILES,
   diskGate, spillCapBytes, CYCLE_REASON, DISK_FULL_FACTOR, DISK_DELTA_FACTOR, DISK_FIRST_BYTES, DISK_SPILL_MIN_BYTES,
-  sliceKeys, sliceCond, DELETE_SLICE_ROWS,
+  sliceKeys, sliceCond, DELETE_SLICE_ROWS, coverageAlarms,
 } from './build-explorer-store.mjs';
 
 test('sliceKeys: Scheiben nach Zeilen, grosser Schluessel allein, Reihenfolge bleibt', () => {
@@ -327,4 +327,18 @@ test('spillCapBytes: Rest nach Reserve und Arbeitsdatei, nie unter dem Mindestwe
   assert.equal(spillCapBytes({ mode: 'full', freeBytes: 117 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), 79 * G);
   assert.equal(spillCapBytes({ mode: 'delta', freeBytes: 117 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), 99 * G);
   assert.equal(spillCapBytes({ mode: 'full', freeBytes: 30 * G, prevBytes: 4 * G, reserveBytes: 10 * G }), DISK_SPILL_MIN_BYTES);
+});
+
+test('coverageAlarms: Luecke nur im Teil-Aufbau, gesperrte Tage und abgeschaltete Schritte zaehlen nicht', () => {
+  const agg = { token: 't', covered: 46, total: 46 };
+  const mask = { token: 'm', covered: 46, locked: 0, total: 46 };
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg, mask }), []);
+  // 24.10.2026: Masken 9/46 — bisher ohne Alarm.
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg, mask: { ...mask, covered: 9 } }), ['Masken: nur 9/46 Tage gedeckt']);
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg: { ...agg, covered: 23 }, mask }), ['Teilsummen: nur 23/46 Tage gedeckt']);
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg, mask: { ...mask, covered: 41, locked: 5 } }), []);
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg, mask: { ...mask, covered: 40, locked: 5 } }), ['Masken: nur 40/46 Tage gedeckt (5 gesperrt)']);
+  // Sonntags-Vollaufbau (18.10.: Masken 36/46) und abgeschaltete Schritte: kein Alarm.
+  assert.deepEqual(coverageAlarms({ mode: 'full', agg, mask: { ...mask, covered: 36 } }), []);
+  assert.deepEqual(coverageAlarms({ mode: 'delta', agg: { ...agg, token: null, covered: 0 }, mask: { ...mask, token: null, covered: 0 } }), []);
 });

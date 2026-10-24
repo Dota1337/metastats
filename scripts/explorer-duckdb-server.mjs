@@ -68,7 +68,7 @@ import { LIMITS, TABS, neededCaps, normalizeQuery } from './lib/explorer-normali
 import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
-import { coplayPairBodies, pickWarmBody, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { coplayPairBodies, pickItemsWarmBody, pickWarmBody, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
 const PORT = Number(process.env.EXPLORER_PORT || 4110);
@@ -577,6 +577,8 @@ async function warmUnits(holder) {
   const steps = [
     ...(PICK_WARM_ON ? ids.map(id => ({ id, body: pickWarmBody(id), pick: true })) : []),
     ...(UNIT_WARM_ON ? ids.flatMap(id => unitWarmBodies(id).map(body => ({ id, body, pick: false }))) : []),
+    // Zuletzt (kleinster Gewinn): Reiter Items nach einem Suchtreffer.
+    ...(PICK_WARM_ON ? ids.map(id => ({ id, body: pickItemsWarmBody(id), pick: false })) : []),
   ];
   const t0 = Date.now();
   let n = 0;

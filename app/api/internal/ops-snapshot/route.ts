@@ -15,7 +15,9 @@ import apiMap from '../../../../infra/api-map.json';
 
 export const dynamic = 'force-dynamic';
 
-const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || 'https://refresh.metastats.gg';
+// Rueckfall = der TLS-Vorschalter der Box (metastats-caddy, IP-Zertifikat); den
+// frueher hier stehenden Namen refresh.metastats.gg gab es nie im DNS.
+const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || 'https://37.27.219.140';
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const MANIFEST_URL = process.env.SNAPSHOT_MANIFEST_URL || '';
@@ -27,6 +29,7 @@ const FETCH_TIMEOUT_MS = 5000;
 // (refresh-api) müssen ActiveState=active sein.
 const SERVICE_EXPECTATIONS: Record<string, { kind: 'oneshot' | 'persistent'; maxAgeMs?: number }> = {
   'metastats-refresh-api.service':           { kind: 'persistent' },
+  'metastats-caddy.service':                 { kind: 'persistent' },
   'metastats-daily-crawl.service':           { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
   'metastats-snapshot-publisher.service':    { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },
   'metastats-daily-crawl-catchup.service':   { kind: 'oneshot', maxAgeMs: 26 * 60 * 60 * 1000 },

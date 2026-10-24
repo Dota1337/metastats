@@ -152,7 +152,7 @@ export function decide(input, issues) {
 
   if (input.kind === 'unreachable') {
     openOrCreate(DEADMAN.unreachable.key, DEADMAN.unreachable.title,
-      `Der Vertragsstatus der Box war nicht abrufbar (${input.why}). Laeuft refresh-api?`);
+      `Der Vertragsstatus der Box war nicht abrufbar (${input.why}). Laeuft refresh-api, laeuft metastats-caddy, ist das Zertifikat gueltig (Vertrag box/tls-zertifikat)?`);
     return ops;
   }
   close(DEADMAN.unreachable.key, 'Box wieder erreichbar.');

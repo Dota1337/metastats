@@ -31,7 +31,6 @@ import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { request as httpsRequest } from 'node:https';
-import { request as httpRequest } from 'node:http';
 import sodium from 'libsodium-wrappers';
 
 const REPO = 'Dota1337/metastats';
@@ -137,26 +136,27 @@ function rotateOnHetzner(host, token) {
   return run('ssh', sshArgs(cmd));
 }
 
-function verifyHetzner(host, token) {
-  return new Promise((resolve, reject) => {
-    const req = httpRequest({
-      host,
-      port: 4100,
-      path: '/healthz',
-      method: 'GET',
-      timeout: 5000,
-    }, (res) => {
-      let data = '';
-      res.on('data', c => data += c);
-      res.on('end', () => {
-        if (res.statusCode === 200) resolve(JSON.parse(data));
-        else reject(new Error(`healthz HTTP ${res.statusCode}`));
-      });
-    });
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('healthz timeout')); });
-    req.end();
-  });
+// Ueber die volle Adresse aus HETZNER_REFRESH_URL (seit 24.10.2026 https ueber
+// den TLS-Vorschalter, Port 4100 geht zu) und MIT dem neuen Token: die
+// Dienstliste verlangt ihn, ein 200 beweist also, dass die Box ihn kennt —
+// das blosse /healthz bewies nur, dass der Dienst laeuft.
+async function verifyHetzner(baseUrl, token) {
+  const url = new URL('/healthz?detail=services', baseUrl);
+  let last;
+  for (let i = 0; i < 5; i++) {
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const j = await res.json();
+        return { ok: j.ok, services: j.services?.length ?? 0 };
+      }
+      last = new Error(`healthz HTTP ${res.status}`);
+    } catch (err) {
+      last = err;
+    }
+    await new Promise(r => setTimeout(r, 2000));   // Dienst startet gerade neu
+  }
+  throw last;
 }
 
 async function main() {
@@ -198,13 +198,11 @@ async function main() {
     console.log(`[4/5] Rotating on Hetzner-Box (${hetznerHost})…`);
     const out = rotateOnHetzner(hetznerHost, newToken);
     console.log('      systemctl is-active →', out);
-
-    console.log('[5/5] Verifying /healthz on Hetzner…');
-    const health = await verifyHetzner(hetznerHost, newToken);
-    console.log('      OK', health);
   } else console.log('[4/5] Hetzner skipped');
 
-  // Update .env.local too, so the developer's local environment matches.
+  // .env.local VOR der Pruefung: Vercel, GitHub und Box sind an dieser Stelle
+  // schon rotiert. Scheitert die Pruefung, darf die lokale Kopie nicht auf dem
+  // alten Token stehen bleiben (halber Zustand, logic-flow-critic 24.10.2026).
   if (existsSync('.env.local')) {
     const txt = readFileSync('.env.local', 'utf8');
     const replaced = txt.replace(new RegExp(`^${SECRET_NAME}=.*$`, 'm'), `${SECRET_NAME}=${newToken}`);
@@ -212,6 +210,12 @@ async function main() {
       writeFileSync('.env.local', replaced);
       console.log('      Updated local .env.local');
     }
+  }
+
+  if (!SKIP_BOX) {
+    console.log('[5/5] Verifying the new token on Hetzner (/healthz?detail=services)…');
+    const health = await verifyHetzner(hetznerUrl, newToken);
+    console.log('      OK', health);
   }
 
   console.log('\nDone. New token:');

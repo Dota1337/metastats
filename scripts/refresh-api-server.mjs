@@ -124,8 +124,9 @@ import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
 // solche, die er nie braucht (Sicherheitsdurchsicht, geteilte-env-datei). Die
 // Unit reicht ihm seit derselben Durchsicht eine gefilterte Datei und sperrt die
 // gemeinsame — dieser Lader ist der zweite Riegel, z. B. beim Handstart.
-// Kommt ein neuer process.env-Zugriff dazu: hier UND in der Positivliste der
-// Unit (infra/hetzner/metastats-refresh-api.service) ergaenzen.
+// Kommt ein neuer process.env-Zugriff dazu: hier UND in KEYS des Hilfsskripts
+// infra/hetzner/metastats-refresh-api-env.sh ergaenzen (refresh-api-env.test.mjs
+// prueft beides gegen alle Zugriffe im Importbaum).
 const ENV_KEYS = [
   'CONTRACTS_READ_TOKEN', 'CONTRACTS_STATUS_PATH', 'DATABASE_URL', 'EXPLORER_API_URL', 'MV_TIMING',
   'NEXT_PUBLIC_SUPABASE_URL', 'REFRESH_API_PORT', 'REFRESH_API_TOKEN', 'RIOT_API_KEY_TFT',
@@ -1000,6 +1001,22 @@ async function handleProsByComp(body) {
   return { pros, totalGames: matchedCount, queryMs };
 }
 
+// Uebergangs-Messung (24.10.2026, bis Port 4100 zu ist, danach entfernen):
+// Wer kommt noch DIREKT auf 4100 statt ueber den TLS-Vorschalter? Caddy setzt
+// X-Metastats-Via; gezaehlt werden nur gueltig angemeldete Anfragen ohne ihn,
+// Scanner fallen also heraus. Alle 10 min eine Sammelzeile ins Journal.
+const direktZugriffe = new Map();
+function merkeDirektzugriff(req) {
+  if (req.headers['x-metastats-via'] === 'caddy') return;
+  const k = `${req.method} ${(req.url || '').split('?')[0]} ${String(req.headers['user-agent'] || '-').slice(0, 40)}`;
+  direktZugriffe.set(k, (direktZugriffe.get(k) || 0) + 1);
+}
+setInterval(() => {
+  if (!direktZugriffe.size) return;
+  console.log(`[direkt-4100] ${[...direktZugriffe].map(([k, n]) => `${k} ×${n}`).join(' | ')}`);
+  direktZugriffe.clear();
+}, 600_000).unref();
+
 const server = http.createServer(async (req, res) => {
   // Liveness + optional service-detail für das Internal-Ops-Dashboard.
   // ?detail=services listet alle metastats-*.service Units mit ActiveState,
@@ -1020,6 +1037,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
+    merkeDirektzugriff(req);
     try {
       const services = await collectServiceStatus();
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -1032,7 +1050,8 @@ const server = http.createServer(async (req, res) => {
 
   // Gekuerzter Vertragsstatus fuer die GitHub-Action contracts-alert. Eigenes
   // Geheimnis (nicht REFRESH_API_TOKEN), per HMAC ueber einen Zeitstempel —
-  // zur Box gibt es kein HTTPS. Fehlt das Geheimnis, antwortet nur diese Route
+  // entstanden, als es zur Box noch kein HTTPS gab (seit 24.10.2026 ueber den
+  // TLS-Vorschalter metastats-caddy). Fehlt das Geheimnis, antwortet nur diese Route
   // 503; der Dienst selbst laeuft weiter.
   if (req.method === 'GET' && req.url === '/contracts-status') {
     const noStore = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' };
@@ -1044,6 +1063,7 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(401, noStore);
       return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
+    merkeDirektzugriff(req);
     try {
       const report = JSON.parse(readFileSync(CONTRACTS_STATUS_PATH, 'utf8'));
       const registry = JSON.parse(readFileSync(resolve('infra/contracts.json'), 'utf8'));
@@ -1074,6 +1094,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'unauthorized' }));
   }
+  merkeDirektzugriff(req);
 
   let body;
   try {

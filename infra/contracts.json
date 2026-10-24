@@ -638,6 +638,16 @@
       "branch": "main",
       "graceHours": 2,
       "note": "Nur Warnung (gelb). Laeuft auf der Box der Code von main? Vergleicht den Box-Commit per GitHub-API mit main. Bot-Commits ausserhalb der Deploy-Pfade (pro-teams.json, metatft-Dateien) loesen bewusst keinen Deploy aus und zaehlen nicht; die Pfadliste wird aus deploy-hetzner.yml gelesen. Gelb heisst: ein Deploy ist gescheitert oder nie angestossen, ein Fix ist auf main, laeuft aber nicht. Commits juenger als 2 h gelten als unterwegs. GitHub nicht erreichbar = uebersprungen."
+    },
+    {
+      "id": "box/tls-zertifikat",
+      "owner": "metastats-caddy.service",
+      "type": "tls-cert",
+      "host": "37.27.219.140",
+      "port": 443,
+      "minHoursLeft": 40,
+      "armed": false,
+      "note": "TLS-Vorschalter vor refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Let's-Encrypt-IP-Zertifikat, Profil shortlived = 160 h Laufzeit; Caddy erneuert selbst bei etwa 1/3 Restlaufzeit (~53 h). Geprueft wird das AUSGELIEFERTE Zertifikat samt Kette und IP, nicht die Datei. Rot heisst: zwei Erneuerungen sind ausgefallen oder Caddy liefert ein falsches/abgelaufenes Zertifikat aus — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard (alle rufen https://37.27.219.140). Schwelle 40 h nach zwei echten Erneuerungen nachmessen. Rot: journalctl -u metastats-caddy | grep -iE 'obtain|renew|error'."
     }
   ]
 }

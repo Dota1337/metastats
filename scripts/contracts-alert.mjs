@@ -3,7 +3,7 @@
 // mit Label contract-broken ab. Logik: scripts/lib/contracts-alert.mjs.
 //
 // Laeuft in .github/workflows/contracts-alert.yml. Env:
-//   CONTRACTS_STATUS_URL   z. B. http://<box>:4100/contracts-status
+//   CONTRACTS_STATUS_URL   https://37.27.219.140/contracts-status (TLS-Vorschalter, seit 24.10.2026)
 //   CONTRACTS_READ_TOKEN   geteiltes Geheimnis mit refresh-api (nur fuer HMAC)
 //   GITHUB_TOKEN, GITHUB_REPOSITORY
 // Optionen:
@@ -42,7 +42,10 @@ async function fetchStatus() {
       why = `HTTP ${res.status}`;
       if (res.status === 401) break; // falsches Token wird durch Warten nicht besser
     } catch (err) {
-      why = err?.name === 'TimeoutError' ? 'Zeitueberschreitung' : 'keine Verbindung';
+      // fetch verpackt den eigentlichen Grund in err.cause — bei https z. B.
+      // CERT_HAS_EXPIRED: dann ist das Zertifikat schuld, nicht refresh-api.
+      const code = err?.cause?.code;
+      why = err?.name === 'TimeoutError' ? 'Zeitueberschreitung' : code ? `keine Verbindung: ${code}` : 'keine Verbindung';
     }
     if (attempt < 3) await new Promise((r) => setTimeout(r, 20_000));
   }

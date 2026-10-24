@@ -183,12 +183,18 @@ function verifyHealthz(env) {
     const url = env.HETZNER_REFRESH_URL;
     if (!url) return resolve(null);
     const u = new URL(url);
-    const req = httpRequest({ host: u.hostname, port: u.port || 4100, path: '/healthz', method: 'GET', timeout: 5000 }, (res) => {
+    // http oder https, wie in HETZNER_REFRESH_URL (seit 24.10.2026 https ueber den
+    // TLS-Vorschalter auf 443, Port 4100 geht zu). Vorher immer http.
+    const request = u.protocol === 'https:' ? httpsRequest : httpRequest;
+    const req = request({ host: u.hostname, port: u.port || (u.protocol === 'https:' ? 443 : 4100), path: '/healthz', method: 'GET', timeout: 5000 }, (res) => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => resolve({ status: res.statusCode, body: data }));
     });
-    req.on('error', () => resolve(null));
+    // Fehler laut melden statt still null: der Abruf ist der einzige Nachweis,
+    // dass refresh-api nach dem Neustart wieder antwortet.
+    req.on('error', (err) => resolve({ status: 'Fehler', body: err.code || err.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ status: 'Fehler', body: 'Zeitlimit 5 s' }); });
     req.end();
   });
 }

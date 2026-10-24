@@ -605,10 +605,11 @@
       "titel": "Jeder im Internet sieht ohne Schluessel, welche Box-Dienste wann laufen und welche gescheitert sind",
       "ort": "infra/hetzner/metastats-refresh-api.service",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "scripts/refresh-api-server.mjs:983-998 beantwortet GET /healthz?detail=services VOR der Zugangspruefung (:1040) und startet dafuer zwei systemctl-Prozesse (:46 list-units, :63 show). Box: curl ohne Token 'http://127.0.0.1:4100/healthz?detail=services' -> http=200 bytes=10322, Inhalt beginnt mit {ok:true, ts, services:[{name: metastats-build-check.service, activeState ... Port oeffentlich (ufw '4100/tcp ALLOW IN Anywhere'). Der einzige Abnehmer app/api/internal/ops-snapshot/route.ts:137-138 schickt keinen Schluessel mit.",
+      "status": "behoben",
+      "belegt_mit": "scripts/refresh-api-server.mjs /healthz: ?detail=services verlangt den Bearer (Commit ba0cdfad), app/api/internal/ops-snapshot/route.ts schickt ihn (1ef66d60). Gemessen 24.10.2026 04:58 CEST auf der Box: /healthz 200, Detail ohne Schluessel 401 (lokal und von aussen ueber 37.27.219.140:4100), mit Schluessel 200 und volle Liste; live /api/internal/ops-snapshot?slice=services 200 mit 30 Diensten, kein Fehler. Schluessel Box = Vercel per sha256-Vergleich.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "scripts/refresh-api-server.mjs:983-998 beantwortet GET /healthz?detail=services VOR der Zugangspruefung (:1040) und startet dafuer zwei systemctl-Prozesse (:46 list-units, :63 show). Box: curl ohne Token 'http://127.0.0.1:4100/healthz?detail=services' -> http=200 bytes=10322, Inhalt beginnt mit {ok:true, ts, services:[{name: metastats-build-check.service, activeState ... Port oeffentlich (ufw '4100/tcp ALLOW IN Anywhere'). Der einzige Abnehmer app/api/internal/ops-snapshot/route.ts:137-138 schickt keinen Schluessel mit."
     },
     {
       "id": "symlink-durch-freigestellten-ordner:gate-policy",

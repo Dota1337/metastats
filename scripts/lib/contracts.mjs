@@ -20,6 +20,8 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { connect as tlsConnect } from 'node:tls';
+import { isIP } from 'node:net';
 import { evaluateGuideCoverage } from './guide-coverage.mjs';
 import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
@@ -467,6 +469,7 @@ async function runCheck(c) {
     if (c.type === 'lol-patch-shift') return await checkLolPatchShift(c, r);
     if (c.type === 'box-main') return await checkBoxMain(c, r);
     if (c.type === 'comp-catalog-days') return await checkCompCatalogDays(c, r);
+    if (c.type === 'tls-cert') return await checkTlsCert(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -1113,6 +1116,39 @@ export function evaluateBoxMain({ compare, dirty = false, deployPaths = [], now 
   const age = ageH == null ? 'unbekannt' : `vor ${Math.round(ageH)} h`;
   return warn(`Box-Stand liegt hinter main: ${ahead} Commit(s), davon ${relevant.length} Datei(en) in den Deploy-Pfaden`
     + `${truncated ? ' (Liste von GitHub gekuerzt)' : ''}, juengster Commit ${age} — Deploy gescheitert oder nicht angestossen`);
+}
+
+/**
+ * Ausgeliefertes TLS-Zertifikat (Art tls-cert): Restlaufzeit gegen
+ * minHoursLeft. Reine Bewertung, getrennt vom Netzabruf testbar.
+ */
+export function evaluateTlsCert({ validTo, now = Date.now(), minHoursLeft }) {
+  const ends = Date.parse(validTo);
+  if (!Number.isFinite(ends)) return { status: 'error', detail: `Ablaufdatum unlesbar (${validTo})` };
+  const hoursLeft = Math.round((ends - now) / 3_600_000);
+  const until = new Date(ends).toISOString().slice(0, 16).replace('T', ' ');
+  if (hoursLeft < minHoursLeft) {
+    return { status: 'broken', detail: `nur noch ${hoursLeft} h gueltig (bis ${until} UTC, Schwelle ${minHoursLeft} h)`, hoursLeft };
+  }
+  return { status: 'ok', detail: `gueltig bis ${until} UTC, noch ${hoursLeft} h`, hoursLeft };
+}
+
+// Gemessen am Server, nicht an der Zertifikatsdatei: so faellt auch auf, wenn
+// erneuert, aber nicht ausgeliefert wird. Mit voller Pruefung (Kette, Name/IP)
+// — ein abgelaufenes oder falsches Zertifikat endet als broken mit dem
+// TLS-Fehlercode. An eine IP geht kein Servername (Node verbietet IP als SNI).
+function checkTlsCert(c, r) {
+  const port = c.port || 443;
+  return new Promise((resolveCheck) => {
+    const sock = tlsConnect({ host: c.host, port, ...(isIP(c.host) ? {} : { servername: c.host }) });
+    const done = (res) => { sock.destroy(); resolveCheck(res); };
+    sock.setTimeout(15_000, () => done(r('broken', `${c.host}:${port} antwortet nicht (15 s)`)));
+    sock.once('error', (err) => done(r('broken', `${c.host}:${port}: ${err.code || err.message}`)));
+    sock.once('secureConnect', () => {
+      const res = evaluateTlsCert({ validTo: sock.getPeerCertificate()?.valid_to, minHoursLeft: c.minHoursLeft });
+      done(r(res.status, `${c.host}:${port} ${res.detail}`));
+    });
+  });
 }
 
 async function checkBoxMain(c, r) {

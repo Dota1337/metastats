@@ -1,0 +1,40 @@
+# TLS-Vorschalter fuer refresh-api — liegt auf der Box als
+# /etc/caddy/metastats.Caddyfile, ausgerollt per apply-units.sh, gestartet von
+# metastats-caddy.service.
+#
+# Warum: der Zugangsschluessel und alle Antworten gingen unverschluesselt ueber
+# http://37.27.219.140:4100 (Sicherheitsdurchsicht 24.10.2026, klartext-token +
+# netzbindung). Seit 15.01.2026 stellt Let's Encrypt Zertifikate direkt auf
+# IP-Adressen aus (nur Profil "shortlived", 160 h Laufzeit) — damit braucht es
+# keinen DNS-Namen. Caddy holt und erneuert das Zertifikat selbst (ab 2.10,
+# ACME-Profile), ueber den TLS-ALPN-Weg auf 443; Port 80 bleibt zu.
+{
+	# Keine Verwaltungs-Schnittstelle: sonst koennte jeder lokale Prozess
+	# (auch refresh-api) die Konfiguration umschreiben. Aenderungen daher per
+	# `systemctl restart metastats-caddy`, nicht per reload.
+	admin off
+	persist_config off
+	auto_https disable_redirects
+	# Node und curl schicken an eine IP keinen Servernamen (SNI).
+	default_sni 37.27.219.140
+}
+
+https://37.27.219.140 {
+	tls {
+		issuer acme {
+			profile shortlived
+			disable_http_challenge
+		}
+	}
+	reverse_proxy 127.0.0.1:4100 {
+		# Kennkopf fuer die Uebergangs-Messung in refresh-api (merkeDirektzugriff):
+		# Anfragen ohne ihn kamen direkt auf 4100.
+		header_up X-Metastats-Via caddy
+		transport http {
+			# refresh-api schliesst ruhende Verbindungen nach 5 s (Node-Standard).
+			# Caddy muss frueher loslassen, sonst trifft ein POST eine gerade
+			# geschlossene Verbindung, Go wiederholt POST nicht → 502.
+			keepalive 4s
+		}
+	}
+}

@@ -73,6 +73,43 @@ apply_helpers() {
   done
 }
 
+# Systemdateien ausserhalb von /etc/systemd/system, die Units brauchen:
+# vergleichen, Sicherung, pruefen, ATOMAR per mv ersetzen, danach Nachlauf.
+#   apply_sysfile <Repo-Datei> <Ziel> <Pruefbefehl mit {} fuer die neue Datei | -> <Nachlauf | ->
+# Pruefbefehl und Nachlauf laufen auf der Box. Kein Neustart (siehe Kopf).
+apply_sysfile() {
+  local src="$DIR/$1" dst="$2" check="$3" post="$4" name tmp
+  name="$(basename "$dst")"
+  tmp="$(dirname "$dst")/.$name.new"
+  [ -f "$src" ] || return 0
+  if [ "$(sed 's/\r$//' "$src" | sha1sum | cut -d' ' -f1)" = "$($SSH "sha1sum $dst 2>/dev/null | cut -d' ' -f1" || true)" ]; then
+    echo "== $name: identisch"
+    return 0
+  fi
+  echo "== $name: weicht ab"
+  diff <($SSH "cat $dst 2>/dev/null || true") <(sed 's/\r$//' "$src") || true
+  if [ -n "${DRY:-}" ]; then return 0; fi
+  $SSH "mkdir -p /root/unit-backups && { test -f $dst && cp -a $dst /root/unit-backups/$name.\$(date +%Y%m%d-%H%M%S) || true; }"
+  sed 's/\r$//' "$src" | $SSH "set -e; umask 022; mkdir -p $(dirname "$dst"); cat > $tmp"
+  if [ "$check" != "-" ] && ! $SSH "${check//\{\}/$tmp}"; then
+    $SSH "rm -f $tmp"
+    echo "!! $name: Pruefung fehlgeschlagen, nichts ersetzt" >&2
+    return 1
+  fi
+  $SSH "mv -f $tmp $dst"
+  if [ "$post" != "-" ]; then $SSH "$post"; fi
+}
+
+# Feste Dienst-Nutzer vor den Units anlegen — eine Unit mit User=metastats-api
+# startet sonst nicht (Exit 217/USER). systemd-sysusers ist idempotent.
+apply_sysfile sysusers-metastats.conf /etc/sysusers.d/metastats.conf - "systemd-sysusers /etc/sysusers.d/metastats.conf"
+# Caddy-Konfiguration nur, wenn Caddy installiert ist (infra/hetzner/install-caddy.sh).
+# Greift erst mit `systemctl restart metastats-caddy` (admin off, kein reload).
+if $SSH "command -v caddy >/dev/null"; then
+  apply_sysfile metastats.Caddyfile /etc/caddy/metastats.Caddyfile \
+    "runuser -u caddy -- caddy validate --adapter caddyfile --config {} >/dev/null" -
+fi
+
 changed=0
 for u in "${units[@]}"; do
   local_file="$DIR/$u"

@@ -6,11 +6,21 @@ Wants=network-online.target postgresql.service
 [Service]
 Type=simple
 WorkingDirectory=/opt/metastats-crawler
-EnvironmentFile=/etc/metastats-crawler/env
+# Nur die Schluessel, die der Dienst liest — das Hilfsskript filtert sie vor
+# jedem Start aus der gemeinsamen Datei, die der Dienst selbst nicht mehr sieht
+# (Sicherheitsdurchsicht 24.10.2026, geteilte-env-datei). Positivliste =
+# ENV_KEYS in scripts/refresh-api-server.mjs, Gleichlauf: refresh-api-env.test.mjs.
+ExecStartPre=+/usr/local/bin/metastats-refresh-api-env.sh
+EnvironmentFile=-/run/metastats-refresh-api/env
+InaccessiblePaths=/etc/metastats-crawler -/run/metastats-refresh-api
 ExecStart=/usr/bin/node scripts/refresh-api-server.mjs
 Restart=on-failure
 RestartSec=5
-User=root
+# Fester Nutzer ohne Sonderrechte statt root (netzbindung). Angelegt ueber
+# infra/hetzner/sysusers-metastats.conf; DynamicUser scheitert an der
+# Dienstliste (siehe dort).
+User=metastats-api
+Group=metastats-api
 StandardOutput=journal
 StandardError=journal
 

@@ -17,6 +17,7 @@ import {
   type LastRef, type Op, type PhraseTerm, type Pick,
 } from './explorer-search';
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
+import { ExplorerRanks } from './ExplorerScope';
 import { useFilterDrag } from './explorer-drag';
 import type { DragSrc, Where } from './explorer-move';
 import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
@@ -26,7 +27,10 @@ import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/
 // Kaesten mit „oder" (Kasten = eins davon). Level, Platz und Brett bleiben eigene
 // Knoepfe. „ohne" und „keins davon" gibt es nur noch aus alten Links: sie werden
 // angezeigt und lassen sich entfernen, aber nicht mehr neu anlegen. Grenzen wie
-// in parseExplorerParams (EXPLORER_LIMITS).
+// in parseExplorerParams (EXPLORER_LIMITS). Rechts in derselben Zeile die
+// Rang-Stufen (24.10.2026): „Alle zurücksetzen" steht davor, weil es den Rang
+// nicht zuruecksetzt; ab xl rechtsbuendig, damit sie beim Erscheinen des Knopfs
+// nicht springen. Die Suche schrumpft dafuer bis auf ihre Mindestbreite.
 
 const LEVELS = [6, 7, 8, 9, 10];
 const PLACES = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -388,6 +392,9 @@ export default function ExplorerFilters({
             {t('tft.explorer.resetAll')}
           </button>
         )}
+        {/* Handy: eigene volle, seitlich wischbare Zeile bis an den Rand wie die Patch-Leiste. */}
+        <ExplorerRanks query={query} setQuery={setQuery} onPick={() => setOpen(null)}
+          className="w-[calc(100%+2rem)] -mx-4 px-4 sm:w-auto sm:mx-0 sm:px-0 xl:ml-auto" />
       </div>
 
       {conds.length > 0 && (

@@ -271,7 +271,9 @@ export default function ExplorerSearchBox({
       )}
 
       {showBrowse && (
-        <div className="absolute z-40 left-0 right-0 top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl">
+        // Ab lg mindestens 34rem: die Suche schrumpft neben den Rang-Knoepfen,
+        // die Units sollen trotzdem je Kostenstufe in einer Zeile bleiben.
+        <div className="absolute z-40 left-0 right-0 lg:min-w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl">
           <div role="tablist" aria-label={t('tft.explorer.x.browse')} className="flex flex-wrap gap-1">
             {tabs.map(b => (
               <button key={b} id={tabId(b)} type="button" role="tab" aria-selected={curTab === b} aria-controls={listId}
@@ -329,7 +331,7 @@ export default function ExplorerSearchBox({
       )}
 
       {showDrop && (
-        <div id={listId} role="listbox" className="absolute z-40 left-0 right-0 top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl max-h-[min(70vh,32rem)] overflow-y-auto space-y-2">
+        <div id={listId} role="listbox" className="absolute z-40 left-0 right-0 lg:min-w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl max-h-[min(70vh,32rem)] overflow-y-auto space-y-2">
           {phrase && (
             <button type="button" onClick={applyAll}
               className="w-full flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded border border-accent-a40 bg-accent-a8 text-left text-xs hover:bg-accent-a15">

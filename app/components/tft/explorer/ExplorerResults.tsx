@@ -230,7 +230,7 @@ export default function ExplorerResults({
       const src = unitImg(options, assets, r.key);
       icons = src ? <img src={src} alt="" loading="lazy" className="w-8 h-8 shrink-0 rounded object-cover" style={{ boxShadow: `inset 0 0 0 1.5px ${costColor(cost)}` }} /> : null;
     } else if (tab === 'items' || tab === 'builds') {
-      icons = <span className="flex gap-0.5 shrink-0">{r.key.split('|').map(i => { const s = itemImg(options, assets, i); return s ? <img key={i} src={s} alt="" loading="lazy" className="w-7 h-7 rounded" /> : null; })}</span>;
+      icons = <span className="flex gap-0.5 shrink-0">{r.key.split('|').map((i, n) => { const s = itemImg(options, assets, i); return s ? <img key={`${i}${n}`} src={s} alt="" loading="lazy" className="w-7 h-7 rounded" /> : null; })}</span>;
     } else if (tab === 'traits' || tab === 'comps') {
       const id = tab === 'traits' ? r.key : r.key.split('__')[0];
       const s = traitImg(options, assets, id);

@@ -37,14 +37,17 @@ for svc in metastats-marketvalue-snapshot \
   fi
 done
 
-# DB-Reads brauchen DATABASE_URL — kommt aus dem geteilten env-File.
+# DB-Reads brauchen DATABASE_URL. Unter systemd setzt der Dienst sie selbst
+# (EnvironmentFile=). Nur fuer einen Handaufruf wird genau dieser eine
+# Schluessel gelesen — die Datei wird NICHT mehr als Shell-Code eingezogen
+# (Sicherheitsdurchsicht 24.10.2026, env-doppelt-geladen): ein Wert mit $(…)
+# wuerde sonst ausgefuehrt, und die Shell hielte alle Geheimnisse statt einem.
 ENV_FILE=/etc/metastats-crawler/env
-if [[ ! -f "$ENV_FILE" ]]; then
-  echo "${LOG_PREFIX} ${ENV_FILE} fehlt — abort" >&2
-  exit 2
+if [[ -z "${DATABASE_URL:-}" && -r "$ENV_FILE" ]]; then
+  DATABASE_URL=$(sed -n 's/^DATABASE_URL=//p' "$ENV_FILE" | tail -n 1)
+  DATABASE_URL=${DATABASE_URL%\"}; DATABASE_URL=${DATABASE_URL#\"}
+  DATABASE_URL=${DATABASE_URL%\'}; DATABASE_URL=${DATABASE_URL#\'}
 fi
-# shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
   echo "${LOG_PREFIX} DATABASE_URL nicht gesetzt — abort" >&2

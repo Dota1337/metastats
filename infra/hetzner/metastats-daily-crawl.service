@@ -48,9 +48,13 @@ TimeoutStopSec=600
 # Bis dahin beendete ihn sein Conflicts=metastats-daily-crawl sofort. Jetzt:
 # bis zu 4 h warten (240 x 60 s), danach wie frueher stoppen — sein
 # Inflight-Resume (MV_USE_INFLIGHT_RESUME) behaelt die Arbeit.
-# "+" = ohne Sandbox, weil systemctl stop root-Rechte ueber D-Bus braucht.
+# Laeuft unter dem Haertungsboden wie die Nachbarn (catchup, watchdog,
+# marketvalue-watchdog): der Dienst laeuft als root, systemctl is-active/stop
+# gehen ueber D-Bus (AF_UNIX) und brauchen keine Sandbox-Ausnahme. Bis
+# 24.10.2026 stand hier "+" (ganze Haertung aus) — gemessen am selben Tag mit
+# systemd-run und allen 19 Boden-Eigenschaften: is-active und stop gehen.
 # Ein laufender oneshot meldet "activating", nicht "active" — deshalb beide.
-ExecStartPre=+/bin/bash -c 'for n in $$(seq 240); do s=$$(systemctl is-active metastats-marketvalue-snapshot.service || true); case "$$s" in active|activating) sleep 60;; *) exit 0;; esac; done; echo "marketvalue-snapshot nach 4 h noch aktiv - stoppe ihn"; systemctl stop metastats-marketvalue-snapshot.service || true'
+ExecStartPre=/bin/bash -c 'for n in $$(seq 240); do s=$$(systemctl is-active metastats-marketvalue-snapshot.service || true); case "$$s" in active|activating) sleep 60;; *) exit 0;; esac; done; echo "marketvalue-snapshot nach 4 h noch aktiv - stoppe ihn"; systemctl stop metastats-marketvalue-snapshot.service || true'
 # --region-timeout=0 disables the per-region kill on legacy box code; current
 # code has no per-region timeout (the arg is a harmless no-op there).
 ExecStart=/usr/bin/node scripts/crawl-allranks-all-regions.mjs --mode auto --region-timeout=0

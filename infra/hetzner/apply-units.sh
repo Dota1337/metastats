@@ -42,6 +42,37 @@ else
   done
 fi
 
+# Hilfsskripte, die eine Unit per ExecStart aus /usr/local/bin startet, liegen
+# ebenfalls im Repo (infra/hetzner/metastats-*.sh) und wurden bis 24.10.2026
+# nicht mitgeschrieben — Box und Repo stimmten nur zufaellig ueberein
+# (Sicherheitsdurchsicht, unausgerollte-hilfsskripte). Jetzt: vergleichen,
+# Sicherung, Syntaxpruefung, dann ATOMAR per mv ersetzen. Ein `cat >` auf die
+# laufende Datei wuerde ein Skript zerschiessen, das bash gerade ausfuehrt.
+helpers_changed=0
+apply_helpers() {
+  local unit_file="$1" h name local_h remote_sum local_sum
+  for h in $(sed 's/\r$//' "$unit_file" | grep -E '^Exec' | grep -oE '/usr/local/bin/metastats-[A-Za-z0-9._-]+\.sh' | sort -u); do
+    name="$(basename "$h")"
+    local_h="$DIR/$name"
+    if [ ! -f "$local_h" ]; then
+      echo "!! $name: von $(basename "$unit_file") gestartet, aber nicht im Repo" >&2
+      continue
+    fi
+    local_sum="$(sed 's/\r$//' "$local_h" | sha1sum | cut -d' ' -f1)"
+    remote_sum="$($SSH "sha1sum $h 2>/dev/null | cut -d' ' -f1" || true)"
+    if [ "$local_sum" = "$remote_sum" ]; then
+      echo "== $name: identisch"
+      continue
+    fi
+    echo "== $name: weicht ab"
+    diff <($SSH "cat $h 2>/dev/null || true") <(sed 's/\r$//' "$local_h") || true
+    if [ -n "${DRY:-}" ]; then continue; fi
+    $SSH "mkdir -p /root/unit-backups && { test -f $h && cp -a $h /root/unit-backups/$name.\$(date +%Y%m%d-%H%M%S) || true; }"
+    sed 's/\r$//' "$local_h" | $SSH "set -e; umask 022; t=/usr/local/bin/.$name.new; cat > \$t; bash -n \$t; chmod 0755 \$t; mv -f \$t $h"
+    helpers_changed=$((helpers_changed + 1))
+  done
+}
+
 changed=0
 for u in "${units[@]}"; do
   local_file="$DIR/$u"
@@ -57,6 +88,8 @@ for u in "${units[@]}"; do
     echo "== $u: maskiert, uebersprungen"
     continue
   fi
+  # Vor dem Unit-Vergleich: auch bei identischer Unit kann das Skript abweichen.
+  apply_helpers "$local_file"
   remote="$($SSH "cat /etc/systemd/system/$u 2>/dev/null || true")"
   if [ "$(sed 's/\r$//' "$local_file")" = "$(printf '%s\n' "$remote" | sed 's/\r$//')" ]; then
     echo "== $u: identisch"
@@ -80,4 +113,7 @@ if [ "$changed" -gt 0 ]; then
   done
 else
   echo "-- nichts geaendert, kein daemon-reload noetig"
+fi
+if [ "$helpers_changed" -gt 0 ]; then
+  echo "-- $helpers_changed Hilfsskript(e) ersetzt (Sicherung unter /root/unit-backups/, greift beim naechsten Start)"
 fi

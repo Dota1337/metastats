@@ -115,10 +115,11 @@
       "titel": "Der Watchdog zieht die Geheimnis-Datei ein zweites Mal als Shell-Code in seine Shell, obwohl der Dienst sie schon gesetzt hat",
       "ort": "infra/hetzner/metastats-marketvalue-watchdog.sh",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "infra/hetzner/metastats-marketvalue-watchdog.service:9 'EnvironmentFile=/etc/metastats-crawler/env' und zusaetzlich infra/hetzner/metastats-marketvalue-watchdog.sh:41 'ENV_FILE=/etc/metastats-crawler/env' + :47 'set -a; source \"$ENV_FILE\"; set +a'; Kommentar :40 nennt als Grund nur DATABASE_URL. Box-Kopie /usr/local/bin/metastats-marketvalue-watchdog.sh ist byte-gleich mit dem Repo (sha256 nach CRLF-Entfernung 90ccce68... auf beiden Seiten).",
+      "status": "behoben",
+      "belegt_mit": "infra/hetzner/metastats-marketvalue-watchdog.sh zieht die env-Datei nicht mehr per source ein; unter systemd kommt DATABASE_URL aus EnvironmentFile=, beim Handaufruf wird nur dieser Schluessel per sed gelesen. Ausgerollt 24.10.2026 02:17 UTC (Sicherung /root/unit-backups/metastats-marketvalue-watchdog.sh.20261024-021702). Gemessen: Handaufruf ohne DATABASE_URL -> psql 'select 1' = 1, unter systemd-run mit EnvironmentFile -> 2; Dienstlauf 02:18 UTC status=0.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "infra/hetzner/metastats-marketvalue-watchdog.service:9 'EnvironmentFile=/etc/metastats-crawler/env' und zusaetzlich infra/hetzner/metastats-marketvalue-watchdog.sh:41 'ENV_FILE=/etc/metastats-crawler/env' + :47 'set -a; source \"$ENV_FILE\"; set +a'; Kommentar :40 nennt als Grund nur DATABASE_URL. Box-Kopie /usr/local/bin/metastats-marketvalue-watchdog.sh ist byte-gleich mit dem Repo (sha256 nach CRLF-Entfernung 90ccce68... auf beiden Seiten)."
     },
     {
       "id": "fail-open:app/api/tft/positions/submit",
@@ -241,10 +242,11 @@
       "titel": "Zwei stillgelegte Dienste duerfen ganz /root lesen, und der Ordner, fuer den die Ausnahme gedacht war, existiert nicht mehr",
       "ort": "infra/hetzner/metastats-tft-pro-fullsync.service",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "infra/hetzner/metastats-tft-pro-fullsync.service:92 und infra/hetzner/metastats-tft-pro-validator.service:62 'ProtectHome=read-only' (Begruendung fullsync:91 'gh issue create liest /root/.config/gh'). Box: ls -ld /root/.config/gh -> 'No such file or directory'; systemctl is-enabled metastats-tft-pro-fullsync.timer und -validator.timer -> disabled, is-active -> inactive; letzter fullsync-Lauf ExecMainStartTimestamp 2026-08-28 03:03:35 UTC.",
+      "status": "behoben",
+      "belegt_mit": "ProtectHome=read-only in metastats-tft-pro-fullsync.service und -validator.service gestrichen (gh auf der Box nicht installiert, /root/.config/gh fehlt — gemessen 24.10.2026). Auf der Box: systemctl show -p ProtectHome -> yes fuer beide.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "infra/hetzner/metastats-tft-pro-fullsync.service:92 und infra/hetzner/metastats-tft-pro-validator.service:62 'ProtectHome=read-only' (Begruendung fullsync:91 'gh issue create liest /root/.config/gh'). Box: ls -ld /root/.config/gh -> 'No such file or directory'; systemctl is-enabled metastats-tft-pro-fullsync.timer und -validator.timer -> disabled, is-active -> inactive; letzter fullsync-Lauf ExecMainStartTimestamp 2026-08-28 03:03:35 UTC."
     },
     {
       "id": "hooks-abschaltbar-settings-local:gate-policy",
@@ -517,10 +519,11 @@
       "titel": "Ein Vorlauf-Befehl schaltet die gesamte Haertung ab, drei Nachbardienste kommen fuer denselben systemctl-Aufruf ohne aus",
       "ort": "infra/hetzner/metastats-daily-crawl.service",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "infra/hetzner/metastats-daily-crawl.service:53 'ExecStartPre=+/bin/bash -c ... systemctl stop metastats-marketvalue-snapshot.service' (Begruendung :51 '\"+\" = ohne Sandbox, weil systemctl stop root-Rechte ueber D-Bus braucht'). Gegenbeispiele unter vollem Boden ohne '+': infra/hetzner/metastats-daily-crawl-catchup.sh:97, metastats-daily-crawl-watchdog.sh:45, metastats-marketvalue-watchdog.sh:141 ('systemctl start --no-block ...'), gestartet von metastats-daily-crawl-catchup.service:7, metastats-daily-crawl-watchdog.service:14, metastats-marketvalue-watchdog.service:12. Box-Unit identisch mit Repo (sha256-Abgleich aller Units, daily-crawl.service ohne Abweichung).",
+      "status": "behoben",
+      "belegt_mit": "ExecStartPre ohne '+' (infra/hetzner/metastats-daily-crawl.service), ausgerollt 24.10.2026 02:17 UTC. Vorher gemessen: systemd-run mit allen 19 Eigenschaften des Haertungsbodens -> systemctl is-active metastats-marketvalue-snapshot = activating, systemctl stop auf eine Attrappe stop_rc=0, Attrappe danach inactive.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "infra/hetzner/metastats-daily-crawl.service:53 'ExecStartPre=+/bin/bash -c ... systemctl stop metastats-marketvalue-snapshot.service' (Begruendung :51 '\"+\" = ohne Sandbox, weil systemctl stop root-Rechte ueber D-Bus braucht'). Gegenbeispiele unter vollem Boden ohne '+': infra/hetzner/metastats-daily-crawl-catchup.sh:97, metastats-daily-crawl-watchdog.sh:45, metastats-marketvalue-watchdog.sh:141 ('systemctl start --no-block ...'), gestartet von metastats-daily-crawl-catchup.service:7, metastats-daily-crawl-watchdog.service:14, metastats-marketvalue-watchdog.service:12. Box-Unit identisch mit Repo (sha256-Abgleich aller Units, daily-crawl.service ohne Abweichung)."
     },
     {
       "id": "schreib-api-unerkannt:gate-policy",
@@ -652,10 +655,11 @@
       "titel": "Drei Dienste fuehren Skripte aus, die das Ausroll-Werkzeug nicht mitschreibt (aktuell zufaellig gleich)",
       "ort": "infra/hetzner/apply-units.sh",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "ExecStart=/usr/local/bin/metastats-daily-crawl-catchup.sh (metastats-daily-crawl-catchup.service:7), /usr/local/bin/metastats-daily-crawl-watchdog.sh (metastats-daily-crawl-watchdog.service:14), /usr/local/bin/metastats-marketvalue-watchdog.sh (metastats-marketvalue-watchdog.service:12). infra/hetzner/apply-units.sh:71 schreibt nur /etc/systemd/system/$u; grep -nE 'usr/local/bin' infra/hetzner/remote-deploy.sh infra/hetzner/apply-units.sh .github/workflows/*.yml -> 0 Treffer. Stand heute: sha256 Repo (CRLF entfernt) gegen Box gleich fuer alle drei (c6b77487..., 269343f1..., 90ccce68...).",
+      "status": "behoben",
+      "belegt_mit": "infra/hetzner/apply-units.sh rollt jede /usr/local/bin/metastats-*.sh aus den Exec-Zeilen der Unit mit: sha1-Vergleich, Sicherung nach /root/unit-backups, bash -n, chmod 0755, atomar per mv. Erster Einsatz 24.10.2026 02:17 UTC (marketvalue-watchdog.sh ersetzt, zweiter Lauf -> identisch).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "ExecStart=/usr/local/bin/metastats-daily-crawl-catchup.sh (metastats-daily-crawl-catchup.service:7), /usr/local/bin/metastats-daily-crawl-watchdog.sh (metastats-daily-crawl-watchdog.service:14), /usr/local/bin/metastats-marketvalue-watchdog.sh (metastats-marketvalue-watchdog.service:12). infra/hetzner/apply-units.sh:71 schreibt nur /etc/systemd/system/$u; grep -nE 'usr/local/bin' infra/hetzner/remote-deploy.sh infra/hetzner/apply-units.sh .github/workflows/*.yml -> 0 Treffer. Stand heute: sha256 Repo (CRLF entfernt) gegen Box gleich fuer alle drei (c6b77487..., 269343f1..., 90ccce68...)."
     },
     {
       "id": "ungebremste-riot-sammlung:app/api/champions/collect",

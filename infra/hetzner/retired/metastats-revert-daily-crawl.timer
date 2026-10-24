@@ -1,0 +1,16 @@
+# STILLGELEGT — nur zur Nachvollziehbarkeit aufbewahrt, nicht ausrollen.
+# Einmal-Timer vom 30.05.2026, sollte am 09.06.2026 den Aggregat-Crawl auf
+# taeglich zurueckstellen. Er war seitdem abgeschaltet, sein Dienst
+# (metastats-revert-daily-crawl.service) existierte auf der Box nicht mehr, und
+# im Repo stand er nie. Am 24.10.2026 von der Box entfernt
+# (Sicherheitsdurchsicht); Sicherung dort unter /root/unit-backups/.
+# apply-units.sh liest nur infra/hetzner/metastats-*, nicht diesen Ordner.
+[Unit]
+Description=One-shot: revert aggregate crawl to daily on 2026-06-09
+
+[Timer]
+OnCalendar=2026-06-09 00:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

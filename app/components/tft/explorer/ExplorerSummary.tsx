@@ -61,11 +61,11 @@ function SummaryBox({ data, hasFilters, place }: Props & { data: ExplorerRespons
     <div aria-hidden={data ? undefined : true}
       className={`rounded-xl border border-border-subtle bg-surface-base p-3 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 md:gap-8 ${data ? '' : 'animate-pulse'}`}>
       {/* Handy bis md: Raster mit 3 Spalten; ab lg eine Reihe, links buendig mit fester
-          Luecke (User 25.10.2026 „näher zusammen", dann „ein bisschen mehr abstand" →
-          48 px ab xl). Darunter 16 px: bei 1024 px und allen Patches (16,5 Mio Bretter)
+          Luecke (User 25.10.2026 „näher zusammen", dann zweimal mehr Abstand → 64 px ab xl;
+          72 px schoebe bei 1280 px und allen Patches die Grafik raus). Darunter 16 px: bei 1024 px und allen Patches (16,5 Mio Bretter)
           schoebe mehr die Grafik ueber den Rand (gemessen schon mit 24 px 599 statt 573 px).
           Δ steht am Ende, sonst reisst seine lange Zusatzzeile eine Luecke in die Reihe. */}
-      <div className={`grid grid-cols-3 gap-x-4 gap-y-3 lg:grid-cols-none lg:grid-flow-col lg:auto-cols-max xl:gap-x-12 ${hide}`}>
+      <div className={`grid grid-cols-3 gap-x-4 gap-y-3 lg:grid-cols-none lg:grid-flow-col lg:auto-cols-max xl:gap-x-16 ${hide}`}>
         {stat(t('tft.explorer.sort.games'), s ? num(s.games) : '—',
           hasFilters ? (s && data?.base.games ? fmtPct(s.games / data.base.games) : ph ? '00.0%' : undefined) : undefined)}
         {stat(t('tft.explorer.x.matches'), s ? num(s.matches) : '—')}

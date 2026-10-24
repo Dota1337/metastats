@@ -8,11 +8,14 @@ import {
   type BoardCountKey, type BoardTag, type ExplorerQuery, type ExplorerResponse, type ExplorerRow, type FilterGroup, type ItemFilter, type ItemKind,
   type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
+import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import {
-  itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
+  itemFitsUnit, itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
 } from './explorer-options';
 import { applyPhrase, applyPick, normText, type LastRef, type Op, type PhraseTerm, type Pick } from './explorer-search';
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
+import { useFilterDrag } from './explorer-drag';
+import type { DragSrc, Where } from './explorer-move';
 import { COPLAY_MAX, coplayChosen, coplayPick } from '../../../lib/tft-explorer-coplay.mjs';
 
 // Filterleiste (Plan 19.10.2026, Teil C1): eine Suchzeile fuer Units, Items und
@@ -72,7 +75,7 @@ function patchList<T extends { id: string }>(arr: T[], id: string, patch: Partia
 
 function Icon({ src, alt, className = 'w-6 h-6', border }: { src: string | null; alt: string; className?: string; border?: string }) {
   if (!src) return <span className={`${className} rounded bg-surface-overlay shrink-0`} />;
-  return <img src={src} alt={alt} title={alt} loading="lazy" className={`${className} rounded object-cover shrink-0`} style={border ? { boxShadow: `inset 0 0 0 1.5px ${border}` } : undefined} />;
+  return <img src={src} alt={alt} title={alt} loading="lazy" draggable={false} className={`${className} rounded object-cover shrink-0`} style={border ? { boxShadow: `inset 0 0 0 1.5px ${border}` } : undefined} />;
 }
 
 // Spanne als Knopf-Zustand: mind. / genau / hoechstens; eine echte Spanne
@@ -126,6 +129,13 @@ export default function ExplorerFilters({
   const [focusKey, setFocusKey] = useState(0);
   const last = rawLast && refAlive(query, rawLast) ? rawLast : null;
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Ziehen & Ablegen (W3): eine Ablage = ein setQuery, danach haengt „oder" an nichts mehr.
+  const dnd = useFilterDrag({
+    query,
+    fits: (unit, item, carried) => itemFitsUnit(options, unit, item, carried),
+    onDrop: q => { setQuery(q); setLast(null); },
+    onStart: () => setOpen(null),
+  });
 
   // Klick ausserhalb schliesst das offene Einstellfenster.
   useEffect(() => {
@@ -170,22 +180,38 @@ export default function ExplorerFilters({
 
   const toggle = (key: string) => setOpen(open === key ? null : key);
   const pre = (g: number | null) => (g == null ? 'm' : String(g));
+  const at = (g: number | null): Where => (g == null ? 'main' : g);
+  // „ohne"-Bausteine und „keins davon"-Kaesten (nur alte Links) werden nicht gezogen.
+  const movable = (g: number | null, f: { x?: boolean }) => !f.x && (g == null || query.groups[g]?.m === 'any');
+  const ghostOf = (img: string | null, name: string, border?: string) => <><Icon src={img} alt={name} border={border} /><span className="truncate max-w-[9rem]">{name}</span></>;
+  const sourceOf = (g: number | null, f: { x?: boolean }, src: DragSrc, ghost: React.ReactNode) =>
+    (movable(g, f) ? dnd.source(src, ghost) : undefined);
 
   const unitChip = (g: number | null, u: UnitFilter) => {
     const key = `${pre(g)}:u:${u.id}`;
     const stars = spanText(u.s, u.sx, 1, v => '★'.repeat(v));
     const cnt = spanText(u.n, u.nx, 0, v => `${v}i`);
+    const drop = { kind: 'unit', id: u.id, at: at(g) } as const;
+    const border = costColor(options.unitById.get(u.id)?.cost ?? 1);
     return (
       <Chip key={key} excluded={!!u.x} open={open === key} onToggle={() => toggle(key)} wide
         onRemove={() => setUnit(g, u.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        drag={sourceOf(g, u, { kind: 'units', id: u.id, from: at(g) }, ghostOf(unitImg(options, assets, u.id), unitName(options, assets, u.id), border))}
+        drop={dnd.target(drop)} over={dnd.isOver(drop)}
         label={<>
-          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={costColor(options.unitById.get(u.id)?.cost ?? 1)} />
+          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={border} />
           <span className="truncate max-w-[9rem]">{unitName(options, assets, u.id)}</span>
           {stars && <span className="text-gold-earnings">{stars}</span>}
           {cnt && <span className="text-fg-muted">{cnt}</span>}
           {u.c ? <span className="text-fg-muted">{'≥'}{u.c}{'×'}</span> : null}
           {(u.k ?? []).map(e => <span key={e.b} className="text-fg-muted">{'≥'}{e.n} {t(KIND_LABEL[e.b])}</span>)}
-          {(u.it ?? []).map((i, n) => <Icon key={`${i}${n}`} src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />)}
+          {/* Jedes Item-Bild ist eine eigene Quelle; ::before vergroessert die Greifflaeche unsichtbar. */}
+          {(u.it ?? []).map((i, n) => (
+            <span key={`${i}${n}`} className="relative before:absolute before:-inset-1"
+              {...sourceOf(g, u, { kind: 'unitItem', unit: u.id, from: at(g), index: n }, <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} />)}>
+              <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" />
+            </span>
+          ))}
           {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-4 h-4" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-xs font-bold">{'∕'}</span></span>)}
         </>}>
         <UnitEditor u={u} set={p => setUnit(g, u.id, p)} options={options} assets={assets} inGroup={g != null} />
@@ -197,6 +223,7 @@ export default function ExplorerFilters({
     return (
       <Chip key={key} excluded={!!i.x} open={open === key} onToggle={() => toggle(key)}
         onRemove={() => setItem(g, i.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        drag={sourceOf(g, i, { kind: 'items', id: i.id, from: at(g) }, ghostOf(itemImg(options, assets, i.id), itemName(options, assets, i.id)))}
         label={<>
           <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} />
           <span className="truncate max-w-[9rem]">{itemName(options, assets, i.id)}</span>
@@ -213,6 +240,7 @@ export default function ExplorerFilters({
     return (
       <Chip key={key} excluded={!!tr.x} open={open === key} onToggle={() => toggle(key)}
         onRemove={() => setTrait(g, tr.id, null)} removeLabel={t('tft.explorer.x.remove')}
+        drag={sourceOf(g, tr, { kind: 'traits', id: tr.id, from: at(g) }, ghostOf(traitImg(options, assets, tr.id), traitName(options, assets, tr.id)))}
         label={<>
           <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-5 h-5" />
           <span className="truncate max-w-[9rem]">{traitName(options, assets, tr.id)}</span>
@@ -227,9 +255,10 @@ export default function ExplorerFilters({
   const box = (gr: FilterGroup, g: number) => {
     const none = gr.m === 'none';
     const members = [...gr.units.map(u => unitChip(g, u)), ...gr.items.map(i => itemChip(g, i)), ...gr.traits.map(x => traitChip(g, x))];
-    const active = !none && mode === 'or' && last?.where === g;
+    const zone = { kind: 'zone', at: g } as const;
+    const active = !none && ((mode === 'or' && last?.where === g) || dnd.isOver(zone));
     return (
-      <div key={`g${g}`} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed px-1.5 py-1 ${
+      <div key={`g${g}`} {...dnd.target(zone)} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed px-1.5 py-1 ${
         none ? 'border-pos-loss' : 'border-accent-a50'} ${active ? 'bg-accent-a8' : ''}`}>
         {none && <span className="text-[11px] text-pos-loss">{t('tft.explorer.x.noneOf')}</span>}
         {members.map((m, i) => <Fragment key={i}>{i > 0 && !none && <Sep op="or" />}{m}</Fragment>)}
@@ -341,10 +370,14 @@ export default function ExplorerFilters({
       </div>
 
       {conds.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5">
+        // Freie Flaeche = Hauptzeile. Leuchtet beim Ziehen wie ein aktiver Kasten;
+        // ring statt Innenabstand, damit nichts verrutscht.
+        <div {...dnd.target({ kind: 'zone', at: 'main' })}
+          className={`flex flex-wrap items-center gap-1.5 rounded-lg ${dnd.isOver({ kind: 'zone', at: 'main' }) ? 'bg-accent-a8 ring-4 ring-accent-a8' : ''}`}>
           {conds.map((c, i) => <Fragment key={i}>{i > 0 && <Sep op="and" />}{c}</Fragment>)}
         </div>
       )}
+      {dnd.ghost}
 
       <CoplayRow query={query} data={data} dataQuery={dataQuery} options={options} assets={assets}
         onAdd={id => onApply([], { kind: 'units', f: { id } }, 'and')} />
@@ -358,17 +391,23 @@ function Sep({ op }: { op: Op }) {
 }
 
 function Chip({
-  label, excluded, open, onToggle, onRemove, removeLabel, children, wide = false,
+  label, excluded, open, onToggle, onRemove, removeLabel, children, wide = false, drag, drop, over = false,
 }: {
   label: React.ReactNode; excluded: boolean; open: boolean; onToggle: () => void; onRemove: () => void; removeLabel: string;
   children: React.ReactNode; wide?: boolean;
+  /** Ziehbar (Zeiger-Props aus useFilterDrag). */
+  drag?: { onPointerDown: (e: React.PointerEvent) => void };
+  /** Ablageziel; over = gerade gueltiges Ziel unter dem Zeiger. */
+  drop?: Record<string, string>;
+  over?: boolean;
 }) {
   const { t } = useI18n();
   return (
-    <div className="relative">
-      <div className={`flex items-center rounded-md border text-xs ${excluded ? 'border-pos-loss bg-surface-base' : 'border-accent-a40 bg-accent-a8'}`}>
-        <button type="button" onClick={onToggle} aria-expanded={open}
-          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 text-fg-primary ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
+    <div className="relative" {...drop}>
+      <div className={`flex items-center rounded-md border text-xs ${
+        over ? 'border-accent-a50 bg-accent-a20' : excluded ? 'border-pos-loss bg-surface-base' : 'border-accent-a40 bg-accent-a8'}`}>
+        <button type="button" onClick={onToggle} aria-expanded={open} {...drag}
+          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 text-fg-primary ${drag ? 'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
           {excluded && <span className="text-pos-loss no-underline">{t('tft.explorer.x.without')}</span>}
           {label}
         </button>
@@ -520,7 +559,8 @@ function UnitEditor({
       <SpanRow label={t('tft.explorer.itemsCount')} lo={u.n} hi={u.nx} min={0} values={[0, 1, 2, 3]} fmt={String}
         set={(n, nx) => set({ n, nx })} />
       <Row label={t('tft.explorer.x.withItem')}>
-        <ItemIconPicker chosen={u.it ?? []} max={3} options={options} assets={assets} onChange={it => set({ it })} />
+        <ItemIconPicker chosen={u.it ?? []} max={3} options={options} assets={assets} onChange={it => set({ it })}
+          fits={(id, carried) => itemFitsUnit(options, u.id, id, carried)} />
       </Row>
       {withoutItems.length > 0 && (
         <Row label={t('tft.explorer.x.withoutItem')}>
@@ -562,18 +602,29 @@ function UnitEditor({
   );
 }
 
-// Items an der Unit als Bilder waehlen (bis zu max), nach Art gruppiert.
+// Knoepfe je Item-Sorte (Plan 24.10.2026, W2), Reihenfolge wie vom User genannt.
+const PICK_KINDS: ItemBucket[] = ['standard', 'artifact', 'emblem', 'radiant'];
+
+// Items an der Unit als Bilder waehlen (bis zu max). Jede Sorte hat ihren
+// Knopf und zeigt nur ihre Liste; beim Tippen wird ueber alle Sorten gesucht.
+// fits: Spielregel je Item (Emblem doppelt / eigener Trait) — sonst gesperrt.
 function ItemIconPicker({
-  chosen, max, options, assets, onChange,
-}: { chosen: string[]; max: number; options: ExplorerOptions; assets: TftAssetsBundle | null; onChange: (it: string[]) => void }) {
+  chosen, max, options, assets, onChange, fits,
+}: {
+  chosen: string[]; max: number; options: ExplorerOptions; assets: TftAssetsBundle | null; onChange: (it: string[]) => void;
+  fits?: (id: string, carried: string[]) => boolean;
+}) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [kind, setKind] = useState<ItemBucket | null>(null);
   const [q, setQ] = useState('');
   const needle = normText(q);
   const groups = ITEM_GROUPS
+    .filter(g => needle || g.b === kind)
     .map(g => ({ ...g, list: options.items.filter(i => itemGroupOf(i) === g.b && (!needle || normText(i.name).includes(needle))) }))
     .filter(g => g.list.length);
   const full = chosen.length >= max;
+  const open = kind != null;
+  const pickKind = (b: ItemBucket) => { setKind(kind === b ? null : b); setQ(''); };
   return (
     <div className="w-full space-y-1.5">
       <div className="flex flex-wrap items-center gap-1">
@@ -585,9 +636,11 @@ function ItemIconPicker({
             <span className="text-fg-muted">{'×'}</span>
           </button>
         ))}
-        {!full && (
-          <button type="button" className={seg(open)} aria-expanded={open} onClick={() => setOpen(!open)}>+ {t('tft.explorer.items')}</button>
-        )}
+        {!full && PICK_KINDS.map(b => (
+          <button key={b} type="button" className={seg(kind === b)} aria-expanded={kind === b} onClick={() => pickKind(b)}>
+            + {t(b === 'standard' ? 'tft.explorer.items' : `tft.item.bucket.${b}` as TranslationKey)}
+          </button>
+        ))}
       </div>
       {open && !full && (
         <div className="rounded-md border border-border-subtle bg-surface-base p-2 space-y-2">
@@ -598,13 +651,16 @@ function ItemIconPicker({
               <div key={g.b}>
                 <div className="text-[10px] uppercase tracking-wide text-fg-faint mb-1">{t(g.label)}</div>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(2rem,1fr))] gap-1">
-                  {g.list.map(i => (
-                    <button key={i.id} type="button" title={i.name} aria-label={i.name}
-                      onClick={() => { onChange([...chosen, i.id]); if (chosen.length + 1 >= max) setOpen(false); }}
-                      className="rounded p-0.5 hover:bg-surface-overlay">
-                      <OptIcon src={i.img} alt={i.name} className="w-8 h-8" />
-                    </button>
-                  ))}
+                  {g.list.map(i => {
+                    const ok = !fits || fits(i.id, chosen);
+                    return (
+                      <button key={i.id} type="button" title={i.name} aria-label={i.name} disabled={!ok}
+                        onClick={() => { onChange([...chosen, i.id]); if (chosen.length + 1 >= max) setKind(null); }}
+                        className={`rounded p-0.5 ${ok ? 'hover:bg-surface-overlay' : 'opacity-40 cursor-not-allowed'}`}>
+                        <OptIcon src={i.img} alt={i.name} className="w-8 h-8" />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}

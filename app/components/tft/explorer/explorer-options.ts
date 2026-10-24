@@ -7,7 +7,7 @@ import { itemBucketOf, type ItemBucket } from '../../../lib/tft-item-bucket';
 // Auswahllisten und Anzeigenamen des Data Explorers, aus dem Asset-Bundle
 // abgeleitet (dieselben Regeln wie die Unit-/Item-/Trait-Seiten).
 
-export interface UnitOption { id: string; name: string; cost: number; img: string | null }
+export interface UnitOption { id: string; name: string; cost: number; img: string | null; traits: string[] }
 export interface ItemOption { id: string; name: string; bucket: ItemBucket; img: string | null }
 export interface TraitOption { id: string; name: string; img: string | null; mins: number[] }
 
@@ -26,14 +26,14 @@ const BUCKET_ORDER: ItemBucket[] = ['standard', 'emblem', 'artifact', 'radiant',
 
 export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOptions {
   const units: UnitOption[] = tftPlayableChampions(assets).map(({ id, champion }) => ({
-    id, name: champion.name, cost: champion.cost, img: tftChampionTileUrl(assets, champion),
+    id, name: champion.name, cost: champion.cost, img: tftChampionTileUrl(assets, champion), traits: champion.traits ?? [],
   }));
 
   const items: ItemOption[] = [];
   if (assets) {
     const active = new Set(assets.active?.items || []);
     for (const [id, meta] of Object.entries(assets.items)) {
-      if (!active.has(id) || !meta?.name || JUNK_NAME.test(meta.name)) continue;
+      if (!active.has(id) || !meta?.name || JUNK_NAME.test(meta.name) || notWearable(meta)) continue;
       const bucket = itemBucketOf(id, assets);
       // Komponenten (keine Rezeptur) sind kein fertiges Item.
       if (bucket === 'other' && !(meta.composition?.length)) continue;
@@ -62,6 +62,26 @@ export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOp
     itemById: new Map(items.map(i => [i.id, i])),
     traitById: new Map(traits.map(t => [t.id, t])),
   };
+}
+
+// Kein Item, das eine Unit im Set traegt (Plan 24.10.2026): Verbrauchsgegenstaende
+// (Lucky Item Chest stand sonst unter Radiant, der Dienst zaehlt sie dort nicht)
+// und Support-Items alter Sets (Zz'Rot Portal, auf keinem Set-18-Brett).
+// Beides aus dem Bundle, nicht aus Kennungs-Mustern.
+const notWearable = (meta: { tags?: string[]; desc?: string }) =>
+  (meta.tags ?? []).includes('Consumable') || /\[Support item\]/i.test(meta.desc ?? '');
+
+/**
+ * Kann die Unit das Item zusaetzlich tragen? Nur sichere Spielregeln: ein
+ * Emblem nicht zweimal und nicht das Emblem eines eigenen Traits (gemessen
+ * 24.10.2026: beides 0 Bretter). Emblem und Trait ueber den Namen verbunden,
+ * die Kennungen passen bei 3 von 20 nicht.
+ */
+export function itemFitsUnit(o: ExplorerOptions, unitId: string, itemId: string, carried: readonly string[]): boolean {
+  const it = o.itemById.get(itemId);
+  if (it?.bucket !== 'emblem') return true;
+  if (carried.includes(itemId)) return false;
+  return !(o.unitById.get(unitId)?.traits ?? []).includes(it.name.replace(/ Emblem$/, ''));
 }
 
 // Doppelte Namen in der Auswahl (gemessen 19.10.2026: 38 von 169): Strahlende

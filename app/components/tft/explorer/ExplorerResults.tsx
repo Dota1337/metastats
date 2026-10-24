@@ -5,7 +5,7 @@ import { costColor } from '../../../lib/tft-ui';
 import type { TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { regionShortLabel } from '../StatsFilterBar';
 import {
-  EXPLORER_LIMITS, EXPLORER_RANKS, EXPLORER_TABS, filterCount, isWeakRow, roundLabel, showTop1, showTop4,
+  EXPLORER_LIMITS, EXPLORER_RANKS, EXPLORER_TABS, filterCount, focusApplies, isWeakRow, roundLabel, showTop1, showTop4,
   type ExplorerQuery, type ExplorerRank, type ExplorerResponse, type ExplorerRow, type ExplorerTab,
 } from '../../../lib/tft-explorer-query';
 import {
@@ -151,11 +151,9 @@ export default function ExplorerResults({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, rowsFit, stars.join(), minGames, sort, tab, options, assets, lang, t4, t1]);
 
-  // Builds brauchen einen Traeger: ohne Auswahl die erste Unit aus den Filtern.
-  const setTab = (next: ExplorerTab) => setQuery({
-    ...query, tab: next,
-    focus: next === 'builds' && !query.focus ? (query.units.find(u => !u.x)?.id ?? null) : query.focus,
-  });
+  // Ohne Traeger nimmt der Wechsel auf Items/Builds die erste Unit der
+  // Hauptliste (followFocus in setQuery).
+  const setTab = (next: ExplorerTab) => setQuery({ ...query, tab: next });
 
   // Kopf der ersten Spalte = worum es im Reiter geht (Item-Paare/-Trios mit Traeger).
   const keyHeader: TranslationKey = tab === 'items' && query.focus && query.combo > 1
@@ -300,7 +298,7 @@ export default function ExplorerResults({
             {'←'} {t('tft.explorer.x.tab.units')}
           </button>
         )}
-        {(tab === 'items' || tab === 'builds') && (
+        {focusApplies(tab) && (
           <label className="flex items-center gap-2">
             <span className="text-xs text-fg-muted">{t('tft.explorer.x.focus')}</span>
             <select value={query.focus ?? ''} onChange={e => setQuery({ ...query, focus: e.target.value || null, combo: 1 })}

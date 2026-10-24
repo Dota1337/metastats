@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1,
+  parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1, followFocus, focusApplies,
   BOARD_COUNT_KEYS, BOARD_COUNT_MAX, BOARD_TAGS, EXPLORER_TABS,
   EXPLORER_RANK_STAGES, stageRanks, rankStageOf, legacyBucketToRanks,
 } from './tft-explorer-query.ts';
@@ -152,4 +152,70 @@ test('Rang-Stufen: Hin und zurueck, Adresse, alte Links', () => {
   assert.equal(rankStageOf(parse('bucket=master_plus').ranks), 'master_plus');
   assert.equal(rankStageOf(parse('bucket=platinum_plus').ranks), 'emerald_plus');
   assert.equal(rankStageOf(parse('bucket=gold').ranks), 'all');
+});
+
+test('Traeger: Seiten-Adresse auf jedem Reiter, API-Form nur bei Items/Builds (sonst 308 je Anfrage)', () => {
+  for (const tab of EXPLORER_TABS) {
+    const q = { ...parse('u=DA_A'), tab, focus: 'DA_A' };
+    const page = new URLSearchParams(serializeExplorerQuery(q));
+    assert.equal(page.get('f'), 'DA_A', tab);
+    assert.equal(parse(page.toString()).focus, 'DA_A', `${tab} Rundweg`);
+    const api = serializeExplorerQuery(q, { forApi: true });
+    const want = focusApplies(tab);
+    assert.equal(new URLSearchParams(api).get('f'), want ? 'DA_A' : null, `${tab} API`);
+    if (!want) {
+      assert.equal(api, serializeExplorerQuery({ ...q, focus: null }, { forApi: true }), `${tab} Cache-Schluessel`);
+      assert.equal(toServiceBody(q).focus, null, `${tab} Dienst`);
+    }
+  }
+  // c bleibt an Items + Traeger gebunden.
+  assert.equal(new URLSearchParams(serializeExplorerQuery({ ...parse('u=DA_A'), focus: 'DA_A', combo: 2 })).get('c'), null);
+});
+
+test('followFocus: die gesuchte Unit wird Traeger und bleibt es', () => {
+  const add = (q, id) => ({ ...q, units: [...q.units, { id }] });
+  const empty = parse('');
+  const a = followFocus(empty, add(empty, 'DA_Ahri'));
+  assert.equal(a.focus, 'DA_Ahri', 'R1 erste gesuchte');
+  const b = followFocus(a, add(a, 'DA_Amumu'));
+  assert.equal(b.focus, 'DA_Ahri', 'R2 bleibt, auch wenn alphabetisch spaeter');
+  const c = followFocus(b, { ...b, units: b.units.filter(u => u.id !== 'DA_Ahri') });
+  assert.equal(c.focus, 'DA_Amumu', 'R3 naechste Unit rueckt nach');
+  const d = followFocus(c, { ...c, units: [] });
+  assert.equal(d.focus, null, 'R3 keine Unit mehr');
+  // Explizit gesetzt (Auswahlfeld, Zuruecksetzen) gewinnt.
+  assert.equal(followFocus(b, { ...b, focus: null }).focus, null);
+  assert.equal(followFocus(b, { ...b, focus: 'DA_X' }).focus, 'DA_X');
+  // „—" gewaehlt: Reiterwechsel nach Items laesst es stehen, die naechste gesuchte Unit nicht.
+  const none = { ...b, focus: null };
+  assert.equal(followFocus(none, { ...none, tab: 'items' }, { cleared: true }).focus, null);
+  assert.equal(followFocus(none, { ...none, tab: 'builds' }, { cleared: true }).focus, 'DA_Ahri', 'Builds brauchen einen');
+  assert.equal(followFocus(none, add(none, 'DA_Lux'), { cleared: true }).focus, 'DA_Lux');
+});
+
+test('followFocus: alte Links, Kaesten, ohne-Units, Synergien', () => {
+  // Alter Link / Unit-Seite: Unit ohne Traeger; Reiterwechsel oder neue Unit → die schon stehende.
+  const old = parse('u=DA_Zed');
+  assert.equal(followFocus(old, { ...old, tab: 'items' }).focus, 'DA_Zed');
+  assert.equal(followFocus(old, { ...old, tab: 'traits' }).focus, null, 'nur Items/Builds');
+  assert.equal(followFocus(old, { ...old, units: [...old.units, { id: 'DA_Ahri' }] }).focus, 'DA_Zed');
+  // In einen oder-Kasten verschoben (applyPick „oder", Ziehen): Traeger bleibt.
+  const q = { ...parse('u=DA_Ahri'), focus: 'DA_Ahri' };
+  const boxed = { ...q, units: [], groups: [{ m: 'any', units: [{ id: 'DA_Ahri' }, { id: 'DA_Jinx' }], items: [], traits: [] }] };
+  assert.equal(followFocus(q, boxed).focus, 'DA_Ahri');
+  // Kasten-Units, ohne-Units, Items, Synergien setzen keinen Traeger.
+  const e = parse('');
+  assert.equal(followFocus(e, { ...e, groups: boxed.groups }).focus, null);
+  assert.equal(followFocus(e, { ...e, units: [{ id: 'DA_A', x: true }] }).focus, null);
+  assert.equal(followFocus(e, { ...e, items: [{ id: 'DA_I' }], traits: [{ id: 'DA_T' }] }).focus, null);
+  // Traeger ausserhalb aller Bausteine (Auswahlfeld) bleibt stehen.
+  const outside = { ...parse('u=DA_A'), focus: 'DA_X' };
+  assert.equal(followFocus(outside, { ...outside, units: [{ id: 'DA_A' }, { id: 'DA_B' }] }).focus, 'DA_X');
+  assert.equal(followFocus(outside, { ...outside, units: [] }).focus, 'DA_X');
+  // Traeger-Wechsel durch Entfernen setzt die Kombi-Groesse zurueck.
+  const combo = { ...parse('u=DA_A,DA_B&tab=items&f=DA_A&c=2') };
+  assert.equal(combo.combo, 2);
+  const r = followFocus(combo, { ...combo, units: [{ id: 'DA_B' }] });
+  assert.equal(r.focus, 'DA_B');
+  assert.equal(r.combo, 1);
 });

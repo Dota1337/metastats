@@ -105,7 +105,45 @@ export const EMPTY_QUERY: ExplorerQuery = {
 type Params = { get(name: string): string | null };
 
 const list = (v: string | null) => (v ? v.split(',').map(s => s.trim()).filter(Boolean) : []);
-const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
+export const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
+
+/** Wirkt der Traeger in diesem Reiter? Nur dann geht er an den Dienst. */
+export const focusApplies = (tab: ExplorerTab) => tab === 'items' || tab === 'builds';
+
+// Traeger folgt der Suche (Plan 24.10.2026, W1). Units der Hauptliste ohne
+// „ohne"; Reihenfolge = Einfuege-Reihenfolge des Aufrufers.
+const mainUnitIds = (q: ExplorerQuery) => q.units.filter(u => !u.x).map(u => u.id);
+const allUnitIds = (q: ExplorerQuery) => new Set([
+  ...mainUnitIds(q), ...q.groups.filter(g => g.m === 'any').flatMap(g => g.units.map(u => u.id)),
+]);
+
+/**
+ * Traeger nach einer Aenderung von prev zu next. `cleared`: der Besucher hat
+ * „—" gewaehlt (Seitenzustand, ueberlebt kein Neuladen).
+ * - focus selbst geaendert (Auswahlfeld, Zuruecksetzen, Zeilen-Knopf) → bleibt so;
+ * - kein Traeger und eine Unit kommt neu in die Hauptliste → die Unit, die
+ *   schon ohne Traeger dort stand (alter Link, Unit-Seite), sonst die erste
+ *   neue (Einfuege-Reihenfolge = zuerst gesucht); nach „—" immer die neue;
+ * - Wechsel auf Items ohne Traeger und ohne „—", auf Builds immer (Builds
+ *   brauchen einen) → erste Unit der Hauptliste;
+ * - die Traeger-Unit stand in einem Baustein und ist aus allen verschwunden →
+ *   erste uebrige Unit der Hauptliste, sonst keiner. In einen oder-Kasten
+ *   verschoben zaehlt nicht als verschwunden.
+ * Ein Traeger ausserhalb aller Bausteine (im Auswahlfeld gewaehlt) bleibt stehen.
+ */
+export function followFocus(prev: ExplorerQuery, next: ExplorerQuery, { cleared = false } = {}): ExplorerQuery {
+  if (next.focus !== prev.focus) return next;
+  const main = mainUnitIds(next);
+  if (!next.focus) {
+    const before = mainUnitIds(prev);
+    const added = main.find(id => !before.includes(id));
+    if (added) return { ...next, focus: (!cleared && before.find(id => main.includes(id))) || added };
+    const toTab = next.tab !== prev.tab && (next.tab === 'builds' || (next.tab === 'items' && !cleared));
+    return toTab && main.length ? { ...next, focus: main[0] } : next;
+  }
+  if (!allUnitIds(prev).has(next.focus) || allUnitIds(next).has(next.focus)) return next;
+  return { ...next, focus: main[0] ?? null, combo: 1 };
+}
 
 /** Anzahl aller Bedingungen (Units, Items, Traits, Kasten-Glieder). */
 export const filterCount = (q: Pick<ExplorerQuery, 'units' | 'items' | 'traits' | 'groups'>) =>
@@ -452,11 +490,11 @@ export function serializeExplorerQuery(q: ExplorerQuery, { forApi = false } = {}
   if (forApi || q.tab !== 'units') sp.set('tab', q.tab);
   // Traeger wirkt nur im Item- und Builds-Reiter, Kombi-Groesse nur bei Items,
   // Aufteilung nur bei Units/Traits — sonst weglassen, damit sie den Cache
-  // nicht zersplittern.
-  if ((q.tab === 'items' || q.tab === 'builds') && q.focus) {
-    sp.set('f', q.focus);
-    if (q.tab === 'items' && q.combo !== 1) sp.set('c', String(q.combo));
-  }
+  // nicht zersplittern. Die Seiten-Adresse behaelt den Traeger auf jedem
+  // Reiter (die Suche setzt ihn auch im Units-Reiter, W1); die Route leitet
+  // eine API-Adresse mit f auf anderen Reitern per 308 um.
+  if (q.focus && (!forApi || focusApplies(q.tab))) sp.set('f', q.focus);
+  if (q.tab === 'items' && q.focus && q.combo !== 1) sp.set('c', String(q.combo));
   if (q.tab === 'units' && q.stars.length) {
     if (forApi) sp.set('split', 'star');
     else sp.set('st', [...q.stars].sort().join(','));
@@ -493,7 +531,7 @@ export function toServiceBody(q: ExplorerQuery) {
     bc: canonBoardCounts(q.bc ?? []).map(e => ({ k: e.k, n: e.n ?? null, nx: e.nx ?? null })),
     tags: canonTags(q.tags ?? []),
     tab: q.tab,
-    focus: q.tab === 'items' || q.tab === 'builds' ? q.focus : null,
+    focus: focusApplies(q.tab) ? q.focus : null,
     split: q.tab === 'units' && q.stars.length ? 'star' : q.tab === 'traits' && q.split === 'over' ? 'over' : null,
     combo: q.tab === 'items' && q.focus ? q.combo : 1,
   };

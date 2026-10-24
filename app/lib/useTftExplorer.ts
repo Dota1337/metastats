@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  parseExplorerParams, serializeExplorerQuery,
+  followFocus, parseExplorerParams, serializeExplorerQuery,
   type ExplorerQuery, type ExplorerResponse,
 } from './tft-explorer-query';
 
@@ -28,9 +28,15 @@ export function useTftExplorer() {
   // now: die naechste Anfrage ohne Verzoegerung schicken (Klick auf einen
   // Suchtreffer oder Vorschlag — ein einzelner Klick, kein Durchklicken).
   const nowRef = useRef(false);
+  // Hat der Besucher im Auswahlfeld „—" gewaehlt? Dann setzt erst die naechste
+  // gesuchte Unit wieder einen Traeger (followFocus), kein Reiterwechsel.
+  const focusCleared = useRef(false);
 
   const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { push?: boolean; now?: boolean }) => {
-    const q = typeof next === 'function' ? next(query) : next;
+    const raw = typeof next === 'function' ? next(query) : next;
+    if (raw.focus === null && query.focus !== null) focusCleared.current = true;
+    const q = followFocus(query, raw, { cleared: focusCleared.current });
+    if (q.focus) focusCleared.current = false;
     // Nur wenn sich die Anfrage aendert — sonst bliebe der Merker fuer einen spaeteren Klick stehen.
     if (opts?.now && serializeExplorerQuery(q, { forApi: true }) !== serializeExplorerQuery(query, { forApi: true })) nowRef.current = true;
     const qs = serializeExplorerQuery(q);
@@ -41,7 +47,8 @@ export function useTftExplorer() {
 
   const backToUnits = useCallback(() => {
     if (pushed.current) { pushed.current = false; router.back(); return; }
-    setQuery({ ...query, tab: 'units', focus: null, combo: 1 });
+    // Traeger bleibt: die Seiten-Adresse fuehrt ihn auch im Units-Reiter.
+    setQuery({ ...query, tab: 'units', combo: 1 });
   }, [query, router, setQuery]);
 
   const apiQs = serializeExplorerQuery(query, { forApi: true });

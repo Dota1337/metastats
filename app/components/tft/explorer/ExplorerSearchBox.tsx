@@ -73,19 +73,24 @@ export default function ExplorerSearchBox({
   const skipOpen = useRef(false);
   const listId = useId();
 
+  // Der Fokus oeffnet das Fenster (onFocus), auch fuer „+" in einem Kasten —
+  // blur vorher, damit onFocus auch bei schon fokussiertem Feld kommt (Safari).
   useEffect(() => {
     if (!focusKey) return;
+    inputRef.current?.blur();
     inputRef.current?.focus();
-    setOpen(true);
   }, [focusKey]);
+  // Schliessen setzt zurueck: jedes neue Oeffnen beginnt bei den Units.
+  const close = () => { setOpen(false); setTab('units'); setAct(null); };
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current?.contains(e.target as Node)) return;
+      setOpen(false); setTab('units'); setAct(null);
+    };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
-  // Jedes neue Oeffnen beginnt bei den Units (zurueckgesetzt, solange zu).
-  useEffect(() => { if (!open) { setTab('units'); setAct(null); } }, [open]);
 
   const terms = useMemo(() => splitPhrase(text, lang), [text, lang]);
   const phrase = isPhrase(terms);
@@ -146,7 +151,7 @@ export default function ExplorerSearchBox({
     setMissed(miss);
     setText('');
     setHi(null);
-    setOpen(false);
+    close();
     skipOpen.current = true;
     inputRef.current?.focus();
     skipOpen.current = false;
@@ -163,7 +168,7 @@ export default function ExplorerSearchBox({
   const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     const el = e.target as HTMLElement;
     const inInput = el === inputRef.current;
-    if (e.key === 'Escape') { if (open) { e.preventDefault(); setOpen(false); } return; }
+    if (e.key === 'Escape') { if (open) { e.preventDefault(); close(); } return; }
     if (browse) {
       const dir = KEY_DIR[e.key];
       if (dir && el.getAttribute('role') === 'tab' && (dir === 'left' || dir === 'right')) {
@@ -232,7 +237,7 @@ export default function ExplorerSearchBox({
         />
         <button type="button" aria-label={t('tft.explorer.x.browse')} title={t('tft.explorer.x.browse')} aria-expanded={showBrowse}
           onMouseDown={e => e.preventDefault()}
-          onClick={() => { if (showBrowse) setOpen(false); else { setText(''); setOpen(true); onFocus?.(); } }}
+          onClick={() => { if (showBrowse) close(); else { setText(''); setOpen(true); onFocus?.(); } }}
           className="w-7 h-7 flex items-center justify-center shrink-0 rounded text-fg-muted hover:text-fg-primary">
           <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-4 h-4 transition-transform ${showBrowse ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />

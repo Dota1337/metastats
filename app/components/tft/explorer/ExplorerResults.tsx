@@ -213,7 +213,7 @@ export default function ExplorerResults({
     return (
       <th className={`px-2 py-2 font-medium text-right whitespace-nowrap ${cls}`}>
         <button type="button" onClick={() => setSort({ key, dir: active && sort!.dir === -1 ? 1 : active ? -1 : key === 'avg' || key === 'delta' ? 1 : -1 })}
-          className={`hover:text-fg-primary ${active ? 'text-fg-bright' : ''} ${sub ? 'inline-flex flex-col items-end leading-tight' : ''}`}>
+          className={`hover:text-fg-primary ${active ? 'text-fg-primary' : ''} ${sub ? 'inline-flex flex-col items-end leading-tight' : ''}`}>
           {sub ? <><span>{label}</span><span className="text-[11px]">{sub}{arrow}</span></> : `${label}${arrow}`}
         </button>
       </th>
@@ -224,7 +224,7 @@ export default function ExplorerResults({
     const label = labelOf(r);
     // Stufen-Zeile unter der Gesamt-Zeile: nur die Sterne, eingerueckt.
     if (grouped && r.sub != null) {
-      return <span className="pl-10 text-fg-secondary">{`${r.sub}★`}</span>;
+      return <span className="pl-10 text-fg-primary">{`${r.sub}★`}</span>;
     }
     let icons: React.ReactNode = null;
     if (tab === 'units') {
@@ -332,10 +332,11 @@ export default function ExplorerResults({
         <ExplorerGames games={rowsFit ? (data?.games ?? []) : null} options={options} assets={assets} />
       ) : <div className="overflow-x-auto">
         <table className="w-full text-xs sm:text-sm tabular-nums">
-          <thead className="text-fg-muted">
+          <thead className="text-fg-secondary">
             <tr className="border-b border-border-subtle">
               <th className="px-3 py-2 font-medium text-left">
-                <button type="button" onClick={() => setSort({ key: 'key', dir: sort?.key === 'key' && sort.dir === 1 ? -1 : 1 })} className="hover:text-fg-primary">
+                <button type="button" onClick={() => setSort({ key: 'key', dir: sort?.key === 'key' && sort.dir === 1 ? -1 : 1 })}
+                  className={`hover:text-fg-primary ${sort?.key === 'key' ? 'text-fg-primary' : ''}`}>
                   {t(keyHeader)}{sort?.key === 'key' ? (sort.dir === 1 ? ' ▲' : ' ▼') : ''}
                 </button>
               </th>
@@ -367,23 +368,23 @@ export default function ExplorerResults({
                   className={`border-b border-border-subtle last:border-0 ${act ? 'cursor-pointer hover:bg-surface-raised' : ''} ${weak ? 'opacity-50' : ''} ${head ? 'bg-surface-raised' : ''}`}>
                   <td className="px-3 py-1.5 max-w-[14rem] sm:max-w-none">{nameCell(r)}</td>
                   {showDelta && (
-                    <td className={`px-2 py-1.5 text-right ${deltaClass(d, dh)}`}>
+                    <td className={`px-2 py-1.5 text-right ${deltaClass(d, dh, 'text-fg-secondary')}`}>
                       {fmtDelta(d)}
-                      {dh != null && <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
+                      {dh != null && <span className="text-fg-muted text-xs ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
                     </td>
                   )}
-                  <td className="px-2 py-1.5 text-right text-fg-bright">
+                  <td className="px-2 py-1.5 text-right text-fg-primary">
                     {fmtAvg(r.avg)}
-                    <span className="text-fg-faint text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
+                    <span className="text-fg-muted text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
                   </td>
-                  {t1 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{fmtPct(r.top1)}</td>}
-                  {t4 && <td className="px-2 py-1.5 text-right text-fg-secondary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
+                  {t1 && <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{fmtPct(r.top1)}</td>}
+                  {t4 && <td className="px-2 py-1.5 text-right text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
                   <td className="px-2 py-1.5 text-right whitespace-nowrap">
                     <div className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</div>
-                    <div className="text-fg-muted text-[11px] leading-none">{num(r.games)}</div>
+                    <div className="text-fg-secondary text-[11px] leading-none">{num(r.games)}</div>
                   </td>
                   {showStar3 && (
-                    <td className="px-2 py-1.5 text-right text-fg-secondary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
+                    <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
                   )}
                   {tab === 'units' && (grouped && !head ? <td /> :
                     <td className="px-2 py-1.5 text-right">

@@ -4,10 +4,10 @@ import { showTop1, showTop4, type ExplorerResponse } from '../../../lib/tft-expl
 import { fmtAvg, fmtDelta, fmtPct } from './explorer-options';
 
 // Farbe einer Abweichung beim Platz: kleiner = besser. Schliesst der
-// Vertrauensbereich die Null ein, bleibt sie neutral.
-export function deltaClass(d: number | null, half: number | null): string {
-  if (d == null) return 'text-fg-muted';
-  if (half != null && Math.abs(d) <= half) return 'text-fg-muted';
+// Vertrauensbereich die Null ein, bleibt sie neutral (Tabelle: heller).
+export function deltaClass(d: number | null, half: number | null, neutral = 'text-fg-muted'): string {
+  if (d == null) return neutral;
+  if (half != null && Math.abs(d) <= half) return neutral;
   return d < 0 ? 'text-pos-win' : 'text-pos-loss';
 }
 

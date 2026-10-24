@@ -6,7 +6,7 @@ import { useTftExplorer } from '../../../lib/useTftExplorer';
 import { hasBoardFilters } from '../../../lib/tft-explorer-query';
 import { buildExplorerOptions } from './explorer-options';
 import ExplorerFilters from './ExplorerFilters';
-import ExplorerSummary from './ExplorerSummary';
+import ExplorerSummary, { ExplorerSummarySkeleton } from './ExplorerSummary';
 import ExplorerResults from './ExplorerResults';
 
 export default function ExplorerView() {
@@ -20,7 +20,9 @@ export default function ExplorerView() {
   const options = useMemo(() => buildExplorerOptions(assets), [assets]);
   const { query, setQuery, backToUnits, data, dataQuery, loading, stale, error, reload } = useTftExplorer();
 
-  const hasFilters = hasBoardFilters(query);
+  // Aus den geladenen Daten: sonst taucht die Δ-Zelle beim ersten Filter ueber
+  // den alten Zahlen auf und die Zahlenreihe springt.
+  const hasFilters = hasBoardFilters(dataQuery ?? query);
   const builtAt = data?.meta?.builtAt ? new Date(data.meta.builtAt) : null;
 
   return (
@@ -49,7 +51,7 @@ export default function ExplorerView() {
         </div>
       ) : !data ? (
         <div className="flex flex-col gap-4" aria-busy="true">
-          <div className="h-32 lg:h-[10.5rem] rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
+          <ExplorerSummarySkeleton hasFilters={hasFilters} place={query.place} />
           <div className="h-96 rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
         </div>
       ) : (

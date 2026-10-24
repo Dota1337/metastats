@@ -104,10 +104,11 @@
       "titel": "Zwei Migrationsnummern gibt es doppelt, und der Einspieler nimmt stillschweigend die erste",
       "ort": "supabase/migrations/0043_* und 0070_* (Einspieler scripts/apply-migrations.mjs)",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "ls supabase/migrations | sed s/_.*// | uniq -d -> 0043, 0070 (0043_tft_comp_daily_trend_family.sql / 0043_tft_item_stats_list_top1.sql, 0070_tft_comp_list_precomputed.sql / 0070_tft_region_divergence_anchor.sql). scripts/apply-migrations.mjs:53-54: gewarnt wird nur bei files.length === 0, genommen wird files[0]. \"apply-migrations.mjs 0043\" spielt also immer 0043_tft_comp_daily_trend_family.sql ein, und dessen Zeile 46-47 gibt anon das Aufrufrecht auf get_tft_comp_daily_trend(text,text[],text[],int,text[],int) zurueck, das 0055:89 entzogen hat. Bei 0070 heute ohne Sicherheitswirkung: 0070_tft_region_divergence_anchor.sql:111 entzieht nur, was 0055:111 schon entzogen hatte, und 0095:944 hat diese Signatur geloescht.",
+      "status": "behoben",
+      "belegt_mit": "scripts/apply-migrations.mjs loest alle Argumente vor dem Verbinden auf; eine Nummer, die auf mehrere Dateien passt, bricht ab, ganzer Dateiname ist erlaubt. Gemessen 24.10.2026: 'node scripts/apply-migrations.mjs 0070' -> FAIL: passt auf 2 Dateien, Exit 1; '9999' -> keine Migration passt, Exit 1.",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "ls supabase/migrations | sed s/_.*// | uniq -d -> 0043, 0070 (0043_tft_comp_daily_trend_family.sql / 0043_tft_item_stats_list_top1.sql, 0070_tft_comp_list_precomputed.sql / 0070_tft_region_divergence_anchor.sql). scripts/apply-migrations.mjs:53-54: gewarnt wird nur bei files.length === 0, genommen wird files[0]. \"apply-migrations.mjs 0043\" spielt also immer 0043_tft_comp_daily_trend_family.sql ein, und dessen Zeile 46-47 gibt anon das Aufrufrecht auf get_tft_comp_daily_trend(text,text[],text[],int,text[],int) zurueck, das 0055:89 entzogen hat. Bei 0070 heute ohne Sicherheitswirkung: 0070_tft_region_divergence_anchor.sql:111 entzieht nur, was 0055:111 schon entzogen hatte, und 0095:944 hat diese Signatur geloescht."
     },
     {
       "id": "env-doppelt-geladen:metastats-marketvalue-watchdog",
@@ -354,10 +355,11 @@
       "titel": "Der taegliche Sicherheitscheck zaehlt wiederaufgelebte Aufrufrechte nur, statt Alarm zu schlagen",
       "ort": "supabase/migrations/0079_rls_lockdown.sql (security_anon_leaks, urspruenglich 0056_security_anon_leaks_rpc.sql)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "0079_rls_lockdown.sql:109 (ersetzt 0056:92 per create or replace) stuft jede Funktion ohne SECURITY DEFINER als nur-grant ein, auch wenn anon EXECUTE hat. scripts/lib/contracts.mjs:273 filtert auf severity === offen, :275 zaehlt nur-grant, :325 nennt die Zahl nur im Erfolgstext. infra/contracts.json:582 prueft live nur tft_position_unit_cell_data. scripts/check-migration-rls.mjs prueft nur Tabellen (Lauf: 46 Tabellen ok). Konkreter Fall heute: get_tft_set_bucket_coverage (0062:29-30).",
+      "status": "behoben",
+      "belegt_mit": "scripts/lib/contracts.mjs checkAnonLockout: jede Zeile aus security_anon_leaks ausserhalb allowedOpen ist ein Bruch, auch 'nur-grant'; Live-Aufrufprobe fuer get_tft_set_bucket_coverage in infra/contracts.json. Gegenprobe 24.10.2026 vor 0104: 'node scripts/check-contracts.mjs --id sicherheit/anon-lockout' -> verletzt, 54 Rechte (u. a. get_tft_set_bucket_coverage→anon). Migration 0104 erweitert security_anon_leaks um Sequenzen und REFERENCES/TRIGGER/MAINTAIN (wirksam nach dem Einspielen).",
       "seit": "2026-09-19",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "0079_rls_lockdown.sql:109 (ersetzt 0056:92 per create or replace) stuft jede Funktion ohne SECURITY DEFINER als nur-grant ein, auch wenn anon EXECUTE hat. scripts/lib/contracts.mjs:273 filtert auf severity === offen, :275 zaehlt nur-grant, :325 nennt die Zahl nur im Erfolgstext. infra/contracts.json:582 prueft live nur tft_position_unit_cell_data. scripts/check-migration-rls.mjs prueft nur Tabellen (Lauf: 46 Tabellen ok). Konkreter Fall heute: get_tft_set_bucket_coverage (0062:29-30)."
     },
     {
       "id": "origin-aus-aufrufer:app/lib/pro-players",
@@ -671,10 +673,11 @@
       "titel": "Das Komplett-Einspielskript legt zehn von 0055 geloeschte Regeln jeder-darf-lesen wieder an und bricht dann ab",
       "ort": "scripts/apply-supabase-migrations.mjs (trifft supabase/migrations/0001, 0004, 0005, 0006)",
       "schwere": "hinweis",
-      "status": "offen",
-      "belegt_mit": "scripts/apply-supabase-migrations.mjs:46-48 nimmt alle .sql-Dateien, :66-69 zerlegt an Semikolon + Zeilenende und verwirft jedes Stueck, das mit einem Kommentar beginnt, :76-79 duldet nur policy ... already exists. Mit node dieselbe Zerlegung nachgestellt: aus 0001-0005 laufen create policy \"anon read\" ... using (true) fuer 10 Tabellen (0001:157-162, 0004:57-58, 0005:39-40), die 0055:35-48 geloescht hat, darunter tft_player_match_cache; danach bricht 0006 an create table tft_player_rank_history ohne if not exists ab. 0074:36-37 rechnet ausdruecklich damit, dass das Skript laeuft; Aufrufer im Repo nur in Kommentaren (0074:36, scripts/db-exec.mjs:4, scripts/freeze-marketvalue-peaks.mjs:198). Nicht ausgefuehrt.",
+      "status": "behoben",
+      "belegt_mit": "scripts/apply-supabase-migrations.mjs geloescht (24.10.2026): keine Aufrufer (Grep: nur Kommentare in db-exec.mjs und freeze-marketvalue-peaks.mjs, beide angepasst), zerlegte $$-Koerper und schrieb jede Anweisung einzeln fest. Einzelne Migrationen: scripts/apply-migrations.mjs, Notfall-Sperre: scripts/anon-lockout.mjs.",
       "seit": "2026-10-24",
-      "zuletzt_gesehen": "2026-10-24"
+      "zuletzt_gesehen": "2026-10-24",
+      "befund_beleg": "scripts/apply-supabase-migrations.mjs:46-48 nimmt alle .sql-Dateien, :66-69 zerlegt an Semikolon + Zeilenende und verwirft jedes Stueck, das mit einem Kommentar beginnt, :76-79 duldet nur policy ... already exists. Mit node dieselbe Zerlegung nachgestellt: aus 0001-0005 laufen create policy \"anon read\" ... using (true) fuer 10 Tabellen (0001:157-162, 0004:57-58, 0005:39-40), die 0055:35-48 geloescht hat, darunter tft_player_match_cache; danach bricht 0006 an create table tft_player_rank_history ohne if not exists ab. 0074:36-37 rechnet ausdruecklich damit, dass das Skript laeuft; Aufrufer im Repo nur in Kommentaren (0074:36, scripts/db-exec.mjs:4, scripts/freeze-marketvalue-peaks.mjs:198). Nicht ausgefuehrt."
     },
     {
       "id": "wirkungslose-drossel:app/api/tft/comps/share",

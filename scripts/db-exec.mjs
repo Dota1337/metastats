@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Runs a single .sql file against DATABASE_URL (Supabase Postgres),
-// statement-by-statement, printing any rows returned. Unlike
-// apply-supabase-migrations.mjs this does NOT re-run every migration — it
+// statement-by-statement, printing any rows returned. Unlike the former
+// apply-supabase-migrations.mjs (removed 24.10.2026: it replayed every
+// migration and restored old read rules) this does NOT re-run every migration — it
 // executes exactly the file you pass, so it's safe for one-off DDL / perf
 // migrations / diagnostics.
 //

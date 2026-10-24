@@ -569,7 +569,7 @@
     },
     {
       "id": "sicherheit/anon-lockout",
-      "owner": "supabase/migrations/0055_revoke_anon_read.sql",
+      "owner": "supabase/migrations/0104_revoke_anon_writes.sql",
       "type": "anon-lockout",
       "rpc": "security_anon_leaks",
       "allowedOpen": ["table:matches:authenticated"],
@@ -579,8 +579,11 @@
         { "table": "tft_position_unit_cell", "column": "unit" },
         { "table": "lol_champion_build_stats", "column": "champion" }
       ],
-      "rpcProbes": [{ "fn": "tft_position_unit_cell_data", "args": {} }],
-      "note": "Rot heisst hier nicht 'Pipeline hakt', sondern 'Sicherheitszustand verletzt': die oeffentliche Rolle liest wieder mit. Sofort 0055 erneut anwenden (node scripts/apply-migrations.mjs 0055) und pruefen, welche Migration oder welcher Studio-Klick den Grant zurueckgeholt hat. Ausnahme matches/authenticated ist gewollt — Owner-Policy player_id = auth.uid(). Zuruecknehmen liesse sich die Sperre mit supabase/rollback/0055_revoke_anon_read_rollback.sql."
+      "rpcProbes": [
+        { "fn": "tft_position_unit_cell_data", "args": {} },
+        { "fn": "get_tft_set_bucket_coverage", "args": { "p_set": 0, "p_days": 1 } }
+      ],
+      "note": "Rot heisst hier nicht 'Pipeline hakt', sondern 'Sicherheitszustand verletzt': die oeffentliche Rolle hat wieder ein Recht in public — lesen, schreiben oder eine Funktion aufrufen. Seit 0104 (24.10.2026) ist jedes Recht ausser matches ein Bruch, auch eines, das RLS heute noch abfaengt. Sofort sperren: node scripts/anon-lockout.mjs (Probelauf, zeigt was sich aendert), dann node scripts/anon-lockout.mjs --apply. Danach pruefen, welche Migration oder welcher Studio-Klick das Recht zurueckgeholt hat. Einzige Ausnahme: authenticated auf matches (Owner-Policy player_id = auth.uid()). Die Lebenszeichen-Probe auf matches erwartet seit 0104 die Ablehnung 42501 — ein toter Schluessel bekommt 401 ohne Code. Zuruecknehmen liesse sich die Sperre mit supabase/rollback/0104_revoke_anon_writes_rollback.sql."
     },
     {
       "id": "lol-builds/rang-summen",

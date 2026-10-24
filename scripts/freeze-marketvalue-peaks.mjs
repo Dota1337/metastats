@@ -195,7 +195,7 @@ on conflict (puuid, set_number) do update set
 `;
 
 // Bewusst kopiert statt importiert: dieselbe Funktion steht bereits in
-// db-exec.mjs, apply-supabase-migrations.mjs, daily-marketvalue-snapshot.mjs
+// db-exec.mjs, anon-lockout.mjs, daily-marketvalue-snapshot.mjs
 // und drei weiteren Scripts. Das Supabase-Passwort enthaelt Sonderzeichen; ohne
 // das Encoding wirft pg "Invalid URL".
 function encodePasswordInPgUrl(url) {

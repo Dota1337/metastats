@@ -254,31 +254,42 @@ async function checkAnonLockout(c, r) {
   const svc = supaHeaders();
 
   // Lebt der oeffentliche Schluessel ueberhaupt? Ein abgelaufener oder
-  // vertippter Schluessel bekommt auf ALLES 401 — ohne diese Kontrolle wuerde
-  // der Vertrag mit jedem Wegdriften des Schluessels gruener statt roter.
+  // vertippter Schluessel bekommt auf ALLES 401 "Invalid API key" ohne Code —
+  // ohne diese Kontrolle wuerde der Vertrag mit jedem Wegdriften des
+  // Schluessels gruener statt roter. Seit 0104 hat anon auch auf matches kein
+  // Recht mehr: ein lebender Schluessel bekommt dort die Ablehnung 42501, die
+  // es nur nach erfolgreicher Anmeldung gibt. 200 zaehlt weiter als lebendig
+  // (dann meldet der Katalog unten das zurueckgekehrte Recht).
   const alive = await rawFetch(
     `${base}/${c.liveness.table}?select=${c.liveness.column}&limit=1`,
     { headers: anon },
   );
-  if (alive.status !== 200) {
+  if (alive.status !== 200 && !isPermissionDenied(alive)) {
     return r('error', `Anon-Schluessel antwortet auf ${c.liveness.table} mit HTTP `
-      + `${alive.status} (${alive.text}) — erwartet 200. Sperr-Probe waere wertlos.`);
+      + `${alive.status} (${alive.text}) — erwartet Ablehnung 42501. Sperr-Probe waere wertlos.`);
   }
 
   // --- 1. Katalog
   const leaks = await supaRpc(c.rpc, {});
   if (!Array.isArray(leaks)) return r('error', `${c.rpc} lieferte kein Array`);
   const allowed = new Set(c.allowedOpen || []);
-  const open = leaks
-    .filter(x => x.severity === 'offen')
-    .filter(x => !allowed.has(`${x.kind}:${x.object_name}:${x.role_name}`));
-  const onlyGrant = leaks.filter(x => x.severity === 'nur-grant').length;
+  const unexpected = leaks.filter(x => !allowed.has(`${x.kind}:${x.object_name}:${x.role_name}`));
+  const list = (rows) => rows.slice(0, 6)
+    .map(x => `${x.object_name}→${x.role_name} (${x.detail})`)
+    .join('; ') + (rows.length > 6 ? ` … +${rows.length - 6}` : '');
+  const open = unexpected.filter(x => x.severity === 'offen');
   if (open.length > 0) {
-    const list = open.slice(0, 6)
-      .map(x => `${x.object_name}→${x.role_name} (${x.detail})`)
-      .join('; ');
-    return r('broken', `${open.length} offene Leserechte fuer die oeffentliche Rolle: ${list}`
-      + (open.length > 6 ? ` … +${open.length - 6}` : ''));
+    return r('broken', `${open.length} offene Rechte fuer die oeffentliche Rolle: ${list(open)}`);
+  }
+  // "nur-grant" ist seit 0104 (24.10.2026) ebenfalls ein Bruch: vorher wurde
+  // es nur gezaehlt, und eine wieder aufrufbare Funktion
+  // (get_tft_set_bucket_coverage) blieb monatelang gruen. Nach 0104 hat die
+  // oeffentliche Rolle ausser authenticated auf matches gar kein Recht mehr —
+  // jedes neue ist ein Rueckfall, auch wenn RLS es heute noch abfaengt.
+  const halfOpen = unexpected.filter(x => x.severity !== 'offen');
+  if (halfOpen.length > 0) {
+    return r('broken', `${halfOpen.length} Rechte fuer die oeffentliche Rolle zurueck (RLS haelt noch, `
+      + `ein Klick weiter ist es offen): ${list(halfOpen)}`);
   }
 
   // --- 2. Live-Proben
@@ -321,8 +332,8 @@ async function checkAnonLockout(c, r) {
   }
 
   const probes = (c.probes || []).length + (c.rpcProbes || []).length;
-  return r('ok', `keine offenen Leserechte (${allowed.size} bewusste Ausnahme(n), `
-    + `${onlyGrant}× Grant ohne Wirkung durch RLS), ${probes} Live-Proben abgelehnt`);
+  return r('ok', `keine Rechte fuer die oeffentliche Rolle ausser ${leaks.length} bewussten `
+    + `Ausnahme(n), ${probes} Live-Proben abgelehnt`);
 }
 
 // ---------------------------------------------------------------- Hetzner

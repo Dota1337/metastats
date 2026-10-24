@@ -5,6 +5,7 @@
 //
 // Usage:
 //   node scripts/apply-migrations.mjs 0016 0017 0018
+//   node scripts/apply-migrations.mjs 0070_tft_region_divergence_anchor.sql   (bei doppelter Nummer)
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -44,14 +45,29 @@ const client = new pg.Client({
   statement_timeout: 0,
 });
 
+// Ganzer Dateiname oder Nummer. Eine Nummer, die auf mehrere Dateien passt
+// (0043, 0070 gibt es doppelt), bricht ab: vorher nahm das Skript still die
+// erste, und wer 0070 meinte, bekam vielleicht die andere
+// (Sicherheitsdurchsicht 24.10.2026). Aufgeloest wird alles VOR dem
+// Verbinden, damit ein falsches Argument nicht nach halb eingespielter Liste
+// auffaellt.
+function resolveFile(v) {
+  const dir = 'supabase/migrations';
+  const files = readdirSync(dir).filter(f => f.endsWith('.sql')
+    && (f === v || f === `${v}.sql` || f.startsWith(`${v}_`)));
+  if (files.length === 0) throw new Error(`keine Migration passt auf '${v}'`);
+  if (files.length > 1) {
+    throw new Error(`'${v}' passt auf ${files.length} Dateien (${files.join(', ')}) — `
+      + 'den ganzen Dateinamen angeben');
+  }
+  return join(dir, files[0]);
+}
+
 async function main() {
+  const targets = versions.map(resolveFile);
   console.log(`[connect] ${cfg.host}:${cfg.port}/${cfg.database}`);
   await client.connect();
-  for (const v of versions) {
-    const dir = 'supabase/migrations';
-    const files = readdirSync(dir).filter(f => f.startsWith(`${v}_`) && f.endsWith('.sql'));
-    if (files.length === 0) { console.error(`  no migration matches '${v}_*'`); continue; }
-    const file = join(dir, files[0]);
+  for (const file of targets) {
     console.log(`[apply]   ${file}`);
     const sql = readFileSync(file, 'utf8');
     try {

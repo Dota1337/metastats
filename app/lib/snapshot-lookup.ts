@@ -12,6 +12,7 @@
 // ersten User pro Cache-Cycle.
 
 import { addDays, compFamilySnapshotKey, snapshotKey, normalizeSnapshotRequest, type SnapshotEndpoint } from './snapshot-matrix';
+import { PUBLISHER_TOKEN_ENV, publisherTokenValid } from './snapshot-publisher.mjs';
 
 const MANIFEST_URL_BASE = process.env.SNAPSHOT_MANIFEST_URL || '';
 const MANIFEST_TTL_MS = 5 * 60 * 1000;
@@ -153,9 +154,11 @@ export interface LookupHit {
 // (`publish-snapshot-bundle.mjs:186`), nur niemand hat ihn gelesen.
 //
 // Bewusst KEIN oeffentlicher Query-Parameter: der wuerde jedem erlauben, den
-// Cushion zu umgehen und die 20-s-RPCs direkt zu treffen.
+// Cushion zu umgehen und die 20-s-RPCs direkt zu treffen. Aus demselben Grund
+// reicht seit 24.10.2026 auch die Kopfzeile allein nicht mehr — dazu gehoert
+// das Geheimnis SNAPSHOT_PUBLISHER_TOKEN (app/lib/snapshot-publisher.mjs).
 export function isSnapshotPublisher(request: Request): boolean {
-  return request.headers.get('x-snapshot-publisher') === '1';
+  return publisherTokenValid((n: string) => request.headers.get(n), process.env[PUBLISHER_TOKEN_ENV]);
 }
 
 // Manifest, Patch und Achse einer Anfrage — gemeinsamer Teil aller Leser.

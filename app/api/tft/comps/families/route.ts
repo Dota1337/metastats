@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GET as compsGET } from '../route';
 import { isSnapshotPublisher, lookupSnapshot } from '../../../../lib/snapshot-lookup';
+import { PUBLISHER_TOKEN_ENV, publisherHeaders } from '../../../../lib/snapshot-publisher.mjs';
 import { cachedJson, STATS_CACHE_CONTROL } from '../../../../lib/api-cache';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { tftAssets } from '../../../../lib/og/data';
@@ -31,7 +32,8 @@ async function listBody(request: NextRequest, publisher: boolean): Promise<ListB
   if (publisher) {
     const inner = new URL('/api/tft/comps', request.nextUrl.origin);
     inner.search = new URLSearchParams(LIST_QUERY).toString();
-    const res = await compsGET(new NextRequest(inner, { headers: { 'x-snapshot-publisher': '1' } }));
+    // Vorrecht weiterreichen: der aeussere Aufruf hat es schon bestanden, also ist das Geheimnis gesetzt.
+    const res = await compsGET(new NextRequest(inner, { headers: publisherHeaders(process.env[PUBLISHER_TOKEN_ENV]) }));
     return res.ok ? ((await res.json()) as ListBody) : null;
   }
   const hit = await lookupSnapshot('comps', {

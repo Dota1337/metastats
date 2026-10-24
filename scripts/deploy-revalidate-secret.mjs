@@ -10,8 +10,14 @@
 // regions) lesen die Env beim Spawn frisch. Heißt: KEIN systemctl restart
 // nötig, alle künftigen Crawl-Runs nehmen den neuen Wert automatisch.
 //
+// Seit 24.10.2026 auch fuer SNAPSHOT_PUBLISHER_TOKEN (Publisher-Vorrecht der
+// Box, app/lib/snapshot-publisher.mjs) — gleicher Weg, ein Skript statt einer
+// weiteren Kopie: --name=SNAPSHOT_PUBLISHER_TOKEN --skip-github. Das Geheimnis
+// erscheint in keiner Ausgabe (stand bis dahin im Protokoll).
+//
 // Usage:
 //   node scripts/deploy-revalidate-secret.mjs              # full deploy
+//   node scripts/deploy-revalidate-secret.mjs --name=SNAPSHOT_PUBLISHER_TOKEN --skip-github
 //   node scripts/deploy-revalidate-secret.mjs --dry-run    # nur Plan zeigen
 //   node scripts/deploy-revalidate-secret.mjs --skip-box   # Hetzner skip
 //   node scripts/deploy-revalidate-secret.mjs --skip-vercel
@@ -19,7 +25,7 @@
 //
 // Voraussetzungen (wie bei rotate-refresh-token.mjs):
 //   - .env.local mit GH_TOKEN (Fine-grained PAT, Repo→Secrets write)
-//   - HETZNER_REFRESH_URL gesetzt (für die Box-IP)
+//   - HETZNER_HOST oder HETZNER_REFRESH_URL gesetzt (für die Box-IP)
 //   - vercel CLI authentifiziert
 //   - libsodium-wrappers als dev-dep
 
@@ -30,7 +36,14 @@ import { request as httpsRequest } from 'node:https';
 import sodium from 'libsodium-wrappers';
 
 const REPO = 'Dota1337/metastats';
-const SECRET_NAME = 'REVALIDATE_SECRET';
+// Nur diese Namen: der Wert landet per sed in der Box-env, ein Tippfehler
+// legte sonst eine Variable an, die niemand liest.
+const NAMES = ['REVALIDATE_SECRET', 'SNAPSHOT_PUBLISHER_TOKEN'];
+const SECRET_NAME = (process.argv.find(a => a.startsWith('--name=')) || '--name=REVALIDATE_SECRET').slice(7);
+if (!NAMES.includes(SECRET_NAME)) {
+  console.error(`--name muss einer von ${NAMES.join(', ')} sein`);
+  process.exit(2);
+}
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_BOX = process.argv.includes('--skip-box');
@@ -133,7 +146,7 @@ function deployToHetzner(host, secret) {
     + `sed -i.bak "s|^${SECRET_NAME}=.*|${SECRET_NAME}=${secret}|" /etc/metastats-crawler/env; `
     + `else `
     + `echo "${SECRET_NAME}=${secret}" >> /etc/metastats-crawler/env; `
-    + `fi && grep "^${SECRET_NAME}=" /etc/metastats-crawler/env | head -c 80`;
+    + `fi && grep -c "^${SECRET_NAME}=" /etc/metastats-crawler/env`;
   return run('ssh', sshArgs(cmd));
 }
 
@@ -163,16 +176,16 @@ async function main() {
     throw new Error('GH_TOKEN missing in .env.local — set or use --skip-github');
   }
   const hetznerUrl = env.HETZNER_REFRESH_URL || process.env.HETZNER_REFRESH_URL;
-  const hetznerHost = hetznerUrl ? new URL(hetznerUrl).hostname : null;
+  const hetznerHost = env.HETZNER_HOST || process.env.HETZNER_HOST || (hetznerUrl ? new URL(hetznerUrl).hostname : null);
   if (!SKIP_BOX && !hetznerHost) {
     throw new Error('HETZNER_REFRESH_URL missing — set or use --skip-box');
   }
 
   const secret = generateSecret();
-  console.log(`[1/5] Generated REVALIDATE_SECRET (${secret.length} chars hex)`);
+  console.log(`[1/5] Generated ${SECRET_NAME} (${secret.length} chars hex)`);
 
   if (DRY_RUN) {
-    console.log('      DRY RUN — would deploy:', secret);
+    console.log('      DRY RUN — nichts geschrieben.');
     if (!SKIP_VERCEL) console.log('       Vercel: production + development env');
     if (!SKIP_GITHUB) console.log(`       GitHub: ${REPO} secret ${SECRET_NAME}`);
     if (!SKIP_BOX) console.log(`       Hetzner: root@${hetznerHost} /etc/metastats-crawler/env`);
@@ -195,14 +208,13 @@ async function main() {
   if (!SKIP_BOX) {
     console.log(`[4/5] Deploying to Hetzner-Box (${hetznerHost})…`);
     const out = deployToHetzner(hetznerHost, secret);
-    console.log('      Box bestätigt:', out);
+    console.log('      Box bestätigt, Zeilen mit dem Namen:', out);
   } else console.log('[4/5] Hetzner skipped');
 
   console.log('[5/5] Updating local .env.local…');
   updateLocalEnv(secret);
 
-  console.log('\nDone. REVALIDATE_SECRET deployed.');
-  console.log('Key:', secret);
+  console.log(`\nDone. ${SECRET_NAME} deployed.`);
 }
 
 main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });

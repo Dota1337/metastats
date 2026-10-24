@@ -20,7 +20,8 @@
 //   (Frische-Vertrag mirror/<name>/index-frische schlaegt dann an).
 //
 // Aufruf: node scripts/publish-route-mirrors.mjs --group=rising|leaderboard|regions|ligen [--dry-run]
-// Env: BLOB_READ_WRITE_TOKEN (nicht bei --dry-run). Optional ROUTE_MIRROR_SITE
+// Env: BLOB_READ_WRITE_TOKEN (nicht bei --dry-run), SNAPSHOT_PUBLISHER_TOKEN
+// (Publisher-Vorrecht; bei --dry-run ohne ihn wie ein Besucher). Optional ROUTE_MIRROR_SITE
 // (Standard https://www.metastats.gg). Liest bewusst keine .env.local: lokal nur
 // --dry-run, geschrieben wird nur auf der Box.
 import { put } from '@vercel/blob';
@@ -29,6 +30,7 @@ import {
   ROUTE_MIRRORS, ROUTE_MIRROR_GROUPS, isValidRouteMirror, routeMirrorFetchPath, routeMirrorIndexPath,
   routeMirrorKey, routeMirrorNames, routeMirrorPath, routeMirrorVariants,
 } from '../app/lib/route-mirror.mjs';
+import { assertPublisherAccepted, publisherHeaders, PUBLISHER_TOKEN_ENV } from '../app/lib/snapshot-publisher.mjs';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
@@ -40,6 +42,7 @@ if (!ROUTE_MIRROR_GROUPS.includes(GROUP)) {
 
 const SITE = (process.env.ROUTE_MIRROR_SITE || 'https://www.metastats.gg').replace(/\/$/, '');
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+const PUB_TOKEN = process.env[PUBLISHER_TOKEN_ENV];
 if (!TOKEN && !DRY_RUN) {
   console.error('BLOB_READ_WRITE_TOKEN muss gesetzt sein (oder --dry-run).');
   process.exit(1);
@@ -62,7 +65,7 @@ async function fetchOnce(url) {
   try {
     res = await fetch(url, {
       cache: 'no-store',
-      headers: { 'x-snapshot-publisher': '1' },
+      headers: !PUB_TOKEN && DRY_RUN ? {} : publisherHeaders(PUB_TOKEN),
       signal: AbortSignal.timeout(FETCH_MS),
     });
   } catch (e) {
@@ -143,6 +146,9 @@ async function publishMirror(name, runId, set) {
 
 async function main() {
   const runId = Date.now().toString(36);
+  // Ohne angenommenes Vorrecht kaeme die eigene Datei zurueck und wuerde
+  // eingefroren neu hochgeladen (app/lib/snapshot-publisher.mjs).
+  if (PUB_TOKEN || !DRY_RUN) await assertPublisherAccepted(SITE, PUB_TOKEN);
   const names = routeMirrorNames(GROUP);
   const set = names.some(n => ROUTE_MIRRORS[n].tftSet) ? await liveTftSet(runId) : null;
   let allOk = true;

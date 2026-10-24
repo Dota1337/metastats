@@ -71,8 +71,10 @@ import {
   DETAIL_MIN_GAMES,
   DETAIL_TOP_N,
 } from '../app/lib/snapshot-matrix.generated.mjs';
+import { assertPublisherAccepted, publisherHeaders, PUBLISHER_TOKEN_ENV } from '../app/lib/snapshot-publisher.mjs';
 
 const TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+const PUB_TOKEN = process.env[PUBLISHER_TOKEN_ENV];
 const BASE = process.env.PUBLIC_BASE_URL
   || (process.argv.includes('--base-url') ? process.argv[process.argv.indexOf('--base-url') + 1] : null)
   || 'https://www.metastats.gg';
@@ -258,6 +260,12 @@ function buildUrl(apiPath, p) {
   return `${BASE}${apiPath}?${qs.toString()}`;
 }
 
+function ownApiHeaders(url) {
+  if (!url.startsWith(`${BASE}/api/`)) return {};
+  if (!PUB_TOKEN && DRY_RUN) return {};
+  return publisherHeaders(PUB_TOKEN);
+}
+
 async function fetchPayload(url, attempt = 1) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 60_000);
@@ -266,7 +274,8 @@ async function fetchPayload(url, attempt = 1) {
       signal: ctrl.signal,
       // Tell Vercel-Edge to not return a stale cached copy — we want the
       // freshest data the moment after daily-crawl completes.
-      headers: { 'Cache-Control': 'no-cache', 'x-snapshot-publisher': '1' },
+      // Publisher-Vorrecht nur an die eigenen Routen, nie an den Blob-Speicher.
+      headers: { 'Cache-Control': 'no-cache', ...ownApiHeaders(url) },
       redirect: 'follow',
     });
     clearTimeout(t);
@@ -617,6 +626,16 @@ async function main() {
       return; // benign skip, exit 0 — the active run handles this publish
     }
     lockAcquired = true;
+  }
+  // Ohne angenommenes Vorrecht laese der Lauf den eigenen Vorrat und schriebe
+  // ihn eingefroren neu (snapshot-publisher.mjs) — dann lieber laut scheitern.
+  if (PUB_TOKEN || !DRY_RUN) {
+    try {
+      await assertPublisherAccepted(BASE, PUB_TOKEN);
+    } catch (e) {
+      console.error(`[${ts()}] FATAL: ${e.message}`);
+      process.exit(1);
+    }
   }
   console.log(`[${ts()}] publisher base=${BASE}, conc=${CONCURRENCY}, dryRun=${DRY_RUN}${ENDPOINT_FILTER ? ', endpoint=' + ENDPOINT_FILTER : ''}${LISTING_ONLY ? ', listing-only' : ''}`);
 

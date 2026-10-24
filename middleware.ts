@@ -23,6 +23,9 @@ import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
 import { legacyTftPlayerSlug } from './app/lib/og/slugs';
 import { LANG_HEADER, langPathsEnabled, langRoute, withLangPrefix, type PrefixLang } from './app/lib/lang-path';
 import { compReadableEnabled, compRedirect } from './app/lib/tft-comp-path';
+import {
+  PUBLISHER_ACCEPTED_HEADER, PUBLISHER_HEADER, PUBLISHER_TOKEN_ENV, PUBLISHER_TOKEN_HEADER, publisherTokenValid,
+} from './app/lib/snapshot-publisher.mjs';
 
 // Die Security-Header aus next.config.ts setzt der Routing-Layer. Die beiden
 // Antworten unten entstehen davor und wuerden sonst als einzige ohne sie
@@ -33,12 +36,23 @@ const SEC = securityHeaderRecord();
 // Teil per req.cookies.set in req.headers schreibt und die Antwort danach neu
 // baut. Ein x-ms-lang von aussen wird immer entfernt — nur die Middleware setzt
 // ihn, und nur unter einer Sprach-Adresse.
+//
+// Publisher-Koepfe (app/lib/snapshot-publisher.mjs): ohne gueltiges Geheimnis
+// entfernt, mit gueltigem bekommt die Antwort die Annahme-Kopfzeile — an der
+// prueft die Box vor jedem Lauf, dass sie nicht als Besucher gilt.
 function forward(req: NextRequest, lang: PrefixLang | null, rewriteTo?: URL): NextResponse {
   const headers = new Headers(req.headers);
   headers.delete(LANG_HEADER);
   if (lang) headers.set(LANG_HEADER, lang);
+  const publisher = publisherTokenValid((n: string) => req.headers.get(n), process.env[PUBLISHER_TOKEN_ENV]);
+  if (!publisher) {
+    headers.delete(PUBLISHER_HEADER);
+    headers.delete(PUBLISHER_TOKEN_HEADER);
+  }
   const init = { request: { headers } };
-  return rewriteTo ? NextResponse.rewrite(rewriteTo, init) : NextResponse.next(init);
+  const res = rewriteTo ? NextResponse.rewrite(rewriteTo, init) : NextResponse.next(init);
+  if (publisher) res.headers.set(PUBLISHER_ACCEPTED_HEADER, '1');
+  return res;
 }
 
 function notFound(req: NextRequest, lang: PrefixLang | null): NextResponse {

@@ -22,7 +22,7 @@
 //   lol-builds/blob-frische schlaegt dann an). index.json zuletzt, nur bei Erfolg.
 //
 // Env: BLOB_READ_WRITE_TOKEN, SNAPSHOT_MANIFEST_URL (gleicher Blob-Speicher wie
-// das Snapshot-Manifest). Optional LOL_BUILDS_SITE (Standard www.metastats.gg).
+// das Snapshot-Manifest), SNAPSHOT_PUBLISHER_TOKEN (Publisher-Vorrecht). Optional LOL_BUILDS_SITE (Standard www.metastats.gg).
 // Flags: --dry-run (abrufen + pruefen, nichts schreiben oder loeschen),
 //        --only=103,157 (nur diese Keys; schreibt keinen index).
 import { readFileSync, existsSync } from 'node:fs';
@@ -30,6 +30,7 @@ import { put, del } from '@vercel/blob';
 import {
   LOL_BUILDS_DEFAULT, LOL_BUILDS_INDEX_PATH, isChampionKey, isValidLolBuildsSnapshot, lolBuildsPath,
 } from '../app/lib/lol-builds-blob.mjs';
+import { assertPublisherAccepted, publisherHeaders, PUBLISHER_TOKEN_ENV } from '../app/lib/snapshot-publisher.mjs';
 
 if (existsSync('.env.local')) {
   for (const line of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
@@ -55,6 +56,8 @@ if (!MANIFEST_URL || (!TOKEN && !DRY_RUN)) {
   process.exit(1);
 }
 const ORIGIN = new URL(MANIFEST_URL).origin;
+const PUB_TOKEN = process.env[PUBLISHER_TOKEN_ENV];
+const pubHeaders = () => (!PUB_TOKEN && DRY_RUN ? {} : publisherHeaders(PUB_TOKEN));
 
 const CONCURRENCY = 3;        // ~173 Abrufe a 0,3-0,5 s → unter einer Minute, DB-Last wie drei Besucher
 const FETCH_MS = 20_000;
@@ -89,7 +92,7 @@ async function championKeys() {
 async function publishOne(key, runId, builtAt) {
   const { region, rank } = LOL_BUILDS_DEFAULT;
   const body = await json(`${SITE}/api/champions/${key}/builds?region=${region}&rank=${rank}&_pub=${runId}`, {
-    headers: { 'x-snapshot-publisher': '1' },
+    headers: pubHeaders(),
   });
   const path = lolBuildsPath(key);
   if (body?.source !== 'db') {
@@ -118,6 +121,9 @@ async function main() {
   const t0 = Date.now();
   const runId = t0.toString(36);
   const builtAt = new Date(t0).toISOString();
+  // Ohne angenommenes Vorrecht kaeme die eigene Datei zurueck und wuerde
+  // eingefroren neu hochgeladen (app/lib/snapshot-publisher.mjs).
+  if (PUB_TOKEN || !DRY_RUN) await assertPublisherAccepted(SITE, PUB_TOKEN);
   const keys = ONLY || await championKeys();
   const entries = {};
   const errors = [];

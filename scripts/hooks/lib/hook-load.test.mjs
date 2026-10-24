@@ -71,4 +71,5 @@ test('Export- und Import-Erkennung', () => {
   assert.deepEqual(im, [{ spec: './x.mjs', namen: ['a', 'b'] }]);
   // Beispiele in Kommentaren sind keine Importe
   assert.deepEqual(importe("// x = await import('./y.mjs')\n/* import { a } from './z.mjs'; */\n"), []);
+  assert.deepEqual(importe("// x = await import('./y.mjs')\r\nconst a = 1;\r\n"), []);   // CRLF wie nach git checkout
 });

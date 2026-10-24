@@ -24,7 +24,10 @@ const HOOK_QUELLE = join('infra', 'claude-settings', 'hooks.json');
 
 /** Kommentare weg — ein Beispiel-Import im Kommentar ist kein Import. */
 function ohneKommentare(text) {
+  // Erst die Zeilenenden: git legt die Dateien hier mit CRLF ab
+  // (core.autocrlf), und `.` trifft kein `\r` — der Zeilenkommentar bliebe stehen.
   return text
+    .replace(/\r\n?/g, '\n')
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .split('\n')
     .map((z) => z.replace(/(^|\s)\/\/.*$/, '$1'))

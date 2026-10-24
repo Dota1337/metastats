@@ -1004,22 +1004,6 @@ async function handleProsByComp(body) {
   return { pros, totalGames: matchedCount, queryMs };
 }
 
-// Uebergangs-Messung (24.10.2026, bis Port 4100 zu ist, danach entfernen):
-// Wer kommt noch unverschluesselt auf 4100 statt ueber https auf BOX_TLS_PORT?
-// Gezaehlt werden nur gueltig angemeldete Anfragen, Scanner fallen also
-// heraus. Alle 10 min eine Sammelzeile ins Journal.
-const direktZugriffe = new Map();
-function merkeDirektzugriff(req) {
-  if (req.socket?.encrypted) return;
-  const k = `${req.method} ${(req.url || '').split('?')[0]} ${String(req.headers['user-agent'] || '-').slice(0, 40)}`;
-  direktZugriffe.set(k, (direktZugriffe.get(k) || 0) + 1);
-}
-setInterval(() => {
-  if (!direktZugriffe.size) return;
-  console.log(`[direkt-4100] ${[...direktZugriffe].map(([k, n]) => `${k} ×${n}`).join(' | ')}`);
-  direktZugriffe.clear();
-}, 600_000).unref();
-
 async function handleRequest(req, res) {
   // Liveness + optional service-detail für das Internal-Ops-Dashboard.
   // ?detail=services listet alle metastats-*.service Units mit ActiveState,
@@ -1040,7 +1024,6 @@ async function handleRequest(req, res) {
       res.writeHead(401, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
-    merkeDirektzugriff(req);
     try {
       const services = await collectServiceStatus();
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
@@ -1066,7 +1049,6 @@ async function handleRequest(req, res) {
       res.writeHead(401, noStore);
       return res.end(JSON.stringify({ error: 'unauthorized' }));
     }
-    merkeDirektzugriff(req);
     try {
       const report = JSON.parse(readFileSync(CONTRACTS_STATUS_PATH, 'utf8'));
       const registry = JSON.parse(readFileSync(resolve('infra/contracts.json'), 'utf8'));
@@ -1097,7 +1079,6 @@ async function handleRequest(req, res) {
     res.writeHead(401, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'unauthorized' }));
   }
-  merkeDirektzugriff(req);
 
   let body;
   try {
@@ -1214,7 +1195,10 @@ function checkClassificationBundle() {
 }
 checkClassificationBundle();
 
-server.listen(PORT, () => console.log(`refresh-api listening on :${PORT}`));
+// http nur noch fuer die Box selbst (Sicherheitsdurchsicht 24.10.2026,
+// netzbindung): von aussen kommt alles per https auf BOX_TLS_PORT. Bis dahin
+// lief das Token hier im Klartext durchs Netz.
+server.listen(PORT, '127.0.0.1', () => console.log(`refresh-api listening on 127.0.0.1:${PORT}`));
 tlsServer?.listen(BOX_TLS_PORT, () => console.log(`refresh-api listening (tls) on :${BOX_TLS_PORT}, Zertifikat bis ${tlsPair.validTo}`));
 
 // Graceful shutdown so systemd restart doesn't drop in-flight work mid-DB

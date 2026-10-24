@@ -237,8 +237,8 @@
       "titel": "Jeder Dienst bekommt alle 17 Geheimnisse, auch der aus dem Internet erreichbare, der den Supabase-Verwaltungsschluessel und den GitHub-Schluessel gar nicht braucht",
       "ort": "infra/hetzner/metastats-refresh-api.service",
       "schwere": "mittel",
-      "status": "offen",
-      "belegt_mit": "grep -l '^EnvironmentFile=/etc/metastats-crawler/env' infra/hetzner/*.service | wc -l -> 33 von 35 (ls infra/hetzner/*.service | wc -l -> 35; ohne nur daily-crawl-catchup und deps-catchup). Box: grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' /etc/metastats-crawler/env (nur Namen) -> 17 Schluessel, darunter GH_TOKEN, SUPABASE_MANAGEMENT_TOKEN, SUPABASE_SERVICE_ROLE_KEY, BLOB_READ_WRITE_TOKEN, COMPANION_PSEUDONYM_KEY, REVALIDATE_SECRET, RIOT_API_KEY, RIOT_API_KEY_TFT. scripts/refresh-api-server.mjs liest nur 9 Werte (grep -oE 'process.env.[A-Z_]+' -> CONTRACTS_READ_TOKEN, CONTRACTS_STATUS_PATH, DATABASE_URL, EXPLORER_API_URL, NEXT_PUBLIC_SUPABASE_URL, REFRESH_API_PORT, REFRESH_API_TOKEN, RIOT_API_KEY_TFT, SUPABASE_SERVICE_ROLE_KEY); GH_TOKEN, SUPABASE_MANAGEMENT_TOKEN und BLOB_READ_WRITE_TOKEN kommen in scripts/lib/ nicht vor (grep -rlE auf scripts/lib/ -> nur companion-positions.mjs und revalidate-edge.mjs, beide vom Dienst nicht importiert). Dateirechte selbst in Ordnung: stat -> 600 root:root.",
+      "status": "behoben",
+      "belegt_mit": "Ausgerollt 24.10.2026 07:22 CEST (apply-units metastats-refresh-api, Commits b0aa3857 + edabc1d7): refresh-api laeuft als metastats-api (systemctl show User), /run/metastats-refresh-api/env 0600 root mit 7 der 10 Positivlisten-Schluessel (nur Namen gelesen), Prozess-Umgebung = diese 7 + systemd-Werte (/proc/<pid>/environ, nur Namen), gemeinsame Datei fuer metastats-api nicht lesbar. Test refresh-api-env.test.mjs haelt Positivliste und Zugriffe gleich.",
       "seit": "2026-09-19",
       "zuletzt_gesehen": "2026-10-24"
     },
@@ -638,8 +638,8 @@
       "titel": "Der Nachhol-Lauf fuer Paket-Updates ist auf der Box eingespielt, aber nie eingeschaltet; die Sicherheitsupdates vom 24.10. sind dort nicht angekommen",
       "ort": "infra/hetzner/metastats-deps-catchup.timer",
       "schwere": "niedrig",
-      "status": "offen",
-      "belegt_mit": "Box: systemctl is-enabled metastats-deps-catchup.timer -> 'disabled', is-active -> 'inactive' (Unit-Datei laut ls -l geschrieben Oct 23 23:53 UTC). infra/hetzner/apply-units.sh:76 macht nur daemon-reload, kein enable; grep -rnE 'deps-catchup.timer' infra scripts .github -> nur Kommentare (remote-deploy.sh:24, :182) und infra/system-map.json. remote-deploy.sh:182 verspricht beim Aufschieben 'Nachgeholt durch metastats-deps-catchup.timer (05:20 UTC)'. Box /opt/metastats-crawler: Stempel node_modules/.metastats-lock-sha1 = '9f7ecaf1...' gegen erwartet '192a036e... abi-115' (lock_hash, remote-deploy.sh:120-125) -> abweichend; node_modules/undici 6.29.0 und next 16.3.8 auf der Box gegen package-lock.json undici 6.29.1 / next 16.4.3 (Commit 1c28ef99 'Sicherheitsluecken in next, Sentry, zod und undici geschlossen'). undici kommt ueber @vercel/blob (package-lock: @vercel/blob 2.4.0 -> undici ^6.23.0), das scripts/publish-snapshot-bundle.mjs, publish-route-mirrors.mjs, publish-lol-builds.mjs und publish-meta-pulse-diffs.mjs importieren.",
+      "status": "behoben",
+      "belegt_mit": "Eingeschaltet 24.10.2026 07:22 CEST nach dem Neustart (systemctl enable --now; is-enabled = enabled, naechster Lauf 25.10. 05:20 UTC). Stempel enthaelt jetzt Lockfile + Node-ABI (remote-deploy.sh), npm ci unter Node 22 nachgeholt: Stempel = sha1 package-lock + abi-127, npm audit 0.",
       "seit": "2026-10-24",
       "zuletzt_gesehen": "2026-10-24"
     },

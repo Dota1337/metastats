@@ -647,7 +647,6 @@
       "port": 8443,
       "pinned": true,
       "minHoursLeft": 1440,
-      "armed": false,
       "note": "https-Zugang von refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Eigenes Zertifikat, gueltig bis 23.10.2029; alle Aufrufer vertrauen nur ihm (app/lib/box-tls.mjs). Geprueft wird das AUSGELIEFERTE Zertifikat gegen genau diese Liste, nicht die Datei. Rot heisst: weniger als 60 Tage Restlaufzeit, die Box liefert ein anderes Zertifikat aus, als im Code steht, oder der https-Zugang laeuft nicht — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard. Wechsel: Anleitung im Kopf von box-tls.mjs. Rot: journalctl -u metastats-refresh-api | grep '\\[tls\\]'."
     }
   ]

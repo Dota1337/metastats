@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-10-17T06:18:13.419Z",
+  "fetchedAt": "2026-10-24T06:17:23.897Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-10-17T06:18:13.736Z",
+      "scrapedAt": "2026-10-24T06:17:24.229Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -403,7 +403,7 @@
       }
     },
     "18.2": {
-      "scrapedAt": "2026-10-17T06:18:16.011Z",
+      "scrapedAt": "2026-10-24T06:17:26.431Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -897,7 +897,7 @@
       }
     },
     "18.3": {
-      "scrapedAt": "2026-10-17T06:18:18.047Z",
+      "scrapedAt": "2026-10-24T06:17:28.708Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -1276,8 +1276,113 @@
       }
     },
     "18.4": {
-      "scrapedAt": "2026-10-17T06:18:20.310Z",
+      "scrapedAt": "2026-10-24T06:17:30.750Z",
       "sections": [
+        {
+          "category": "MID-PATCH UPDATE",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Heart of Steel",
+              "change": "Heart of Steel temporarily disabled to address a bug"
+            },
+            {
+              "apiName": null,
+              "displayName": "Coven Acolyte",
+              "change": "Coven Acolyte and Dark Ritual are now correctly limited to 1 per lobby between both of them"
+            },
+            {
+              "apiName": null,
+              "displayName": "Chosen of the Sun",
+              "change": "Chosen of the Sun is now correctly limited to 1 per lobby"
+            },
+            {
+              "apiName": null,
+              "displayName": "Camille",
+              "change": "Camille Ability Damage: 150/225/375 AD ⇒ 150/225/400 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Varus",
+              "change": "Varus Mana: 30/120 ⇒ 20/110"
+            },
+            {
+              "apiName": null,
+              "displayName": "Alistar",
+              "change": "Alistar Heal: 200/260/320 AP ⇒ 230/300/400 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Gromp",
+              "change": "Gromp AP Form Splash Damage: 160/240/375 AP ⇒ 180/270/435 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Murkwolf",
+              "change": "Murkwolf Empowered Attack Damage: 60/90/135 AD ⇒ 65/100/160 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Warwick",
+              "change": "Warwick Spell Damage: 215/325/500 AD ⇒ 230/345/535 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mama Beak",
+              "change": "Mama Beak Base AD: 55 ⇒ 60"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nidalee",
+              "change": "Nidalee Armor Penetration matches Tooltip (as per 18.3 fix)"
+            },
+            {
+              "apiName": null,
+              "displayName": "Challenger's Grace",
+              "change": "Challenger’s Grace Buff Duration: 3s ⇒ 4s"
+            },
+            {
+              "apiName": null,
+              "displayName": "Early Learnings",
+              "change": "Early Learnings Baseline AD/AP: 5% ⇒ 3%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Electrocharge I",
+              "change": "Electrocharge I Damage By Stage: 30/50/70/90 ⇒ 25/40/60/80"
+            },
+            {
+              "apiName": null,
+              "displayName": "Future Focused",
+              "change": "Future Focused Gold: 8 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Giant and Mighty",
+              "change": "Giant and Mighty Health: 200 ⇒ 225"
+            },
+            {
+              "apiName": null,
+              "displayName": "Group Hug I",
+              "change": "Group Hug I Resists: 6 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heroic Grab Bag",
+              "change": "Heroic Grab Bag Initial Gold: 4g ⇒ 6g"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hold the Line",
+              "change": "Hold the Line AD: 9% ⇒ 11%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Spirit Of Redemption",
+              "change": "Spirit of Redemption Heal: 7.5% ⇒ 9%"
+            }
+          ]
+        },
         {
           "category": "LARGE CHANGES",
           "entries": [
@@ -1640,7 +1745,271 @@
         }
       ],
       "counts": {
-        "totalEntries": 70,
+        "totalEntries": 90,
+        "withApiName": 0
+      }
+    },
+    "18.5": {
+      "scrapedAt": "2026-10-24T06:17:32.782Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blackthorn 0",
+              "change": "Blackthorn6 Piece Enhanced Bonus: 60% ⇒ 50%Base AP Sacrifice: 12% Damage Amp + 2 Mana Regen ⇒ 10% Damage Amp + 2 Mana Regen"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood (9)9-Piece Summon Bonus Health: 140% ⇒ 125%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Fae 0",
+              "change": "Fae (2/4)Heal: 2.5/4% ⇒ 3/5%4th Pixie Threshold: 30000 ⇒ 25,0005th Pixie Threshold: 70000 ⇒ 60,0006th Pixie Threshold: 110000 ⇒ 100,000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flora Fatalis 0",
+              "change": "Flora FatalisMax Health Healing: 8% ⇒ 7%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rapidfire 0",
+              "change": "RapidfireAS Per Attack: 3/5/8/12% ⇒ 3/5/7/10%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Riftbeast 0",
+              "change": "Riftbeast (7)AD/AP: 6% ⇒ 5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Caitlyn",
+              "change": "CaitlynEmpowered Auto Damage: 190/285/470 AD ⇒ 200/300/490 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Azir",
+              "change": "AzirAbility Damage: 46/69/110 AP ⇒ 43/65/105 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’ZixUnisolated Damage: 255/360/515 AP ⇒ 250/345/500 APIsolated Damage: 285/410/605 AP ⇒ 280/390/590 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Mama Beak",
+              "change": "Mama BeakMana lock now ends when the Tiny Beaks start to despawn rather than finish, reducing total Mana Lock time by ~1 second.Ability Attack Damage: 22/33/52 AD ⇒ 20/30/50 ADMaster YiAD Form: Starting Attack Damage: 60 ⇒ 63AP Form: AP Ability Damage: 125/190/285 AP ⇒ 135/200/320 APTristanaMana Buff: 0/60 ⇒ 0/50Ability Damage per Attack: 10/15/25 AD ⇒ 12/18/28 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Master Yi",
+              "change": "Master YiAD Form: Starting Attack Damage: 60 ⇒ 63AP Form: AP Ability Damage: 125/190/285 AP ⇒ 135/200/320 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Tristana",
+              "change": "TristanaMana Buff: 0/60 ⇒ 0/50Ability Damage per Attack: 10/15/25 AD ⇒ 12/18/28 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "BramblebackAlpha Mark Heal: 4% ⇒ 5%Armor Ignore: 20% + 25% AP ⇒ 25% + 25% AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Malphite",
+              "change": "MalphiteShield: 700/850 AP ⇒ 735/885 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Morgana",
+              "change": "MorganaInitial Curse Damage: 60/90 AP ⇒ 70/105 APCurse Bonus Damage: 22/33 AP ⇒ 25/38 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sentinel",
+              "change": "SentinelStun Duration: 1s ⇒ 0.5sShield: 350/450 AP ⇒ 375/475 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sett",
+              "change": "SettHeal AP Amount: 225/275 AP ⇒ 250/300 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sivir",
+              "change": "SivirAbility Damage: 200/300 AD ⇒ 220/330 ADBounce Damage: 20% of initial ⇒ 18% of initial"
+            },
+            {
+              "apiName": null,
+              "displayName": "Soraka",
+              "change": "SorakaInitial Star Damage: 225/335 AP ⇒ 235/355 APAdditional Star Damage: 100/150 AP ⇒ 110/165 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Alune",
+              "change": "AluneMoonshard Damage: 55/83 AP ⇒ 58/88 APAttack Speed: 0.8 ⇒ 0.85Attuned Durability: 7% ⇒ 5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Attuned 0",
+              "change": "Attuned Durability: 7% ⇒ 5%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Ashe",
+              "change": "AsheDoT Damage: 9/14 AD ⇒ 11/16 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Taric",
+              "change": "TaricResists: 65 ⇒ 70Ability empowered two attacks Damage: 100/150 AP ⇒ 130/200 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Adaptive Helm",
+              "change": "Adaptive HelmMana Regen: 7 ⇒ 6Non Tank/Fighter AD/AP: 40 ⇒ 35"
+            },
+            {
+              "apiName": null,
+              "displayName": "Blue Buff",
+              "change": "Blue BuffBase AD/AP: 30% ⇒ 25%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Challenger's Grace",
+              "change": "Challenger’s Grace"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cooking Pot",
+              "change": "Cooking Pot"
+            },
+            {
+              "apiName": null,
+              "displayName": "Consuming Flora",
+              "change": "Consuming Flora"
+            },
+            {
+              "apiName": null,
+              "displayName": "Cry Me A River",
+              "change": "Cry Me a River"
+            },
+            {
+              "apiName": null,
+              "displayName": "Dark Ritual",
+              "change": "Dark Ritual"
+            },
+            {
+              "apiName": null,
+              "displayName": "Electrocharge I",
+              "change": "Electrocharge II"
+            },
+            {
+              "apiName": null,
+              "displayName": "Embiggen",
+              "change": "Embiggen"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flowing Tears",
+              "change": "Flowing TearsMana Threshold for Cashout: 6500 ⇒ 7000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Heart of Steel",
+              "change": "Heart of SteelRe-disabled due to a bug."
+            },
+            {
+              "apiName": null,
+              "displayName": "Investment Strategy I",
+              "change": "Investment Strategy IInitial Gold: 6 ⇒ 3"
+            },
+            {
+              "apiName": null,
+              "displayName": "Item Extraction",
+              "change": "Item ExtractionNo longer grants a Veigar"
+            },
+            {
+              "apiName": null,
+              "displayName": "Malicious Monetization",
+              "change": "Malicious MonetizationInitial Gold Granted: 4 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nesting Anvils",
+              "change": "Nesting AnvilsGold Granted: 4 ⇒ 6"
+            },
+            {
+              "apiName": null,
+              "displayName": "Omega Riftbeast",
+              "change": "Omega RiftbeastBonus HP: 10% ⇒ 8%Bonus AS: 10% ⇒ 8%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pandora's Bench",
+              "change": "Pandora’s BenchGold Granted: 4 ⇒ 1"
+            },
+            {
+              "apiName": null,
+              "displayName": "Pandora's Items I",
+              "change": "Pandora’s Items IIGold Granted: 4 ⇒ 1NEW: Pandora’s Items II+Appears on 3-2Grants 4 goldNEW: Pandora’s Items II++Appears on 4-2Grants 6 gold"
+            },
+            {
+              "apiName": null,
+              "displayName": "Patience Is A Virtue",
+              "change": "Patience is a VirtueInitial Rerolls: 4 ⇒ 5"
+            },
+            {
+              "apiName": null,
+              "displayName": "Prismatic Destiny",
+              "change": "Prismatic DestinyGold Granted: 4 ⇒ 2"
+            },
+            {
+              "apiName": null,
+              "displayName": "Promised Protection",
+              "change": "Promised ProtectionHP Granted: 200 ⇒ 175"
+            },
+            {
+              "apiName": null,
+              "displayName": "Seraphim's Staff",
+              "change": "Seraphim’s StaffAP Threshold: 90% ⇒ 110%"
+            },
+            {
+              "apiName": null,
+              "displayName": "U.R.F",
+              "change": "U.R.FIs now excluded from Coronation, Spreading Roots, Spreading Roots+, The Trait Tree, and The Trait Tree+."
+            },
+            {
+              "apiName": null,
+              "displayName": "We Stick Together",
+              "change": "We Stick TogetherTailoring changes from 18.3 are now correctly applied.Tooltip updated for clarity"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Cooking Pot",
+              "change": "Cooking Pot now correctly grants HP if the holder has uncraftable emblems"
+            },
+            {
+              "apiName": null,
+              "displayName": "It's Me, Baby",
+              "change": "It’s Me, Baby hex is now properly aligned with the rest of the hex grid"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 49,
         "withApiName": 0
       }
     }

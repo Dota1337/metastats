@@ -40,7 +40,7 @@ interface Cell { pick: Pick; name: string; img: string | null; border?: string }
 type CellState = 'on' | 'out' | 'blocked' | null;
 
 export default function ExplorerSearchBox({
-  options, mode, setMode, onApply, focusKey, onFocus, chosen, blocked, onToggle,
+  options, mode, setMode, onApply, focusKey, onFocus, chosen, blocked, onToggle, className = '',
 }: {
   options: ExplorerOptions;
   mode: Op;
@@ -56,6 +56,8 @@ export default function ExplorerSearchBox({
   blocked: Record<PickKind, boolean>;
   /** Raster-Klick: waehlen oder (schon gewaehlt) ueberall entfernen. */
   onToggle: (p: Pick) => void;
+  /** Lage in der Filterzeile (z. B. Reihenfolge am Handy). */
+  className?: string;
 }) {
   const { t, lang } = useI18n();
   const [text, setText] = useState('');
@@ -227,7 +229,7 @@ export default function ExplorerSearchBox({
   });
 
   return (
-    <div ref={boxRef} onKeyDown={onKey} className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem] sm:max-w-[34rem]">
+    <div ref={boxRef} onKeyDown={onKey} className={`relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem] sm:max-w-[34rem] ${className}`}>
       <div className={`flex items-center gap-2 rounded-md border bg-surface-base pl-2.5 pr-1 ${open ? 'border-accent-a50' : 'border-border-subtle'}`}>
         <svg aria-hidden="true" viewBox="0 0 20 20" className="w-4 h-4 text-fg-muted shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" strokeLinecap="round" />
@@ -271,11 +273,11 @@ export default function ExplorerSearchBox({
       )}
 
       {showBrowse && (
-        // Ab lg immer 34rem, am rechten Rand der Suche verankert: die Suche
-        // schrumpft in der vollen Filterzeile und steht weit rechts; die Units
-        // sollen trotzdem je Kostenstufe in einer Zeile bleiben, ohne dass das
-        // Fenster rechts aus dem Bild ragt.
-        <div className="absolute z-40 left-0 right-0 lg:left-auto lg:w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl">
+        // Ab lg immer 34rem, am linken Rand der Suche: die Suche schrumpft in
+        // der vollen Filterzeile, die Units sollen trotzdem je Kostenstufe in
+        // einer Zeile bleiben. Die Suche steht links-mittig (hinter Patch ·
+        // Region · Rang) oder am Zeilenanfang, das Fenster passt nach rechts.
+        <div className="absolute z-40 left-0 right-0 lg:right-auto lg:w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl">
           <div role="tablist" aria-label={t('tft.explorer.x.browse')} className="flex flex-wrap gap-1">
             {tabs.map(b => (
               <button key={b} id={tabId(b)} type="button" role="tab" aria-selected={curTab === b} aria-controls={listId}
@@ -333,7 +335,7 @@ export default function ExplorerSearchBox({
       )}
 
       {showDrop && (
-        <div id={listId} role="listbox" className="absolute z-40 left-0 right-0 lg:left-auto lg:w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl max-h-[min(70vh,32rem)] overflow-y-auto space-y-2">
+        <div id={listId} role="listbox" className="absolute z-40 left-0 right-0 lg:right-auto lg:w-[34rem] top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl max-h-[min(70vh,32rem)] overflow-y-auto space-y-2">
           {phrase && (
             <button type="button" onClick={applyAll}
               className="w-full flex flex-wrap items-center gap-1.5 px-2 py-1.5 rounded border border-accent-a40 bg-accent-a8 text-left text-xs hover:bg-accent-a15">

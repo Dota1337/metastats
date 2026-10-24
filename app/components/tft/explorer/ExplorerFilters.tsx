@@ -28,9 +28,11 @@ import { COPLAY_MAX, carrierPick, coplayChosen, coplayPick } from '../../../lib/
 // Kaesten mit „oder" (Kasten = eins davon). Level, Platz und Brett bleiben eigene
 // Knoepfe. „ohne" und „keins davon" gibt es nur noch aus alten Links: sie werden
 // angezeigt und lassen sich entfernen, aber nicht mehr neu anlegen. Grenzen wie
-// in parseExplorerParams (EXPLORER_LIMITS). Vorn in derselben Zeile die
-// Grundmenge Patch · Region · Rang (25.10.2026, Inhalt in ExplorerScope), per
-// Strich abgesetzt: „Alle zurücksetzen" laesst sie bewusst stehen.
+// in parseExplorerParams (EXPLORER_LIMITS). Eine Zeile (25.10.2026): Grundmenge
+// Patch · Region · Rang (Inhalt in ExplorerScope) │ Suche · Level · Platz · Brett ·
+// „Alle zurücksetzen". Der Strich zeigt, bis wohin das Zuruecksetzen wirkt — die
+// Grundmenge laesst es bewusst stehen. Handy: Suche + Zuruecksetzen ans Ende,
+// sonst stuende „Alle Raenge" bei 375 px allein in einer eigenen Zeile.
 
 const LEVELS = [6, 7, 8, 9, 10];
 const PLACES = [1, 2, 3, 4, 5, 6, 7, 8];
@@ -341,6 +343,8 @@ export default function ExplorerFilters({
           </Row>
         </PlainChip>
         <span aria-hidden="true" className="hidden sm:block h-6 w-px mx-1 bg-border-default" />
+        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)}
+          chosen={chosen} blocked={blocked} onToggle={onToggle} className="max-sm:order-1" />
         <PlainChip label={t('tft.explorer.x.playerLevel')} value={query.levels.length ? query.levels.join(', ') : null}
           open={open === 'lv'} onToggle={() => toggle('lv')} onClear={() => setQuery({ ...query, levels: [] })}>
           <Row label={t('tft.explorer.x.playerLevel')}>
@@ -399,15 +403,13 @@ export default function ExplorerFilters({
             ))}
           </Row>
         </PlainChip>
-        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)}
-          chosen={chosen} blocked={blocked} onToggle={onToggle} />
         {hasAny && (
           <button type="button" onClick={() => {
             setLast(null);
             setMode('and');
             setQuery({ ...query, units: [], items: [], traits: [], groups: [], levels: [], place: null, bc: [], tags: [], focus: null });
           }}
-            className="text-xs text-fg-muted hover:text-fg-primary underline-offset-2 hover:underline">
+            className="max-sm:order-1 text-xs text-fg-muted hover:text-fg-primary underline-offset-2 hover:underline">
             {t('tft.explorer.resetAll')}
           </button>
         )}

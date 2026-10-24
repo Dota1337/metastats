@@ -2,7 +2,7 @@
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { regionShortLabel } from '../StatsFilterBar';
 import {
-  EXPLORER_RANKS, EXPLORER_RANK_STAGES, LATEST_PATCH, rankStageOf, stageRanks,
+  EXPLORER_RANKS, EXPLORER_RANK_STAGES, LATEST_PATCH, barPatches, rankStageOf, stageRanks,
   type ExplorerMeta, type ExplorerQuery, type ExplorerRank, type ExplorerRankStage,
 } from '../../../lib/tft-explorer-query';
 
@@ -42,12 +42,28 @@ export default function ExplorerScope({
   const { t } = useI18n();
   const isLatest = query.patches[0] === LATEST_PATCH;
   const isAll = query.patches.length === 0;
-  const patches = meta?.patches ?? [];
+  // Leiste: aktuelle Patch-Familie + vorige Familie (barPatches). Ohne meta
+  // (erstes Laden, Abfrage gescheitert) stehen die gewaehlten Patches dort,
+  // damit die Auswahl sichtbar und abwaehlbar bleibt und nichts springt.
+  const bar = meta ? barPatches(meta.patches.map(p => p.patch)) : isLatest || isAll ? [] : query.patches;
+  const showBar = meta ? bar.length > 1 : bar.length > 0;
+  const inBar = (p: string) => showBar && bar.includes(p);
 
+  // Eine Alt-Auswahl (Link auf einen aelteren Patch) bleibt beim Dazuklicken
+  // erhalten; „Alle Patches" (alter Link) enthaelt schon jeden und wird ersetzt.
   const togglePatch = (p: string) => {
     const cur = isLatest || isAll ? [] : query.patches;
     const next = cur.includes(p) ? cur.filter(x => x !== p) : [...cur, p];
     setQuery({ ...query, patches: next.length ? next.sort() : [LATEST_PATCH] });
+  };
+  // Auswahl ausserhalb der Leiste (alte Links, Unit-Seite) als eigener Knopf
+  // wie beim Einzelrang. × behaelt die gewaehlten Leisten-Patches, sonst Neuester.
+  const loosePatches = isLatest ? null
+    : isAll ? t('tft.explorer.x.patch.all')
+      : query.patches.filter(p => !inBar(p)).join(', ') || null;
+  const dropLoose = () => {
+    const keep = isAll ? [] : query.patches.filter(inBar);
+    setQuery({ ...query, patches: keep.length ? keep : [LATEST_PATCH] });
   };
   // Stufen statt Einzelraenge. Eine Auswahl, die keine Stufe ist (alter Link,
   // Klick im Reiter Rang), steht als eigener Knopf daneben und laesst sich entfernen.
@@ -63,16 +79,19 @@ export default function ExplorerScope({
         <button type="button" className={chip(isLatest)} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
           {t('tft.explorer.x.patch.latest')}{isLatest && resolvedPatch ? ` · ${resolvedPatch}` : ''}
         </button>
-        {patches.length > 1 && patches.map(p => (
-          <button key={p.patch} type="button" className={chip(!isLatest && !isAll && query.patches.includes(p.patch))}
-            onClick={() => togglePatch(p.patch)}>
-            {p.patch}
+        {showBar && bar.map(p => (
+          <button key={p} type="button" className={chip(!isLatest && !isAll && query.patches.includes(p))}
+            onClick={() => togglePatch(p)}>
+            {p}
           </button>
         ))}
-        {patches.length > 1 && (
-          <button type="button" className={chip(isAll)} onClick={() => setQuery({ ...query, patches: [] })}>
-            {t('tft.explorer.x.patch.all')}
-          </button>
+        {loosePatches && (
+          <span className={`${chip(true)} inline-flex items-center gap-1.5 pr-1.5`}>
+            {loosePatches}
+            <button type="button" onClick={dropLoose}
+              aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
+              className="text-fg-muted hover:text-fg-primary">{'×'}</button>
+          </span>
         )}
       </div>
 

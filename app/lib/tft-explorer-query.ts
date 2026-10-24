@@ -28,6 +28,7 @@
 // und Trait-Seiten werden beim Lesen uebernommen.
 
 import type { TierBucket } from './tft-tier-bucket';
+import { patchFamily } from './snapshot-matrix';
 
 export const EXPLORER_RANKS = ['CHALLENGER', 'GRANDMASTER', 'MASTER', 'DIAMOND', 'EMERALD'] as const;
 export type ExplorerRank = (typeof EXPLORER_RANKS)[number];
@@ -96,6 +97,24 @@ const PATCH_RE = /^\d{1,2}\.\d{1,2}[a-z]?$/;
 
 // Platzhalter fuer "neuester Patch im Speicher"; der Abfrage-Dienst loest ihn auf.
 export const LATEST_PATCH = 'latest';
+
+/**
+ * Patches der Explorer-Leiste (User 24.10.2026): die Familie des neuesten
+ * Patches komplett plus die ganze vorige Familie — heute 18.5b, 18.5 | 18.4,
+ * mit 18.6 dann 18.6 | 18.5b, 18.5. Bewusst anders als die Patch-Auswahl der
+ * Listen (StatsFilterBar: Vorpatch nach previousPatchOf, ≥3 Datentage) und der
+ * Δ-Vorpatch: der User wollte die vorige Familie ganz. Aeltere Patches erreicht
+ * nur ein Link; die Leiste zeigt sie dann als eigenen Knopf.
+ * patches: neueste zuerst (meta.patches).
+ */
+export function barPatches(patches: readonly string[]): string[] {
+  const families: string[] = [];
+  return patches.filter(p => {
+    const f = patchFamily(p);
+    if (!families.includes(f)) families.push(f);
+    return families.indexOf(f) < 2;
+  });
+}
 
 export const EMPTY_QUERY: ExplorerQuery = {
   region: 'all', ranks: [], patches: [LATEST_PATCH], levels: [], place: null, units: [], items: [], traits: [], groups: [],

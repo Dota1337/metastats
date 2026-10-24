@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1, followFocus, focusApplies,
+  parseExplorerParams, serializeExplorerQuery, toServiceBody, hasBoardFilters, filterCount, showTop4, showTop1, followFocus, focusApplies, barPatches,
   BOARD_COUNT_KEYS, BOARD_COUNT_MAX, BOARD_TAGS, EXPLORER_TABS,
   EXPLORER_RANK_STAGES, stageRanks, rankStageOf, legacyBucketToRanks,
 } from './tft-explorer-query.ts';
@@ -218,4 +218,15 @@ test('followFocus: alte Links, Kaesten, ohne-Units, Synergien', () => {
   const r = followFocus(combo, { ...combo, units: [{ id: 'DA_B' }] });
   assert.equal(r.focus, 'DA_B');
   assert.equal(r.combo, 1);
+});
+
+test('Patch-Leiste: aktuelle Familie + vorige Familie, keine festen Nummern', () => {
+  const today = ['18.5b', '18.5', '18.4', '18.3b', '18.3', '18.2b', '18.2', '18.1b'];
+  assert.deepEqual(barPatches(today), ['18.5b', '18.5', '18.4']);
+  assert.deepEqual(barPatches(['18.6', ...today]), ['18.6', '18.5b', '18.5'], 'Patchwechsel: vorige Familie ganz');
+  assert.deepEqual(barPatches(['18.5c', '18.5b', '18.5', '18.4']), ['18.5c', '18.5b', '18.5', '18.4'], 'c-Patch gehoert zur Familie');
+  assert.deepEqual(barPatches(['19.1']), ['19.1'], 'Set-Start');
+  assert.deepEqual(barPatches([]), []);
+  // Familie wie ueberall (snapshot-matrix patchFamily): 18.5b und 18.5 eine Familie.
+  assert.deepEqual(barPatches(['18.4b', '18.4', '18.3']), ['18.4b', '18.4', '18.3']);
 });

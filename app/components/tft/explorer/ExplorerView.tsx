@@ -52,7 +52,7 @@ export default function ExplorerView() {
         </div>
       ) : !data ? (
         <div className="flex flex-col gap-4" aria-busy="true">
-          <div className="h-32 rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
+          <div className="h-32 lg:h-[10.5rem] rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
           <div className="h-96 rounded-xl border border-border-subtle bg-surface-base animate-pulse" />
         </div>
       ) : (

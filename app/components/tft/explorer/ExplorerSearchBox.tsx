@@ -101,7 +101,7 @@ export default function ExplorerSearchBox({
   const rowCls = (i: number) => `flex items-center gap-2 px-2 py-1 rounded ${i === hiIdx ? 'bg-surface-overlay' : 'hover:bg-surface-overlay'}`;
 
   return (
-    <div ref={boxRef} className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem]">
+    <div ref={boxRef} className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem] sm:max-w-[34rem]">
       <div className={`flex items-center gap-2 rounded-md border bg-surface-base pl-2.5 pr-1 ${open ? 'border-accent-a50' : 'border-border-subtle'}`}>
         <svg aria-hidden="true" viewBox="0 0 20 20" className="w-4 h-4 text-fg-muted shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" strokeLinecap="round" />

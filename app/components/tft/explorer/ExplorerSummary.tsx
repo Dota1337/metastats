@@ -62,12 +62,14 @@ export default function ExplorerSummary({
       </div>
       <div>
         <div className="text-[11px] text-fg-muted mb-1">{t('tft.explorer.x.placeDist')}</div>
-        <div className="flex items-end gap-1 h-20">
+        {/* Ab lg groesser; die Balkenhoehe kommt als Anteil (--r), der Massstab aus der Klasse. */}
+        <div className="flex items-end gap-1 lg:gap-1.5 h-20 lg:h-28">
           {s.hist.map((h, i) => (
-            <div key={i} className="flex flex-col items-center gap-0.5 w-7">
-              <span className="text-[9px] text-fg-faint tabular-nums">{s.games ? Math.round((h / s.games) * 100) : 0}%</span>
-              <div className={`w-full rounded-sm ${i < 4 ? 'bg-accent-a60' : 'bg-accent-a20'}`} style={{ height: `${Math.max(2, (h / maxH) * 52)}px` }} />
-              <span className="text-[10px] text-fg-muted tabular-nums">{i + 1}</span>
+            <div key={i} className="flex flex-col items-center gap-0.5 w-7 lg:w-9">
+              <span className="text-[9px] lg:text-[11px] text-fg-faint tabular-nums">{s.games ? Math.round((h / s.games) * 100) : 0}%</span>
+              <div className={`w-full rounded-sm h-[max(2px,calc(var(--r)*52px))] lg:h-[max(2px,calc(var(--r)*76px))] ${i < 4 ? 'bg-accent-a60' : 'bg-accent-a20'}`}
+                style={{ '--r': h / maxH } as React.CSSProperties} />
+              <span className="text-[10px] lg:text-xs text-fg-muted tabular-nums">{i + 1}</span>
             </div>
           ))}
         </div>

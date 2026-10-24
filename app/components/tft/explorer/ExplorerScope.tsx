@@ -27,7 +27,7 @@ const STAGE_LABEL: Record<ExplorerRankStage, TranslationKey> = {
 };
 
 const chip = (on: boolean) =>
-  `px-2.5 py-1 rounded-md text-xs border transition-colors whitespace-nowrap ${
+  `px-3 py-2 rounded-md text-xs border transition-colors whitespace-nowrap ${
     on ? 'bg-accent-a15 border-accent-a50 text-fg-bright' : 'bg-surface-base border-border-subtle text-fg-secondary hover:text-fg-primary'
   }`;
 
@@ -73,7 +73,8 @@ export default function ExplorerScope({
     : null;
 
   return (
-    <div className="flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-5">
+    // Ab lg nebeneinander; passt es nicht, rutscht die Rang-Gruppe in die naechste Zeile statt unsichtbar abzuschneiden.
+    <div className="flex flex-col lg:flex-row lg:flex-wrap lg:items-center gap-3 lg:gap-x-5 lg:gap-y-3">
       <div className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0">
         <span className="text-fg-muted text-xs mr-1 shrink-0">{t('tft.filter.patch')}</span>
         <button type="button" className={chip(isLatest)} onClick={() => setQuery({ ...query, patches: [LATEST_PATCH] })}>
@@ -100,7 +101,7 @@ export default function ExplorerScope({
         <select
           value={query.region}
           onChange={e => setQuery({ ...query, region: e.target.value })}
-          className="bg-surface-base border border-border-subtle rounded-md text-xs text-fg-primary px-2 py-1"
+          className="bg-surface-base border border-border-subtle rounded-md text-xs text-fg-primary px-3 py-2"
         >
           <option value="all">{t('tft.filter.allRegions')}</option>
           {(meta?.regions ?? []).map(r => (

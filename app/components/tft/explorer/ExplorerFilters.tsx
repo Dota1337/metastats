@@ -199,7 +199,7 @@ export default function ExplorerFilters({
         drag={sourceOf(g, u, { kind: 'units', id: u.id, from: at(g) }, ghostOf(unitImg(options, assets, u.id), unitName(options, assets, u.id), border))}
         drop={dnd.target(drop)} over={dnd.isOver(drop)}
         label={<>
-          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={border} />
+          <Icon src={unitImg(options, assets, u.id)} alt={unitName(options, assets, u.id)} border={border} className="w-7 h-7" />
           <span className="truncate max-w-[9rem]">{unitName(options, assets, u.id)}</span>
           {stars && <span className="text-gold-earnings">{stars}</span>}
           {cnt && <span className="text-fg-muted">{cnt}</span>}
@@ -225,7 +225,7 @@ export default function ExplorerFilters({
         onRemove={() => setItem(g, i.id, null)} removeLabel={t('tft.explorer.x.remove')}
         drag={sourceOf(g, i, { kind: 'items', id: i.id, from: at(g) }, ghostOf(itemImg(options, assets, i.id), itemName(options, assets, i.id)))}
         label={<>
-          <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} />
+          <Icon src={itemImg(options, assets, i.id)} alt={itemName(options, assets, i.id)} className="w-7 h-7" />
           <span className="truncate max-w-[9rem]">{itemName(options, assets, i.id)}</span>
           {i.n ? <span className="text-fg-muted">{'≥'}{i.n}{'×'}</span> : null}
         </>}>
@@ -242,7 +242,7 @@ export default function ExplorerFilters({
         onRemove={() => setTrait(g, tr.id, null)} removeLabel={t('tft.explorer.x.remove')}
         drag={sourceOf(g, tr, { kind: 'traits', id: tr.id, from: at(g) }, ghostOf(traitImg(options, assets, tr.id), traitName(options, assets, tr.id)))}
         label={<>
-          <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-5 h-5" />
+          <Icon src={traitImg(options, assets, tr.id)} alt={traitName(options, assets, tr.id)} className="w-6 h-6" />
           <span className="truncate max-w-[9rem]">{traitName(options, assets, tr.id)}</span>
           {min != null && <span className="text-fg-muted">{tr.le ? '' : '≥'}{min}</span>}
         </>}>
@@ -265,7 +265,7 @@ export default function ExplorerFilters({
         {!none && groupSize(gr) < EXPLORER_LIMITS.groupMembers && (
           <button type="button" onClick={() => { setMode('or'); setLast(firstRef(gr, g)); setFocusKey(k => k + 1); }}
             aria-label={`+ ${t('tft.explorer.x.or')}`} title={`+ ${t('tft.explorer.x.or')}`}
-            className="px-1.5 py-0.5 rounded border border-border-subtle text-xs text-fg-secondary hover:border-accent-a50 hover:text-fg-bright">+</button>
+            className="w-7 h-7 flex items-center justify-center rounded border border-border-subtle text-xs text-fg-secondary hover:border-accent-a50 hover:text-fg-bright">+</button>
         )}
         <button type="button" onClick={() => setQuery({ ...query, groups: query.groups.filter((_, i) => i !== g) })}
           aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
@@ -407,12 +407,12 @@ function Chip({
       <div className={`flex items-center rounded-md border text-xs ${
         over ? 'border-accent-a50 bg-accent-a20' : excluded ? 'border-pos-loss bg-surface-base' : 'border-accent-a40 bg-accent-a8'}`}>
         <button type="button" onClick={onToggle} aria-expanded={open} {...drag}
-          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 text-fg-primary ${drag ? 'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
+          className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 min-h-9 text-fg-primary ${drag ?'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
           {excluded && <span className="text-pos-loss no-underline">{t('tft.explorer.x.without')}</span>}
           {label}
         </button>
         <button type="button" onClick={onRemove} aria-label={removeLabel} title={removeLabel}
-          className="px-1.5 py-1 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
+          className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
       </div>
       {open && children && <Popover wide={wide}>{children}</Popover>}
     </div>
@@ -465,13 +465,13 @@ function PlainChip({
     <div className="relative">
       <div className={`flex items-center rounded-md border text-xs ${value ? 'border-accent-a40 bg-accent-a8' : 'border-border-subtle bg-surface-base'}`}>
         <button type="button" onClick={onToggle} aria-expanded={open}
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 ${value ? 'text-fg-primary' : 'text-fg-secondary hover:text-fg-primary'}`}>
+          className={`flex items-center gap-1.5 px-3 py-2 ${value ? 'text-fg-primary' : 'text-fg-secondary hover:text-fg-primary'}`}>
           {label}
           {value && <span className="text-fg-bright tabular-nums truncate max-w-[16rem]">{value}</span>}
         </button>
         {value && (
           <button type="button" onClick={onClear} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
-            className="px-1.5 py-1 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
+            className="self-stretch flex items-center px-2 text-fg-muted hover:text-fg-primary border-l border-border-subtle">{'×'}</button>
         )}
       </div>
       {open && <Popover wide={wide}>{children}</Popover>}
@@ -759,8 +759,8 @@ function CoplayRow({
         const u = options.unitById.get(r.key)!;
         return (
           <button key={r.key} type="button" onClick={() => onAdd(r.key)} title={u.name}
-            className="flex items-center gap-1.5 pl-0.5 pr-2 py-0.5 rounded-md border border-border-subtle bg-surface-base text-xs text-fg-primary hover:border-accent-a50">
-            <OptIcon src={u.img} alt={u.name} className="w-6 h-6" border={costColor(u.cost)} />
+            className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-xs text-fg-primary hover:border-accent-a50">
+            <OptIcon src={u.img} alt={u.name} className="w-7 h-7" border={costColor(u.cost)} />
             <span className="truncate max-w-[6rem]">{u.name}</span>
             <span className="text-fg-muted tabular-nums">{Math.round((r.games / src.summary.games) * 100)}%</span>
           </button>

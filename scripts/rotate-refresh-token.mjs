@@ -1,45 +1,51 @@
 #!/usr/bin/env node
 // Rotiert das REFRESH_API_TOKEN — der Bearer-Token, der zwischen Vercel
-// (Caller) und dem Hetzner refresh-api-server (auf :4100) geteilt wird.
+// (Caller) und dem Hetzner refresh-api-server geteilt wird.
 //
-// Was passiert:
-//   1. Generiert einen neuen 32-byte URL-safe Random-Token.
-//   2. Updated Vercel Production + Development env.
-//   3. Updated GitHub Actions repo secret (für CI-Jobs).
-//   4. SSH zur Hetzner-Box, sed-replace in /etc/metastats-crawler/env,
-//      systemctl restart metastats-refresh-api.service (PFLICHT — der
-//      Server hält den Token im RAM, sonst antwortet er weiter mit dem
-//      alten Wert).
-//   5. Verifiziert per /healthz dass der neue Server hochgekommen ist.
-//   6. Optional: schreibt den neuen Token in .env.local (lokales Testen).
+// Reihenfolge (seit 24.10.2026, Pruefer-Befund): erst Vercel, dann die Box.
+// Bis dahin wurde die Box rotiert und Vercel nie neu ausgerollt — die
+// Live-Seite schickte das alte Token, die Box verlangte das neue, und der
+// Profil-Aktualisieren-Knopf antwortete 401 bis zum naechsten Push.
 //
-// Voraussetzungen (identisch zu refresh-riot-key.mjs):
-//   - .env.local mit GH_TOKEN (Fine-grained PAT, Repo→Secrets write)
-//   - HETZNER_REFRESH_URL gesetzt (für die Box-IP)
-//   - vercel CLI authentifiziert
+//   1. Neues Token erzeugen.
+//   2. Vercel Production + Development setzen.
+//   3. Produktion neu ausrollen und warten, bis die Domain ein Deployment mit
+//      dem neuen Wert ausliefert (scripts/lib/vercel-deploy.mjs).
+//      Scheitert das: alten Wert nach Vercel zurueck, Box bleibt unberuehrt —
+//      sonst braechte der naechste Bot-Push das neue Token ohne die Box live.
+//   4. .env.local schreiben (ab hier ist das neue Token die Wahrheit).
+//   5. Box: sed in /etc/metastats-crawler/env + Neustart von refresh-api
+//      (haelt das Token im Speicher), bis zu 3 Versuche. Zwischen 3 und 5
+//      liegen nur Sekunden — in diesem Fenster antwortet der Knopf 401.
+//   6. Pruefen: /healthz?detail=services mit dem NEUEN Token muss 200 liefern.
+//   7. GitHub-Secret (kein Workflow liest es, gemessen 24.10.2026 — es bleibt
+//      nur als Ablage).
+//
+// Das Token erscheint in keiner Ausgabe; es steht danach in .env.local.
 //
 // Usage:
-//   node scripts/rotate-refresh-token.mjs              # full rotation
-//   node scripts/rotate-refresh-token.mjs --dry-run    # show plan, nichts ändern
-//   node scripts/rotate-refresh-token.mjs --skip-box   # skip Hetzner step
-//   node scripts/rotate-refresh-token.mjs --skip-vercel # skip Vercel step
-//
-// Ausgabe: der neue Token wird am Ende stdout-printed; bewahre ihn auf
-// falls weitere manuelle Ziele befüllt werden müssen.
+//   node scripts/rotate-refresh-token.mjs              # volle Rotation
+//   node scripts/rotate-refresh-token.mjs --dry-run    # nur Plan zeigen
+//   node scripts/rotate-refresh-token.mjs --box-only   # Schritt 5-6 nachholen (Token aus .env.local)
+//   node scripts/rotate-refresh-token.mjs --skip-github
 
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { request as httpsRequest } from 'node:https';
 import sodium from 'libsodium-wrappers';
+import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
 
 const REPO = 'Dota1337/metastats';
 const SECRET_NAME = 'REFRESH_API_TOKEN';
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const SKIP_BOX = process.argv.includes('--skip-box');
-const SKIP_VERCEL = process.argv.includes('--skip-vercel');
+const BOX_ONLY = process.argv.includes('--box-only');
 const SKIP_GITHUB = process.argv.includes('--skip-github');
+
+// 2-s-Takt: das 401-Fenster reicht vom Umhaengen der Domain bis zum Neustart
+// auf der Box, jeder Takt verlaengert es.
+const dep = createVercelDeploy({ timeouts: { pollMs: 2_000 } });
 
 function loadDotEnv(path) {
   if (!existsSync(path)) return {};
@@ -51,43 +57,13 @@ function loadDotEnv(path) {
   return out;
 }
 
-function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { stdio: 'pipe', encoding: 'utf8', ...opts });
-  if (r.status !== 0) {
-    const detail = `${r.stdout || ''}${r.stderr || ''}`.slice(0, 500);
-    throw new Error(`${cmd} ${args.join(' ')} → exit ${r.status}\n${detail}`);
-  }
-  return r.stdout.trim();
-}
-
 function generateToken() {
-  // 32 random bytes → 43-char URL-safe base64 (no padding). Same format
-  // the existing token in .env.local uses ("XPZjOa0Sg-X8wfMA…").
+  // 32 random bytes → 43-char URL-safe base64 (no padding).
   return randomBytes(32).toString('base64url');
-}
-
-function updateVercelEnv(token) {
-  for (const target of ['production', 'development']) {
-    try {
-      // Kein NODE_TLS_REJECT_UNAUTHORIZED=0: hier wandert ein frisches Secret
-      // ueber die Leitung. Bei TLS-Inspektion NODE_EXTRA_CA_CERTS setzen,
-      // nicht die Zertifikatspruefung abschalten.
-      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], { shell: true });
-    } catch {
-      // Token might not exist yet — first rotation. Ignore.
-    }
-    const add = spawnSync('vercel', ['env', 'add', SECRET_NAME, target], {
-      input: token,
-      stdio: ['pipe', 'inherit', 'inherit'],
-      shell: true,
-    });
-    if (add.status !== 0) throw new Error(`vercel env add ${SECRET_NAME} ${target} failed`);
-  }
 }
 
 async function updateGitHubSecret(token, ghToken) {
   await sodium.ready;
-  // Get repo public-key
   const pubKey = await ghApi('GET', `/repos/${REPO}/actions/secrets/public-key`, ghToken);
   const pubKeyBytes = sodium.from_base64(pubKey.key, sodium.base64_variants.ORIGINAL);
   const messageBytes = sodium.from_string(token);
@@ -127,19 +103,27 @@ function ghApi(method, path, ghToken, body) {
   });
 }
 
+// Token per stdin, nicht in der Befehlszeile: so steht es weder im ssh-Aufruf
+// noch in der Prozessliste der Box.
 function rotateOnHetzner(host, token) {
-  // sed in-place auf /etc/metastats-crawler/env mit Backup, dann Service-Restart.
-  // PFLICHT laut Memory `reference_hetzner_box_services.md`: refresh-api liest
-  // Env beim Start in den RAM, ohne Restart bleibt alter Token aktiv.
-  const sshArgs = (cmd) => ['-o', 'StrictHostKeyChecking=no', `root@${host}`, cmd];
-  const cmd = `sed -i.bak "s|^${SECRET_NAME}=.*|${SECRET_NAME}=${token}|" /etc/metastats-crawler/env && systemctl restart metastats-refresh-api.service && sleep 2 && systemctl is-active metastats-refresh-api.service`;
-  return run('ssh', sshArgs(cmd));
+  const script = [
+    'set -e',
+    'read -r T',
+    `sed -i.bak "s|^${SECRET_NAME}=.*|${SECRET_NAME}=$T|" /etc/metastats-crawler/env`,
+    `grep -q "^${SECRET_NAME}=$T\\$" /etc/metastats-crawler/env`,
+    'systemctl restart metastats-refresh-api.service',
+    'sleep 2',
+    'systemctl is-active metastats-refresh-api.service',
+  ].join('\n');
+  const r = spawnSync('ssh',
+    ['-o', 'ConnectTimeout=12', '-o', 'BatchMode=yes', '-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, `bash -c '${script.replace(/'/g, "'\\''")}'`],
+    { input: `${token}\n`, encoding: 'utf8', timeout: 60_000, killSignal: 'SIGKILL' });
+  if (r.status !== 0) throw new Error(`ssh exit ${r.status ?? r.error?.code}: ${String(r.stderr || '').slice(0, 300)}`);
+  return String(r.stdout || '').trim();
 }
 
-// Ueber die volle Adresse aus HETZNER_REFRESH_URL (seit 24.10.2026 https ueber
-// den TLS-Vorschalter, Port 4100 geht zu) und MIT dem neuen Token: die
-// Dienstliste verlangt ihn, ein 200 beweist also, dass die Box ihn kennt —
-// das blosse /healthz bewies nur, dass der Dienst laeuft.
+// Ueber die volle Adresse aus HETZNER_REFRESH_URL und MIT dem neuen Token: die
+// Dienstliste verlangt ihn, ein 200 beweist also, dass die Box ihn kennt.
 async function verifyHetzner(baseUrl, token) {
   const url = new URL('/healthz?detail=services', baseUrl);
   let last;
@@ -159,67 +143,97 @@ async function verifyHetzner(baseUrl, token) {
   throw last;
 }
 
+function writeLocal(token) {
+  if (!existsSync('.env.local')) return;
+  const txt = readFileSync('.env.local', 'utf8');
+  const replaced = txt.replace(new RegExp(`^${SECRET_NAME}=.*$`, 'm'), `${SECRET_NAME}=${token}`);
+  if (replaced !== txt) writeFileSync('.env.local', replaced);
+}
+
+async function boxStep(host, url, token) {
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`      Box (${host}), Versuch ${attempt}: ${rotateOnHetzner(host, token)}`);
+      lastErr = null;
+      break;
+    } catch (err) {
+      lastErr = err;
+      console.log(`      Box-Versuch ${attempt} gescheitert: ${err.message}`);
+      await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  if (lastErr) {
+    throw new Error('Box nicht rotiert — die Live-Seite hat schon das neue Token, der Knopf antwortet 401.\n'
+      + '  Nachholen: node scripts/rotate-refresh-token.mjs --box-only');
+  }
+  console.log('      Pruefe die Box mit dem neuen Token (/healthz?detail=services)…');
+  const health = await verifyHetzner(url, token);
+  console.log('      OK', health);
+}
+
 async function main() {
   const env = loadDotEnv('.env.local');
   const ghToken = env.GH_TOKEN || process.env.GH_TOKEN;
-  if (!SKIP_GITHUB && !ghToken) {
-    throw new Error('GH_TOKEN missing in .env.local — set or use --skip-github');
-  }
   const hetznerUrl = env.HETZNER_REFRESH_URL || process.env.HETZNER_REFRESH_URL;
-  const hetznerHost = hetznerUrl ? new URL(hetznerUrl).hostname : null;
-  if (!SKIP_BOX && !hetznerHost) {
-    throw new Error('HETZNER_REFRESH_URL missing — set or use --skip-box');
-  }
+  const hetznerHost = env.HETZNER_HOST || (hetznerUrl ? new URL(hetznerUrl).hostname : null);
+  if (!hetznerHost) throw new Error('HETZNER_REFRESH_URL fehlt in .env.local');
+  if (!SKIP_GITHUB && !BOX_ONLY && !ghToken) throw new Error('GH_TOKEN fehlt in .env.local — setzen oder --skip-github');
 
-  const newToken = generateToken();
-  console.log(`[1/5] Generated new token (${newToken.length} chars)`);
-  if (DRY_RUN) {
-    console.log('     DRY RUN — would rotate to:', newToken);
-    console.log('     would touch:');
-    if (!SKIP_VERCEL) console.log('       Vercel: production + development env');
-    if (!SKIP_GITHUB) console.log(`       GitHub: ${REPO} secret ${SECRET_NAME}`);
-    if (!SKIP_BOX) console.log(`       Hetzner: root@${hetznerHost} /etc/metastats-crawler/env + restart`);
+  if (BOX_ONLY) {
+    const token = env[SECRET_NAME];
+    if (!token) throw new Error(`${SECRET_NAME} fehlt in .env.local`);
+    console.log('[box-only] Token aus .env.local auf die Box…');
+    await boxStep(hetznerHost, hetznerUrl, token);
     return;
   }
 
-  if (!SKIP_VERCEL) {
-    console.log('[2/5] Updating Vercel env (production + development)…');
-    updateVercelEnv(newToken);
-    console.log('      OK');
-  } else console.log('[2/5] Vercel skipped');
+  const oldToken = env[SECRET_NAME];
+  if (!oldToken) throw new Error(`${SECRET_NAME} fehlt in .env.local — ohne alten Wert gaebe es bei einem Deploy-Fehler keinen Rueckweg.`);
+  const newToken = generateToken();
+  console.log(`[1/6] Neues Token erzeugt (${newToken.length} Zeichen)`);
+  if (DRY_RUN) {
+    console.log('      DRY RUN — wuerde: Vercel setzen → neu ausrollen → .env.local → Box + Neustart → pruefen → GitHub');
+    return;
+  }
+
+  console.log('[2/6] Vercel (production + development)…');
+  const envChangedAt = Date.now();
+  dep.setEnv(SECRET_NAME, newToken);
+  console.log('      OK');
+
+  console.log('[3/6] Produktion neu ausrollen…');
+  try {
+    await dep.redeployProduction({ since: envChangedAt, gitMessage: 'chore: rotate refresh-api token' });
+  } catch (err) {
+    console.log(`      Deploy gescheitert (${err.deployPhase || 'unknown'}): ${err.message}`);
+    console.log('      Setze den alten Wert in Vercel zurueck — Box und .env.local bleiben unveraendert…');
+    dep.setEnv(SECRET_NAME, oldToken);
+    throw new Error('Rotation abgebrochen, alter Zustand wiederhergestellt (Vercel = alter Wert, Box = alter Wert).');
+  }
+
+  console.log('[4/6] .env.local…');
+  writeLocal(newToken);
+
+  console.log('[5/6] Box rotieren + pruefen…');
+  await boxStep(hetznerHost, hetznerUrl, newToken);
 
   if (!SKIP_GITHUB) {
-    console.log('[3/5] Updating GitHub Actions secret…');
+    console.log('[6/6] GitHub-Secret…');
     await updateGitHubSecret(newToken, ghToken);
     console.log('      OK');
-  } else console.log('[3/5] GitHub skipped');
+  } else console.log('[6/6] GitHub uebersprungen');
 
-  if (!SKIP_BOX) {
-    console.log(`[4/5] Rotating on Hetzner-Box (${hetznerHost})…`);
-    const out = rotateOnHetzner(hetznerHost, newToken);
-    console.log('      systemctl is-active →', out);
-  } else console.log('[4/5] Hetzner skipped');
-
-  // .env.local VOR der Pruefung: Vercel, GitHub und Box sind an dieser Stelle
-  // schon rotiert. Scheitert die Pruefung, darf die lokale Kopie nicht auf dem
-  // alten Token stehen bleiben (halber Zustand, logic-flow-critic 24.10.2026).
-  if (existsSync('.env.local')) {
-    const txt = readFileSync('.env.local', 'utf8');
-    const replaced = txt.replace(new RegExp(`^${SECRET_NAME}=.*$`, 'm'), `${SECRET_NAME}=${newToken}`);
-    if (replaced !== txt) {
-      writeFileSync('.env.local', replaced);
-      console.log('      Updated local .env.local');
-    }
-  }
-
-  if (!SKIP_BOX) {
-    console.log('[5/5] Verifying the new token on Hetzner (/healthz?detail=services)…');
-    const health = await verifyHetzner(hetznerUrl, newToken);
-    console.log('      OK', health);
-  }
-
-  console.log('\nDone. New token:');
-  console.log(newToken);
+  console.log('\nFertig. Das neue Token steht in .env.local.');
 }
 
-main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });
+let releaseLock = () => {};
+try {
+  releaseLock = acquireLock('rotate-refresh-token');
+} catch (err) {
+  console.error('FAILED:', err.message);
+  process.exit(1);
+}
+main()
+  .then(() => releaseLock())
+  .catch(e => { releaseLock(); console.error('FAILED:', e.message); process.exit(1); });

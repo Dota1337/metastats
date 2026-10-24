@@ -306,6 +306,9 @@ test('Routine-Ops: Key-Rotation laeuft, das Skript selbst bleibt gesperrt', () =
   // Die Datei zu aendern bleibt planpflichtig — sonst waere der Eintrag ein
   // Schlupfloch (umschreiben, dann durch die Ausnahme ausfuehren).
   assert.equal(isExempt('scripts/refresh-riot-key.mjs'), false);
+  // Seit 24.10.2026 steckt der Deploy-Weg in einer Bibliothek. Waere sie frei,
+  // liesse sich das Routine-Skript ueber sie unbemerkt umschreiben.
+  assert.equal(isExempt('scripts/lib/vercel-deploy.mjs'), false);
   // Nachbarskripte erben nichts.
   assert.equal(blocks('node scripts/refresh-highelo-marketvalues.mjs', schreibend), true);
 });

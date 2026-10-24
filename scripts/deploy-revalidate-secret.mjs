@@ -34,6 +34,7 @@ import { readFileSync, writeFileSync, existsSync, appendFileSync } from 'node:fs
 import { spawnSync } from 'node:child_process';
 import { request as httpsRequest } from 'node:https';
 import sodium from 'libsodium-wrappers';
+import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
 
 const REPO = 'Dota1337/metastats';
 // Nur diese Namen: der Wert landet per sed in der Box-env, ein Tippfehler
@@ -49,6 +50,24 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_BOX = process.argv.includes('--skip-box');
 const SKIP_VERCEL = process.argv.includes('--skip-vercel');
 const SKIP_GITHUB = process.argv.includes('--skip-github');
+const INIT = process.argv.includes('--init');
+const FORCE = process.argv.includes('--force');
+
+// Wer den Wert auf der Box liest (Grep 24.10.2026). Laeuft einer davon, haelt er
+// den alten Wert im Speicher: der Publisher prueft sein Vorrecht nur beim Start
+// (publish-snapshot-bundle.mjs, assertPublisherAccepted) und verliert danach
+// jeden Abruf mit 403 — ein ~2-h-Lauf waere umsonst.
+const READERS = {
+  SNAPSHOT_PUBLISHER_TOKEN: ['metastats-snapshot-publisher.service', 'metastats-lol-builds-publish.service',
+    'metastats-mirror-leaderboard.service', 'metastats-mirror-ligen.service',
+    'metastats-mirror-regions.service', 'metastats-mirror-rising.service'],
+  // Die Crawler revalidieren nur am Ende, ein Fehlschlag dort laesst den
+  // Edge-Speicher bis zum Ablauf stehen — kein Abbruch, nur ein Hinweis.
+  REVALIDATE_SECRET: [],
+};
+const REVALIDATE_SOFT = ['metastats-daily-crawl.service', 'metastats-daily-crawl-resume.service'];
+
+const dep = createVercelDeploy();
 
 function loadDotEnv(path) {
   if (!existsSync(path)) return {};
@@ -73,25 +92,6 @@ function generateSecret() {
   // 32 random bytes → 64-char hex. Same Format wie OVERWOLF_APP_SECRET. Hex
   // weil HMAC-Signature im Header eh hex ist — vereinfacht Debug.
   return randomBytes(32).toString('hex');
-}
-
-function updateVercelEnv(secret) {
-  for (const target of ['production', 'development']) {
-    try {
-      // Kein NODE_TLS_REJECT_UNAUTHORIZED=0: hier wandert ein frisches Secret
-      // ueber die Leitung. Bei TLS-Inspektion NODE_EXTRA_CA_CERTS setzen,
-      // nicht die Zertifikatspruefung abschalten.
-      run('vercel', ['env', 'rm', SECRET_NAME, target, '--yes'], { shell: true });
-    } catch {
-      // Existiert noch nicht — erste Initialisierung. Ignore.
-    }
-    const add = spawnSync('vercel', ['env', 'add', SECRET_NAME, target], {
-      input: secret,
-      stdio: ['pipe', 'inherit', 'inherit'],
-      shell: true,
-    });
-    if (add.status !== 0) throw new Error(`vercel env add ${SECRET_NAME} ${target} failed`);
-  }
 }
 
 async function updateGitHubSecret(secret, ghToken) {
@@ -150,6 +150,16 @@ function deployToHetzner(host, secret) {
   return run('ssh', sshArgs(cmd));
 }
 
+function activeOnBox(host, units) {
+  if (!units.length) return [];
+  const cmd = units.map(u => `printf '%s %s\\n' ${u} "$(systemctl show -p ActiveState --value ${u})"`).join('; ');
+  const r = spawnSync('ssh', ['-o', 'ConnectTimeout=12', '-o', 'BatchMode=yes', `root@${host}`, cmd],
+    { encoding: 'utf8', timeout: 30_000, killSignal: 'SIGKILL' });
+  if (r.status !== 0) throw new Error(`Box nicht erreichbar (ssh exit ${r.status ?? r.error?.code})`);
+  return String(r.stdout).trim().split('\n').map(l => l.split(' '))
+    .filter(([, st]) => st === 'active' || st === 'activating' || st === 'reloading').map(([u]) => u);
+}
+
 function updateLocalEnv(secret) {
   const path = '.env.local';
   if (!existsSync(path)) {
@@ -185,36 +195,69 @@ async function main() {
   console.log(`[1/5] Generated ${SECRET_NAME} (${secret.length} chars hex)`);
 
   if (DRY_RUN) {
-    console.log('      DRY RUN — nichts geschrieben.');
-    if (!SKIP_VERCEL) console.log('       Vercel: production + development env');
-    if (!SKIP_GITHUB) console.log(`       GitHub: ${REPO} secret ${SECRET_NAME}`);
-    if (!SKIP_BOX) console.log(`       Hetzner: root@${hetznerHost} /etc/metastats-crawler/env`);
-    console.log('       Local: .env.local');
+    console.log('      DRY RUN — wuerde: laufende Leser pruefen → Vercel → neu ausrollen → Box → GitHub → .env.local');
     return;
   }
 
-  if (!SKIP_VERCEL) {
-    console.log('[2/5] Updating Vercel env (production + development)…');
-    updateVercelEnv(secret);
-    console.log('      OK');
-  } else console.log('[2/5] Vercel skipped');
-
-  if (!SKIP_GITHUB) {
-    console.log('[3/5] Updating GitHub Actions secret…');
-    await updateGitHubSecret(secret, ghToken);
-    console.log('      OK');
-  } else console.log('[3/5] GitHub skipped');
+  // Ohne alten Wert gibt es bei einem Deploy-Fehler keinen Rueckweg.
+  const oldSecret = env[SECRET_NAME];
+  if (!oldSecret && !INIT && !SKIP_VERCEL) {
+    throw new Error(`${SECRET_NAME} fehlt in .env.local — bei Erst-Einrichtung --init angeben.`);
+  }
 
   if (!SKIP_BOX) {
-    console.log(`[4/5] Deploying to Hetzner-Box (${hetznerHost})…`);
-    const out = deployToHetzner(hetznerHost, secret);
-    console.log('      Box bestätigt, Zeilen mit dem Namen:', out);
-  } else console.log('[4/5] Hetzner skipped');
+    const busy = activeOnBox(hetznerHost, READERS[SECRET_NAME]);
+    if (busy.length && !FORCE) {
+      throw new Error(`Auf der Box laeuft gerade: ${busy.join(', ')} — er haelt den alten Wert und wuerde mitten im Lauf scheitern. Spaeter erneut versuchen (oder --force).`);
+    }
+    if (SECRET_NAME === 'REVALIDATE_SECRET') {
+      const soft = activeOnBox(hetznerHost, REVALIDATE_SOFT);
+      if (soft.length) console.log(`      Hinweis: ${soft.join(', ')} laeuft — sein Revalidieren am Ende scheitert, der Edge-Speicher laeuft dann normal ab.`);
+    }
+  }
 
-  console.log('[5/5] Updating local .env.local…');
+  if (!SKIP_VERCEL) {
+    console.log('[2/6] Vercel (production + development)…');
+    const envChangedAt = Date.now();
+    dep.setEnv(SECRET_NAME, secret);
+    console.log('[3/6] Produktion neu ausrollen…');
+    try {
+      await dep.redeployProduction({ since: envChangedAt, gitMessage: `chore: rotate ${SECRET_NAME}` });
+    } catch (err) {
+      console.log(`      Deploy gescheitert (${err.deployPhase || 'unknown'}): ${err.message}`);
+      if (oldSecret) {
+        console.log('      Setze den alten Wert in Vercel zurueck — Box und .env.local bleiben unveraendert…');
+        dep.setEnv(SECRET_NAME, oldSecret);
+      }
+      throw new Error(`Abgebrochen, ${oldSecret ? 'alter Zustand wiederhergestellt' : 'Vercel traegt den neuen Wert, die Box noch nicht'}.`);
+    }
+  } else console.log('[2-3/6] Vercel uebersprungen');
+
+  if (!SKIP_BOX) {
+    console.log(`[4/6] Hetzner-Box (${hetznerHost})…`);
+    const out = deployToHetzner(hetznerHost, secret);
+    console.log('      Box bestaetigt, Zeilen mit dem Namen:', out);
+  } else console.log('[4/6] Hetzner uebersprungen');
+
+  if (!SKIP_GITHUB) {
+    console.log('[5/6] GitHub-Secret…');
+    await updateGitHubSecret(secret, ghToken);
+    console.log('      OK');
+  } else console.log('[5/6] GitHub uebersprungen');
+
+  console.log('[6/6] .env.local…');
   updateLocalEnv(secret);
 
-  console.log(`\nDone. ${SECRET_NAME} deployed.`);
+  console.log(`\nFertig. ${SECRET_NAME} ist ueberall neu.`);
 }
 
-main().catch(e => { console.error('FAILED:', e.message); process.exit(1); });
+let releaseLock = () => {};
+try {
+  releaseLock = acquireLock(`deploy-revalidate-secret ${SECRET_NAME}`);
+} catch (err) {
+  console.error('FAILED:', err.message);
+  process.exit(1);
+}
+main()
+  .then(() => releaseLock())
+  .catch(e => { releaseLock(); console.error('FAILED:', e.message); process.exit(1); });

@@ -17,7 +17,7 @@
 //
 // Usage:
 //   node scripts/refresh-supabase-key.mjs              # full rotation
-//   node scripts/refresh-supabase-key.mjs --skip-deploy # no empty commit
+//   node scripts/refresh-supabase-key.mjs --skip-deploy # don't redeploy
 //   node scripts/refresh-supabase-key.mjs --skip-box    # don't touch Hetzner
 //   node scripts/refresh-supabase-key.mjs --dry-run     # show plan, change nothing
 //
@@ -30,12 +30,18 @@ import { request as httpsRequest } from 'node:https';
 import { request as httpRequest } from 'node:http';
 import { lookup as dnsLookup } from 'node:dns';
 import sodium from 'libsodium-wrappers';
+import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
 
 const REPO = 'Dota1337/metastats';
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_DEPLOY = process.argv.includes('--skip-deploy');
 const SKIP_BOX = process.argv.includes('--skip-box');
+
+// Deploy ueber scripts/lib/vercel-deploy.mjs (seit 24.10.2026) statt leerem
+// Commit + Push: der Push scheiterte regelmaessig an Bot-Commits, und ohne
+// Zeitlimit hing die Shell-Variante des CLI.
+const dep = createVercelDeploy();
 
 const KEYS = [
   { envName: 'SUPABASE_SERVICE_ROLE_KEY', secretName: 'SUPABASE_SERVICE_ROLE_KEY', prefix: 'sb_secret_', label: 'Supabase Service-Role' },
@@ -86,11 +92,6 @@ function readEnv() {
   return env;
 }
 
-function run(cmd, args, opts = {}) {
-  const r = spawnSync(cmd, args, { stdio: 'inherit', shell: true, ...opts });
-  if (r.status !== 0) throw new Error(`${cmd} failed: ${r.status}`);
-}
-
 async function validateSupabaseKey(key, supabaseUrl, label) {
   // PostgREST returns 200 with a Swagger-style OpenAPI doc when called with a
   // valid service-role key; 401 when the key is bad. We don't care about the
@@ -99,21 +100,6 @@ async function validateSupabaseKey(key, supabaseUrl, label) {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
   });
   if (r.status !== 200) throw new Error(`Supabase REST rejected ${label} key: HTTP ${r.status}`);
-}
-
-async function updateVercelEnv(targets, secretName, key) {
-  for (const target of targets) {
-    // Kein NODE_TLS_REJECT_UNAUTHORIZED=0: hier geht der Service-Role-Key raus.
-    // Ohne Zertifikatspruefung liest ihn jede Zwischenstation mit. Bei
-    // TLS-Inspektion NODE_EXTRA_CA_CERTS setzen, nicht die Pruefung abschalten.
-    spawnSync('vercel', ['env', 'rm', secretName, target, '--yes'], { stdio: 'inherit', shell: true });
-    const add = spawnSync('vercel', ['env', 'add', secretName, target], {
-      input: key,
-      stdio: ['pipe', 'inherit', 'inherit'],
-      shell: true,
-    });
-    if (add.status !== 0) throw new Error(`vercel env add ${secretName} ${target} failed`);
-  }
 }
 
 async function updateGithubSecret(ghToken, secretName, key) {
@@ -142,11 +128,6 @@ async function updateGithubSecret(ghToken, secretName, key) {
     body,
   });
   if (r.status >= 300) throw new Error(`GitHub secret PUT failed: HTTP ${r.status} ${await r.text()}`);
-}
-
-function triggerRedeploy() {
-  run('git', ['commit', '--allow-empty', '-m', '"chore: refresh Supabase service-role key"']);
-  run('git', ['push']);
 }
 
 // Mandatory: refresh-api is always-on and caches env in RAM. Without restart
@@ -218,7 +199,7 @@ async function main() {
     console.log('  Vercel targets: production, development');
     console.log('  GitHub Secret(s):', present.map(k => k.secretName).join(', '));
     console.log('  Hetzner sync:', SKIP_BOX ? 'skipped' : 'YES (+ restart metastats-refresh-api.service)');
-    console.log('  Redeploy:', SKIP_DEPLOY ? 'skipped' : 'empty commit + push');
+    console.log('  Redeploy:', SKIP_DEPLOY ? 'skipped' : 'vercel redeploy + Nachweis');
     return;
   }
 
@@ -230,9 +211,11 @@ async function main() {
   }
 
   // Phase 2: Vercel
+  const envChangedAt = Date.now();
   for (const k of present) {
     step(++n, totalSteps, `Updating Vercel prod+dev env for ${k.secretName}...`);
-    await updateVercelEnv(['production', 'development'], k.secretName, env[k.envName]);
+    dep.setEnv(k.secretName, env[k.envName]);
+    console.log('      OK');
   }
 
   // Phase 3: GitHub
@@ -254,11 +237,21 @@ async function main() {
   }
 
   if (!SKIP_DEPLOY) {
-    step(++n, totalSteps, 'Triggering Vercel redeploy via empty commit...');
-    triggerRedeploy();
+    step(++n, totalSteps, 'Triggering Vercel redeploy...');
+    const host = await dep.redeployProduction({ since: envChangedAt, gitMessage: 'chore: refresh Supabase service-role key' });
+    console.log(`      Live: ${host}`);
   }
 
   console.log(`\nDone. Synced ${present.length} Supabase key(s): ${present.map(k => k.label).join(', ')}`);
 }
 
-main().catch(err => { console.error('ERROR:', err.message); process.exit(1); });
+let releaseLock = () => {};
+try {
+  releaseLock = acquireLock('refresh-supabase-key');
+} catch (err) {
+  console.error('ERROR:', err.message);
+  process.exit(1);
+}
+main()
+  .then(() => releaseLock())
+  .catch(err => { releaseLock(); console.error('ERROR:', err.message); process.exit(1); });

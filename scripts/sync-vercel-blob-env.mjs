@@ -3,9 +3,15 @@
 // SNAPSHOT_MANIFEST_URL) from .env.local to:
 //   - Vercel-Env (production + development)
 //   - GitHub-Repo-Secrets
-//   - Hetzner crawler box /etc/metastats-crawler/env + systemctl restart
-//     metastats-refresh-api.service (env-RAM-Cache, siehe Memory
-//     reference_hetzner_box_services.md)
+//   - Hetzner crawler box /etc/metastats-crawler/env (die Box-Dienste lesen
+//     die Datei bei jedem Start; refresh-api liest keinen der beiden Namen,
+//     ein Neustart bewirkt nichts — Positivliste in
+//     infra/hetzner/metastats-refresh-api-env.sh, Stand 24.10.2026)
+//
+// Vercel liest zur Laufzeit nur SNAPSHOT_MANIFEST_URL (BLOB_READ_WRITE_TOKEN
+// kommt in app/ nicht vor). Aendert sich die Manifest-Adresse, erst einen
+// Publisher-Lauf in den neuen Speicher abwarten, dann mit --deploy neu
+// ausrollen — sonst liest die Seite ein leeres Manifest.
 //
 // Run once after creating the Vercel-Blob store in the Dashboard:
 //   Storage → Create → Blob → "Connect to project metastats"
@@ -22,8 +28,11 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
+import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
 
 const require_ = createRequire(import.meta.url);
+const DEPLOY = process.argv.includes('--deploy');
+const dep = createVercelDeploy();
 
 function parseDotenv(path) {
   if (!existsSync(path)) return {};
@@ -53,24 +62,15 @@ function run(cmd, args, opts = {}) {
   return { code: r.status ?? 1, out: r.stdout || '', err: r.stderr || '' };
 }
 
-async function pushVercel(name, value, target) {
-  console.log(`  vercel ${target}: ${name}`);
-  // rm first (ignore failure when not exists), then add — vercel env doesn't support overwrite
-  // Kein NODE_TLS_REJECT_UNAUTHORIZED=0 hier — ueber diese Verbindung geht ein
-  // Secret raus. Ohne Zertifikatspruefung kann jeder im Netzweg dazwischen es
-  // mitlesen. Bricht die Verbindung an einer TLS-Inspektion, gehoert das
-  // Firmen-Zertifikat in NODE_EXTRA_CA_CERTS, nicht die Pruefung abgeschaltet.
-  run('vercel', ['env', 'rm', name, target, '--yes']);
-  const add = spawnSync('vercel', ['env', 'add', name, target], {
-    input: value,
-    encoding: 'utf8',
-    shell: true,
-  });
-  if (add.status !== 0) {
-    console.error(`    failed: ${add.stderr?.slice(0, 200)}`);
+function pushVercel(name, value) {
+  console.log(`  vercel production + development: ${name}`);
+  try {
+    dep.setEnv(name, value);
+    return true;
+  } catch (err) {
+    console.error(`    failed: ${err.message}`);
     return false;
   }
-  return true;
 }
 
 async function pushGithub(name, value) {
@@ -122,7 +122,7 @@ async function pushHetzner(updates) {
     const escaped = v.replace(/[\\&|]/g, '\\$&');
     return `if grep -q '^${k}=' /etc/metastats-crawler/env; then sed -i.bak 's|^${k}=.*|${k}=${escaped}|' /etc/metastats-crawler/env; else echo '${k}=${v}' >> /etc/metastats-crawler/env; fi`;
   }).join('; ');
-  const r = run('ssh', ['-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, `"${lines}; systemctl restart metastats-refresh-api.service; echo done"`]);
+  const r = run('ssh', ['-o', 'StrictHostKeyChecking=accept-new', `root@${host}`, `"${lines}; echo done"`]);
   if (r.code !== 0) {
     console.error(`    ssh failed: ${r.err.slice(0, 200)}`);
     return false;
@@ -134,15 +134,27 @@ async function pushHetzner(updates) {
 async function main() {
   const targets = ['BLOB_READ_WRITE_TOKEN', 'SNAPSHOT_MANIFEST_URL'];
   console.log('=== Vercel ===');
-  for (const name of targets) {
-    await pushVercel(name, env[name], 'production');
-    await pushVercel(name, env[name], 'development');
-  }
+  const envChangedAt = Date.now();
+  for (const name of targets) pushVercel(name, env[name]);
   console.log('\n=== GitHub Secrets ===');
   for (const name of targets) await pushGithub(name, env[name]);
   console.log('\n=== Hetzner ===');
   await pushHetzner(Object.fromEntries(targets.map(k => [k, env[k]])));
-  console.log('\nDONE — trigger a deploy if you want the API routes to pick up the new env immediately.');
+  if (DEPLOY) {
+    console.log('\n=== Deploy ===');
+    console.log(`  live: ${await dep.redeployProduction({ since: envChangedAt, gitMessage: 'chore: sync Vercel-Blob env' })}`);
+  } else {
+    console.log('\nDONE — ohne --deploy liest die Live-Seite die neue Manifest-Adresse erst nach dem naechsten Deploy.');
+  }
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+let releaseLock = () => {};
+try {
+  releaseLock = acquireLock('sync-vercel-blob-env');
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}
+main()
+  .then(() => releaseLock())
+  .catch(e => { releaseLock(); console.error(e); process.exit(1); });

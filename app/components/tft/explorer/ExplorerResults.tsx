@@ -211,14 +211,23 @@ export default function ExplorerResults({
     const active = sort?.key === key;
     const arrow = active ? (sort!.dir === 1 ? ' ▲' : ' ▼') : '';
     return (
-      <th className={`px-2 py-2 font-medium text-right whitespace-nowrap ${cls}`}>
+      <th className={`px-2 py-2 font-medium text-center whitespace-nowrap ${cls}`}>
         <button type="button" onClick={() => setSort({ key, dir: active && sort!.dir === -1 ? 1 : active ? -1 : key === 'avg' || key === 'delta' ? 1 : -1 })}
-          className={`hover:text-fg-primary ${active ? 'text-fg-primary' : ''} ${sub ? 'inline-flex flex-col items-end leading-tight' : ''}`}>
+          className={`hover:text-fg-primary ${active ? 'text-fg-primary' : ''} ${sub ? 'inline-flex flex-col items-center leading-tight' : ''}`}>
           {sub ? <><span>{label}</span><span className="text-[11px]">{sub}{arrow}</span></> : `${label}${arrow}`}
         </button>
       </th>
     );
   };
+
+  // Wert genau auf der Spaltenmitte, ± rechts daneben: die leere linke Spalte ist so breit wie das ±.
+  const withHalf = (value: string, half: number | null) => (
+    <span className="inline-grid grid-cols-[1fr_auto_1fr] items-baseline">
+      <span />
+      <span>{value}</span>
+      {half != null ? <span className="justify-self-start text-fg-muted text-xs ml-1 hidden lg:inline">{'±'}{half.toFixed(2)}</span> : <span />}
+    </span>
+  );
 
   const nameCell = (r: ExplorerRow) => {
     const label = labelOf(r);
@@ -368,27 +377,25 @@ export default function ExplorerResults({
                   className={`border-b border-border-subtle last:border-0 ${act ? 'cursor-pointer hover:bg-surface-raised' : ''} ${weak ? 'opacity-50' : ''} ${head ? 'bg-surface-raised' : ''}`}>
                   <td className="px-3 py-1.5 max-w-[14rem] sm:max-w-none">{nameCell(r)}</td>
                   {showDelta && (
-                    <td className={`px-2 py-1.5 text-right ${deltaClass(d, dh, 'text-fg-secondary')}`}>
-                      {fmtDelta(d)}
-                      {dh != null && <span className="text-fg-muted text-xs ml-1 hidden lg:inline">{'±'}{dh.toFixed(2)}</span>}
+                    <td className={`px-2 py-1.5 text-center ${deltaClass(d, dh, 'text-fg-secondary')}`}>
+                      {withHalf(fmtDelta(d), dh)}
                     </td>
                   )}
-                  <td className="px-2 py-1.5 text-right text-fg-primary">
-                    {fmtAvg(r.avg)}
-                    <span className="text-fg-muted text-xs ml-1 hidden lg:inline">{'±'}{r.half.toFixed(2)}</span>
+                  <td className="px-2 py-1.5 text-center text-fg-primary">
+                    {withHalf(fmtAvg(r.avg), r.half)}
                   </td>
-                  {t1 && <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{fmtPct(r.top1)}</td>}
-                  {t4 && <td className="px-2 py-1.5 text-right text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
-                  <td className="px-2 py-1.5 text-right whitespace-nowrap">
-                    {/* Anteil mittig ueber der Leiste; der Block bleibt am rechten Spaltenrand. */}
-                    <div className="ml-auto flex w-fit flex-col items-center">
+                  {t1 && <td className="px-2 py-1.5 text-center text-fg-primary hidden md:table-cell">{fmtPct(r.top1)}</td>}
+                  {t4 && <td className="px-2 py-1.5 text-center text-fg-primary hidden sm:table-cell">{fmtPct(r.top4)}</td>}
+                  <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                    {/* Anteil mittig ueber der Leiste, beides auf der Spaltenmitte. */}
+                    <div className="mx-auto flex w-fit flex-col items-center">
                       <span className="text-fg-primary leading-tight">{refGames ? fmtPct(r.games / refGames) : '—'}</span>
                       {/* Gleich breite Leiste je Zeile, auch wenn die Spalte in Reitern mit wenigen Spalten breit wird. */}
                       <span className="min-w-[3.75rem] sm:min-w-[4.5rem] rounded-full bg-pos-win-a40 px-1.5 py-0.5 text-center text-fg-primary text-xs sm:text-[13px] leading-none">{num(r.games)}</span>
                     </div>
                   </td>
                   {showStar3 && (
-                    <td className="px-2 py-1.5 text-right text-fg-primary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
+                    <td className="px-2 py-1.5 text-center text-fg-primary hidden md:table-cell">{r.star3 != null ? fmtPct(r.star3) : '—'}</td>
                   )}
                   {tab === 'units' && (grouped && !head ? <td /> :
                     <td className="px-2 py-1.5 text-right">

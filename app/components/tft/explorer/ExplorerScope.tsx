@@ -101,7 +101,8 @@ export default function ExplorerScope({
         <select
           value={query.region}
           onChange={e => setQuery({ ...query, region: e.target.value })}
-          className="bg-surface-base border border-border-subtle rounded-md text-xs text-fg-primary px-3 py-2"
+          // Feste Hoehe wie die Knoepfe: Safari legt sonst ~10 px auf den Innenabstand drauf (44 statt 34).
+          className="h-[34px] bg-surface-base border border-border-subtle rounded-md text-xs text-fg-primary px-3 py-0"
         >
           <option value="all">{t('tft.filter.allRegions')}</option>
           {(meta?.regions ?? []).map(r => (

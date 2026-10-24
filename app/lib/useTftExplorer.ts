@@ -31,15 +31,22 @@ export function useTftExplorer() {
   // Hat der Besucher im Auswahlfeld „—" gewaehlt? Dann setzt erst die naechste
   // gesuchte Unit wieder einen Traeger (followFocus), kein Reiterwechsel.
   const focusCleared = useRef(false);
+  // Zuletzt gesetzte Anfrage: Klicks im Drop-down-Raster kommen schneller, als
+  // die Adresse nachzieht. Eine Funktion als `next` rechnet dann auf ihr statt
+  // auf dem alten Stand (sonst ginge der erste Klick verloren), hoechstens 1,5 s.
+  const latest = useRef<{ q: ExplorerQuery; qs: string; at: number } | null>(null);
 
   const setQuery = useCallback((next: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { push?: boolean; now?: boolean }) => {
-    const raw = typeof next === 'function' ? next(query) : next;
-    if (raw.focus === null && query.focus !== null) focusCleared.current = true;
-    const q = followFocus(query, raw, { cleared: focusCleared.current });
+    const l = latest.current;
+    const prev = typeof next === 'function' && l && Date.now() - l.at < 1500 && l.qs !== serializeExplorerQuery(query) ? l.q : query;
+    const raw = typeof next === 'function' ? next(prev) : next;
+    if (raw.focus === null && prev.focus !== null) focusCleared.current = true;
+    const q = followFocus(prev, raw, { cleared: focusCleared.current });
     if (q.focus) focusCleared.current = false;
     // Nur wenn sich die Anfrage aendert — sonst bliebe der Merker fuer einen spaeteren Klick stehen.
-    if (opts?.now && serializeExplorerQuery(q, { forApi: true }) !== serializeExplorerQuery(query, { forApi: true })) nowRef.current = true;
+    if (opts?.now && serializeExplorerQuery(q, { forApi: true }) !== serializeExplorerQuery(prev, { forApi: true })) nowRef.current = true;
     const qs = serializeExplorerQuery(q);
+    latest.current = { q, qs, at: Date.now() };
     const url = qs ? `${pathname}?${qs}` : pathname;
     if (opts?.push) { pushed.current = true; router.push(url, { scroll: false }); }
     else router.replace(url, { scroll: false });

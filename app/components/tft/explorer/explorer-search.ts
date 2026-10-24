@@ -4,9 +4,10 @@
 // in einem Kasten zusammen (Kasten = eins davon). Reine Funktionen, damit
 // Zerlegen, Treffer und Einfuegen getestet werden koennen.
 import {
-  EXPLORER_LIMITS, filterCount,
+  EXPLORER_LIMITS, filterCount, groupSize,
   type ExplorerQuery, type FilterGroup, type ItemFilter, type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
+import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import type { ExplorerOptions, ItemOption, TraitOption, UnitOption } from './explorer-options';
 
 export type PickKind = 'units' | 'items' | 'traits';
@@ -20,6 +21,9 @@ export interface LastRef { kind: PickKind; id: string; where: 'main' | number }
 
 // Reihenfolge der Item-Arten in der Trefferliste (ExplorerSearchBox).
 export const ITEM_ORDER = ['standard', 'emblem', 'artifact', 'radiant'] as const;
+// Item-Sorten als Knoepfe/Reiter (Unit-Fenster, Drop-down der Suchzeile),
+// Reihenfolge wie vom User genannt (Plan 24.10.2026).
+export const PICK_KINDS: ItemBucket[] = ['standard', 'artifact', 'emblem', 'radiant'];
 
 const LIMIT: Record<PickKind, number> = { units: EXPLORER_LIMITS.units, items: EXPLORER_LIMITS.items, traits: EXPLORER_LIMITS.traits };
 
@@ -152,9 +156,9 @@ export function bestPick(raw: string, o: ExplorerOptions): Pick | null {
 
 export interface ApplyResult { query: ExplorerQuery; last: LastRef | null; added: boolean }
 
-const listOf = (q: { units: UnitFilter[]; items: ItemFilter[]; traits: TraitFilter[] }, kind: PickKind) =>
+type Box = { units: UnitFilter[]; items: ItemFilter[]; traits: TraitFilter[] };
+const listOf = (q: Box, kind: PickKind) =>
   q[kind] as Array<UnitFilter | ItemFilter | TraitFilter>;
-const groupSize = (g: FilterGroup) => g.units.length + g.items.length + g.traits.length;
 const hasMods = (f: object) => Object.keys(f).some(k => k !== 'id');
 
 /**
@@ -219,4 +223,91 @@ export function applyPhrase(q: ExplorerQuery, terms: PhraseTerm[], o: ExplorerOp
     cur = { query: r.query, last: r.last, added: cur.added || r.added };
   });
   return { ...cur, missed };
+}
+
+// ── Drop-down der Suchzeile (Plan 24.10.2026): Reiter mit Bilder-Raster ──
+
+/** Schluessel eines Bausteins in chosenIds. */
+export const pickKey = (kind: PickKind, id: string) => `${kind}:${id}`;
+
+/** Gewaehlte Bausteine (Hauptliste und Kaesten); out = „ohne" bzw. „keins davon" aus alten Links. */
+export function chosenIds(q: ExplorerQuery): { on: Set<string>; out: Set<string> } {
+  const on = new Set<string>();
+  const out = new Set<string>();
+  const add = (b: Box, none: boolean) => (['units', 'items', 'traits'] as const).forEach(kind =>
+    listOf(b, kind).forEach(f => (none || f.x ? out : on).add(pickKey(kind, f.id))));
+  add(q, false);
+  q.groups.forEach(g => add(g, g.m === 'none'));
+  return { on, out };
+}
+
+/**
+ * Nimmt einen Baustein ueberall heraus (Hauptliste und Kaesten); leer
+ * gewordene Kaesten fallen weg wie in moveFilter. `last` wird neu
+ * nummeriert oder verworfen, wenn es auf den Baustein zeigte.
+ */
+export function removeEverywhere(q: ExplorerQuery, kind: PickKind, id: string, last: LastRef | null):
+  { query: ExplorerQuery; last: LastRef | null } {
+  const drop = <T extends Box>(b: T): T => ({ ...b, [kind]: listOf(b, kind).filter(f => f.id !== id) });
+  const groups: FilterGroup[] = [];
+  const renum = new Map<number, number>();
+  q.groups.forEach((g, i) => {
+    const n = drop(g);
+    if (groupSize(n) > 0) { renum.set(i, groups.length); groups.push(n); }
+  });
+  let ref = last;
+  if (ref && ref.kind === kind && ref.id === id) ref = null;
+  else if (ref && typeof ref.where === 'number') {
+    const w = renum.get(ref.where);
+    ref = w == null ? null : { ...ref, where: w };
+  }
+  return { query: { ...drop(q), groups }, last: ref };
+}
+
+// Platzhalter fuer die Probe: kommt in keiner echten Kennung vor (ID_RE).
+const PROBE_ID = '\u0000';
+/** Passt noch ein (neuer) Baustein dieser Art? Probe ueber applyPick, damit die Grenzen an einer Stelle bleiben. */
+export const canAdd = (q: ExplorerQuery, kind: PickKind, op: Op, last: LastRef | null): boolean =>
+  applyPick(q, { kind, f: { id: PROBE_ID } } as Pick, op, last).added;
+
+/** Units fuers Raster: je Kostenstufe eine Zeile. Formen „Lux (Coven)" fallen weg, wenn es die Basis „Lux" gibt. */
+export function browseUnits(units: UnitOption[]): UnitOption[][] {
+  const names = new Set(units.map(u => u.name));
+  const byCost = new Map<number, UnitOption[]>();
+  for (const u of units) {
+    const base = /^(.+?)\s*\([^)]*\)$/.exec(u.name)?.[1];
+    if (base && names.has(base)) continue;
+    byCost.set(u.cost, [...(byCost.get(u.cost) ?? []), u]);
+  }
+  return [...byCost.keys()].sort((a, b) => a - b)
+    .map(c => byCost.get(c)!.sort((a, b) => a.name.localeCompare(b.name)));
+}
+
+/** Synergien fuers Raster: alphabetisch, Einstufen-Synergien (hoechstens 1 Unit) abgesetzt dahinter. */
+export function browseTraits(traits: TraitOption[]): TraitOption[][] {
+  const single = (x: TraitOption) => Math.max(0, ...x.mins) <= 1;
+  const byName = (a: TraitOption, b: TraitOption) => a.name.localeCompare(b.name);
+  return [traits.filter(x => !single(x)).sort(byName), traits.filter(single).sort(byName)].filter(r => r.length);
+}
+
+export type GridDir = 'left' | 'right' | 'up' | 'down';
+/**
+ * Pfeiltasten im Raster. `sections` = Laenge je Abschnitt (jeder beginnt eine
+ * neue Zeile und bricht nach `cols` um), `idx` = Feld ueber alle Abschnitte,
+ * -1 = noch keins markiert. Hoch/runter behaelt die Spalte, soweit die Zeile reicht.
+ */
+export function gridMove(sections: number[], cols: number, idx: number, dir: GridDir): number {
+  const rows: { start: number; len: number }[] = [];
+  let start = 0;
+  for (const len of sections) {
+    for (let o = 0; o < len; o += Math.max(1, cols)) rows.push({ start: start + o, len: Math.min(Math.max(1, cols), len - o) });
+    start += len;
+  }
+  if (!start) return -1;
+  if (idx < 0 || idx >= start) return 0;
+  if (dir === 'left') return Math.max(0, idx - 1);
+  if (dir === 'right') return Math.min(start - 1, idx + 1);
+  const r = rows.findIndex(x => idx >= x.start && idx < x.start + x.len);
+  const to = rows[r + (dir === 'up' ? -1 : 1)];
+  return to ? to.start + Math.min(idx - rows[r].start, to.len - 1) : idx;
 }

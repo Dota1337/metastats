@@ -3,14 +3,18 @@
 // Items und Synergien mit Bild-Treffern. „und" / „oder" lassen sich tippen
 // („Lux und Jinx oder Vex") oder ueber den Schalter waehlen. Logik in
 // explorer-search.ts.
+// Drop-down (Plan 24.10.2026): leeres Feld oder Pfeil oeffnet Reiter mit
+// Bilder-Raster (Units, Item-Sorten, Synergien). Klick waehlt, zweiter Klick
+// entfernt; das Fenster bleibt offen. Getippter Text zeigt die Trefferliste.
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { costColor } from '../../../lib/tft-ui';
 import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import type { ExplorerOptions, ItemOption } from './explorer-options';
 import {
-  ITEM_ORDER, bestPick, currentTerm, isPhrase, searchOptions, splitPhrase, unitWithStars,
-  type Op, type Pick, type PhraseTerm,
+  ITEM_ORDER, PICK_KINDS, bestPick, browseTraits, browseUnits, currentTerm, gridMove, isPhrase, pickKey, searchOptions,
+  splitPhrase, unitWithStars,
+  type GridDir, type Op, type Pick, type PickKind, type PhraseTerm,
 } from './explorer-search';
 
 // Gleiche Reihenfolge wie ITEM_ORDER (bester Treffer = erster markierter).
@@ -24,8 +28,19 @@ export function OptIcon({ src, alt, className = 'w-6 h-6', border }: { src: stri
 
 const quick = 'px-1.5 py-0.5 rounded border border-border-subtle text-[11px] text-fg-secondary hover:border-accent-a50 hover:text-fg-bright';
 
+type BrowseTab = 'units' | ItemBucket | 'traits';
+const tabLabel = (b: BrowseTab): TranslationKey => (b === 'units' ? 'tft.explorer.units' : b === 'traits' ? 'tft.explorer.traits'
+  : b === 'standard' ? 'tft.explorer.items' : `tft.item.bucket.${b}` as TranslationKey);
+const KEY_DIR: Record<string, GridDir> = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down' };
+// Kachel 2rem + 0.25rem Abstand: die groesste Kostenstufe (14 Units) passt in eine Zeile.
+const TILE_GRID = 'grid grid-cols-[repeat(auto-fill,2rem)] gap-1';
+const SKELETON = 14;
+
+interface Cell { pick: Pick; name: string; img: string | null; border?: string }
+type CellState = 'on' | 'out' | 'blocked' | null;
+
 export default function ExplorerSearchBox({
-  options, mode, setMode, onApply, focusKey, onFocus,
+  options, mode, setMode, onApply, focusKey, onFocus, chosen, blocked, onToggle,
 }: {
   options: ExplorerOptions;
   mode: Op;
@@ -35,6 +50,12 @@ export default function ExplorerSearchBox({
   /** Aendert sich der Wert, bekommt das Feld den Fokus (z. B. „+" in einem Kasten). */
   focusKey: number;
   onFocus?: () => void;
+  /** Raster: gewaehlte Bausteine (pickKey), out = „ohne"/„keins davon" aus alten Links. */
+  chosen: { on: Set<string>; out: Set<string> };
+  /** Raster: Grenze erreicht — kein weiterer Baustein dieser Art. */
+  blocked: Record<PickKind, boolean>;
+  /** Raster-Klick: waehlen oder (schon gewaehlt) ueberall entfernen. */
+  onToggle: (p: Pick) => void;
 }) {
   const { t, lang } = useI18n();
   const [text, setText] = useState('');
@@ -42,17 +63,29 @@ export default function ExplorerSearchBox({
   // null = noch nicht mit Pfeilen gewaehlt: markiert ist der beste Treffer.
   const [hi, setHi] = useState<number | null>(null);
   const [missed, setMissed] = useState<string[]>([]);
+  const [tab, setTab] = useState<BrowseTab>('units');
+  // Markierte Kachel im Raster (Maus, Pfeiltasten, zuletzt angetippt).
+  const [act, setAct] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  // Fokus nach einer Treffer-Wahl soll das Raster nicht wieder oeffnen.
+  const skipOpen = useRef(false);
   const listId = useId();
 
-  useEffect(() => { if (focusKey) inputRef.current?.focus(); }, [focusKey]);
+  useEffect(() => {
+    if (!focusKey) return;
+    inputRef.current?.focus();
+    setOpen(true);
+  }, [focusKey]);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => { if (!boxRef.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
+  // Jedes neue Oeffnen beginnt bei den Units (zurueckgesetzt, solange zu).
+  useEffect(() => { if (!open) { setTab('units'); setAct(null); } }, [open]);
 
   const terms = useMemo(() => splitPhrase(text, lang), [text, lang]);
   const phrase = isPhrase(terms);
@@ -71,11 +104,52 @@ export default function ExplorerSearchBox({
   const best = useMemo(() => (term ? bestPick(term, options) : null), [term, options]);
   const hiIdx = hi != null ? Math.min(hi, Math.max(0, flat.length - 1)) : (best ? Math.max(0, idxOf(best.kind, best.f.id)) : 0);
 
+  // Raster: Reiter (leere Item-Sorten/Synergien fallen weg) und Kacheln je Abschnitt.
+  const unitRows = useMemo(() => browseUnits(options.units), [options.units]);
+  const traitRows = useMemo(() => browseTraits(options.traits), [options.traits]);
+  const tabs = useMemo(() => (['units', ...PICK_KINDS, 'traits'] as BrowseTab[]).filter(b => b === 'units'
+    || (b === 'traits' ? options.traits.length > 0 : options.items.some(i => itemGroupOf(i) === b))), [options]);
+  const curTab = tabs.includes(tab) ? tab : 'units';
+  const sections: Cell[][] = useMemo(() => {
+    if (curTab === 'units') {
+      return unitRows.map(r => r.map(u => ({ pick: { kind: 'units' as const, f: { id: u.id } }, name: u.name, img: u.img, border: costColor(u.cost) })));
+    }
+    if (curTab === 'traits') return traitRows.map(r => r.map(x => ({ pick: { kind: 'traits' as const, f: { id: x.id } }, name: x.name, img: x.img })));
+    const list = options.items.filter(i => itemGroupOf(i) === curTab);
+    return list.length ? [list.map(i => ({ pick: { kind: 'items' as const, f: { id: i.id } }, name: i.name, img: i.img }))] : [];
+  }, [curTab, unitRows, traitRows, options.items]);
+  const cells = sections.flat();
+  const browse = text.trim() === '';
+  const showBrowse = open && browse;
+  const cellId = (i: number) => `${listId}-c${i}`;
+  const tabId = (b: BrowseTab) => `${listId}-t-${b}`;
+  const stateOf = (c: Cell): CellState => {
+    const k = pickKey(c.pick.kind, c.pick.f.id);
+    return chosen.on.has(k) ? 'on' : chosen.out.has(k) ? 'out' : blocked[c.pick.kind] ? 'blocked' : null;
+  };
+  const toggleCell = (i: number) => {
+    const c = cells[i];
+    if (!c) return;
+    setAct(i);
+    if (stateOf(c) === 'blocked') return;
+    setMissed([]);
+    onToggle(c.pick);
+  };
+  const pickTab = (b: BrowseTab) => { setTab(b); setAct(null); };
+  // Spalten des Rasters (fuer hoch/runter), aus dem ersten Abschnitt gemessen.
+  const gridCols = () => {
+    const el = gridRef.current?.querySelector<HTMLElement>('[data-grid]');
+    return el ? getComputedStyle(el).gridTemplateColumns.split(' ').filter(Boolean).length : 1;
+  };
+
   const done = (miss: string[]) => {
     setMissed(miss);
     setText('');
     setHi(null);
+    setOpen(false);
+    skipOpen.current = true;
     inputRef.current?.focus();
+    skipOpen.current = false;
   };
   // Treffer fuer den aktuellen Begriff: die Begriffe davor gehen mit.
   const pickResult = (p: Pick) => {
@@ -85,10 +159,31 @@ export default function ExplorerSearchBox({
   };
   const applyAll = () => done(onApply(terms, null, null));
 
-  const onKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // Tasten fuer Feld, Pfeil-Knopf und Reiter (sie liegen alle in diesem Kasten).
+  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const el = e.target as HTMLElement;
+    const inInput = el === inputRef.current;
+    if (e.key === 'Escape') { if (open) { e.preventDefault(); setOpen(false); } return; }
+    if (browse) {
+      const dir = KEY_DIR[e.key];
+      if (dir && el.getAttribute('role') === 'tab' && (dir === 'left' || dir === 'right')) {
+        e.preventDefault();
+        const next = tabs[(tabs.indexOf(curTab) + (dir === 'left' ? tabs.length - 1 : 1)) % tabs.length];
+        pickTab(next);
+        document.getElementById(tabId(next))?.focus();
+      } else if (dir) {
+        e.preventDefault();
+        if (!open) setOpen(true);
+        else setAct(gridMove(sections.map(s => s.length), gridCols(), act ?? -1, dir));
+      } else if (e.key === 'Enter' && inInput && open && act != null) {
+        e.preventDefault();
+        toggleCell(act);
+      }
+      return;
+    }
+    if (!inInput) return;
     if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setHi(Math.min(hiIdx + 1, flat.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setHi(Math.max(hiIdx - 1, 0)); }
-    else if (e.key === 'Escape') setOpen(false);
     else if (e.key === 'Enter') {
       e.preventDefault();
       // Ohne Pfeilwahl gilt die ganze Eingabe (mit Sternen/Stufe aus dem Text).
@@ -99,9 +194,21 @@ export default function ExplorerSearchBox({
 
   const showDrop = open && (term.length > 0 || phrase);
   const rowCls = (i: number) => `flex items-center gap-2 px-2 py-1 rounded ${i === hiIdx ? 'bg-surface-overlay' : 'hover:bg-surface-overlay'}`;
+  // Kachel-Zustand: gewaehlt = Akzent-Ring, „ohne" = roter Ring, Grenze = gedimmt; markiert = Umriss.
+  const ringCls = (st: CellState) => (st === 'on' ? 'ring-2 ring-accent' : st === 'out' ? 'ring-2 ring-pos-loss' : '');
+  const actCls = (i: number) => (i === act ? 'outline-2 outline-offset-2 outline-fg-muted' : '');
+  const offCls = (st: CellState) => (st === 'blocked' ? 'opacity-40 cursor-not-allowed' : '');
+  const cellProps = (i: number, c: Cell, st: CellState) => ({
+    id: cellId(i), type: 'button' as const, role: 'option', tabIndex: -1, 'aria-label': c.name,
+    'aria-selected': st === 'on' || st === 'out', 'aria-disabled': st === 'blocked' || undefined,
+    // Fokus bleibt im Feld (Tastatur) bzw. die Handy-Tastatur bleibt zu.
+    onMouseDown: (e: React.MouseEvent) => e.preventDefault(),
+    onMouseEnter: () => setAct(i),
+    onClick: () => toggleCell(i),
+  });
 
   return (
-    <div ref={boxRef} className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem] sm:max-w-[34rem]">
+    <div ref={boxRef} onKeyDown={onKey} className="relative w-full sm:w-auto sm:flex-1 sm:min-w-[18rem] sm:max-w-[34rem]">
       <div className={`flex items-center gap-2 rounded-md border bg-surface-base pl-2.5 pr-1 ${open ? 'border-accent-a50' : 'border-border-subtle'}`}>
         <svg aria-hidden="true" viewBox="0 0 20 20" className="w-4 h-4 text-fg-muted shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
           <circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" strokeLinecap="round" />
@@ -110,18 +217,27 @@ export default function ExplorerSearchBox({
           ref={inputRef}
           value={text}
           onChange={e => { setText(e.target.value); setOpen(true); setHi(null); setMissed([]); }}
-          onFocus={() => { setOpen(true); onFocus?.(); }}
-          onKeyDown={onKey}
+          onFocus={() => { if (!skipOpen.current) setOpen(true); onFocus?.(); }}
+          onClick={() => setOpen(true)}
           placeholder={t('tft.explorer.x.searchAll')}
           aria-label={t('tft.explorer.x.searchAll')}
           role="combobox"
-          aria-expanded={showDrop}
+          aria-expanded={showDrop || showBrowse}
           aria-controls={listId}
           aria-autocomplete="list"
+          aria-activedescendant={showBrowse && act != null && cells[act] ? cellId(act) : undefined}
           // Rahmen zeigt der Kasten (offen = Akzent); der globale Fokusring sitzt ausserhalb der Ebenen und schlaegt Klassen.
           style={{ outline: 'none' }}
           className="flex-1 min-w-0 bg-transparent py-2 text-sm text-fg-primary placeholder:text-fg-faint"
         />
+        <button type="button" aria-label={t('tft.explorer.x.browse')} title={t('tft.explorer.x.browse')} aria-expanded={showBrowse}
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => { if (showBrowse) setOpen(false); else { setText(''); setOpen(true); onFocus?.(); } }}
+          className="w-7 h-7 flex items-center justify-center shrink-0 rounded text-fg-muted hover:text-fg-primary">
+          <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-4 h-4 transition-transform ${showBrowse ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div className="flex shrink-0 rounded border border-border-subtle overflow-hidden" role="group">
           {(['and', 'or'] as const).map(m => (
             <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)}
@@ -133,6 +249,64 @@ export default function ExplorerSearchBox({
       </div>
       {missed.length > 0 && (
         <div className="mt-1 text-[11px] text-pos-loss">{t('tft.explorer.x.notFound')}: {missed.join(', ')}</div>
+      )}
+
+      {showBrowse && (
+        <div className="absolute z-40 left-0 right-0 top-full mt-1 rounded-lg border border-border-subtle bg-surface-raised p-2 shadow-xl">
+          <div role="tablist" aria-label={t('tft.explorer.x.browse')} className="flex flex-wrap gap-1">
+            {tabs.map(b => (
+              <button key={b} id={tabId(b)} type="button" role="tab" aria-selected={curTab === b} aria-controls={listId}
+                tabIndex={curTab === b ? 0 : -1} onMouseDown={e => e.preventDefault()} onClick={() => pickTab(b)}
+                className={`px-2.5 py-1 rounded text-xs border ${curTab === b ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`}>
+                {t(tabLabel(b))}
+              </button>
+            ))}
+          </div>
+          <div aria-hidden="true" className="h-5 mt-1 px-1 text-xs leading-5 text-fg-secondary truncate">{act != null ? cells[act]?.name : ''}</div>
+          <div id={listId} ref={gridRef} role="listbox" aria-multiselectable="true" aria-labelledby={tabId(curTab)}
+            className="max-h-[min(60vh,26rem)] overflow-y-auto p-1 space-y-1.5">
+            {cells.length === 0 && (
+              <div data-grid className={TILE_GRID}>
+                {Array.from({ length: SKELETON }, (_, i) => <span key={i} className="w-8 h-8 rounded bg-surface-overlay" />)}
+              </div>
+            )}
+            {sections.map((sec, si) => {
+              const base = sections.slice(0, si).reduce((a, s) => a + s.length, 0);
+              if (curTab === 'traits') {
+                return (
+                  <div key={si} data-grid className={`grid grid-cols-2 sm:grid-cols-3 gap-1 ${si > 0 ? 'pt-1.5 border-t border-border-subtle' : ''}`}>
+                    {sec.map((c, j) => {
+                      const i = base + j;
+                      const st = stateOf(c);
+                      return (
+                        <button key={c.pick.f.id} {...cellProps(i, c, st)}
+                          className={`flex items-center gap-1.5 min-w-0 px-1.5 py-1 rounded border text-left text-sm ${
+                            st === 'on' ? 'border-accent bg-accent-a15 text-fg-bright' : st === 'out' ? 'border-pos-loss text-fg-primary' : 'border-border-subtle text-fg-primary hover:bg-surface-overlay'
+                          } ${actCls(i)} ${offCls(st)}`}>
+                          <OptIcon src={c.img} alt={c.name} className="w-6 h-6" />
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              }
+              return (
+                <div key={si} data-grid className={TILE_GRID}>
+                  {sec.map((c, j) => {
+                    const i = base + j;
+                    const st = stateOf(c);
+                    return (
+                      <button key={c.pick.f.id} {...cellProps(i, c, st)} className={`w-8 h-8 rounded ${ringCls(st)} ${actCls(i)} ${offCls(st)}`}>
+                        <OptIcon src={c.img} alt={c.name} className="w-8 h-8" border={c.border} />
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {showDrop && (

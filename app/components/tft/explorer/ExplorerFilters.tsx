@@ -12,7 +12,10 @@ import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import {
   itemFitsUnit, itemImg, itemName, traitImg, traitMin, traitName, unitImg, unitName, type ExplorerOptions,
 } from './explorer-options';
-import { applyPhrase, applyPick, normText, type LastRef, type Op, type PhraseTerm, type Pick } from './explorer-search';
+import {
+  PICK_KINDS, applyPhrase, applyPick, canAdd, chosenIds, normText, pickKey, removeEverywhere,
+  type LastRef, type Op, type PhraseTerm, type Pick,
+} from './explorer-search';
 import ExplorerSearchBox, { ITEM_GROUPS, OptIcon, itemGroupOf } from './ExplorerSearchBox';
 import { useFilterDrag } from './explorer-drag';
 import type { DragSrc, Where } from './explorer-move';
@@ -115,8 +118,9 @@ export default function ExplorerFilters({
   query, setQuery, options, assets, data, dataQuery,
 }: {
   query: ExplorerQuery;
-  /** now: Anfrage ohne die kurze Verzoegerung (einzelner Klick auf Treffer/Vorschlag). */
-  setQuery: (q: ExplorerQuery, opts?: { now?: boolean }) => void;
+  /** now: Anfrage ohne die kurze Verzoegerung (einzelner Klick auf Treffer/Vorschlag).
+   *  Als Funktion: rechnet auf der zuletzt gesetzten Anfrage (schnelle Klicks im Raster). */
+  setQuery: (q: ExplorerQuery | ((q: ExplorerQuery) => ExplorerQuery), opts?: { now?: boolean }) => void;
   options: ExplorerOptions;
   assets: TftAssetsBundle | null;
   data: ExplorerResponse | null;
@@ -164,6 +168,22 @@ export default function ExplorerFilters({
     setLast(ref);
     return missed;
   };
+
+  // Raster im Drop-down (Plan 24.10.2026): Klick waehlt, zweiter Klick nimmt den
+  // Baustein ueberall heraus. Ohne `now` — mehrere Klicks hintereinander werden
+  // so zu einer Anfrage gebuendelt; als Funktion, damit kein Klick verloren geht.
+  const chosen = chosenIds(query);
+  const blocked = {
+    units: !canAdd(query, 'units', mode, last), items: !canAdd(query, 'items', mode, last), traits: !canAdd(query, 'traits', mode, last),
+  };
+  const onToggle = (p: Pick) => setQuery(q => {
+    const ref = rawLast && refAlive(q, rawLast) ? rawLast : null;
+    const c = chosenIds(q);
+    const key = pickKey(p.kind, p.f.id);
+    const r = c.on.has(key) || c.out.has(key) ? removeEverywhere(q, p.kind, p.f.id, ref) : applyPick(q, p, mode, ref);
+    setLast(r.last);
+    return r.query;
+  });
 
   const setGroup = (g: number, fn: (gr: FilterGroup) => FilterGroup) => setQuery({
     ...query, groups: query.groups.map((gr, i) => (i === g ? fn(gr) : gr)).filter(gr => groupSize(gr) > 0),
@@ -356,7 +376,8 @@ export default function ExplorerFilters({
             ))}
           </Row>
         </PlainChip>
-        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)} />
+        <ExplorerSearchBox options={options} mode={mode} setMode={setMode} onApply={onApply} focusKey={focusKey} onFocus={() => setOpen(null)}
+          chosen={chosen} blocked={blocked} onToggle={onToggle} />
         {hasAny && (
           <button type="button" onClick={() => {
             setLast(null);
@@ -601,9 +622,6 @@ function UnitEditor({
     </>
   );
 }
-
-// Knoepfe je Item-Sorte (Plan 24.10.2026, W2), Reihenfolge wie vom User genannt.
-const PICK_KINDS: ItemBucket[] = ['standard', 'artifact', 'emblem', 'radiant'];
 
 // Items an der Unit als Bilder waehlen (bis zu max). Jede Sorte hat ihren
 // Knopf und zeigt nur ihre Liste; beim Tippen wird ueber alle Sorten gesucht.

@@ -585,9 +585,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
           Spalten bleiben (Unit-Wirkung ≥ 460, Items ≥ 580). Prozent statt vw,
           damit die Scrollleiste nicht mitzaehlt. */}
       <div className={`max-w-[1400px] ${wide ? 'min-[100rem]:max-w-[1920px] min-[100rem]:px-[clamp(1.5rem,calc((100%_-_1552px)_/_2),108px)]' : ''} mx-auto px-4 sm:px-6 py-6`}>
-        <a href={withLang(TFT_HOME)} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
-
-        <div className="flex flex-wrap items-center justify-end gap-2 mt-2 mb-4">
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+          <a href={withLang(TFT_HOME)} className="mr-auto inline-flex items-center py-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.comps')}</a>
           <a
             href={withLang(`/tft/comps?compareA=${encodeURIComponent(trendSlug ?? slug)}`)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a50 text-xs transition-colors"

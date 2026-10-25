@@ -8,7 +8,7 @@ import { fmtAvg, fmtDelta, fmtPct } from './explorer-options';
 export function deltaClass(d: number | null, half: number | null, neutral = 'text-fg-muted'): string {
   if (d == null) return neutral;
   if (half != null && Math.abs(d) <= half) return neutral;
-  return d < 0 ? 'text-pos-win' : 'text-pos-loss';
+  return d < 0 ? 'text-pos-win' : 'text-pos-loss-text';
 }
 
 type Props = {

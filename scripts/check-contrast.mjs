@@ -143,6 +143,31 @@ for (const label of Object.keys(EXCEPTIONS)) {
   if (!seenExceptions.has(label)) errors.push(`Ausnahme ohne Paar: "${label}" — Bezeichnung geaendert oder Paar entfallen`);
 }
 
+// Stufe 1b: Token-Utilities als Schrift. Ein Token, das fuer Flaechen gedacht
+// ist (text-pos-loss, text-brand, text-accent-fill …), hat als Schrift auf
+// base unter 4,5:1 — jede `text-<token>`-Klasse damit blockt. Massgeblich ist
+// das schwaechere der beiden Spiele; Alpha-Stufen werden ueber base gemischt.
+// Flaechen-Tokens als Schrift (text-surface-*) sind dunkle Schrift auf einer
+// hellen Fuellung (goldene LoL-Knoepfe, gruene/goldene Abzeichen), nie auf base.
+const TEXT_TOKEN_ALLOWED = {
+  accent: 'TFT-Lila 4,45, Ausnahme oben',
+};
+const isDarkOnFill = (name) => name.startsWith('surface-');
+const weakTextTokens = new Map();
+for (const [prop, value] of tokens.theme) {
+  const name = prop.replace(/^--color-/, '');
+  if (name === prop) continue;
+  const alpha = /\/\s*([\d.]+)%/.exec(value);
+  let worst = Infinity;
+  for (const scope of ['root', 'tft']) {
+    let c = resolveColor(value, tokens, scope);
+    if (alpha) c = blend(c, base, Number(alpha[1]) / 100);
+    worst = Math.min(worst, contrastRatio(c, base));
+  }
+  if (worst < MIN && !(name in TEXT_TOKEN_ALLOWED) && !isDarkOnFill(name)) weakTextTokens.set(name, worst);
+}
+if (tokens.theme.size === 0) errors.push('@theme-inline-Block nicht gefunden — Token-Schrift ungeprueft');
+
 // Stufe 2: rohe Schriftfarben im Markup
 const RAW_RE = [
   /(?:^|[\s"'`{(])(?:[\w-]+:)*text-\[#([0-9a-fA-F]{3,6})\]/g,
@@ -155,6 +180,12 @@ const rawFound = new Set();
 for (const file of files) {
   const lines = read(file).split('\n');
   lines.forEach((line, i) => {
+    for (const m of line.matchAll(/(?:^|[\s"'`{(:])text-([a-z][\w-]*)(?![\w-])/g)) {
+      const r = weakTextTokens.get(m[1]);
+      if (r != null) {
+        errors.push(`${file}:${i + 1}  text-${m[1]} hat als Schrift auf base nur ${r.toFixed(2)}:1 — Schrift-Token nutzen (text-pos-loss-text, text-brand-text …)`);
+      }
+    }
     for (const re of RAW_RE) {
       for (const m of line.matchAll(re)) {
         const hex = `#${m[1].toLowerCase()}`;

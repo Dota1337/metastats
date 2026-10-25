@@ -11,5 +11,8 @@
     "https://www.metastats.gg/tft/leaderboard",
     "https://www.metastats.gg/tft/marktwert",
     "https://www.metastats.gg/tft/rising"
-  ]
+  ],
+  "lastCheck": "25.10.2026: lokaler Browser-Check der 9 Seiten + LoL-Rangliste (berechnete Farben, Kopfzeile auf dem Bild gemessen). Offen: Tier A/B (Ausnahme), Trait-Zahlen Bronze/Pink in Comp-Ansichten, gedimmte Zeilen mit wenig Spielen.",
+  "fingerprint": "98af75e07797",
+  "checkedAt": "2026-10-25"
 }

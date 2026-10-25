@@ -60,7 +60,9 @@ export function parseTokens(css) {
   if (!root) throw new Error(':root-Block nicht gefunden');
   const tft = block(/\[data-game="tft"\]\s*\{/);
   if (!tft) throw new Error('[data-game="tft"]-Block nicht gefunden');
-  return { root, tft };
+  // Tailwind-Aliase (`--color-x: var(--x)`): daraus werden die Utilities.
+  const theme = block(/@theme inline\s*\{/) ?? new Map();
+  return { root, tft, theme };
 }
 
 /**

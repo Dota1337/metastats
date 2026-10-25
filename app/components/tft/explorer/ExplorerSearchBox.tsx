@@ -276,7 +276,7 @@ export default function ExplorerSearchBox({
         </div>
       </div>
       {missed.length > 0 && (
-        <div className="mt-1 text-[11px] text-pos-loss">{t('tft.explorer.x.notFound')}: {missed.join(', ')}</div>
+        <div className="mt-1 text-[11px] text-pos-loss-text">{t('tft.explorer.x.notFound')}: {missed.join(', ')}</div>
       )}
 
       {showBrowse && (
@@ -355,7 +355,7 @@ export default function ExplorerSearchBox({
                       {pickName(p.pick, options)}
                       {p.pick.kind === 'units' && p.pick.f.s ? <span className="text-gold-earnings">{'★'.repeat(p.pick.f.s)}</span> : null}
                     </span>
-                  ) : <span className="text-pos-loss line-through">{p.text}</span>}
+                  ) : <span className="text-pos-loss-text line-through">{p.text}</span>}
                 </span>
               ))}
               <span className="ml-auto text-[11px] text-fg-muted">{t('tft.explorer.x.apply')} ↵</span>

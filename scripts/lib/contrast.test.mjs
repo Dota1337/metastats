@@ -78,6 +78,9 @@ test('parseTokens + resolveColor: var, Tripel, tft-Block, Rueckfallwert', () => 
   // was der tft-Block nicht ueberschreibt, kommt aus :root
   assert.deepEqual(resolveColor('var(--c)', t, 'tft'), [17, 34, 51]);
   assert.deepEqual(resolveColor('var(--fallback)', t), [255, 255, 255]);
+  // @theme-Aliase werden mitgelesen (Grundlage der Token-Schrift-Pruefung)
+  assert.equal(t.theme.get('--color-a'), 'var(--a)');
+  assert.equal(t.root.has('--color-a'), false);
 });
 
 test('resolveColor wirft bei fehlendem Token statt still zu bestehen', () => {

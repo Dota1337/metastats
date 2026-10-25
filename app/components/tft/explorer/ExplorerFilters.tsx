@@ -235,7 +235,7 @@ export default function ExplorerFilters({
               <Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-5 h-5" />
             </span>
           ))}
-          {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-5 h-5" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss text-sm font-bold">{'∕'}</span></span>)}
+          {(u.nit ?? []).map(i => <span key={i} className="relative opacity-60"><Icon src={itemImg(options, assets, i)} alt={itemName(options, assets, i)} className="w-5 h-5" /><span className="absolute inset-0 flex items-center justify-center text-pos-loss-text text-sm font-bold">{'∕'}</span></span>)}
         </>}>
         <UnitEditor u={u} set={p => setUnit(g, u.id, p)} options={options} assets={assets} inGroup={g != null} />
       </Chip>
@@ -283,7 +283,7 @@ export default function ExplorerFilters({
     return (
       <div key={`g${g}`} {...dnd.target(zone)} className={`flex flex-wrap items-center gap-1.5 rounded-lg border border-dashed px-1.5 py-1 ${
         none ? 'border-pos-loss' : 'border-accent-a50'} ${active ? 'bg-accent-a8' : ''}`}>
-        {none && <span className="text-xs text-pos-loss">{t('tft.explorer.x.noneOf')}</span>}
+        {none && <span className="text-xs text-pos-loss-text">{t('tft.explorer.x.noneOf')}</span>}
         {members.map((m, i) => <Fragment key={i}>{i > 0 && !none && <Sep op="or" />}{m}</Fragment>)}
         {!none && groupSize(gr) < EXPLORER_LIMITS.groupMembers && (
           <button type="button" onClick={() => { setMode('or'); setLast(firstRef(gr, g)); setFocusKey(k => k + 1); }}
@@ -507,7 +507,7 @@ function Chip({
         over ? 'border-accent-a50 bg-accent-a20' : excluded ? 'border-pos-loss bg-surface-base' : 'border-accent-a40 bg-accent-a8'}`}>
         <button type="button" onClick={onToggle} aria-expanded={open} {...drag}
           className={`flex items-center gap-1.5 pl-1.5 pr-2 py-1 min-h-10 text-fg-primary ${drag ?'select-none [-webkit-touch-callout:none]' : ''} ${excluded ? 'line-through decoration-pos-loss' : ''}`}>
-          {excluded && <span className="text-pos-loss no-underline">{t('tft.explorer.x.without')}</span>}
+          {excluded && <span className="text-pos-loss-text no-underline">{t('tft.explorer.x.without')}</span>}
           {label}
           {/* Pfeil nur, wenn ein Fenster aufgeht (Synergie mit einer Stufe hat keins). */}
           {children ? <Chevron open={open} className="w-3.5 h-3.5 text-fg-muted" /> : null}

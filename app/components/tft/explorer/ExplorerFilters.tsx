@@ -377,7 +377,7 @@ export default function ExplorerFilters({
           open={open === 'bc'} onToggle={() => toggle('bc')} onClear={() => setQuery({ ...query, bc: [], tags: [] })}>
           {BOARD_ROWS.map(sec => (
             <div key={sec.head} className="space-y-2">
-              <div className="text-xs font-medium text-fg-secondary">{t(sec.head)}</div>
+              <div className="text-sm font-bold text-fg-primary">{t(sec.head)}</div>
               {sec.rows.map(r => {
                 const cur = query.bc.find(e => e.k === r.k);
                 return (
@@ -621,10 +621,11 @@ function MinExact({ exact, set, disabled }: { exact: boolean; set: (e: boolean) 
 }
 
 // stack = Menuezeilen untereinander (Patch/Region/Rang), sonst Knoepfe nebeneinander.
+// Titel fett und weiss (User 25.10.2026: „Überschriften … fett, damit man direkt die Übersicht hat").
 function Row({ label, children, stack = false }: { label: string; children: React.ReactNode; stack?: boolean }) {
   return (
     <div className="space-y-1">
-      <div className="text-[11px] text-fg-muted">{label}</div>
+      <div className="text-[11px] font-semibold text-fg-primary">{label}</div>
       <div className={stack ? 'flex flex-col gap-0.5' : 'flex flex-wrap items-center gap-1'}>{children}</div>
     </div>
   );
@@ -708,7 +709,7 @@ function UnitEditor({
             const cur = u.k?.find(e => e.b === b)?.n;
             return (
               <Fragment key={b}>
-                <span className="text-[11px] text-fg-secondary">{t(KIND_LABEL[b])}</span>
+                <span className="text-[11px] text-fg-bright">{t(KIND_LABEL[b])}</span>
                 <div className="flex gap-1">
                   <button type="button" className={seg(cur == null)} onClick={() => setKind(b, undefined)}>{t('tft.explorer.x.any')}</button>
                   {[1, 2, 3].map(n => (
@@ -768,7 +769,7 @@ function ItemIconPicker({
           <div className="max-h-56 overflow-y-auto space-y-2 pr-1">
             {groups.map(g => (
               <div key={g.b}>
-                <div className="text-[10px] uppercase tracking-wide text-fg-faint mb-1">{t(g.label)}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-fg-secondary mb-1">{t(g.label)}</div>
                 <div className="grid grid-cols-[repeat(auto-fill,minmax(2rem,1fr))] gap-1">
                   {g.list.map(i => {
                     const ok = !fits || fits(i.id, chosen);

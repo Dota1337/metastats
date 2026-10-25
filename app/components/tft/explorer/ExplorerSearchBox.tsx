@@ -289,7 +289,7 @@ export default function ExplorerSearchBox({
             {tabs.map(b => (
               <button key={b} id={tabId(b)} type="button" role="tab" aria-selected={curTab === b} aria-controls={listId}
                 tabIndex={curTab === b ? 0 : -1} onMouseDown={e => e.preventDefault()} onClick={() => pickTab(b)}
-                className={`px-2.5 py-1 rounded text-xs border ${curTab === b ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`}>
+                className={`px-2.5 py-1 rounded text-xs border ${curTab === b ? 'bg-accent-a20 border-accent-a50 text-fg-primary' : 'border-border-subtle text-fg-bright hover:text-fg-primary'}`}>
                 {t(tabLabel(b))}
               </button>
             ))}
@@ -432,7 +432,7 @@ export default function ExplorerSearchBox({
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="px-2 pb-0.5 text-[10px] uppercase tracking-wide text-fg-faint">{label}</div>
+      <div className="px-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wide text-fg-secondary">{label}</div>
       {children}
     </div>
   );

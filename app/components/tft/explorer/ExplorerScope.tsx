@@ -15,7 +15,7 @@ import {
 // gewaehlt = Akzent. Handy mind. 40 px zum Antippen.
 const rowCls = (on: boolean) =>
   `w-full flex items-center gap-2 px-2 py-1.5 max-sm:min-h-10 rounded text-[13px] text-left ${
-    on ? 'bg-accent-a15 text-fg-bright' : 'text-fg-secondary hover:bg-surface-overlay hover:text-fg-primary'}`;
+    on ? 'bg-accent-a15 text-fg-primary' : 'text-fg-bright hover:bg-surface-overlay hover:text-fg-primary'}`;
 
 // Kaestchen fuer die Mehrfachwahl (Patch).
 function Box({ on }: { on: boolean }) {

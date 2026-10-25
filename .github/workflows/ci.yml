@@ -48,6 +48,12 @@ jobs:
       - name: Unit-Tests
         run: npm test
 
+      # Schrift unter 4,5:1 (Kommentarkopf im Skript). Laeuft auch im pre-push;
+      # hier fuer Pushes mit --no-verify. Der Live-Scan-Hinweis (--remind)
+      # schweigt in CI.
+      - name: Kontrast
+        run: node scripts/check-contrast.mjs
+
       # ESLint lief bis 02.09.2026 nirgends — nicht hier, nicht im pre-push,
       # und Next 16 lintet beim Build nicht mehr. Der Deckel friert den Bestand
       # ein (Details im Skript-Kopf). Bewusst nur hier und nicht im Hook: der

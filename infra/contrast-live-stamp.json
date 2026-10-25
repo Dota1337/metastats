@@ -1,0 +1,15 @@
+{
+  "note": "Stand des letzten Kontrast-Live-Scans. Nach einem Scan: node scripts/check-contrast.mjs --stamp",
+  "command": "npx --yes impeccable@4.7.0 detect --json <urls> > impeccable-live.json",
+  "urls": [
+    "https://www.metastats.gg/tft/comps",
+    "https://www.metastats.gg/tft/comps/lunar-aphelios",
+    "https://www.metastats.gg/tft/units",
+    "https://www.metastats.gg/tft/items",
+    "https://www.metastats.gg/tft/traits",
+    "https://www.metastats.gg/tft/explorer",
+    "https://www.metastats.gg/tft/leaderboard",
+    "https://www.metastats.gg/tft/marktwert",
+    "https://www.metastats.gg/tft/rising"
+  ]
+}

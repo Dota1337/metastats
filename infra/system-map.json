@@ -849,6 +849,7 @@
       "name": "CI",
       "schedule": [],
       "scripts": [
+        "scripts/check-contrast.mjs",
         "scripts/check-eslint-budget.mjs",
         "scripts/check-npm-audit.mjs",
         "scripts/verify-classifications.mjs",
@@ -1081,6 +1082,16 @@
     }
   ],
   "scriptEdges": [
+    {
+      "from": "scripts/check-contrast.mjs",
+      "to": "scripts/fetch-tft-tier-distribution.mjs",
+      "via": "spawn"
+    },
+    {
+      "from": "scripts/check-contrast.mjs",
+      "to": "scripts/fetch-tier-distribution.mjs",
+      "via": "spawn"
+    },
     {
       "from": "scripts/check-mv-readers.test.mjs",
       "to": "scripts/build-explorer-store.mjs",

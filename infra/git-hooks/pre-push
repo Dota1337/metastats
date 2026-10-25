@@ -17,25 +17,28 @@
 #   6. Out-of-band drift            — catches Region-Listen + Set-Literale
 #   7. Roh-Hex-Utilities            — catches Rueckfall auf -[#hex] statt Token
 #   8. Alpha-Suffixe                — catches angeschweisste /NN an Token-Farben
-#   9. systemd-Haertungsboden       — catches eine neue Unit ohne Sandboxing
-#  10. Disziplin-Hooks              — catches das stille Abschalten der
+#   9. Kontrast                     — catches Schrift unter 4,5:1 (Tokens, Rang-,
+#                                     Trait-, Tier-Farben, rohe text-[#hex])
+#  10. systemd-Haertungsboden       — catches eine neue Unit ohne Sandboxing
+#  11. Disziplin-Hooks              — catches das stille Abschalten der
 #                                     Plan-/Antwort-Gates. Abschalten ist
 #                                     erlaubt, aber nur sichtbar im Diff.
-#  11. Memory-Gesundheit            — catches Wikilinks ins Leere, alten Index
-#  12. api-map                      — catches eine Schnittstellen-Karte, die
+#  12. Memory-Gesundheit            — catches Wikilinks ins Leere, alten Index
+#  13. api-map                      — catches eine Schnittstellen-Karte, die
 #                                     nicht mehr zum Code passt, und Aufrufe
 #                                     auf Datenbank-Funktionen, die es nicht
 #                                     mehr gibt
-#  13. Schreib-Routen               — catches eine oeffentliche Route, die mit
+#  14. Schreib-Routen               — catches eine oeffentliche Route, die mit
 #                                     dem Allmachts-Schluessel schreibt, ohne
 #                                     den Aufrufer zu pruefen
-#  14. ESLint-Deckel                — catches neue Lint-Fehler vor dem Upload
+#  15. ESLint-Deckel                — catches neue Lint-Fehler vor dem Upload
 #                                     statt erst als rote CI-Mail
-#  15. Logo-Dateien                 — catches Logos/Icons, die nicht mehr zur
+#  16. Logo-Dateien                 — catches Logos/Icons, die nicht mehr zur
 #                                     Quelle in assets/brand/ passen
 #
-# Ohne Riegel laufen ausserdem mit: der Memory-Reindex und der Wecker fuer die
-# vierteljaehrliche Sicherheitsdurchsicht. Beide melden nur.
+# Ohne Riegel laufen ausserdem mit: der Memory-Reindex, der Wecker fuer die
+# vierteljaehrliche Sicherheitsdurchsicht und der Hinweis auf einen faelligen
+# Kontrast-Live-Scan. Alle drei melden nur.
 
 set -e
 
@@ -142,6 +145,17 @@ echo "[pre-push] Checking angeschweisste Alpha-Suffixe ..."
 if ! node scripts/check-color-concat.mjs; then
   echo ""
   echo "Angeschweisstes Alpha-Suffix an einem Farbwert — push blocked."
+  exit 1
+fi
+
+echo "[pre-push] Checking Kontrast ..."
+# Harte Null fuer feste Paare (Schrift-Tokens, Weiss auf Fuell-Lila, Rang-,
+# Trait-, Tier-Farben), Ratsche fuer rohe Schriftfarben im Markup, Gleichlauf
+# der Rangfarben mit den Verteilungs-Skripten. Siehe Kommentarkopf in
+# scripts/check-contrast.mjs. Laeuft in ~0,1 s.
+if ! node scripts/check-contrast.mjs; then
+  echo ""
+  echo "Schrift unter 4,5:1 Kontrast — push blocked."
   exit 1
 fi
 
@@ -263,6 +277,12 @@ fi
 # wieder etwas. Ein Hinweis, der stehen bleibt, wirkt laenger als ein Riegel,
 # den man einmal aufbricht.
 node scripts/audit-security.mjs --alarm 2>/dev/null || true
+
+# --- Kontrast-Live-Scan faellig? (kein Gate) ------------------------------
+# Eine Zeile, wenn sich Farben seit dem letzten Live-Scan geaendert haben
+# (Stempel infra/contrast-live-stamp.json). Text auf Bildern und berechnete
+# Farben sieht nur der Live-Scan, nicht der Check oben.
+node scripts/check-contrast.mjs --remind 2>/dev/null || true
 
 # --- Memory-Index nachziehen (kein Gate) ---------------------------------
 # Der Indexer ist inkrementell: unveraenderte Sections werden uebersprungen

@@ -43,7 +43,7 @@ export default function TftAugmentsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="augments" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href={withLang("/tft/augments")} className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
+        <a href={withLang("/tft/augments")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.augments')}</a>
 
         <h1 className="text-white text-xl font-medium mt-2 mb-5">{t('tft.augmentsCompare.title')}</h1>
 

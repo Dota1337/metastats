@@ -72,7 +72,7 @@ export default function TftAugmentReferenceDetailPage() {
       <Nav active="augments" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <a href={withLang("/tft/augments")} className="text-accent text-xs hover:underline">← {t('nav.augments')}</a>
+          <a href={withLang("/tft/augments")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.augments')}</a>
           {meta && (
             <a
               href={withLang(`/tft/augments/compare?a=${encodeURIComponent(apiName)}`)}

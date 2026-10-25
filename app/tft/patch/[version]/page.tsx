@@ -75,7 +75,7 @@ export default function TftPatchDetailPage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href={withLang("/tft/patch")} className="text-accent text-xs hover:underline">← {t('tft.patchNotes.title')}</a>
+        <a href={withLang("/tft/patch")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('tft.patchNotes.title')}</a>
 
         <div className="flex items-start justify-between gap-3 mt-3 mb-1 flex-wrap">
           <h1 className="text-white text-2xl font-medium">Patch {version}</h1>

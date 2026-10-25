@@ -251,7 +251,7 @@ export default function TftCompsComparePage() {
     <main className="min-h-screen bg-surface-page">
       <Nav active="comps" />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <a href={withLang("/tft/comps")} className="text-accent text-xs hover:underline">← {t('nav.comps')}</a>
+        <a href={withLang("/tft/comps")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.comps')}</a>
 
         <div className="flex flex-wrap items-center justify-between gap-3 mt-2 mb-5">
           <h1 className="text-white text-xl font-medium">{t('tft.compare.title')}</h1>

@@ -186,7 +186,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
     <main className="min-h-screen bg-surface-page">
       <Nav active="traits" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-        <a href={withLang("/tft/traits")} className="text-accent text-xs hover:underline">← {t('nav.traits')}</a>
+        <a href={withLang("/tft/traits")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.traits')}</a>
 
         {/* Header: icon + name + tier-pill row */}
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">

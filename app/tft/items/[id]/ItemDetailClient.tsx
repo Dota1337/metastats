@@ -184,7 +184,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
       <Nav active="items" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
-          <a href={withLang("/tft/items")} className="text-accent text-xs hover:underline">← {t('nav.items')}</a>
+          <a href={withLang("/tft/items")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
             {url ? (
               <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-accent" />

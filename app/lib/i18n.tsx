@@ -3298,7 +3298,6 @@ const translations = {
   'tft.explorer.x.combo.1': t6('Einzeln', 'Single', '\uB2E8\uC77C', '\u5355\u4EF6', 'Individual', 'Seul'),
   'tft.explorer.x.combo.2': t6('Paare', 'Pairs', '2\uAC1C \uC870\uD569', '\u4E24\u4EF6\u7EC4\u5408', 'Pares', 'Paires'),
   'tft.explorer.x.combo.3': t6('Trios', 'Trios', '3\uAC1C \uC870\uD569', '\u4E09\u4EF6\u7EC4\u5408', 'Tr\u00EDos', 'Trios'),
-  'tft.explorer.x.dataDate': t6('Datenstand', 'Data as of', '\uB370\uC774\uD130 \uAE30\uC900', '\u6570\u636E\u622A\u81F3', 'Datos a', 'Donn\u00E9es au'),
   'tft.explorer.x.err.busy': t6('Server ausgelastet', 'Server busy', '\uC11C\uBC84 \uC0AC\uC6A9\uB7C9 \uB9CE\uC74C', '\u670D\u52A1\u5668\u7E41\u5FD9', 'Servidor ocupado', 'Serveur occup\u00E9'),
   'tft.explorer.x.err.timeout': t6('Abfrage zu aufwendig', 'Query too heavy', '\uCFFC\uB9AC\uAC00 \uB108\uBB34 \uBB34\uAC70\uC6C0', '\u67E5\u8BE2\u8FC7\u4E8E\u590D\u6742', 'Consulta demasiado pesada', 'Requ\u00EAte trop lourde'),
   'tft.explorer.x.err.unavailable': t6('Explorer gerade nicht erreichbar', 'Explorer currently unavailable', '\uD0D0\uC0C9\uAE30\uB97C \uD604\uC7AC \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC74C', '\u63A2\u7D22\u5668\u6682\u65F6\u4E0D\u53EF\u7528', 'Explorador no disponible ahora', 'Explorateur indisponible pour le moment'),

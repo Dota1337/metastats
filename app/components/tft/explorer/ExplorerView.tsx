@@ -10,7 +10,7 @@ import ExplorerSummary, { ExplorerSummarySkeleton } from './ExplorerSummary';
 import ExplorerResults from './ExplorerResults';
 
 export default function ExplorerView() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   useEffect(() => {
     let alive = true;
@@ -23,18 +23,10 @@ export default function ExplorerView() {
   // Aus den geladenen Daten: sonst taucht die Δ-Zelle beim ersten Filter ueber
   // den alten Zahlen auf und die Zahlenreihe springt.
   const hasFilters = hasBoardFilters(dataQuery ?? query);
-  const builtAt = data?.meta?.builtAt ? new Date(data.meta.builtAt) : null;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-fg-bright text-xl font-medium">{t('tft.explorer.title')}</h1>
-        {builtAt && !Number.isNaN(builtAt.getTime()) && (
-          <span className="text-[11px] text-fg-faint tabular-nums">
-            {t('tft.explorer.x.dataDate')}: {builtAt.toLocaleString(lang === 'de' ? 'de-DE' : lang, { dateStyle: 'medium', timeStyle: 'short' })}
-          </span>
-        )}
-      </div>
+      <h1 className="text-fg-bright text-xl font-medium">{t('tft.explorer.title')}</h1>
 
       <ExplorerFilters query={query} setQuery={setQuery} options={options} assets={assets} data={data} dataQuery={dataQuery} />
 

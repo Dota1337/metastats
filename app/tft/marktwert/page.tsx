@@ -7,6 +7,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n, LOCALE_MAP, type Lang } from '../../lib/i18n';
+import { RANK_TIER_COLOR } from '../../lib/rank-format';
 
 // Region list mirrors app/components/tft/StatsFilterBar.tsx — the marketvalue
 // crawler runs across the same regions.
@@ -23,7 +24,7 @@ const REGIONS: { value: string; label: string }[] = [
 ];
 
 const TIER_COLORS: Record<string, string> = {
-  MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
+  MASTER: RANK_TIER_COLOR.MASTER, GRANDMASTER: RANK_TIER_COLOR.GRANDMASTER, CHALLENGER: RANK_TIER_COLOR.CHALLENGER,
 };
 
 // 'teams' tab removed 2026-05-23: TFT is single-player, sum-of-roster

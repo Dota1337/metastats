@@ -5,6 +5,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n, LOCALE_MAP } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
+import { rankTierColor } from '../../lib/rank-format';
 
 interface Player {
   rank: number | null; puuid: string; region?: string;
@@ -82,17 +83,17 @@ export default function TftLeaderboardPage() {
   const [search, setSearch] = useState('');
 
   const TIERS = [
-    { value: 'CHALLENGER',  label: t('tier.challenger'),  color: '#f0c040' },
-    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
-    { value: 'MASTER_PLUS', label: t('tier.masterPlus'),  color: '#9d48e0' },
-    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: '#576cce' },
-    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus'), color: '#00a86b' },
-    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus'), color: '#209e85' },
-    { value: 'GOLD',        label: t('tier.gold'),        color: '#c89b3c' },
-    { value: 'SILVER',      label: t('tier.silver'),      color: '#8fa0a8' },
-    { value: 'BRONZE',      label: t('tier.bronze'),      color: '#a0652a' },
-    { value: 'IRON',        label: t('tier.iron'),        color: '#6b6b6b' },
-  ];
+    { value: 'CHALLENGER',  label: t('tier.challenger') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus') },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus') },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus') },
+    { value: 'GOLD',        label: t('tier.gold') },
+    { value: 'SILVER',      label: t('tier.silver') },
+    { value: 'BRONZE',      label: t('tier.bronze') },
+    { value: 'IRON',        label: t('tier.iron') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
 
   const isWorld = region === WORLD;
   const tierButtons = isWorld ? TIERS.filter(tr => WORLD_TIERS.includes(tr.value)) : TIERS;
@@ -115,12 +116,12 @@ export default function TftLeaderboardPage() {
   // Auswahl nur noch die Gruppen kennt.
   const ROW_TIERS = [
     ...TIERS,
-    { value: 'GRANDMASTER', label: t('tier.grandmaster'), color: '#e44040' },
-    { value: 'MASTER',      label: t('tier.master'),      color: '#9d48e0' },
-    { value: 'DIAMOND',     label: t('tier.diamond'),     color: '#576cce' },
-    { value: 'EMERALD',     label: t('tier.emerald'),     color: '#00a86b' },
-    { value: 'PLATINUM',    label: t('tier.platinum'),    color: '#209e85' },
-  ];
+    { value: 'GRANDMASTER', label: t('tier.grandmaster') },
+    { value: 'MASTER',      label: t('tier.master') },
+    { value: 'DIAMOND',     label: t('tier.diamond') },
+    { value: 'EMERALD',     label: t('tier.emerald') },
+    { value: 'PLATINUM',    label: t('tier.platinum') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
   const tierColor = (key: string) => ROW_TIERS.find(x => x.value === key)?.color || '#8ea2b8';
   const tierLabel = (key: string) => ROW_TIERS.find(x => x.value === key)?.label || key;
 
@@ -211,13 +212,16 @@ export default function TftLeaderboardPage() {
                 return tierDist.tiers.map(item => {
                   const barH = Math.max((item.pct / maxPct) * 100, 2);
                   const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
+                  // Farbe aus der zentralen Liste, nicht aus der Wochen-Datei:
+                  // die schreibt ein Bot und kennt neue Werte erst nach seinem Lauf.
+                  const color = rankTierColor(item.key) ?? item.color;
                   return (
                     <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
-                      <div className="text-[10px] font-medium" style={{ color: item.color }}>{display}</div>
+                      <div className="text-[10px] font-medium" style={{ color }}>{display}</div>
                       <div className="w-full relative" style={{ height: '90px' }}>
-                        <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: item.color, opacity: 0.7, boxShadow: `0 0 8px ${withAlpha(item.color, 0x40)}` }} />
+                        <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: color, opacity: 0.7, boxShadow: `0 0 8px ${withAlpha(color, 0x40)}` }} />
                       </div>
-                      <div className="text-[10px] text-center" style={{ color: item.color }}>{item.label}</div>
+                      <div className="text-[10px] text-center" style={{ color }}>{item.label}</div>
                     </div>
                   );
                 });

@@ -12,6 +12,7 @@ import MarketValueHero from '../../../components/tft/MarketValueHero';
 import PlayerTournamentHistory from '../../../components/tft/PlayerTournamentHistory';
 import BookmarkButton from '../../../components/BookmarkButton';
 import { useI18n } from '../../../lib/i18n';
+import { RANK_TIER_COLOR } from '../../../lib/rank-format';
 import { formatStage } from '../../../lib/tft-stage';
 import { loadProLookup, lookupPro, type ProPlayer } from '../../../lib/pro-players';
 
@@ -117,11 +118,7 @@ interface PlayerStats {
   } | null;
 }
 
-const TIER_COLORS: Record<string, string> = {
-  IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
-  PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
-  MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
-};
+const TIER_COLORS = RANK_TIER_COLOR;
 
 const PAGE_SIZE = 30;
 

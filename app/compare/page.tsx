@@ -8,7 +8,7 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import DdragonImg from '../components/DdragonImg';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
-import { formatTier, NO_DIVISION_TIERS } from '../lib/rank-format';
+import { formatTier, NO_DIVISION_TIERS, rankTierColor } from '../lib/rank-format';
 import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../lib/cdragon-base';
 import { isRiftGame, MIN_RIFT_GAMES } from '../lib/lol-queue';
 
@@ -35,13 +35,7 @@ const TIER_ORDER: Record<string, number> = {
 const RANK_ORDER: Record<string, number> = { IV: 1, III: 2, II: 3, I: 4 };
 
 function getTierColor(tier: string | undefined): string {
-  if (!tier) return 'var(--fg-secondary)';
-  const colors: Record<string, string> = {
-    IRON: '#6b6b6b', BRONZE: '#a0522d', SILVER: '#b0b0b0', GOLD: '#c89b3c',
-    PLATINUM: '#2d9e8f', EMERALD: '#2dbe6e', DIAMOND: '#4488ee',
-    MASTER: '#9b59b6', GRANDMASTER: '#e74c3c', CHALLENGER: '#f1c40f',
-  };
-  return colors[tier.toUpperCase()] || 'var(--fg-secondary)';
+  return rankTierColor(tier) || 'var(--fg-secondary)';
 }
 
 function formatMarketValue(value: number): string {

@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import ApiUnavailable from '../components/ApiUnavailable';
+import { RANK_TIER_COLOR } from '../lib/rank-format';
 import { CHAMPION_LIST_DEFAULTS, championListKey, type ChampionListPayload } from '../lib/lol-champion-filters';
 
 // Unter dieser Spielzahl ist eine Siegrate Zufall; beim Sortieren nach Siegrate hinten.
@@ -148,10 +149,8 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     });
 
   const tierColors: Record<string, string> = {
-    IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
-    PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
-    MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
-    MASTER_PLUS: '#9d48e0', GRANDMASTER_PLUS: '#e44040',
+    ...RANK_TIER_COLOR,
+    MASTER_PLUS: RANK_TIER_COLOR.MASTER, GRANDMASTER_PLUS: RANK_TIER_COLOR.GRANDMASTER,
   };
 
   const roleLabels: Record<string, string> = {

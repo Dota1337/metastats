@@ -9,6 +9,7 @@ import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAss
 import { ONETRICK_REGIONS } from '../../lib/tft-onetrick-regions.mjs';
 import { tftProfileHref } from '../../lib/tft-player-search';
 import { compPath } from '../../lib/tft-comp-path';
+import { RANK_TIER_COLOR } from '../../lib/rank-format';
 
 // Gemeinsame Quelle mit scripts/warm-tft-stats-cache.mjs — sonst bietet die
 // Seite Regionen an, die nie gewaermt werden.
@@ -106,9 +107,8 @@ export default function TftOneTricksPage() {
             // Tier-color the specialty score: 90%+=purple, 75-90%=violet, else green
             const specPct = p.top2Share * 100;
             const specColor = specPct >= 90 ? '#a892ff' : specPct >= 75 ? '#7B61FF' : '#3ecf8e';
-            const tierBg = p.tier === 'CHALLENGER' ? '#f0c040'
-              : p.tier === 'GRANDMASTER' ? '#e44040'
-              : p.tier === 'MASTER' ? '#9d48e0'
+            const tierBg = p.tier === 'CHALLENGER' || p.tier === 'GRANDMASTER' || p.tier === 'MASTER'
+              ? RANK_TIER_COLOR[p.tier]
               : '#3a8ddc';
             const top1Width = p.top2Share > 0 ? (p.signatureComps[0]?.share ?? 0) / p.top2Share * 100 : 0;
             return (

@@ -7,15 +7,15 @@ import MarketInsights from '../components/MarketInsights';
 import ApiUnavailable from '../components/ApiUnavailable';
 import { useI18n } from '../lib/i18n';
 import { regionLabel } from '../lib/regions';
-import { formatTier } from '../lib/rank-format';
+import { formatTier, RANK_TIER_COLOR, rankTierColor } from '../lib/rank-format';
 import { isLolRankGroup, lolTiersTopDown } from '../lib/rank-groups';
 import { lolHome } from '../lib/games';
 
 const TIER_COLORS: Record<string, string> = {
-  CHALLENGER: '#f0c040',
-  GRANDMASTER: '#e44040',
-  MASTER: '#9d48e0',
-  DIAMOND: '#576cce',
+  CHALLENGER: RANK_TIER_COLOR.CHALLENGER,
+  GRANDMASTER: RANK_TIER_COLOR.GRANDMASTER,
+  MASTER: RANK_TIER_COLOR.MASTER,
+  DIAMOND: RANK_TIER_COLOR.DIAMOND,
 };
 
 interface Player {
@@ -51,10 +51,10 @@ export default function MarktwertPage() {
 
   const TIERS = [
     { value: 'all', label: t('mv.allElos'), color: undefined as string | undefined },
-    { value: 'CHALLENGER', label: t('tier.challenger'), color: '#f0c040' },
-    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
-    { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: '#9d48e0' },
-    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: '#576cce' },
+    { value: 'CHALLENGER', label: t('tier.challenger'), color: rankTierColor('CHALLENGER') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: rankTierColor('GRANDMASTER_PLUS') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: rankTierColor('MASTER_PLUS') },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: rankTierColor('DIAMOND_PLUS') },
   ];
 
   const [players, setPlayers] = useState<Player[]>([]);
@@ -381,10 +381,10 @@ export default function MarktwertPage() {
               <div className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('mv.scale')}</div>
               <div className="flex flex-col gap-2">
                 {[
-                  { tier: 'Challenger', range: '$25.000 - $750.000', desc: t('mv.scaleChallenger'), color: '#f0c040' },
-                  { tier: 'Grandmaster', range: '$8.000 - $25.000', desc: t('mv.scaleGrandmaster'), color: '#e44040' },
-                  { tier: 'Master', range: '$2.000 - $8.000', desc: t('mv.scaleMaster'), color: '#9d48e0' },
-                  { tier: 'Diamond', range: '$10 - $2.000', desc: t('mv.scaleDiamond'), color: '#576cce' },
+                  { tier: 'Challenger', range: '$25.000 - $750.000', desc: t('mv.scaleChallenger'), color: RANK_TIER_COLOR.CHALLENGER },
+                  { tier: 'Grandmaster', range: '$8.000 - $25.000', desc: t('mv.scaleGrandmaster'), color: RANK_TIER_COLOR.GRANDMASTER },
+                  { tier: 'Master', range: '$2.000 - $8.000', desc: t('mv.scaleMaster'), color: RANK_TIER_COLOR.MASTER },
+                  { tier: 'Diamond', range: '$10 - $2.000', desc: t('mv.scaleDiamond'), color: RANK_TIER_COLOR.DIAMOND },
                 ].map(s => (
                   <div key={s.tier} className="flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 py-1">
                     <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5 sm:mt-0" style={{ backgroundColor: s.color }} />

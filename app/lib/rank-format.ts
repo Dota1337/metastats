@@ -9,12 +9,23 @@ export const NO_DIVISION_TIERS: ReadonlySet<string> = new Set([
   'MASTER',
 ]);
 
-// Rangfarben (Werte wie app/tft/player/[slug]/page.tsx TIER_COLORS).
+// Rangfarben — die EINE Quelle fuer TFT- und LoL-Seiten. Die Abrufskripte der
+// Rangverteilung (scripts/fetch-tier-distribution.mjs, scripts/fetch-tft-tier-
+// distribution.mjs) fuehren dieselbe Liste; scripts/check-contrast.mjs prueft
+// den Gleichlauf und dass jede Farbe als Schrift auf --surface-base >= 4,5:1
+// erreicht. Seit 25.10.2026 Iron/Bronze/Silver/Diamond/Master/GM heller
+// (vorher #6b6b6b #a0652a #8fa0a8 #576cce #9d48e0 #e44040, 2,9-3,8:1).
 export const RANK_TIER_COLOR: Readonly<Record<string, string>> = {
-  IRON: '#6b6b6b', BRONZE: '#a0652a', SILVER: '#8fa0a8', GOLD: '#c89b3c',
-  PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#576cce',
-  MASTER: '#9d48e0', GRANDMASTER: '#e44040', CHALLENGER: '#f0c040',
+  IRON: '#949494', BRONZE: '#cc843c', SILVER: '#a9b8c0', GOLD: '#c89b3c',
+  PLATINUM: '#209e85', EMERALD: '#00a86b', DIAMOND: '#8090da',
+  MASTER: '#b778e8', GRANDMASTER: '#ea6c6c', CHALLENGER: '#f0c040',
 };
+
+/** Rangfarbe zu einem Schluessel wie "DIAMOND", "diamond" oder "DIAMOND_PLUS". */
+export function rankTierColor(key: string | null | undefined): string | undefined {
+  if (!key) return undefined;
+  return RANK_TIER_COLOR[key.toUpperCase().replace(/_PLUS$/, '')];
+}
 
 /**
  * Render a rank as "DIAMOND II" / "CHALLENGER" / "GOLD IV" etc.

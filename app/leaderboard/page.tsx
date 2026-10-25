@@ -9,6 +9,7 @@ import PageHero from '../components/PageHero';
 import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { regionLabel } from '../lib/regions';
 import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
+import { rankTierColor } from '../lib/rank-format';
 
 export default function Leaderboard() {
   const { t, lang, withLang } = useI18n();
@@ -35,17 +36,17 @@ export default function Leaderboard() {
   ];
 
   const TIERS = [
-    { value: 'CHALLENGER', label: t('tier.challenger'), color: '#f0c040' },
-    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus'), color: '#e44040' },
-    { value: 'MASTER_PLUS', label: t('tier.masterPlus'), color: '#9d48e0' },
-    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus'), color: '#576cce' },
-    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus'), color: '#00a86b' },
-    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus'), color: '#209e85' },
-    { value: 'GOLD', label: t('tier.gold'), color: '#c89b3c' },
-    { value: 'SILVER', label: t('tier.silver'), color: '#8fa0a8' },
-    { value: 'BRONZE', label: t('tier.bronze'), color: '#a0652a' },
-    { value: 'IRON', label: t('tier.iron'), color: '#6b6b6b' },
-  ];
+    { value: 'CHALLENGER', label: t('tier.challenger') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus') },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus') },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus') },
+    { value: 'GOLD', label: t('tier.gold') },
+    { value: 'SILVER', label: t('tier.silver') },
+    { value: 'BRONZE', label: t('tier.bronze') },
+    { value: 'IRON', label: t('tier.iron') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
 
   // Ohne Divisions-Auswahl: die Apex-Ligen und alle X+-Gruppen (die API steigt
   // bei den Gruppen selbst von oben durch die Divisionen ab).
@@ -292,9 +293,12 @@ export default function Leaderboard() {
                 return tierDist.tiers.map(item => {
                   const barHeight = Math.max((item.pct / maxPct) * 100, 2);
                   const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
+                  // Farbe aus der zentralen Liste, nicht aus der Wochen-Datei:
+                  // die schreibt ein Bot und kennt neue Werte erst nach seinem Lauf.
+                  const color = rankTierColor(item.key) ?? item.color;
                   return (
                     <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
-                      <div className="text-[10px] font-medium" style={{ color: item.color }}>
+                      <div className="text-[10px] font-medium" style={{ color }}>
                         {display}
                       </div>
                       <div className="w-full relative" style={{ height: '120px' }}>
@@ -302,13 +306,13 @@ export default function Leaderboard() {
                           className="absolute bottom-0 w-full rounded-t transition-all duration-500"
                           style={{
                             height: `${barHeight}%`,
-                            backgroundColor: item.color,
+                            backgroundColor: color,
                             opacity: 0.7,
-                            boxShadow: `0 0 8px ${withAlpha(item.color, 0x40)}`,
+                            boxShadow: `0 0 8px ${withAlpha(color, 0x40)}`,
                           }}
                         />
                       </div>
-                      <div className="text-[10px] text-center" style={{ color: item.color }}>
+                      <div className="text-[10px] text-center" style={{ color }}>
                         {item.label}
                       </div>
                     </div>

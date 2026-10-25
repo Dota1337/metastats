@@ -10,16 +10,18 @@ import { lookup as dnsLookup } from 'node:dns';
 const SOURCE_URL = 'https://www.esportstales.com/teamfight-tactics/seasonal-rank-system-and-player-distribution';
 const OUT = 'public/tft-tier-distribution.json';
 
+// Farben = RANK_TIER_COLOR in app/lib/rank-format.ts (Gleichlauf prueft
+// scripts/check-contrast.mjs). Die Seiten lesen die Farbe dort, nicht hier.
 const TIERS = [
-  { key: 'IRON',        label: 'Iron',    color: '#6b6b6b' },
-  { key: 'BRONZE',      label: 'Bronze',  color: '#a0652a' },
-  { key: 'SILVER',      label: 'Silver',  color: '#8fa0a8' },
+  { key: 'IRON',        label: 'Iron',    color: '#949494' },
+  { key: 'BRONZE',      label: 'Bronze',  color: '#cc843c' },
+  { key: 'SILVER',      label: 'Silver',  color: '#a9b8c0' },
   { key: 'GOLD',        label: 'Gold',    color: '#c89b3c' },
   { key: 'PLATINUM',    label: 'Plat',    color: '#209e85' },
   { key: 'EMERALD',     label: 'Emerald', color: '#00a86b' },
-  { key: 'DIAMOND',     label: 'Dia',     color: '#576cce' },
-  { key: 'MASTER',      label: 'Master',  color: '#9d48e0' },
-  { key: 'GRANDMASTER', label: 'GM',      color: '#e44040' },
+  { key: 'DIAMOND',     label: 'Dia',     color: '#8090da' },
+  { key: 'MASTER',      label: 'Master',  color: '#b778e8' },
+  { key: 'GRANDMASTER', label: 'GM',      color: '#ea6c6c' },
   { key: 'CHALLENGER',  label: 'Chall',   color: '#f0c040' },
 ];
 

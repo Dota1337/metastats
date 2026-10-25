@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import { useI18n, LOCALE_MAP, type TranslationKey } from '../lib/i18n';
 import { regionLabel } from '../lib/regions';
+import { RANK_TIER_COLOR } from '../lib/rank-format';
 import ApiUnavailable from './ApiUnavailable';
 
 interface Anomaly {
@@ -303,10 +304,7 @@ export default function MarketInsights() {
                     : null;
                   const Wrapper = playerLink ? 'a' : 'div';
 
-                  const TIER_COLORS: Record<string, string> = {
-                    CHALLENGER: '#f0c040', GRANDMASTER: '#e44040', MASTER: '#9d48e0',
-                    DIAMOND: '#576cce', EMERALD: '#2dba6e', PLATINUM: '#4ea38c',
-                  };
+                  const TIER_COLORS = RANK_TIER_COLOR;
 
                   return (
                     <Wrapper

@@ -82,7 +82,7 @@ export default function TftOneTricksPage() {
               onClick={() => setRegion(r)}
               className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
                 region === r
-                  ? 'bg-accent border-accent text-white'
+                  ? 'bg-accent-fill border-accent-fill text-white'
                   : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
               }`}
             >{r}</button>

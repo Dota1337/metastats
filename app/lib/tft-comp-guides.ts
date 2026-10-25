@@ -644,11 +644,12 @@ export function compsShowingAugment(
 
 // Difficulty-Farbe für das Badge.
 // Roh-Hex im Standardfall, bewusst: Rang-Leiter, nicht Text-Hierarchie.
-export function difficultyColor(d: Difficulty | null): string {
+export function difficultyColor(d: Difficulty | null, asText = false): string {
   switch (d) {
     case 'EASY': return '#3ecf8e';
     case 'MEDIUM': return '#e0c75a';
-    case 'HARD': return '#e44040';
+    // Als Schrift das hellere Rot, Toenung und Rand bleiben #e44040 (withAlpha braucht Hex).
+    case 'HARD': return asText ? 'var(--pos-loss-text)' : '#e44040';
     default: return '#5a6a80';
   }
 }

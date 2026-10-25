@@ -111,7 +111,7 @@ export default function UnitAbilityCard({ unitId, info, assets }: {
                       onClick={() => setForm(id)}
                       title={trait ? (tftTraitDisplayName(assets, trait) || label) : label}
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[11px] font-medium transition-colors ${
-                        active ? 'border-accent bg-accent text-white' : 'border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white'
+                        active ? 'border-accent-fill bg-accent-fill text-white' : 'border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white'
                       }`}
                     >
                       {icon && <img src={icon} alt="" className="w-3.5 h-3.5" />}

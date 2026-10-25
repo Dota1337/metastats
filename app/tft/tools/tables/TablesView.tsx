@@ -82,7 +82,7 @@ function ViewTabs<V extends string>({ value, onChange, options }: { value: V; on
             onClick={() => onChange(v)}
             aria-pressed={on}
             className={`px-4 sm:px-5 py-2 rounded-md text-sm font-semibold transition-colors ${
-              on ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
+              on ? 'bg-accent-fill text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
             }`}
             style={on ? { boxShadow: '0 0 12px rgb(var(--accent-rgb) / 35%)' } : undefined}
           >

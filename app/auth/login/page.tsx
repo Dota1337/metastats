@@ -87,14 +87,14 @@ export default function LoginPage() {
                 className="w-full bg-surface-raised border border-border-subtle rounded px-3 py-2 text-sm text-white mt-1 outline-none focus:border-brand-a60"
               />
             </div>
-            {error && <div className="text-[#e44040] text-xs">{error}</div>}
+            {error && <div className="text-pos-loss-text text-xs">{error}</div>}
             {status === 'sent' && (
               <div className="text-[#3ecf8e] text-xs">{t('auth.confirmEmail')}</div>
             )}
             <button
               type="submit"
               disabled={status === 'sending'}
-              className="w-full bg-brand text-white py-2 rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-50"
+              className="w-full bg-brand-fill text-white py-2 rounded text-sm font-medium hover:bg-brand-fill-hover disabled:opacity-50"
             >
               {status === 'sending' ? '…' : mode === 'login' ? t('auth.login') : t('auth.signup')}
             </button>

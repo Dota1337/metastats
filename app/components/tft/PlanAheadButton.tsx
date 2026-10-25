@@ -56,7 +56,7 @@ export default function PlanAheadButton({
   const idleClass = size === 'lg'
     ? 'bg-surface-overlay border-accent-a80 text-series-purple hover:border-accent hover:bg-accent-a15'
     : size === 'md'
-    ? 'bg-accent border-accent text-white hover:brightness-110'
+    ? 'bg-accent-fill border-accent-fill text-white hover:bg-accent-fill-hover'
     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a60 hover:text-[#c39bff]';
   const tooltip = status === 'copied'
     ? t('tft.planAhead.copied')
@@ -78,7 +78,7 @@ export default function PlanAheadButton({
         status === 'copied'
           ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/50 text-[#3ecf8e]'
           : status === 'failed'
-          ? 'bg-[#e44040]/15 border-[#e44040]/50 text-[#e44040]'
+          ? 'bg-[#e44040]/15 border-[#e44040]/50 text-pos-loss-text'
           : idleClass
       } ${className}`}
     >

@@ -63,7 +63,7 @@ export function augmentStagesFor(
 export function stageColor(stage: AugmentStage): string {
   switch (stage) {
     case '2-1': return '#3ecf8e';
-    case '3-2': return '#7B61FF';
+    case '3-2': return '#a892ff'; // = --brand-text, als Schrift lesbar (6,12:1 auf base)
     case '4-2': return '#e0c75a';
   }
 }

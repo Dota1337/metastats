@@ -131,7 +131,7 @@ function CoachChat() {
               <div
                 className={`inline-block max-w-[85%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
                   m.role === 'user'
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent-fill text-white'
                     : 'bg-surface-raised border border-border-subtle text-[#e0e6f0]'
                 }`}
               >
@@ -139,7 +139,7 @@ function CoachChat() {
               </div>
             </div>
           ))}
-          {err && <div className="text-[#e44040] text-xs mt-2">{err}</div>}
+          {err && <div className="text-pos-loss-text text-xs mt-2">{err}</div>}
         </div>
 
         <form onSubmit={send} className="flex gap-2">
@@ -154,7 +154,7 @@ function CoachChat() {
           <button
             type="submit"
             disabled={streaming || !input.trim()}
-            className="px-5 py-2 bg-accent text-white rounded text-sm font-medium hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-5 py-2 bg-accent-fill text-white rounded text-sm font-medium hover:bg-accent-fill-hover disabled:opacity-30 disabled:cursor-not-allowed"
           >{streaming ? '…' : t('tft.coach.send')}</button>
         </form>
       </div>

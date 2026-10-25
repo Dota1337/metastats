@@ -54,7 +54,7 @@ const ITEM_COLOR_DELTA = 0.15;
 // (Artefakte kommen aus Augments/Beute und stuenden immer gut da).
 const EXTRA_MIN_SHARE = 0.02;
 const BETTER_COLOR = '#3ecf8e';
-const WORSE_COLOR = '#e44040';
+const WORSE_COLOR = 'var(--pos-loss-text)';
 
 export default function UnitsClient({ initialFilters, initial }: {
   // Vom Server (page.tsx): Filter aus der Adresse + Standard-Rang, dazu die
@@ -183,7 +183,7 @@ export default function UnitsClient({ initialFilters, initial }: {
         <div className="flex flex-wrap gap-1 mb-4 items-center">
           <button
             onClick={() => setCostFilter(null)}
-            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${costFilter == null ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.bucket.all')}
           </button>
@@ -191,7 +191,7 @@ export default function UnitsClient({ initialFilters, initial }: {
             <button
               key={c}
               onClick={() => setCostFilter(c)}
-              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${costFilter === c ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {c}-Cost
             </button>

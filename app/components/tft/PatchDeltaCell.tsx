@@ -56,7 +56,7 @@ export default function PatchDeltaCell({ delta, pair, loading, label }: {
   }
   const better = delta.deltaAvgPlace < 0;
   return render(
-    <span style={{ color: better ? '#3ecf8e' : '#e44040' }} className="font-medium">
+    <span style={{ color: better ? '#3ecf8e' : 'var(--pos-loss-text)' }} className="font-medium">
       {better ? '▲' : '▼'} {Math.abs(delta.deltaAvgPlace).toFixed(2)}
     </span>,
     tip,

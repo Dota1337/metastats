@@ -239,7 +239,7 @@ export default function TftLeaderboardPage() {
                 setPage(1);
                 if (r.value === WORLD && !WORLD_TIERS.includes(tier)) { setTier(ALL_TIERS); setOpenDropdown(null); }
               }}
-              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {r.label}
             </button>

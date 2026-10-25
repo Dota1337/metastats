@@ -137,7 +137,7 @@ export function HistoryChart({ players, histories }: { players: Loaded[]; histor
   };
 
   const tab = (active: boolean) => `px-2.5 py-1 rounded text-[11px] font-medium ${
-    active ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`;
+    active ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`;
 
   return (
     <Section

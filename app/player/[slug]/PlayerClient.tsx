@@ -852,7 +852,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                             {cat.trend > 5 && <span className="text-green-400 text-xs">&#9650;</span>}
                             {cat.trend < -5 && <span className="text-red-400 text-xs">&#9660;</span>}
                           </div>
-                          <div className="text-[#6a7a90] text-xs truncate">{(() => {
+                          <div className="text-fg-faint text-xs truncate">{(() => {
                             // Vorlage statSum.<id> + Zahlen aus summaryVals; aeltere Antworten ohne summaryVals behalten den fertigen Satz.
                             const k = `statSum.${cat.id}` as TranslationKey; const s = t(k);
                             if (!Array.isArray(cat.summaryVals) || s === k) return lang === 'de' ? cat.summary : (cat.summaryEn ?? cat.summary);
@@ -882,7 +882,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                             <div className="grid grid-cols-2 gap-2">
                               {cat.details.map((d: any, j: number) => (
                                 <div key={j} className="flex justify-between items-baseline">
-                                  <span className="text-[#6a7a90] text-xs">{translateStatLabel(t, d.name)}</span>
+                                  <span className="text-fg-faint text-xs">{translateStatLabel(t, d.name)}</span>
                                   <span className="text-white text-xs font-medium">
                                     {typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${translateStatText(t, d.unit)}` : ''}
                                   </span>
@@ -893,7 +893,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                             <div className="text-center py-2">
                               <div className="flex items-center justify-center gap-2 mb-2">
                                 {cat.details.slice(0, 2).map((d: any, j: number) => (
-                                  <span key={j} className="text-[#6a7a90] text-xs">
+                                  <span key={j} className="text-fg-faint text-xs">
                                     {translateStatLabel(t, d.name)}: <span className="text-white">{typeof d.value === 'number' ? d.value.toLocaleString(numLocale) : d.value}{d.unit ? ` ${translateStatText(t, d.unit)}` : ''}</span>
                                   </span>
                                 ))}
@@ -903,7 +903,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                                   <div className="grid grid-cols-2 gap-1 opacity-20 blur-[2px] select-none pointer-events-none">
                                     {cat.details.slice(2, 6).map((d: any, j: number) => (
                                       <div key={j} className="flex justify-between">
-                                        <span className="text-[#6a7a90] text-xs">{translateStatLabel(t, d.name)}</span>
+                                        <span className="text-fg-faint text-xs">{translateStatLabel(t, d.name)}</span>
                                         <span className="text-white text-xs">***</span>
                                       </div>
                                     ))}
@@ -925,7 +925,7 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
 
                 {!isPremium && (
                   <div className="mt-4 pt-3 border-t border-border-subtle text-center">
-                    <div className="text-[#6a7a90] text-xs mb-2">{t('stats.premiumHint')}</div>
+                    <div className="text-fg-faint text-xs mb-2">{t('stats.premiumHint')}</div>
                     <button className="bg-gradient-to-r from-accent to-[#a07830] text-black text-xs font-bold px-6 py-2 rounded hover:brightness-110 transition">
                       {t('stats.unlockDetails')}
                     </button>

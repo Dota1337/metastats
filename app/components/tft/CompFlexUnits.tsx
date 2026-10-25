@@ -86,11 +86,11 @@ export default function CompFlexUnits({
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.pickrate')} </span>
                     <span className="text-white font-semibold">{fmtPct(u.pickrate)}</span>
                   </span>
-                  <span className={`text-xs whitespace-nowrap ${u.top1Rate != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                  <span className={`text-xs whitespace-nowrap ${u.top1Rate != null ? 'text-fg-secondary' : 'text-fg-faint'}`}>
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.top1')} </span>
                     <span className={u.top1Rate != null ? 'text-white font-semibold' : ''}>{fmtPct(u.top1Rate)}</span>
                   </span>
-                  <span className={`text-xs whitespace-nowrap ${u.avgPlacement != null ? 'text-fg-secondary' : 'text-[#4a5468]'}`}>
+                  <span className={`text-xs whitespace-nowrap ${u.avgPlacement != null ? 'text-fg-secondary' : 'text-fg-faint'}`}>
                     <span className="text-fg-muted">{t('tft.comp.flexUnits.avgPlc')} </span>
                     <span className={u.avgPlacement != null ? 'text-white font-semibold' : ''}>{fmtPlace(u.avgPlacement)}</span>
                   </span>

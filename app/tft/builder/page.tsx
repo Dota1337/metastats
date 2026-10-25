@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { TRAIT_STYLE_COLOR } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -925,7 +926,7 @@ export default function TftBuilderPage() {
           {ps.length > 0 && (
             <button
               onClick={() => clearBoard(team)}
-              className="ml-auto text-fg-faint hover:text-[#e44040] text-[10px]"
+              className="ml-auto text-fg-faint hover:text-pos-loss-text text-[10px]"
             >
               {t('tft.builderClear')}
             </button>
@@ -1068,11 +1069,7 @@ export default function TftBuilderPage() {
                     const tierIdx = tr.activeIdx;
                     const iconUrl = tftIconUrl(assets, tr.icon);
                     const tier = tierIdx != null ? tr.tiers[tierIdx] : null;
-                    const styleColor = tier?.style === 5 ? '#c39bff'
-                      : tier?.style === 4 ? '#e0c75a'
-                      : tier?.style === 3 ? '#cfd6dc'
-                      : tier?.style === 1 ? '#a07a4d'
-                      : 'var(--fg-faint)';
+                    const styleColor = (tier ? TRAIT_STYLE_COLOR[tier.style] : undefined) ?? 'var(--fg-faint)';
                     return (
                       <div
                         key={tr.apiName}
@@ -1129,7 +1126,7 @@ export default function TftBuilderPage() {
                       </button>
                       <button
                         onClick={() => deleteSaved(c.id)}
-                        className="text-fg-faint hover:text-[#e44040] text-xs px-1"
+                        className="text-fg-faint hover:text-pos-loss-text text-xs px-1"
                         title={t('tft.builderDelete')}
                       >
                         ×
@@ -1158,7 +1155,7 @@ export default function TftBuilderPage() {
                 <button
                   onClick={saveCurrent}
                   disabled={ownPlacements.length === 0 && oppPlacements.length === 0}
-                  className="px-3 py-1.5 rounded text-xs bg-accent text-white hover:bg-[#9981FF] disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="px-3 py-1.5 rounded text-xs bg-accent-fill text-white hover:bg-accent-fill-hover disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {t('tft.builderSave')}
                 </button>
@@ -1176,7 +1173,7 @@ export default function TftBuilderPage() {
                     planAheadState === 'ok'
                       ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'
                       : planAheadState === 'err'
-                      ? 'bg-[#e44040]/15 border-[#e44040]/60 text-[#e44040]'
+                      ? 'bg-[#e44040]/15 border-[#e44040]/60 text-pos-loss-text'
                       : 'bg-surface-raised border-border-subtle text-fg-secondary hover:text-white'
                   }`}
                   title={t('tft.planAhead.copy')}
@@ -1214,7 +1211,7 @@ export default function TftBuilderPage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setCostFilter(null)}
-                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                    className={`px-2.5 py-1 rounded text-xs ${costFilter == null ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.bucket.all')}
                   </button>
@@ -1427,7 +1424,7 @@ export default function TftBuilderPage() {
                   <button
                     key={tab}
                     onClick={() => setItemTab(tab)}
-                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                    className={`px-2 py-1 rounded text-[11px] ${itemTab === tab ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
                   >
                     {t('tft.builderItems' + tab.charAt(0).toUpperCase() + tab.slice(1) as any) || tab}
                   </button>

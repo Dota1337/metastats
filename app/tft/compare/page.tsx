@@ -204,7 +204,7 @@ function ComparePageInner() {
                 key={r.value}
                 onClick={() => setRegion(r.value)}
                 className={`px-2.5 py-1 rounded text-xs font-medium ${
-                  region === r.value ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                  region === r.value ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
                 }`}
               >
                 {r.label}
@@ -253,7 +253,7 @@ function ComparePageInner() {
               <button
                 type="submit"
                 disabled={!canCompare}
-                className="bg-accent hover:bg-accent-a80 text-white text-sm px-5 py-2 rounded disabled:opacity-50"
+                className="bg-accent-fill hover:bg-accent-fill-hover text-white text-sm px-5 py-2 rounded disabled:opacity-50"
               >
                 {loading ? t('tft.compare.comparing') : t('tft.compare.button')}
               </button>

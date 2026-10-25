@@ -32,6 +32,8 @@ const MIGRATED = new Set([
   '19233a', '212c4a', '2a3a52', '384a68', '38476a', '9eabc1', '8a99ae',
   // Textgrau seit 2026-10-25 (alle vier eine Stufe heller).
   'c3cddc', 'b3bfd1', 'a6b3c8', 'dbe2ea',
+  // Kontrast-Tokens seit 2026-10-25: Fuell-Lila (+Hover) fuer weisse Schrift, Rot als Schrift.
+  '6c4fff', '5b3cf5', 'ff6467',
   'ffffff', 'fff',
 ]);
 

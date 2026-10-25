@@ -147,7 +147,7 @@ export default function TftTournamentsPage() {
         )}
 
         {!loading && live.length > 0 && (
-          <Section title={t('tft.tournaments.live')} accent="#e44040" pulse>
+          <Section title={t('tft.tournaments.live')} accent="#e44040" labelColor="var(--pos-loss-text)" pulse>
             {live.map(x => <TournamentRow key={x.id} t={x} locale={locale} />)}
           </Section>
         )}
@@ -169,7 +169,7 @@ export default function TftTournamentsPage() {
   );
 }
 
-function Section({ title, accent, pulse, children }: { title: string; accent: string; pulse?: boolean; children: React.ReactNode }) {
+function Section({ title, accent, labelColor, pulse, children }: { title: string; accent: string; labelColor?: string; pulse?: boolean; children: React.ReactNode }) {
   return (
     <section className="mb-6">
       <div className="flex items-center gap-2 mb-2">
@@ -177,7 +177,7 @@ function Section({ title, accent, pulse, children }: { title: string; accent: st
           {pulse && <span className="absolute inset-0 rounded-full opacity-75 animate-ping" style={{ backgroundColor: accent }} />}
           <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accent }} />
         </span>
-        <h2 className="text-xs uppercase tracking-widest" style={{ color: accent }}>{title}</h2>
+        <h2 className="text-xs uppercase tracking-widest" style={{ color: labelColor ?? accent }}>{title}</h2>
       </div>
       <div className="space-y-2">{children}</div>
     </section>

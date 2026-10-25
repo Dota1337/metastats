@@ -141,6 +141,7 @@ export default function TftPatchWinnersPage() {
     const display = renderEntity(e.key, entity, assets);
     const sign = e.deltaAvgPlacement < 0 ? '−' : '+';
     const barColor = isWinner ? '#3ecf8e' : '#e44040';
+          const textColor = isWinner ? '#3ecf8e' : 'var(--pos-loss-text)';
     const barWidth = (Math.abs(e.deltaAvgPlacement) / maxAbsDelta) * 100;
     const pickRatePct = (e.currentPickRate * 100).toFixed(1);
     const Wrapper: any = display.href ? 'a' : 'div';
@@ -160,7 +161,7 @@ export default function TftPatchWinnersPage() {
               <span className="text-fg-faint"> · {pickRatePct}% pick</span>
             </div>
           </div>
-          <div className="text-sm tabular-nums font-medium" style={{ color: barColor }}>
+          <div className="text-sm tabular-nums font-medium" style={{ color: textColor }}>
             {sign}{Math.abs(e.deltaAvgPlacement).toFixed(2)}
           </div>
         </div>
@@ -191,7 +192,7 @@ export default function TftPatchWinnersPage() {
                 onClick={() => setEntity(e)}
                 className={`px-3 py-1.5 text-xs uppercase tracking-widest rounded border ${
                   entity === e
-                    ? 'bg-accent border-accent text-white'
+                    ? 'bg-accent-fill border-accent-fill text-white'
                     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
               >
@@ -206,7 +207,7 @@ export default function TftPatchWinnersPage() {
                 onClick={() => setTier(tk.value)}
                 className={`px-3 py-1.5 text-xs rounded border ${
                   tier === tk.value
-                    ? 'bg-accent border-accent text-white'
+                    ? 'bg-accent-fill border-accent-fill text-white'
                     : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
                 }`}
               >
@@ -275,7 +276,7 @@ export default function TftPatchWinnersPage() {
               </div>
             </section>
             <section>
-              <h2 className="text-[#e44040] text-xs uppercase tracking-widest mb-2">▼ {t('tft.patchWinners.losers')}</h2>
+              <h2 className="text-pos-loss-text text-xs uppercase tracking-widest mb-2">▼ {t('tft.patchWinners.losers')}</h2>
               <div className="space-y-1.5">
                 {losers.slice(0, 12).map((e, i) => renderRow(e, i, false))}
               </div>

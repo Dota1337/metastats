@@ -201,7 +201,7 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
         </FilterSelect>
       </div>
       {patchHint && (
-        <div className="mt-2 text-xs text-[#6b7a8f]">{patchHint}</div>
+        <div className="mt-2 text-xs text-fg-faint">{patchHint}</div>
       )}
     </>
   );

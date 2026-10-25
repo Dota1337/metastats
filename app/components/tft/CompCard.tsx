@@ -260,7 +260,7 @@ export default function CompCard({
                 <span
                   className="ml-1.5 inline-flex items-center px-1.5 py-[1px] rounded text-[10px] font-medium align-middle"
                   style={{
-                    color: difficultyColor(guideMatch.guide.difficulty),
+                    color: difficultyColor(guideMatch.guide.difficulty, true),
                     backgroundColor: `${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x1f)}`,
                     border: `1px solid ${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x40)}`,
                   }}
@@ -314,7 +314,7 @@ export default function CompCard({
                       )}
                       {showDouble && (
                         <div
-                          className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
+                          className="absolute -top-1 -right-1 bg-accent-fill text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow"
                           title="Two-Tanky-Variante"
                         >
                           ×2
@@ -426,7 +426,7 @@ function VelocityStat({
     );
   }
   const better = velocity.deltaAvgPlace < 0;
-  const color = better ? '#3ecf8e' : '#e44040';
+  const color = better ? '#3ecf8e' : 'var(--pos-loss-text)';
   const arrow = better ? '▲' : '▼';
   const directionLabel = better ? (t('tft.velocity.better') as string) : (t('tft.velocity.worse') as string);
   const nowStr = velocity.avgPlaceNow != null ? velocity.avgPlaceNow.toFixed(2) : '—';

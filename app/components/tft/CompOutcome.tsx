@@ -17,7 +17,7 @@ import type {
 type T = (k: TranslationKey) => string;
 
 const GOOD = '#3ecf8e';
-const BAD = '#e44040';
+const BAD = 'var(--pos-loss-text)'; // nur Schrift; die Toenung daneben ist eigenes rgba
 const GOLD = '#e0c75a';
 const WARN = '#e0a040';
 

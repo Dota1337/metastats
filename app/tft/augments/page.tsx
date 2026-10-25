@@ -159,7 +159,7 @@ export default function TftAugmentsReferencePage() {
           <span className="text-fg-muted text-[10px] uppercase tracking-widest mr-1">{t('tft.augment.stage.label')}:</span>
           {(['all', '2-1', '3-2', '4-2'] as const).map(s => {
             const active = stageFilter === s;
-            const color = s === 'all' ? '#7B61FF' : stageColor(s as AugmentStage);
+            const color = s === 'all' ? '#a892ff' : stageColor(s as AugmentStage);
             return (
               <button
                 key={s}

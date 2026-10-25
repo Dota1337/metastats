@@ -227,7 +227,7 @@ function CompareBanner({
           {canCompare ? (
             <a
               href={withLang(compareHref)}
-              className="bg-accent hover:bg-[#8B71FF] text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
+              className="bg-accent-fill hover:bg-accent-fill-hover text-white text-xs font-medium px-3 py-1.5 rounded transition-colors"
             >
               {t('tft.compare.action')} →
             </a>

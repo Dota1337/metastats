@@ -122,7 +122,7 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
                 onClick={() => setGroup(g)}
                 className={`px-3.5 py-1 text-sm rounded ${
                   group === g
-                    ? 'bg-accent text-white'
+                    ? 'bg-accent-fill text-white'
                     : 'text-fg-secondary hover:text-white'
                 }`}
               >
@@ -246,7 +246,7 @@ function AtlasTile({
         {trend != null && trend !== 0 && (
           <span
             className="absolute -top-1 -left-1.5 text-[11px] leading-none font-bold"
-            style={{ color: trend < 0 ? '#3ecf8e' : '#e44040' }}
+            style={{ color: trend < 0 ? '#3ecf8e' : 'var(--pos-loss-text)' }}
             title={`${deltaTooltip(f.delta ?? null, pair, t, lang)} (${trend > 0 ? '+' : ''}${trend.toFixed(2)})`}
           >
             {trend < 0 ? '▲' : '▼'}

@@ -93,7 +93,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
                 <div className="text-sm font-medium text-white truncate" title={display + tag}>
                   {display}
                 </div>
-                <div className="text-[10px] text-[#6b7480] flex-shrink-0">{regionLabel(p.region)}</div>
+                <div className="text-[10px] text-fg-faint flex-shrink-0">{regionLabel(p.region)}</div>
               </div>
               <div className="flex items-baseline gap-2 mt-1.5">
                 <div className="text-base font-semibold text-[#3ecf8e]">
@@ -101,7 +101,7 @@ export default function ProsByCompSection({ familyKey, setNumber }: Props) {
                 </div>
                 <div className="text-[10px] text-[#9aa5b1]">{p.games}g</div>
               </div>
-              <div className="text-[10px] text-[#6b7480] mt-0.5">
+              <div className="text-[10px] text-fg-faint mt-0.5">
                 {p.top1Rate != null && (
                   <>Top1 {Math.round(p.top1Rate * 100)}%</>
                 )}

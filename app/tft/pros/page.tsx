@@ -227,7 +227,7 @@ function ProsDirectory() {
           <div className="flex flex-wrap gap-1.5 mb-3">
             <button
               onClick={() => setRegion('')}
-              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-2.5 py-1 rounded text-xs font-medium ${region === '' ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t('tft.filter.allRegions')}
             </button>
@@ -235,7 +235,7 @@ function ProsDirectory() {
               <button
                 key={r.code}
                 onClick={() => setRegion(r.code)}
-                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+                className={`px-2.5 py-1 rounded text-xs font-medium ${region === r.code ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
               >
                 {r.label} <span className="text-[10px] opacity-70">{r.count}</span>
               </button>

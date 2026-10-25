@@ -270,7 +270,7 @@ export default function ExplorerResults({
             return (
               <button key={k} type="button" onClick={() => setTab(k)} aria-pressed={on}
                 className={`px-3 sm:px-4 py-2 rounded-md text-base font-semibold whitespace-nowrap transition-colors ${
-                  on ? 'bg-accent text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
+                  on ? 'bg-accent-fill text-white' : 'text-fg-secondary hover:text-white hover:bg-accent-a20'
                 }`}
                 style={on ? { boxShadow: '0 0 12px rgb(var(--accent-rgb) / 35%)' } : undefined}>
                 {t(TAB_LABEL[k])}

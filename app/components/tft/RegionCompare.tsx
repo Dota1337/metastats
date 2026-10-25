@@ -134,7 +134,7 @@ export default function RegionCompare({
 
   const chip = (active: boolean) => `px-2.5 py-1 text-[11px] uppercase tracking-widest rounded border transition-colors ${
     active
-      ? 'bg-accent border-accent text-white'
+      ? 'bg-accent-fill border-accent-fill text-white'
       : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
   }`;
 
@@ -233,7 +233,7 @@ export default function RegionCompare({
                 </div>
                 {row.perRegion.map((c, i) => {
                   const r = regions[i];
-                  const color = r === row.best ? '#3ecf8e' : r === row.worst ? '#e44040' : undefined;
+                  const color = r === row.best ? '#3ecf8e' : r === row.worst ? 'var(--pos-loss-text)' : undefined;
                   return (
                     <div
                       key={r}

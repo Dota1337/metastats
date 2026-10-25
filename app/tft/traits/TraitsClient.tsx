@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { TRAIT_STYLE_COLOR } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -42,12 +43,7 @@ interface GroupedTrait {
 }
 
 // Visual map for trait activation styles — mirrors the in-game frame colors.
-const STYLE_COLORS: Record<number, string> = {
-  1: '#a07a4d',   // bronze
-  3: '#cfd6dc',   // silver
-  4: '#e0c75a',   // gold
-  5: '#c39bff',   // prismatic
-};
+const STYLE_COLORS = TRAIT_STYLE_COLOR;
 
 export default function TraitsClient({ initialFilters, initial }: {
   // Vom Server (page.tsx), siehe UnitsClient.tsx.

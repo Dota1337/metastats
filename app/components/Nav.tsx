@@ -346,7 +346,7 @@ export default function Nav({ active }: NavProps) {
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
                   ) : (
-                    <div className="w-5 h-5 rounded-full bg-brand text-white text-[10px] flex items-center justify-center font-medium">
+                    <div className="w-5 h-5 rounded-full bg-brand-fill text-white text-[10px] flex items-center justify-center font-medium">
                       {(user.name || user.email || '?').slice(0, 1).toUpperCase()}
                     </div>
                   )}

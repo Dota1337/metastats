@@ -71,7 +71,7 @@ export default function TftHero({
 
       {/* Mittiger Text */}
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center">
-        <div className="text-accent text-[10px] sm:text-xs uppercase tracking-[0.3em] mb-2">
+        <div className="text-brand-text text-[10px] sm:text-xs uppercase tracking-[0.3em] mb-2">
           {CURRENT_SET_LABEL}
           {patch ? ` · Patch ${tftPatchLabel(patch)}` : ''}
         </div>

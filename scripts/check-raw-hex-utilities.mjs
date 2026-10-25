@@ -24,14 +24,15 @@ import { readFileSync } from 'node:fs';
 // Stand nach Welle 2 / Commit B (2026-08-09): 321. Seit 2026-09-02: 313 —
 // der Zeigezustand auf --surface-overlay ist jetzt ein Token. Seit 2026-10-08:
 // 297 — die Levelplan-Chips nutzen --surface-level-chip. Seit 2026-10-10: 296
-// — das 3★-Abzeichen nutzt --star3-badge.
+// — das 3★-Abzeichen nutzt --star3-badge. Seit 2026-10-25: 259 — Kontrast-Welle
+// (Hover-Lila, rote und graue Schrift auf Tokens).
 //
 // Warum die Accent-Familie NICHT in MIGRATED (harte Null) steht, obwohl sie
 // jetzt Tokens hat: es bleiben bewusst Roh-Hexe stehen, die kein Token
 // bekommen duerfen -- Gold im Root-Chrome (Nav/Footer, 43x) und zwei
 // Fundstellen in Dateien, die keine Route erreicht. Eine harte Null wuerde
 // genau die melden. Sie kommt, wenn diese Reste geklaert sind.
-const BASELINE = 296;
+const BASELINE = 259;
 
 // Die Farben aus app/globals.css, die ein Token haben (10 seit Commit A, 3 Textgraus seit 2026-09-27).
 const MIGRATED = new Set([
@@ -43,6 +44,8 @@ const MIGRATED = new Set([
   '19233a', '212c4a', '2a3a52', '384a68', '38476a', '9eabc1', '8a99ae',
   // Textgrau seit 2026-10-25 (alle vier eine Stufe heller).
   'c3cddc', 'b3bfd1', 'a6b3c8', 'dbe2ea',
+  // Kontrast-Tokens seit 2026-10-25: Fuell-Lila (+Hover) fuer weisse Schrift, Rot als Schrift.
+  '6c4fff', '5b3cf5', 'ff6467',
 ]);
 
 // Anker ist "-[#" -- der Klammer-Ausdruck trennt Tailwind-Utilities von

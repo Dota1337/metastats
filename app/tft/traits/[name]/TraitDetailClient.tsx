@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { TRAIT_STYLE_COLOR } from '../../../lib/tft-trait-style';
 import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
@@ -50,10 +51,10 @@ interface UnitStat {
 
 // Visual map for trait activation styles. Mirrors the in-game frame colors.
 const STYLE_COLORS: Record<number, { label: string; hex: string }> = {
-  1: { label: 'Bronze',    hex: '#a07a4d' },
-  3: { label: 'Silver',    hex: '#cfd6dc' },
-  4: { label: 'Gold',      hex: '#e0c75a' },
-  5: { label: 'Prismatic', hex: '#c39bff' },
+  1: { label: 'Bronze',    hex: TRAIT_STYLE_COLOR[1] },
+  3: { label: 'Silver',    hex: TRAIT_STYLE_COLOR[3] },
+  4: { label: 'Gold',      hex: TRAIT_STYLE_COLOR[4] },
+  5: { label: 'Prismatic', hex: TRAIT_STYLE_COLOR[5] },
 };
 
 // `initial`: Startdaten der Server-Huelle (page.tsx) — die Zeilen der drei

@@ -343,7 +343,7 @@ export default function MarketValueHero({ fullName, region, lang }: MarketValueH
             <div className="mt-2 flex items-center gap-2 text-sm">
               <span
                 className="font-medium tabular-nums"
-                style={{ color: isFlat ? 'var(--fg-secondary)' : isUp ? '#3ecf8e' : '#e44040' }}
+                style={{ color: isFlat ? 'var(--fg-secondary)' : isUp ? '#3ecf8e' : 'var(--pos-loss-text)' }}
               >
                 {isUp ? '▲' : isFlat ? '–' : '▼'}{' '}
                 {formatEuro(Math.abs(delta.abs), lang)} ({delta.pct >= 0 ? '+' : ''}{delta.pct.toFixed(1)}%)
@@ -584,7 +584,7 @@ function SignalRow({ sig }: { sig: SkillSignal }) {
 
   const positive = sig.contribution > 0.0005;
   const negative = sig.contribution < -0.0005;
-  const color = positive ? '#3ecf8e' : negative ? '#e44040' : 'var(--fg-secondary)';
+  const color = positive ? '#3ecf8e' : negative ? 'var(--pos-loss-text)' : 'var(--fg-secondary)';
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="flex-1 min-w-0">

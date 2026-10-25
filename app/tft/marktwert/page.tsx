@@ -199,7 +199,7 @@ export default function TftMarktwertPage() {
               onClick={() => setRegion(r.value)}
               className={`px-2.5 py-1 rounded text-xs font-medium flex-shrink-0 ${
                 region === r.value
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent-fill text-white'
                   : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
@@ -317,7 +317,7 @@ function TopTab({
             onClick={() => onTierFilter(tr)}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
               tierFilter === tr
-                ? 'bg-accent text-white'
+                ? 'bg-accent-fill text-white'
                 : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
@@ -423,7 +423,7 @@ function MoversTab({
           <button
             onClick={() => setDirection('down')}
             className={`px-3 py-1.5 rounded text-xs font-medium ${
-              direction === 'down' ? 'bg-[#e44040]/20 text-[#e44040] border border-[#e44040]/40'
+              direction === 'down' ? 'bg-[#e44040]/20 text-pos-loss-text border border-[#e44040]/40'
                                    : 'bg-surface-raised text-fg-secondary hover:text-white'
             }`}
           >
@@ -436,7 +436,7 @@ function MoversTab({
               key={w}
               onClick={() => setWindow(w)}
               className={`px-3 py-1.5 rounded text-xs font-medium ${
-                window_ === w ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                window_ === w ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'
               }`}
             >
               {w}d
@@ -464,7 +464,7 @@ function MoversTab({
           </div>
           {movers.map((m, i) => {
             const slug = playerSlug(m);
-            const color = direction === 'up' ? '#3ecf8e' : '#e44040';
+            const color = direction === 'up' ? '#3ecf8e' : 'var(--pos-loss-text)';
             const sign = direction === 'up' ? '+' : '';
             return (
               <a

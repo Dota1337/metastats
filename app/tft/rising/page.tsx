@@ -83,7 +83,7 @@ export default function TftRisingPage() {
 
   const pill = (active: boolean) => `px-3 py-1.5 text-xs uppercase tracking-widest rounded border transition-colors ${
     active
-      ? 'bg-accent border-accent text-white'
+      ? 'bg-accent-fill border-accent-fill text-white'
       : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
   }`;
 

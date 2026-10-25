@@ -53,7 +53,7 @@ export default function TournamentWatchBanner() {
               </div>
             </div>
             {tr.twitch_channel && (
-              <span className="text-[10px] text-[#e44040] font-medium">{t('tft.tournamentWatch.live')}</span>
+              <span className="text-[10px] text-pos-loss-text font-medium">{t('tft.tournamentWatch.live')}</span>
             )}
           </a>
         ))}

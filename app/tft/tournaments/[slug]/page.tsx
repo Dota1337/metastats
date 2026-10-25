@@ -132,6 +132,7 @@ export default function TftTournamentDetailPage() {
   const dateFmt = (s: string | null) => s ? new Date(s).toLocaleDateString(locale, { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
   const poolText = formatPrize(tournament.prize_pool_usd, tournament.prize_pool_native, tournament.prize_pool_currency, locale);
   const statusColor = tournament.status === 'live' ? '#e44040' : tournament.status === 'upcoming' ? '#3ecf8e' : 'var(--fg-secondary)';
+  const statusText = tournament.status === 'live' ? 'var(--pos-loss-text)' : statusColor;
 
   // Sonderpreise in der Zeile des Spielers (erste Platz-Zeile mit dem Namen),
   // sonst als eigene Zeile ohne Platz.
@@ -207,7 +208,7 @@ export default function TftTournamentDetailPage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-white text-2xl font-medium">{cleanTournamentName(tournament.name)}</h1>
               <div className="flex items-center gap-2 flex-wrap mt-1.5">
-                <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: `${withAlpha(statusColor, 0x25)}`, color: statusColor }}>
+                <span className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 rounded" style={{ backgroundColor: `${withAlpha(statusColor, 0x25)}`, color: statusText }}>
                   {t(`tft.tournaments.${tournament.status}` as const)}
                 </span>
                 {tournament.region && (

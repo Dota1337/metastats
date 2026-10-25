@@ -139,7 +139,7 @@ export default function TftMetaPulsePage() {
                   bucket={filters.bucket}
                   primary={`Ø ${r.avgPlaceNow.toFixed(2)}`}
                   secondary={`Δ ${r.deltaAvgPlace >= 0 ? '+' : ''}${r.deltaAvgPlace.toFixed(2)}`}
-                  secondaryColor={r.deltaAvgPlace < 0 ? '#3ecf8e' : '#e44040'}
+                  secondaryColor={r.deltaAvgPlace < 0 ? '#3ecf8e' : 'var(--pos-loss-text)'}
                   meta={`${r.gamesNow} ${t('tft.gamesShort')}`}
                 />
               ))}
@@ -159,7 +159,7 @@ export default function TftMetaPulsePage() {
                   bucket={filters.bucket}
                   primary={`Ø ${r.currentAvgPlacement.toFixed(2)}`}
                   secondary={`Δ ${r.deltaAvgPlacement.toFixed(2)}`}
-                  secondaryColor={r.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040'}
+                  secondaryColor={r.deltaAvgPlacement < 0 ? '#3ecf8e' : 'var(--pos-loss-text)'}
                   meta={`${r.currentGames} ${t('tft.gamesShort')}`}
                 />
               ))}
@@ -167,7 +167,7 @@ export default function TftMetaPulsePage() {
 
             <PulseSection
               title={t('tft.metaPulse.patchLosers')}
-              accent="#e44040"
+              accent="var(--pos-loss-text)"
               empty={data.patchLosers.length === 0}
               footer={data.comparePatch ? `${data.comparePatch} → ${data.selectedPatch}` : undefined}
             >
@@ -179,7 +179,7 @@ export default function TftMetaPulsePage() {
                   bucket={filters.bucket}
                   primary={`Ø ${r.currentAvgPlacement.toFixed(2)}`}
                   secondary={`Δ +${r.deltaAvgPlacement.toFixed(2)}`}
-                  secondaryColor="#e44040"
+                  secondaryColor="var(--pos-loss-text)"
                   meta={`${r.currentGames} ${t('tft.gamesShort')}`}
                 />
               ))}

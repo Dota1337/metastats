@@ -119,6 +119,18 @@
   --accent-tft-rgb: 138 115 255;
   --accent-rgb: var(--accent-lol-rgb);
 
+  /* Gefuellte Flaechen mit weisser Schrift (gewaehlte Knoepfe und Reiter).
+     --accent-tft ist auf Lesbarkeit als SCHRIFT getrimmt; Weiss darauf hat
+     nur 3,51:1. Ein Lila fuer beides gibt es nicht (Weiss >= 4,5 braucht
+     Helligkeit <= 0,183, Lila-Schrift auf base >= 0,252), daher ein eigenes,
+     dunkleres Fuell-Lila. Hover wird DUNKLER, nicht heller.
+     --accent-fill folgt dem Game wie --accent: hier LoL, im
+     [data-game="tft"]-Block unten auf die tft-Werte umgeschaltet. */
+  --accent-tft-fill: #6c4fff;         /* Weiss darauf 5,00:1 */
+  --accent-tft-fill-hover: #5b3cf5;   /* Weiss darauf 6,16:1 */
+  --accent-fill: var(--accent-lol);
+  --accent-fill-hover: var(--accent-lol);
+
   /* --- Feste Farben, die NICHT dem Game folgen ------------------------------
      Beide sehen aus wie ein Accent, sind aber keiner. Ohne eigene Namen
      landen sie beim Migrieren auf --accent und kippen dann die Farbe:
@@ -133,6 +145,13 @@
      die Warnung oben gilt nur fuer Ableitungen aus --accent.            */
   --brand: #7B61FF;
   --brand-rgb: 123 97 255;
+  /* Weisse Schrift auf Marken-Lila (Login, Nav, Cookie-Knopf): auf #7B61FF
+     nur 4,20:1, hier 5,00:1 (Hover 6,16:1). */
+  --brand-fill: #6c4fff;
+  --brand-fill-hover: #5b3cf5;
+  /* Marken-Lila als SCHRIFT: 6,12:1 auf base, 5,39:1 auf raised.
+     Gleicher Wert wie --series-purple-soft, bewusst eigener Name. */
+  --brand-text: #a892ff;
   --gold-earnings: #c89b3c;
   /* 3★-Abzeichen auf Unit-Kacheln (Comp-Liste + Comp-Kopf). */
   --star3-badge: #e7c310;
@@ -145,6 +164,9 @@
   --pos-win-rgb: 62 207 142;                   /* = #3ecf8e, Tripel fuer die Stufe pos-win-a40 */
   --pos-win:     rgb(var(--pos-win-rgb));
   --pos-loss:    #e44040;
+  /* Rot als SCHRIFT: #e44040 hat auf base nur 3,80:1, das hier 5,41:1
+     (raised 4,77:1). Flaechen, Balken und Punkte bleiben --pos-loss. */
+  --pos-loss-text: #ff6467;
   --pos-neutral: var(--fg-secondary);
 
   /* --- Diagramm-Serien ------------------------------------------------------
@@ -196,6 +218,8 @@
   /* Muss mit --accent zusammen umgeschaltet werden — sonst bleiben alle
      transparenten Ableitungen gold, während die Volltöne lila werden. */
   --accent-rgb: var(--accent-tft-rgb);
+  --accent-fill: var(--accent-tft-fill);
+  --accent-fill-hover: var(--accent-tft-fill-hover);
 }
 
 /* @theme inline registriert die Tokens als Tailwind-Utilities
@@ -238,8 +262,13 @@
   --color-accent: var(--accent);
   --color-accent-lol: var(--accent-lol);
   --color-accent-tft: var(--accent-tft);
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-fill-hover: var(--accent-fill-hover);
 
   --color-brand: var(--brand);
+  --color-brand-fill: var(--brand-fill);
+  --color-brand-fill-hover: var(--brand-fill-hover);
+  --color-brand-text: var(--brand-text);
   --color-gold-earnings: var(--gold-earnings);
   --color-star3-badge: var(--star3-badge);
 
@@ -289,6 +318,7 @@
   /* Nur Stufen anlegen, die genutzt werden (a40: Explorer-Leiste mit der Spielzahl). */
   --color-pos-win-a40: rgb(var(--pos-win-rgb) / 40%);
   --color-pos-loss: var(--pos-loss);
+  --color-pos-loss-text: var(--pos-loss-text);
   --color-series-purple: var(--series-purple);
   --color-series-purple-soft: var(--series-purple-soft);
 

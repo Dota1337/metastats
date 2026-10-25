@@ -487,7 +487,7 @@ function Pagination({ page, totalPages, onChange, loading }: { page: number; tot
             onClick={() => onChange(i)}
             disabled={loading}
             className={`w-8 h-8 rounded text-xs font-medium ${
-              i === page ? 'bg-accent text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'
+              i === page ? 'bg-accent-fill text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'
             }`}
           >
             {i + 1}
@@ -657,7 +657,7 @@ function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg, className =
   // Diff vs. lobby Master+ average. Negative = player places *better* than
   // the average lobby (lower placement number is better in TFT).
   const diff = typeof lobbyAvg === 'number' ? avg - lobbyAvg : null;
-  const diffColor = diff == null ? 'var(--fg-muted)' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? '#e44040' : 'var(--fg-secondary)';
+  const diffColor = diff == null ? 'var(--fg-muted)' : diff <= -0.15 ? '#3ecf8e' : diff >= 0.15 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)';
   return (
     <a
       href={withLang(`/tft/units/${encodeURIComponent(characterId)}`)}

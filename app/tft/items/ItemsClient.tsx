@@ -97,7 +97,7 @@ export default function ItemsClient({ initialFilters, initial }: {
         <div className="flex flex-wrap gap-1 mb-4">
           <button
             onClick={() => setBucket(null)}
-            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+            className={`px-3 py-1 rounded text-xs ${bucket == null ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
           >
             {t('tft.item.bucket.all')}
           </button>
@@ -105,7 +105,7 @@ export default function ItemsClient({ initialFilters, initial }: {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t(`tft.item.bucket.${b}` as any)}
             </button>
@@ -309,6 +309,6 @@ function DeltaCell({ delta, pair, loading, label }: {
   if (delta?.deltaAvgPlace == null) return render('—', 'text-fg-faint');
   const d = delta.deltaAvgPlace;
   const sign = d < 0 ? '−' : d > 0 ? '+' : '';
-  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? '#e44040' : 'var(--fg-secondary)';
+  const color = d < -0.02 ? '#3ecf8e' : d > 0.02 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)';
   return render(`${sign}${Math.abs(d).toFixed(2)}`, 'font-medium', { color });
 }

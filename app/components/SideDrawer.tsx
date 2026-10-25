@@ -590,7 +590,7 @@ function TftTournamentsContent({
   return (
     <div>
       {live.length > 0 && (
-        <SectionHeader label={t('drawer.live')} count={live.length} accent="#e44040" pulse />
+        <SectionHeader label={t('drawer.live')} count={live.length} accent="#e44040" labelColor="var(--pos-loss-text)" pulse />
       )}
       {live.map(tournament => (
         <TftTournamentRow key={tournament.id} tournament={tournament} dateFmt={dateFmt} tierColor={tierColor} />
@@ -605,14 +605,14 @@ function TftTournamentsContent({
   );
 }
 
-function SectionHeader({ label, count, accent, pulse }: { label: string; count: number; accent: string; pulse?: boolean }) {
+function SectionHeader({ label, count, accent, labelColor, pulse }: { label: string; count: number; accent: string; labelColor?: string; pulse?: boolean }) {
   return (
     <div className="px-4 py-1.5 bg-surface-base border-y border-border-subtle sticky top-0 z-10 flex items-center gap-2">
       <span className="relative flex h-2 w-2">
         {pulse && <span className="absolute inset-0 rounded-full opacity-75 animate-ping" style={{ backgroundColor: accent }} />}
         <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: accent }} />
       </span>
-      <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: accent }}>
+      <span className="text-[10px] font-medium uppercase tracking-wider" style={{ color: labelColor ?? accent }}>
         {label} <span className="opacity-60">({count})</span>
       </span>
     </div>
@@ -646,7 +646,7 @@ function TftTournamentRow({
           </div>
         </div>
         {tournament.prize_pool_usd != null && (
-          <div className="text-brand text-[10px] font-medium tabular-nums flex-shrink-0">
+          <div className="text-brand-text text-[10px] font-medium tabular-nums flex-shrink-0">
             ${(tournament.prize_pool_usd / 1000).toFixed(0)}k
           </div>
         )}

@@ -134,7 +134,7 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
       </div>
 
       {/* Detail row (quick stats) */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 pb-2 text-xs text-[#6a7a90]">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 px-3 pb-2 text-xs text-fg-faint">
         <span>{roleLabels[match.role] || '-'}</span>
         <span>{t('match.dmgShare')}: {dmgShare}%</span>
         <span>{t('match.goldShare')}: {goldShare}%</span>

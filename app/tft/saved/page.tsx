@@ -99,7 +99,7 @@ function Section({
               <button
                 onClick={() => onRemove(b)}
                 title={t('tft.saved.remove')}
-                className="text-fg-faint hover:text-[#e44040] text-sm transition-colors"
+                className="text-fg-faint hover:text-pos-loss-text text-sm transition-colors"
               >
                 ×
               </button>

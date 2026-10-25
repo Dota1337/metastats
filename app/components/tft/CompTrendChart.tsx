@@ -43,7 +43,7 @@ export default function CompTrendChart({
               onClick={() => onTrendDaysChange(d)}
               className={`px-2.5 py-0.5 text-xs rounded ${
                 trendDays === d
-                  ? 'bg-accent text-white'
+                  ? 'bg-accent-fill text-white'
                   : 'text-fg-secondary hover:text-white'
               }`}
             >

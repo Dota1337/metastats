@@ -400,7 +400,7 @@ function ChipGroup<T extends string | number | null>({ label, options, value, re
           aria-pressed={value === o}
           onClick={() => onChange(o)}
           className={`px-2 py-0.5 rounded border transition-colors ${
-            value === o ? 'border-accent bg-accent text-white' : 'border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white'
+            value === o ? 'border-accent-fill bg-accent-fill text-white' : 'border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white'
           }`}
         >
           {render(o)}

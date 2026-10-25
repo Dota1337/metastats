@@ -10,7 +10,7 @@ import { useI18n } from '../../lib/i18n';
 // scripts/backfill-companion-placements.mjs und
 // infra/hetzner/journald-retention.conf — bei Aenderungen hier nachziehen.
 
-const LINK = 'text-brand hover:underline';
+const LINK = 'text-brand-text hover:underline';
 
 export default function CompanionPrivacyPage() {
   const { t } = useI18n();

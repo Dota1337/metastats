@@ -268,7 +268,7 @@ export default function TftCompsComparePage() {
             </div>
             <a
               href={withLang("/tft/comps")}
-              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
+              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent-fill text-white rounded hover:bg-accent-fill-hover transition-colors"
             >
               {t('tft.compare.goToList')}
             </a>
@@ -504,7 +504,7 @@ function OpponentsCompare({
             <div className="text-[11px] font-semibold truncate mb-2" style={{ color }}>{name}</div>
             <OpponentList title={t('tft.comp.beats')} tone="#3ecf8e" edges={side.strong} assets={assets} bucket={bucket} />
             <OpponentList
-              title={t('tft.comp.losesTo')} tone="#e44040" edges={side.weak} assets={assets} bucket={bucket}
+              title={t('tft.comp.losesTo')} tone="var(--pos-loss-text)" edges={side.weak} assets={assets} bucket={bucket}
               also={alsoWeak} alsoLabel={fill(t('tft.compVs.alsoName'), { name: other })}
             />
           </div>
@@ -549,7 +549,7 @@ function OpponentList({
                     {also?.has(e.fam) && alsoLabel && (
                       <span
                         className="inline-flex items-center px-1 py-[1px] rounded text-[8px] font-medium flex-shrink-0 whitespace-nowrap"
-                        style={{ color: '#e44040', backgroundColor: 'rgba(228,64,64,0.12)', border: '1px solid rgba(228,64,64,0.4)' }}
+                        style={{ color: 'var(--pos-loss-text)', backgroundColor: 'rgba(228,64,64,0.12)', border: '1px solid rgba(228,64,64,0.4)' }}
                       >{alsoLabel}</span>
                     )}
                   </div>
@@ -857,20 +857,20 @@ function DiffPanel({
       <div className="grid grid-cols-3 items-center gap-2">
         <div
           className="text-right text-lg font-medium tabular-nums"
-          style={{ color: tieClass ? 'var(--fg-bright)' : aIsBetter ? '#3ecf8e' : '#e44040' }}
+          style={{ color: tieClass ? 'var(--fg-bright)' : aIsBetter ? '#3ecf8e' : 'var(--pos-loss-text)' }}
         >
           {fmt(a)}
         </div>
         <div className="text-center text-fg-muted text-xs tabular-nums">
           {Math.abs(diff) < 0.001 ? '=' : muted ? `Δ ${fmt(Math.abs(diff))}` : (
-            <span style={{ color: lowerIsBetter ? (diff < 0 ? '#3ecf8e' : '#e44040') : (diff > 0 ? '#3ecf8e' : '#e44040') }}>
+            <span style={{ color: lowerIsBetter ? (diff < 0 ? '#3ecf8e' : 'var(--pos-loss-text)') : (diff > 0 ? '#3ecf8e' : 'var(--pos-loss-text)') }}>
               Δ {fmt(Math.abs(diff))}
             </span>
           )}
         </div>
         <div
           className="text-left text-lg font-medium tabular-nums"
-          style={{ color: tieClass ? 'var(--fg-bright)' : !aIsBetter ? '#3ecf8e' : '#e44040' }}
+          style={{ color: tieClass ? 'var(--fg-bright)' : !aIsBetter ? '#3ecf8e' : 'var(--pos-loss-text)' }}
         >
           {fmt(b)}
         </div>

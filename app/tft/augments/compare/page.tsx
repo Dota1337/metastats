@@ -55,7 +55,7 @@ export default function TftAugmentsComparePage() {
             </div>
             <a
               href={withLang("/tft/augments")}
-              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent text-white rounded hover:bg-[#8B71FF] transition-colors"
+              className="inline-block mt-3 px-3 py-1.5 text-xs bg-accent-fill text-white rounded hover:bg-accent-fill-hover transition-colors"
             >
               {t('tft.augmentsCompare.goToList')}
             </a>

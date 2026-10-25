@@ -41,7 +41,7 @@ export default function CookieBanner() {
       </div>
       <p className="text-fg-secondary text-xs leading-relaxed mb-3">
         {t('cookie.body')}{' '}
-        <a href={withLang("/datenschutz")} className="text-brand hover:underline">
+        <a href={withLang("/datenschutz")} className="text-brand-text hover:underline">
           {t('legal.privacy')}
         </a>
         .
@@ -49,7 +49,7 @@ export default function CookieBanner() {
       <div className="flex gap-2">
         <button
           onClick={() => persist('accepted')}
-          className="flex-1 bg-brand hover:bg-brand-a80 text-white text-xs px-3 py-2 rounded font-medium"
+          className="flex-1 bg-brand-fill hover:bg-brand-fill-hover text-white text-xs px-3 py-2 rounded font-medium"
         >
           {t('cookie.accept')}
         </button>

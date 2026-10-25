@@ -385,7 +385,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
                       <div className="text-fg-secondary text-sm text-right">
                         {champ.pickRate !== null ? `${champ.pickRate}%` : '-'}
                       </div>
-                      <div className="text-sm text-right" style={{ color: champ.banRate !== null && champ.banRate > 10 ? '#e44040' : 'var(--fg-secondary)' }}>
+                      <div className="text-sm text-right" style={{ color: champ.banRate !== null && champ.banRate > 10 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)' }}>
                         {champ.banRate !== null ? `${champ.banRate}%` : '-'}
                       </div>
                       <div className="text-fg-secondary text-sm text-right">

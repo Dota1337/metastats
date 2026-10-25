@@ -657,7 +657,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                       onClick={() => choosePerfect(on)}
                       className={`px-2.5 py-0.5 text-xs rounded ${
                         perfectOn === on
-                          ? 'bg-accent text-white'
+                          ? 'bg-accent-fill text-white'
                           : 'text-fg-secondary hover:text-white'
                       }`}
                     >
@@ -815,6 +815,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                           const star3Share = row.games > 0 ? (row.star3Games / row.games) * 100 : 0;
                           const isBest = row.avgPlacement === bestAvg;
                           const accentColor = isBest ? '#3ecf8e' : '#7B61FF';
+                          // Schrift heller als der Rahmen: #7B61FF ist als Text zu dunkel.
+                          const labelColor = isBest ? '#3ecf8e' : 'var(--brand-text)';
                           const lowSample = row.games < MIN_GAMES_PER_OUTCOME_CARD;
                           const rowRoles = computeRoles(row.typicalUnits, row.games, { set: assets?.set, isComponent });
                           // Nach Wichtigkeit wie im Kopf (User 18.10.2026);
@@ -832,7 +834,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                               style={{ borderColor: `${withAlpha(accentColor, 0x60)}`, borderWidth: isBest ? 2 : 1, opacity: lowSample ? 0.55 : 1 }}
                             >
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
-                                <span className="text-base font-semibold" style={{ color: accentColor }}>
+                                <span className="text-base font-semibold" style={{ color: labelColor }}>
                                   {traitTierLabel(t('tft.trait.breakpoint') as string, assets, levelTrait, row.level)
                                     ?? (t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
                                 </span>
@@ -945,6 +947,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                               : t('tft.comp.contestedTriple'),
                             labelClass: 'text-xs font-medium uppercase tracking-widest',
                             color: row.contested === 1 ? '#3ecf8e' : row.contested === 2 ? '#e0c75a' : '#e44040',
+                            textColor: row.contested > 2 ? 'var(--pos-loss-text)' : undefined,
                             games: row.games,
                             avgPlacement: row.avgPlacement,
                             top4Rate: row.top4Rate,
@@ -1080,7 +1083,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                     <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.comp.matchups')}</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <MatchupColumn title={t('tft.comp.beats')}   color="#3ecf8e" edges={comp.counters.beats}   assets={assets} bucket={bucket} t={t} />
-                      <MatchupColumn title={t('tft.comp.losesTo')} color="#e44040" edges={comp.counters.losesTo} assets={assets} bucket={bucket} t={t} />
+                      <MatchupColumn title={t('tft.comp.losesTo')} color="var(--pos-loss-text)" edges={comp.counters.losesTo} assets={assets} bucket={bucket} t={t} />
                     </div>
                   </section>
                 )}
@@ -1275,7 +1278,7 @@ function DeltaStat({
   }
   const delta = solo != null ? pro - solo : null;
   const betterColor = '#3ecf8e';
-  const worseColor = '#e44040';
+  const worseColor = 'var(--pos-loss-text)';
   const color = delta == null || delta === 0
     ? 'var(--fg-secondary)'
     : (lowerIsBetter ? (delta < 0 ? betterColor : worseColor)
@@ -1316,6 +1319,8 @@ interface OutcomeRow {
   label: string;
   labelClass: string;
   color: string;
+  /** Schriftfarbe, falls sie vom Rahmen abweicht (Rot ist als Schrift heller). */
+  textColor?: string;
   games: number;
   avgPlacement: number;
   top4Rate: number;
@@ -1348,7 +1353,7 @@ function OutcomeRowsBox({ title, rows, t }: { title: string; rows: OutcomeRow[];
               style={{ borderColor: `${withAlpha(row.color, 0x40)}`, opacity: lowSample ? 0.55 : 1 }}
             >
               <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className={row.labelClass} style={{ color: row.color }}>{row.label}</span>
+                <span className={row.labelClass} style={{ color: row.textColor ?? row.color }}>{row.label}</span>
                 <span className="text-fg-muted text-xs">{share.toFixed(0)}% · {row.games}</span>
                 {lowSample && (
                   <span
@@ -1363,7 +1368,7 @@ function OutcomeRowsBox({ title, rows, t }: { title: string; rows: OutcomeRow[];
               <div className="text-right whitespace-nowrap">
                 <span className="text-white text-base font-medium">{row.avgPlacement.toFixed(2)}</span>
                 {row.delta != null && (
-                  <span className="ml-1.5 text-xs" style={{ color: row.delta > 0 ? '#e44040' : '#3ecf8e' }}>
+                  <span className="ml-1.5 text-xs" style={{ color: row.delta > 0 ? 'var(--pos-loss-text)' : '#3ecf8e' }}>
                     {row.delta > 0 ? '+' : ''}{row.delta.toFixed(2)}
                   </span>
                 )}

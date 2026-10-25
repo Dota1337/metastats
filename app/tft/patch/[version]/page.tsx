@@ -182,7 +182,7 @@ export default function TftPatchDetailPage() {
             <button
               key={b}
               onClick={() => setBucket(b)}
-              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+              className={`px-3 py-1 rounded text-xs ${bucket === b ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
             >
               {t(`tft.bucket.${b}` as const)}
             </button>
@@ -285,7 +285,7 @@ function DiffColumn({
   entity: Entity;
   assets: TftAssetsBundle | null;
 }) {
-  const headerColor = direction === 'up' ? 'text-[#3ecf8e]' : 'text-[#e44040]';
+  const headerColor = direction === 'up' ? 'text-[#3ecf8e]' : 'text-pos-loss-text';
   return (
     <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
       <div className={`px-4 py-2 bg-surface-sunken text-xs uppercase tracking-widest ${headerColor}`}>
@@ -349,7 +349,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     href = `/tft/traits/${encodeURIComponent(traitId)}`;
   }
 
-  const deltaColor = entry.deltaAvgPlacement < 0 ? '#3ecf8e' : '#e44040';
+  const deltaColor = entry.deltaAvgPlacement < 0 ? '#3ecf8e' : 'var(--pos-loss-text)';
   return (
     <a
       href={withLang(href)}

@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { TRAIT_STYLE_COLOR } from '../../../lib/tft-trait-style';
 import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
@@ -337,11 +338,7 @@ function costToColor(cost: number) {
 }
 
 function traitStyleColor(style: number) {
-  return style === 5 ? '#c39bff'
-    : style === 4 ? '#e0c75a'
-    : style === 3 ? '#cfd6dc'
-    : style === 1 ? '#a07a4d'
-    : 'var(--fg-muted)';
+  return TRAIT_STYLE_COLOR[style] ?? 'var(--fg-muted)';
 }
 
 function prettyTraitName(raw: string) {

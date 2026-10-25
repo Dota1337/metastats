@@ -256,7 +256,7 @@ export default function CompRow({
     // Lower placement = improvement → green ▲; higher = regression → red ▼.
     const better = v.deltaAvgPlace < 0;
     return (
-      <span style={{ color: better ? '#3ecf8e' : '#e44040' }} className="font-medium" title={tooltip}>
+      <span style={{ color: better ? '#3ecf8e' : 'var(--pos-loss-text)' }} className="font-medium" title={tooltip}>
         {better ? '▲' : '▼'} {Math.abs(v.deltaAvgPlace).toFixed(2)}
       </span>
     );
@@ -455,7 +455,7 @@ export default function CompRow({
               <span
                 className="ml-1 inline-flex items-center px-1.5 py-[1px] rounded text-[9px] font-medium align-middle"
                 style={{
-                  color: difficultyColor(guideMatch.guide.difficulty),
+                  color: difficultyColor(guideMatch.guide.difficulty, true),
                   backgroundColor: `${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x1f)}`,
                   border: `1px solid ${withAlpha(difficultyColor(guideMatch.guide.difficulty), 0x40)}`,
                 }}
@@ -550,7 +550,7 @@ export default function CompRow({
                     </div>
                   )}
                   {showDouble && (
-                    <div className="absolute -top-1 -right-1 bg-accent text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
+                    <div className="absolute -top-1 -right-1 bg-accent-fill text-white text-[8px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow leading-none">
                       ×2
                     </div>
                   )}

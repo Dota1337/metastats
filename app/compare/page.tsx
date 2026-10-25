@@ -306,8 +306,8 @@ function RecentFormRow({ form, streaks, side }: { form: boolean[]; streaks: { cu
       <div className="text-[10px] tabular-nums">
         <span className="text-[#3ecf8e]">{wins}</span>
         <span className="text-fg-muted">-</span>
-        <span className="text-[#e44040]">{losses}</span>
-        <span className={`ml-1.5 ${streaks.current > 0 ? 'text-[#3ecf8e]' : streaks.current < 0 ? 'text-[#e44040]' : 'text-fg-muted'}`}>
+        <span className="text-pos-loss-text">{losses}</span>
+        <span className={`ml-1.5 ${streaks.current > 0 ? 'text-[#3ecf8e]' : streaks.current < 0 ? 'text-pos-loss-text' : 'text-fg-muted'}`}>
           · {streakText}
         </span>
       </div>

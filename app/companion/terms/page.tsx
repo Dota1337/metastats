@@ -7,7 +7,7 @@ import { useI18n } from '../../lib/i18n';
 // Funktionsumfang nach App 0.8.3: keine Augment-Daten, keine Gewinnchancen,
 // keine Gegner-Comps im Spiel.
 
-const LINK = 'text-brand hover:underline';
+const LINK = 'text-brand-text hover:underline';
 
 export default function CompanionTermsPage() {
   const { t } = useI18n();

@@ -30,6 +30,8 @@ const MIGRATED = new Set([
   'b9c4d6', '93a0b8', '76859b',
   // Flaechen/Raender/Grau seit 2026-09-27 (seitenweit heller).
   '19233a', '212c4a', '2a3a52', '384a68', '38476a', '9eabc1', '8a99ae',
+  // Textgrau seit 2026-10-25 (alle vier eine Stufe heller).
+  'c3cddc', 'b3bfd1', 'a6b3c8', 'dbe2ea',
   'ffffff', 'fff',
 ]);
 

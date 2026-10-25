@@ -70,10 +70,17 @@
   /* --- Text ----------------------------------------------------------------
      Vier Stufen decken 1.636 der gemessenen Fundstellen ab.             */
   --fg-primary:   #ffffff;     /* 591× (text-white) */
-  --fg-secondary: #b9c4d6;     /* 545× — seit 2026-09-27 F2-Textwert (vorher #a0b0c5) */
-  --fg-muted:     #9eabc1;     /* seit 2026-09-27: 4.96:1 auf overlay (vorher #93a0b8, davor #7a8aa0) */
-  --fg-faint:     #8a99ae;     /* seit 2026-09-27: 4.76:1 auf raised (vorher #76859b, davor #5a6a80) */
-  --fg-bright:    #cdd6e0;     /* 9× — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
+  /* 25.10.2026 alle vier Grautoene eine Stufe heller (User „Überall, wo die
+     hellgraue Schrift ist, muss die lesbarer werden"). Kontrast auf raised:
+     secondary 7.83 → 8.59, muted 5.94 → 7.41, faint 4.76 → 6.50; bright mit
+     angehoben, sonst laege secondary nur 1.09 unter bright (jetzt 1.23). */
+  --fg-secondary: #c3cddc;     /* vorher #b9c4d6, davor #a0b0c5 */
+  --fg-muted:     #b3bfd1;     /* vorher #9eabc1, davor #93a0b8, #7a8aa0 */
+  --fg-faint:     #a6b3c8;     /* vorher #8a99ae, davor #76859b, #5a6a80 */
+  --fg-bright:    #dbe2ea;     /* vorher #cdd6e0 — konsolidiert #cfd8dc/#cfd6dc/#cbd5e1 */
+  /* Gestrichelte Flex-Linie (coreFlexFrame, tft-ui.ts): bleibt beim Ton vom
+     19.10.2026, den der User gegen die goldene Core-Linie abgestimmt hat. */
+  --line-flex:    #8a99ae;
 
   /* Warme Textleiter -- ausschliesslich fuer Flaechen, die selbst schon in
      einer Farbe getoent sind (heute nur der Prototyp-Banner). Auf dem

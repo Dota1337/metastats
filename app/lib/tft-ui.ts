@@ -36,7 +36,7 @@ export function coreFlexFrame(kind: 'core' | 'flex' | null | undefined): { borde
   if (!kind) return undefined;
   return kind === 'core'
     ? { border: '2px solid #e0c75a', background: 'rgb(var(--accent-tft-rgb) / 12%)' }
-    : { border: '1.5px dashed var(--fg-faint)', background: 'transparent' };
+    : { border: '1.5px dashed var(--line-flex)', background: 'transparent' };
 }
 
 // Sechseck-Maske fuer Champion-Portraits (Builder-Brett, Comp-Uebersicht).

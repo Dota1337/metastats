@@ -88,7 +88,7 @@ function SummaryBox({ data, hasFilters, place }: Props & { data: ExplorerRespons
           {hist.map((h, i) => (
             <div key={i} className="flex flex-col items-center gap-0.5 w-7 lg:w-9">
               <span className="text-[9px] lg:text-[11px] leading-none text-fg-faint tabular-nums">{s?.games ? Math.round((h / s.games) * 100) : 0}%</span>
-              <div className={`w-full rounded-sm h-[max(2px,calc(var(--r)*16px))] ${i < 4 ? 'bg-accent-a60' : 'bg-accent-a20'}`}
+              <div className={`w-full rounded-sm h-[max(2px,calc(var(--r)*16px))] ${i < 4 ? 'bg-pos-win' : 'bg-pos-loss'}`}
                 style={{ '--r': h / maxH } as React.CSSProperties} />
               <span className="text-[10px] lg:text-xs leading-none text-fg-muted tabular-nums">{i + 1}</span>
             </div>

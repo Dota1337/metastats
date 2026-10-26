@@ -51,7 +51,7 @@ test('Schluessel: Startdaten-Spiegel nur fuer genau die Standardansicht', () => 
   assert.equal(routeMirrorKey('lolMarktwert', page('region=euw1&tier=all')), null);
   assert.equal(routeMirrorKey('lolMarktwert', page('region=all&tier=ALL')), null); // feste Werte ohne Umformung
   assert.equal(routeMirrorKey('tftTournaments', page('limit=200')), 'default');
-  for (const f of ['slug=x', 'status=live', 'region=EU', 'tier=S', 'set=18']) {
+  for (const f of ['slug=x', 'status=live', 'region=EU', 'tier=S', `set=${S}`]) {
     assert.equal(routeMirrorKey('tftTournaments', page(`limit=200&${f}`)), null, f);
   }
   assert.equal(routeMirrorKey('lolHome', page('')), 'default');

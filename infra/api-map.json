@@ -744,7 +744,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/patch/page.tsx",
+        "app/tft/patch/PatchListClient.tsx",
         "scripts/health-monitor.mjs",
         "scripts/lib/revalidate-edge.mjs"
       ]
@@ -896,7 +896,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/builder/page.tsx"
+        "app/tft/builder/BuilderClient.tsx"
       ]
     },
     {
@@ -1035,7 +1035,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/leaderboard/page.tsx"
+        "app/tft/leaderboard/TftLeaderboardClient.tsx"
       ]
     },
     {
@@ -1104,7 +1104,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/leaderboard/page.tsx"
+        "app/tft/leaderboard/TftLeaderboardClient.tsx"
       ]
     },
     {
@@ -1260,7 +1260,7 @@
       "usedBy": [
         "app/lib/tft-patch-delta.ts",
         "app/tft/patch/[version]/page.tsx",
-        "app/tft/patch/winners/page.tsx",
+        "app/tft/patch/winners/PatchWinnersClient.tsx",
         "scripts/lib/revalidate-edge.mjs",
         "scripts/warm-tft-stats-cache.mjs"
       ]
@@ -1435,7 +1435,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/tft/rising/page.tsx",
+        "app/tft/rising/RisingClient.tsx",
         "scripts/warm-tft-stats-cache.mjs"
       ]
     },
@@ -1642,7 +1642,7 @@
       "used": true,
       "usedBy": [
         "app/components/SideDrawer.tsx",
-        "app/ligen/page.tsx"
+        "app/ligen/LigenClient.tsx"
       ]
     },
     {
@@ -1660,7 +1660,7 @@
       ],
       "used": true,
       "usedBy": [
-        "app/ligen/page.tsx"
+        "app/ligen/LigenClient.tsx"
       ]
     },
     {

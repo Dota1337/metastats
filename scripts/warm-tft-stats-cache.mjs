@@ -114,7 +114,7 @@ function buildUrls() {
   }
 
   // Rising — Aufsteiger je Region und Zeitraum. Die Seite baut die Adresse als
-  // `days=…&region=…` in genau dieser Reihenfolge (app/tft/rising/page.tsx);
+  // `days=…&region=…` in genau dieser Reihenfolge (risingQuery in app/lib/page-start-queries.ts);
   // die Regionsliste ist dieselbe Datei, die auch die Seite anbietet.
   for (const days of [1, 3, 5]) {
     for (const region of ['all', ...ACTIVE_REGIONS]) {

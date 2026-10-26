@@ -67,7 +67,7 @@ const RAW_TEXT_ALLOWED = {
   'app/components/tft/unit/UnitBuilds.tsx|#11151c': 'dunkel auf hell',
   'app/tft/units/[id]/UnitDetailClient.tsx|#11151c': 'dunkel auf hell',
   // Bronze-Medaille der Liga-Tabelle.
-  'app/ligen/page.tsx|#b87333': 'Medaille',
+  'app/ligen/LigenClient.tsx|#b87333': 'Medaille',
 };
 
 const read = (f) => readFileSync(f, 'utf8');

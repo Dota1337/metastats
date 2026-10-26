@@ -60,7 +60,7 @@ function yearOf(dateStr) {
 }
 
 /**
- * Ein Listing-Eintrag. Feldmenge deckt exakt ab, was app/teams/page.tsx heute
+ * Ein Listing-Eintrag. Feldmenge deckt exakt ab, was app/teams/TeamsClient.tsx heute
  * aus der SoT rechnet: Roster-Splits, Trophäen-Zählung, Gesamt- und
  * Jahres-Preisgeld.
  */
@@ -104,7 +104,7 @@ export function toListingEntry(team) {
 
 /**
  * Alle Jahre, in denen irgendein Team ein datiertes Ergebnis hat — auch Jahre
- * ohne Preisgeld. Entspricht getSeasonYears() in app/teams/page.tsx; würde man
+ * ohne Preisgeld. Entspricht getSeasonYears() in app/teams/TeamsClient.tsx; würde man
  * hier über prizeByYear gehen, verschwänden Einträge aus dem Dropdown.
  */
 export function collectSeasons(teams) {

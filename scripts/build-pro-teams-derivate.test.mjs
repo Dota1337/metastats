@@ -1,10 +1,10 @@
 /**
  * Verhaltens-Test für scripts/build-pro-teams-derivate.mjs.
  *
- * Zweck: die Derivate liefern exakt dieselben Zahlen, die app/teams/page.tsx
+ * Zweck: die Derivate liefern exakt dieselben Zahlen, die app/teams/TeamsClient.tsx
  * heute clientseitig aus der SoT rechnet. Der Test rechnet die UI-Formeln
  * unabhängig nach (unten `uiSeasonYears` / `uiSeasonPrize`, gespiegelt von
- * app/teams/page.tsx:49-64) und vergleicht sie gegen die Projektion.
+ * app/teams/TeamsClient.tsx) und vergleicht sie gegen die Projektion.
  *
  * Läuft in `npm test` und damit im pre-push-Gate. Datenform-Prüfungen liegen
  * bewusst HIER und nicht im Build-Script: ein schlechter Crawl-Lauf darf nicht
@@ -27,7 +27,7 @@ import {
 const sot = existsSync(SOT_PATH) ? JSON.parse(readFileSync(SOT_PATH, 'utf8')) : null;
 const hasSot = sot !== null;
 
-// --- Spiegel der heutigen UI-Formeln (app/teams/page.tsx:49-64) -------------
+// --- Spiegel der heutigen UI-Formeln (app/teams/TeamsClient.tsx) -------------
 function uiSeasonYears(teams) {
   const years = new Set();
   for (const t of teams) {

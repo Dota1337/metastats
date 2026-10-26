@@ -48,6 +48,9 @@ const nextConfig: NextConfig = {
     '/tft/items/[id]': ['./public/tft-item-texts-*.json'],
     // Faehigkeit + Grundwerte im ersten HTML (tft-unit-info-server.ts), Name am Set.
     '/tft/units/[id]': ['./public/tft-unit-info-*.json'],
+    // Startdaten der Uebersichtsseiten (app/lib/seo/page-start-*.ts).
+    '/teams': ['./public/pro-teams/listing.json'],
+    '/tft/augments': ['./public/tft-augment-stages-*.json'],
   },
   // Wochendateien (public/tft-stats-<region>.json) kommen in jede Funktion,
   // die loadTftStats erreicht — der Dateiname steht erst zur Laufzeit fest.

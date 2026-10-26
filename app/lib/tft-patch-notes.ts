@@ -33,6 +33,24 @@ export interface PatchNoteOverride {
   }>;
 }
 
+// Riot-Patch-Notes-URL je Locale. KORRIGIERT 2026-06-21 nach classification-
+// reviewer Spot-Check: richtige Subdomain ist `teamfighttactics.leagueof
+// legends.com` (NICHT www.leagueoflegends.com), und das `-notes`-Suffix
+// gehört NICHT mehr in den URL-Pfad (Set 17 hat `patch-X-Y/`, nicht
+// `patch-X-Y-notes/`). Konsistent mit dem existing tftPatchUrl()-Helper
+// in app/api/tft/patch-notes/route.ts.
+// B-Patches (18.5b) haben keine eigene Seite (Riot: 404 auf patch-18-5b,
+// 200 auf patch-18-5, gemessen 26.10.2026) — sie stehen in den Notes des
+// Hauptpatches, also ohne den Buchstaben verlinken.
+export function riotPatchNotesUrl(patch: string, lang: string): string {
+  const localeMap: Record<string, string> = {
+    de: 'de-de', en: 'en-us', ko: 'ko-kr', zh: 'zh-cn', es: 'es-es', fr: 'fr-fr',
+  };
+  const locale = localeMap[lang] || 'en-us';
+  const slug = patch.replace(/[a-z]+$/i, '').replace(/\./g, '-');
+  return `https://teamfighttactics.leagueoflegends.com/${locale}/news/game-updates/teamfight-tactics-patch-${slug}/`;
+}
+
 let cached: Promise<PatchNoteOverride | null> | null = null;
 
 export function loadPatchNotes(): Promise<PatchNoteOverride | null> {

@@ -18,6 +18,7 @@ import {
 import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
 import { compactDeltaRows, loadPatchDeltaBlobs } from '../../../lib/patch-delta-server';
 import { compAssignForPair } from '../../../lib/comp-assign-server';
+import { patchDiffEntries } from '../../../lib/tft-patch-winners';
 import { publicError } from '../../../lib/public-error';
 
 // /api/tft/patch-diff?patch=17.2&prev=17.1&entity=unit|item|trait
@@ -37,23 +38,6 @@ import { publicError } from '../../../lib/public-error';
 // oder ist er veraltet, rechnet diese Seite live wie bisher.
 
 type Entity = PatchDiffEntity;
-
-interface DiffEntry {
-  key: string;
-  currentGames: number;
-  previousGames: number;
-  currentAvgPlacement: number;
-  previousAvgPlacement: number;
-  deltaAvgPlacement: number;        // negative = better in current patch
-  currentPickRate: number;
-  previousPickRate: number;
-  deltaPickRate: number;
-  currentTop4Rate: number;
-  previousTop4Rate: number;
-  deltaTop4Rate: number;
-}
-
-const MIN_GAMES = PATCH_DIFF_MIN_GAMES;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -147,47 +131,16 @@ export async function GET(request: NextRequest) {
     };
     // Patch-Gewinner fragt nach der Eigenschaft, nicht nach ihrer Stufe.
     const [curr, prev] = (await Promise.all([side(currentPatch), side(previousPatch)])).map(sumPatchDiffLevels);
-
-    const prevMap = new Map(prev.map(r => [r.key, r]));
-    const diffs: DiffEntry[] = [];
-    for (const c of curr) {
-      const p = prevMap.get(c.key);
-      if (!p) continue;
-      if (c.games < MIN_GAMES || p.games < MIN_GAMES) continue;
-      const cAvg = c.sum_placement / c.games;
-      const pAvg = p.sum_placement / p.games;
-      const cPick = c.participants > 0 ? c.games / c.participants : 0;
-      const pPick = p.participants > 0 ? p.games / p.participants : 0;
-      const cTop4 = c.top4 / c.games;
-      const pTop4 = p.top4 / p.games;
-      diffs.push({
-        key: c.key,
-        currentGames: c.games,
-        previousGames: p.games,
-        currentAvgPlacement: cAvg,
-        previousAvgPlacement: pAvg,
-        deltaAvgPlacement: cAvg - pAvg,
-        currentPickRate: cPick,
-        previousPickRate: pPick,
-        deltaPickRate: cPick - pPick,
-        currentTop4Rate: cTop4,
-        previousTop4Rate: pTop4,
-        deltaTop4Rate: cTop4 - pTop4,
-      });
-    }
-
-    // Winners = avg placement got better (lower) by the largest amount.
-    // Losers = avg placement got worse (higher).
-    const winners = [...diffs].sort((a, b) => a.deltaAvgPlacement - b.deltaAvgPlacement).slice(0, 15);
-    const losers  = [...diffs].sort((a, b) => b.deltaAvgPlacement - a.deltaAvgPlacement).slice(0, 15);
+    // Dieselbe Rechnung wie die Startdaten der Seite (seo/page-start-tft.ts).
+    const { sampleSize, winners, losers } = patchDiffEntries(curr, prev);
 
     const res = cachedJson({
-      hasData: diffs.length > 0,
+      hasData: sampleSize > 0,
       currentPatch,
       previousPatch,
       entity,
       patches,
-      sampleSize: diffs.length,
+      sampleSize,
       winners,
       losers,
     });

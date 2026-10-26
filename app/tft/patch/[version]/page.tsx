@@ -5,9 +5,8 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
-import { riotPatchNotesUrl } from '../page';
 import { legacyTftBucket } from '../../../lib/rank-groups';
-import { loadPatchNotes, patchNotesFor, patchEntityHref, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
+import { loadPatchNotes, patchNotesFor, patchEntityHref, riotPatchNotesUrl, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
 import {
   ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis,
   ReferenceLine, Tooltip as RechartsTooltip,

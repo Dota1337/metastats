@@ -1,0 +1,443 @@
+'use client';
+import { useEffect, useState } from 'react';
+import { withAlpha } from '../../lib/color';
+import Nav from '../../components/Nav';
+import Footer from '../../components/Footer';
+import { useI18n, LOCALE_MAP } from '../../lib/i18n';
+import TftHero from '../../components/tft/TftHero';
+import { rankTierColor } from '../../lib/rank-format';
+import { queryString, sameQuery, tftLeaderboardQuery, TFT_LEADERBOARD_START } from '../../lib/page-start-queries';
+
+export interface Player {
+  rank: number | null; puuid: string; region?: string;
+  gameName: string | null; tagLine: string | null;
+  tier: string; division: string | null;
+  leaguePoints: number; wins: number; losses: number;
+}
+
+// Ohne Divisions-Auswahl: Apex-Ligen und alle X+-Gruppen.
+const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS', 'DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
+// Gruppen mit Raengen unterhalb von Master: die API steigt wie bei "alle
+// Raenge" von oben ab und deckelt auf 10 Seiten (2026-09-13).
+const DESCENT_TIERS = ['DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
+
+// Standardansicht: alle Raenge hintereinander, vom hoechsten besetzten Rang
+// abwaerts. Nach einem Set-Start sind Challenger, Grossmeister und Meister
+// tagelang leer — eine Seite, die auf Challenger startet, zeigt dann nichts.
+const ALL_TIERS = 'ALL';
+const DIVISIONS = ['I', 'II', 'III', 'IV'];
+
+// Weltweit (Region "Alle", 2026-09-27) holt die API die Apex-Ligen aller
+// Regionen live; tiefere Raenge waeren bis zu 300 Riot-Abfragen je Aufruf.
+// ALL_TIERS heisst dort "Master abwaerts bis Challenger", ohne eigenen Knopf.
+const WORLD = 'all';
+const WORLD_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS'];
+const WORLD_MAX_PAGES = 200;
+
+// Marktwerte gibt es nur ab Diamant II (gemessen 2026-09-27 auf EUW: CH 229,
+// GM 379, Master 1062, Diamant I 224, Diamant II 664, darunter 0). Die Spalte
+// steht deshalb in allen Gruppen-Ansichten, die von oben abwaerts sammeln,
+// und in den Einzelansichten Diamant I/II — sonst zeigte sie nur Striche.
+const MARKET_VALUE_ROW_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+const MARKET_VALUE_DIAMOND_DIVISIONS = ['I', 'II'];
+const hasMarketValueRank = (tier: string, division: string | null) =>
+  MARKET_VALUE_ROW_TIERS.includes(tier)
+  || (tier === 'DIAMOND' && division != null && MARKET_VALUE_DIAMOND_DIVISIONS.includes(division));
+
+// PH und TH fehlen hier bewusst: beide sind seit dem Crawl-Umbau leer (siehe
+// app/lib/active-regions.ts), eine Rangliste haette dort nichts zu zeigen. Der
+// Spielervergleich (app/tft/compare/page.tsx) fuehrt sie weiter, weil dort ein
+// direkt eingegebenes Profil auch ohne Crawl-Daten aufloest.
+const REGIONS = [
+  { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
+  { value: 'kr',   label: 'KR'  }, { value: 'na1',  label: 'NA' },
+  { value: 'br1',  label: 'BR'  }, { value: 'jp1',  label: 'JP' },
+  { value: 'la1',  label: 'LAN' }, { value: 'la2',  label: 'LAS' },
+  { value: 'oc1',  label: 'OCE' }, { value: 'tr1',  label: 'TR' },
+  { value: 'ru',   label: 'RU'  }, { value: 'me1',  label: 'ME' },
+  { value: 'sg2',  label: 'SG'  }, { value: 'tw2',  label: 'TW' },
+  { value: 'vn2',  label: 'VN'  },
+];
+
+// Beide Raster stehen als komplette Klassennamen im Quelltext, damit Tailwind
+// sie beim Build findet — ein aus Teilen zusammengesetzter Klassenname wird
+// nicht generiert.
+const GRID_APEX = 'grid-cols-[3rem_1fr_5rem_5rem_5rem_7rem]';
+const GRID_APEX_NO_MV = 'grid-cols-[3rem_1fr_5rem_5rem_5rem]';
+const GRID_SUB = 'grid-cols-[1fr_5rem_5rem_5rem_7rem]';
+const GRID_SUB_NO_MV = 'grid-cols-[1fr_5rem_5rem_5rem]';
+
+/** Standardansicht vom Server (Datei der Box, app/lib/seo/page-start-mirror.ts). */
+export interface TftLeaderboardInitial {
+  players: Player[];
+  hasNextPage?: boolean;
+  totalPlayers?: number | null;
+}
+
+export default function TftLeaderboardClient({ initial }: { initial: TftLeaderboardInitial | null }) {
+  const { t, lang, withLang } = useI18n();
+  const [region, setRegion] = useState(WORLD);
+  const [tier, setTier] = useState(ALL_TIERS);
+  const [division, setDivision] = useState('I');
+  const [page, setPage] = useState(1);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [fetchedPlayers, setPlayers] = useState<Player[]>([]);
+  const [fetchedHasNextPage, setHasNextPage] = useState(false);
+  const [fetchedTotalPlayers, setTotalPlayers] = useState<number | null>(null);
+  const [marketValues, setMarketValues] = useState<Map<string, number>>(new Map());
+  const [fetchedLoading, setLoading] = useState(!initial);
+  const [fetchedError, setError] = useState<string | null>(null);
+  const [tierDist, setTierDist] = useState<{ month: string; tiers: { key: string; label: string; pct: number; color: string }[] } | null>(null);
+  const [search, setSearch] = useState('');
+
+  const TIERS = [
+    { value: 'CHALLENGER',  label: t('tier.challenger') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus') },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus') },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus') },
+    { value: 'GOLD',        label: t('tier.gold') },
+    { value: 'SILVER',      label: t('tier.silver') },
+    { value: 'BRONZE',      label: t('tier.bronze') },
+    { value: 'IRON',        label: t('tier.iron') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
+
+  const isWorld = region === WORLD;
+  const tierButtons = isWorld ? TIERS.filter(tr => WORLD_TIERS.includes(tr.value)) : TIERS;
+  const isAll = tier === ALL_TIERS;
+  const isApex = APEX_TIERS.includes(tier);
+  const query = tftLeaderboardQuery(region, tier, page, !isApex && !isAll ? division : null);
+  // Standardansicht: die Server-Startdaten gelten, auch nach dem Zurueckwechseln
+  // (ohne Abruf, kein Springen auf eine aeltere Edge-Kopie).
+  const start = initial && sameQuery(query, TFT_LEADERBOARD_START) ? initial : null;
+  const players = start ? start.players : fetchedPlayers;
+  const hasNextPage = start ? Boolean(start.hasNextPage) : fetchedHasNextPage;
+  const totalPlayers = start ? (typeof start.totalPlayers === 'number' ? start.totalPlayers : null) : fetchedTotalPlayers;
+  const loading = !start && fetchedLoading;
+  const error = start ? null : fetchedError;
+  const isDescent = !isWorld && (isAll || DESCENT_TIERS.includes(tier));
+  // Rangnummer nur dort, wo sie echt ist: in den Apex-Ligen und in der
+  // Alle-Raenge-Ansicht, die von oben abwaerts vollstaendige Stufen sammelt.
+  const showRank = isApex || isAll;
+  const showMarketValue = isAll || isApex || hasMarketValueRank(tier, division);
+  const pageSize = 50;
+  const MAX_PAGES_ALL = 10;
+  const totalPages = isDescent
+    ? (totalPlayers ? Math.min(MAX_PAGES_ALL, Math.max(1, Math.ceil(totalPlayers / pageSize))) : null)
+    : ((isApex || isWorld) && totalPlayers ? Math.min(WORLD_MAX_PAGES, Math.max(1, Math.ceil(totalPlayers / pageSize))) : null);
+  const regionLabel = (key: string) => REGIONS.find(r => r.value === key)?.label || key.toUpperCase();
+  const rowRegion = (p: Player) => p.region || region;
+  const mvKey = (p: Player) => isWorld ? `${rowRegion(p)}:${p.puuid}` : p.puuid;
+  // Zeilen tragen weiter den Einzelrang (MASTER / DIAMOND …), auch wenn die
+  // Auswahl nur noch die Gruppen kennt.
+  const ROW_TIERS = [
+    ...TIERS,
+    { value: 'GRANDMASTER', label: t('tier.grandmaster') },
+    { value: 'MASTER',      label: t('tier.master') },
+    { value: 'DIAMOND',     label: t('tier.diamond') },
+    { value: 'EMERALD',     label: t('tier.emerald') },
+    { value: 'PLATINUM',    label: t('tier.platinum') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
+  const tierColor = (key: string) => ROW_TIERS.find(x => x.value === key)?.color || '#8ea2b8';
+  const tierLabel = (key: string) => ROW_TIERS.find(x => x.value === key)?.label || key;
+
+  // Unterhalb von Master liefert Riot in der Einzelrang-Ansicht keine ligaweite
+  // Reihenfolge — eine durchlaufende Nummer waere dort erfunden.
+  const gridCls = showRank
+    ? (showMarketValue ? GRID_APEX : GRID_APEX_NO_MV)
+    : (showMarketValue ? GRID_SUB : GRID_SUB_NO_MV);
+
+  useEffect(() => {
+    fetch('/tft-tier-distribution.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.tiers) setTierDist({ month: d.month || '', tiers: d.tiers }); })
+      .catch(() => {});
+  }, []);
+
+  const queryKey = queryString(query);
+  const atStart = start !== null;
+  useEffect(() => {
+    if (atStart) return;
+    setLoading(true);
+    setError(null);
+    setMarketValues(new Map());
+    // Beim Wechsel auf "Alle" kann kurz noch ein tieferer Rang gesetzt sein,
+    // bis der Klick ihn zuruecksetzt — diesen Abruf gar nicht erst starten.
+    if (region === WORLD && tier !== ALL_TIERS && !WORLD_TIERS.includes(tier)) return;
+    fetch(`/api/tft/leaderboard?${queryKey}`)
+      .then(async r => {
+        if (!r.ok) {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error || `HTTP ${r.status}`);
+        }
+        return r.json();
+      })
+      .then(d => {
+        setPlayers(d.players || []);
+        setHasNextPage(Boolean(d.hasNextPage));
+        setTotalPlayers(typeof d.totalPlayers === 'number' ? d.totalPlayers : null);
+        setLoading(false);
+      })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, [region, tier, queryKey, atStart]);
+
+  // Marktwerte gezielt fuer die angezeigten Spieler ab Diamant II nachladen.
+  // Sortiert, damit dieselbe Seite denselben Cache-Schluessel trifft.
+  // Weltweit taucht dieselbe puuid in mehreren Regionen auf (gemessen 6) —
+  // die Werte werden deshalb dort je Region+puuid zugeordnet.
+  const mvPuuids = showMarketValue
+    ? [...new Set(players.filter(p => hasMarketValueRank(p.tier, p.division)).map(p => p.puuid))].sort().join(',')
+    : '';
+  useEffect(() => {
+    if (!mvPuuids) { setMarketValues(new Map()); return; }
+    let cancelled = false;
+    fetch(`/api/tft/marktwert/lookup?region=${region}&puuids=${mvPuuids}`)
+      .then(r => r.ok ? r.json() : { values: {} })
+      .then(d => {
+        if (cancelled) return;
+        const m = new Map<string, number>();
+        for (const [key, v] of Object.entries((d.values || {}) as Record<string, unknown>)) {
+          if (typeof v === 'number') m.set(key, v);
+        }
+        setMarketValues(m);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [region, mvPuuids]);
+
+  const fmtEur = (n: number) =>
+    new Intl.NumberFormat(LOCALE_MAP[lang], {
+      style: 'currency', currency: 'EUR', maximumFractionDigits: 0,
+    }).format(n);
+
+  return (
+    <main className="min-h-screen bg-surface-page">
+      <Nav active="leaderboard" />
+      <TftHero pageTitle={t('nav.leaderboard')} />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-2 pb-6">
+
+
+        {tierDist && tierDist.tiers.length > 0 && (
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+            <div className="flex items-baseline justify-between mb-3">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
+              {tierDist.month && <div className="text-fg-muted text-[10px]">{tierDist.month}</div>}
+            </div>
+            <div className="flex items-end gap-2 sm:h-32 mb-2 overflow-x-auto sm:overflow-visible">
+              {(() => {
+                const maxPct = Math.max(...tierDist.tiers.map(t => t.pct), 1);
+                return tierDist.tiers.map(item => {
+                  const barH = Math.max((item.pct / maxPct) * 100, 2);
+                  const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
+                  // Farbe aus der zentralen Liste, nicht aus der Wochen-Datei:
+                  // die schreibt ein Bot und kennt neue Werte erst nach seinem Lauf.
+                  const color = rankTierColor(item.key) ?? item.color;
+                  return (
+                    <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
+                      <div className="text-[10px] font-medium" style={{ color }}>{display}</div>
+                      <div className="w-full relative" style={{ height: '90px' }}>
+                        <div className="absolute bottom-0 w-full rounded-t transition-all duration-500" style={{ height: `${barH}%`, backgroundColor: color, opacity: 0.7, boxShadow: `0 0 8px ${withAlpha(color, 0x40)}` }} />
+                      </div>
+                      <div className="text-[10px] text-center" style={{ color }}>{item.label}</div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[{ value: WORLD, label: t('lb.allRegions') }, ...REGIONS].map(r => (
+            <button
+              key={r.value}
+              onClick={() => {
+                setRegion(r.value);
+                setPage(1);
+                if (r.value === WORLD && !WORLD_TIERS.includes(tier)) { setTier(ALL_TIERS); setOpenDropdown(null); }
+              }}
+              className={`px-3 py-1.5 rounded text-xs font-medium ${region === r.value ? 'bg-accent-fill text-white' : 'bg-surface-raised text-fg-secondary hover:text-white'}`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t('tft.search.player')}
+            className="w-full sm:w-80 bg-surface-raised border border-border-subtle rounded px-3 py-1.5 text-sm text-white placeholder:text-fg-faint outline-none focus:border-accent-a60"
+          />
+        </div>
+
+        <div className="flex flex-wrap gap-1 mb-4">
+          {tierButtons.map(tr => {
+            const trApex = APEX_TIERS.includes(tr.value);
+            const isActive = tier === tr.value;
+            const isDropdownOpen = openDropdown === tr.value;
+            return (
+              <div key={tr.value} className="relative">
+                <button
+                  onClick={() => {
+                    if (tr.value !== tier) { setTier(tr.value); setDivision('I'); setPage(1); }
+                    setOpenDropdown(trApex ? null : (isDropdownOpen ? null : tr.value));
+                  }}
+                  className={`px-3 py-2 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
+                    isActive ? 'text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
+                  }`}
+                  style={isActive ? { backgroundColor: tr.color } : {}}
+                >
+                  {tr.label}
+                  {!trApex && isActive && <span className="text-[10px] opacity-70">{division}</span>}
+                  {!trApex && (
+                    <svg className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+
+                {!trApex && isDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[80px]">
+                    {DIVISIONS.map(div => (
+                      <button
+                        key={div}
+                        onClick={() => {
+                          setTier(tr.value);
+                          setDivision(div);
+                          setPage(1);
+                          setOpenDropdown(null);
+                        }}
+                        className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                          tier === tr.value && division === div
+                            ? 'text-surface-sunken font-medium'
+                            : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
+                        }`}
+                        style={tier === tr.value && division === div ? { backgroundColor: tr.color } : {}}
+                      >
+                        {tr.label} {div}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {loading && <div className="text-fg-muted text-center py-8">{t('tft.loading')}</div>}
+        {error && <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-400 text-sm">{error}</div>}
+
+        {!loading && !error && players.length === 0 && (
+          <div className="bg-surface-base border border-border-subtle rounded p-8 text-center text-fg-muted text-sm">
+            {t('lb.noPlayers')}
+          </div>
+        )}
+
+        {!loading && !error && players.length > 0 && (
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            <div className={`hidden sm:grid ${gridCls} gap-2 px-4 py-2 text-[11px] uppercase whitespace-nowrap text-fg-muted bg-surface-sunken`}>
+              {showRank && <div className="text-right">#</div>}
+              <div>{t('lb.player')}</div>
+              <div className="text-right">LP</div>
+              <div className="text-right">{t('tft.gamesShort')}</div>
+              <div className="text-right">{t('tft.top4')}</div>
+              {showMarketValue && <div className="text-right">{t('tft.marketValue')}</div>}
+            </div>
+            {(() => {
+              const q = search.trim().toLowerCase();
+              const visible = q
+                ? players.filter(p =>
+                    (p.gameName || '').toLowerCase().includes(q)
+                    || (p.tagLine || '').toLowerCase().includes(q),
+                  )
+                : players;
+              return visible;
+            })().map(p => {
+              const total = p.wins + p.losses;
+              const wr = total > 0 ? Math.round((p.wins / total) * 100) : 0;
+              const slug = p.gameName ? `${encodeURIComponent(p.gameName)}--${encodeURIComponent(p.tagLine || 'EUW')}` : null;
+              const mv = marketValues.get(mvKey(p));
+              return (
+                <a
+                  key={`${rowRegion(p)}:${p.puuid}`}
+                  href={withLang(slug ? `/tft/player/${slug}?region=${rowRegion(p)}` : '#')}
+                  className={`block sm:grid ${gridCls} gap-2 px-4 py-2 sm:items-center text-sm hover:bg-white/5 border-t border-border-subtle`}
+                >
+                  {/* Mobile: Rang (nur Apex) + Name in Zeile 1, Stats darunter.
+                      Desktop: 4- bis 6-Spalten-Raster, je nach Liga. */}
+                  {showRank && <div className="hidden sm:block text-right text-fg-secondary">{p.rank}</div>}
+                  <div className="flex items-baseline gap-2 sm:block min-w-0">
+                    {showRank && <span className="text-fg-secondary text-xs sm:hidden">#{p.rank}</span>}
+                    <span className="text-white truncate flex-1 sm:flex-initial sm:block">
+                      {p.gameName ? `${p.gameName}` : <span className="text-fg-muted">{t('lb.unknownPlayer')}</span>}
+                      {p.tagLine && <span className="text-fg-muted text-xs"> #{p.tagLine}</span>}
+                      {/* Tablet-Breite (640-1023 px): Region + Rang in eine eigene
+                          Zeile, sonst schiebt der Name die Marktwert-Spalte raus. */}
+                      {(isDescent || isWorld) && (
+                        <span className="sm:block lg:inline sm:[&>*:first-child]:ml-0 lg:[&>*:first-child]:ml-2">
+                          {isWorld && (
+                            <span className="text-xs ml-2 text-fg-muted">{regionLabel(rowRegion(p))}</span>
+                          )}
+                          <span className="text-xs ml-2" style={{ color: tierColor(p.tier) }}>
+                            {tierLabel(p.tier)}{p.division ? ` ${p.division}` : ''}
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="hidden sm:block text-right text-white">{p.leaguePoints}</div>
+                  <div className="hidden sm:block text-right text-fg-muted">{total}</div>
+                  <div className="hidden sm:block text-right text-fg-secondary">{wr}%</div>
+                  <div className="flex sm:block items-center justify-between mt-1 sm:mt-0 sm:text-right tabular-nums">
+                    <span className="text-fg-muted text-xs sm:hidden">
+                      {p.leaguePoints} LP · {total} {t('tft.gamesShort')} · {wr}% {t('tft.top4')}
+                    </span>
+                    {showMarketValue && (mv != null
+                      ? <span className="text-accent font-medium">{fmtEur(mv)}</span>
+                      : <span className="text-fg-muted">—</span>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && !error && !search.trim() && (page > 1 || hasNextPage) && (
+          <div className="flex items-center justify-center gap-2 mt-3 bg-surface-base border border-border-subtle rounded px-3 sm:px-4 py-3">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                page <= 1
+                  ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+                  : 'bg-surface-raised text-fg-secondary hover:text-white'
+              }`}
+            >
+              {t('team.prev')}
+            </button>
+            <span className="text-fg-secondary text-xs px-2">
+              {t('team.page')} {page}{totalPages ? ` / ${totalPages}` : ''}
+            </span>
+            <button
+              onClick={() => setPage(p => p + 1)}
+              disabled={!hasNextPage}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                !hasNextPage
+                  ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+                  : 'bg-surface-raised text-fg-secondary hover:text-white'
+              }`}
+            >
+              {t('team.next')}
+            </button>
+          </div>
+        )}
+      </div>
+      <Footer />
+    </main>
+  );
+}

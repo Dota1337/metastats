@@ -39,7 +39,8 @@ const STATIC_ROUTES: Entry[] = [
   { path: '/marktwert', priority: 0.8, changeFrequency: 'hourly' },
   { path: '/teams', priority: 0.7, changeFrequency: 'daily' },
   { path: '/ligen', priority: 0.7, changeFrequency: 'daily' },
-  { path: '/compare', priority: 0.6, changeFrequency: 'weekly' },
+  // /compare und /tft/compare fehlen bewusst: ohne gewaehlte Spieler sind sie
+  // leer und stehen auf noindex (Soft-404-Plan 26.10.2026).
   // TFT hub. Die Uebersicht ist die TFT-Startseite; als erster /tft/comps/-
   // Eintrag ist sie zugleich eine 200er-Probe des Vertrags seo/detail-404.
   { path: TFT_HOME, priority: 0.9, changeFrequency: 'daily' },
@@ -55,7 +56,6 @@ const STATIC_ROUTES: Entry[] = [
   { path: '/tft/patch', priority: 0.7, changeFrequency: 'daily' },
   { path: '/tft/patch/winners', priority: 0.8, changeFrequency: 'daily' },
   { path: '/tft/builder', priority: 0.6, changeFrequency: 'weekly' },
-  { path: '/tft/compare', priority: 0.6, changeFrequency: 'weekly' },
 ];
 
 // Standardansicht der Listen (alle Regionen, 3 Tage, Diamond+, aktueller

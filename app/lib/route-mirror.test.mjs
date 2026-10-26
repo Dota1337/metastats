@@ -7,7 +7,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   ROUTE_MIRRORS, ROUTE_MIRROR_GROUPS, isValidRouteMirror, routeMirrorFetchPath, routeMirrorIndexPath,
   routeMirrorKey, routeMirrorKeys, routeMirrorNames, routeMirrorPath, routeMirrorVariants,
@@ -89,6 +89,16 @@ test('Pruefung: passende frische Datei gilt, alles andere nicht', () => {
     body: { tournaments: [{ league: 'LEC' }], byLeague: {}, sortedLeagues: [] } };
   assert.equal(isValidRouteMirror(tn, 'tournaments', 'default', { set: null, now: NOW }), true); // kein TFT-Set noetig
   assert.equal(isValidRouteMirror({ ...tn, body: { ...tn.body, tournaments: [] } }, 'tournaments', 'default', { now: NOW }), false);
+});
+
+test('Leser: keine Route benutzt den Seiten-Leser (ohne Publisher-Pruefung)', () => {
+  // readRouteMirrorForPage prueft die Publisher-Kopfzeile nicht. In einer Route
+  // bekaeme die Box ihre eigene alte Datei zurueck und legte sie eingefroren ab.
+  const apiDir = new URL('../api/', import.meta.url);
+  const routes = readdirSync(apiDir, { recursive: true }).map(String).filter(p => /(^|[\\/])route\.ts$/.test(p));
+  assert.ok(routes.length > 50, `nur ${routes.length} Routen gefunden`);
+  const offenders = routes.filter(p => readFileSync(new URL(p.replace(/\\/g, '/'), apiDir), 'utf8').includes('readRouteMirrorForPage'));
+  assert.deepEqual(offenders, []);
 });
 
 test('Vertraege: jeder Spiegel hat einen Frische-Vertrag auf sein index.json', () => {

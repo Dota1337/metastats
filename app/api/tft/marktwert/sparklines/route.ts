@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { publicError } from '../../../../lib/public-error';
+import { readRouteMirror, withSnapshotHeader } from '../../../../lib/route-mirror-read';
 
 // /api/tft/marktwert/sparklines?region=euw1&limit=100&days=14
 //
@@ -12,6 +13,10 @@ import { publicError } from '../../../../lib/public-error';
 // snapshot data already exists, so it shows immediately.
 
 export async function GET(request: NextRequest) {
+  // Top 100 / 14 Tage je Region: fertige Datei der Box (tftMarktwertSparks).
+  const mirrored = await readRouteMirror('tftMarktwertSparks', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored), 'tftMarktwertSparks', true);
+
   const { searchParams } = new URL(request.url);
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
   const limit = Math.max(1, Math.min(200, parseInt(searchParams.get('limit') || '100', 10)));
@@ -35,5 +40,5 @@ export async function GET(request: NextRequest) {
     (series[row.puuid] ??= []).push({ date: row.snapshot_date, value: row.final_value });
   }
 
-  return cachedJson({ region, count: Object.keys(series).length, series });
+  return withSnapshotHeader(cachedJson({ region, count: Object.keys(series).length, series }), 'tftMarktwertSparks', false);
 }

@@ -60,7 +60,9 @@ const FORCE = process.argv.includes('--force');
 const READERS = {
   SNAPSHOT_PUBLISHER_TOKEN: ['metastats-snapshot-publisher.service', 'metastats-lol-builds-publish.service',
     'metastats-mirror-leaderboard.service', 'metastats-mirror-ligen.service',
-    'metastats-mirror-regions.service', 'metastats-mirror-rising.service'],
+    'metastats-mirror-regions.service', 'metastats-mirror-rising.service',
+    'metastats-mirror-mv-pages.service', 'metastats-mirror-slow-pages.service',
+    'metastats-mirror-lol-leaderboard.service'],
   // Die Crawler revalidieren nur am Ende, ein Fehlschlag dort laesst den
   // Edge-Speicher bis zum Ablauf stehen — kein Abbruch, nur ein Hinweis.
   REVALIDATE_SECRET: [],

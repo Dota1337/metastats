@@ -78,6 +78,12 @@ export const OPS_SERVICES: Record<string, OpsService> = {
     'Legt alle 3 Stunden die Regionen-Seite in ihren 12 Ansichten als fertige Dateien ab.' },
   'metastats-mirror-ligen.service': { kind: 'oneshot', maxAgeMs: H, text:
     'Legt alle 30 Minuten den LoL-Spielplan und die Ligen-Uebersicht als fertige Datei ab.' },
+  'metastats-mirror-mv-pages.service': { kind: 'oneshot', maxAgeMs: 8 * H, text:
+    'Legt nach jedem Marktwert-Abgleich die Top 100 des TFT-Marktwerts samt Verlaeufen je Region als fertige Dateien ab, zur Sicherheit zusaetzlich alle 6 Stunden. Damit bringt die Seite ihre Liste gleich mit.' },
+  'metastats-mirror-slow-pages.service': { kind: 'oneshot', maxAgeMs: 4 * H, text:
+    'Legt alle 3 Stunden den LoL-Marktwert, die TFT-Turniere und die Kennzahlen der LoL-Startseite als fertige Dateien ab.' },
+  'metastats-mirror-lol-leaderboard.service': { kind: 'oneshot', maxAgeMs: H, text:
+    'Legt alle 30 Minuten und nach jedem Riot-Key-Wechsel die erste Seite der LoL-Rangliste (EUW Challenger) als fertige Datei fuer die Seite ab.' },
   'metastats-meta-pulse-diffs.service': { kind: 'oneshot', maxAgeMs: 3 * H, text:
     'Rechnet stuendlich die Patch-Vergleiche und Patch-Gewinner fuer die Meta-Pulse-Seite vor. Live waeren sie fuer die Datenbank zu langsam.' },
   'metastats-tft-live-standings.service': { kind: 'oneshot', maxAgeMs: 3 * H, text:

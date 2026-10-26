@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabase';
 import { cachedJson, STATS_CACHE_CONTROL_FRESH } from '../../../lib/api-cache';
 import { publicError } from '../../../lib/public-error';
+import { readRouteMirror, withSnapshotHeader } from '../../../lib/route-mirror-read';
 
 // /api/tft/tournaments
 //   List: optional status/region/tier/set filters via query params.
@@ -38,6 +39,10 @@ export async function GET(request: NextRequest) {
     return cachedJson({ tournament: row }, row && inLiveWindow(row.start_date, row.end_date) ? { cache: STATS_CACHE_CONTROL_FRESH } : {});
   }
 
+  // Gesamtliste ohne Filter: fertige Datei der Box (tftTournaments), sonst live.
+  const mirrored = await readRouteMirror('tftTournaments', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored), 'tftTournaments', true);
+
   const status = searchParams.get('status');
   const region = searchParams.get('region');
   const tier = searchParams.get('tier');
@@ -53,8 +58,8 @@ export async function GET(request: NextRequest) {
   });
   if (error) return NextResponse.json({ error: publicError('tft/tournaments', error, 'db_error') }, { status: 500 });
 
-  return cachedJson({
+  return withSnapshotHeader(cachedJson({
     tournaments: data || [],
     count: data?.length || 0,
-  });
+  }), 'tftTournaments', false);
 }

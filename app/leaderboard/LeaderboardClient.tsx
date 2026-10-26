@@ -1,0 +1,618 @@
+'use client';
+import { useState, useEffect, useRef } from 'react';
+import { withAlpha } from '../lib/color';
+import Nav from '../components/Nav';
+import DdragonImg from '../components/DdragonImg';
+import Footer from '../components/Footer';
+import ApiUnavailable from '../components/ApiUnavailable';
+import PageHero from '../components/PageHero';
+import { useI18n, LOCALE_MAP } from '../lib/i18n';
+import { regionLabel } from '../lib/regions';
+import { loadProLookup, lookupPro, type ProPlayer } from '../lib/pro-players';
+import { rankTierColor } from '../lib/rank-format';
+import { lolLeaderboardQuery, queryString, sameQuery, LOL_LEADERBOARD_START } from '../lib/page-start-queries';
+
+/** Antwort von /api/leaderboard (Startdaten: EUW Challenger Seite 1). */
+export interface LeaderboardBody {
+  entries: any[];
+  source?: string;
+  message?: string;
+  hasNextPage?: boolean;
+  totalPlayers?: number | null;
+}
+
+// Die Route haelt ihre Antwort 5 min am Rand. Ist die Datei der Box aelter,
+// holt die Seite im Browser still die aktuelle Liste (ohne Ladeanzeige).
+const START_FRESH_MS = 5 * 60_000;
+
+export default function LeaderboardClient({ initial }: {
+  /** Datei der Box samt Stand (seo/page-start-mirror.ts), bis 26 h alt. */
+  initial: { body: LeaderboardBody; builtAt: string } | null;
+}) {
+  const { t, lang, withLang } = useI18n();
+  const numLocale = LOCALE_MAP[lang];
+
+  const REGIONS = [
+    { value: 'euw1', label: 'EUW' },
+    { value: 'eun1', label: 'EUNE' },
+    { value: 'na1', label: 'NA' },
+    { value: 'kr', label: 'KR' },
+    { value: 'br1', label: 'BR' },
+    { value: 'la1', label: 'LAN' },
+    { value: 'la2', label: 'LAS' },
+    { value: 'oc1', label: 'OCE' },
+    { value: 'tr1', label: 'TR' },
+    { value: 'ru', label: 'RU' },
+    { value: 'jp1', label: 'JP' },
+    { value: 'ph2', label: 'PH' },
+    { value: 'sg2', label: 'SG' },
+    { value: 'th2', label: 'TH' },
+    { value: 'tw2', label: 'TW' },
+    { value: 'vn2', label: 'VN' },
+    { value: 'me1', label: 'ME' },
+  ];
+
+  const TIERS = [
+    { value: 'CHALLENGER', label: t('tier.challenger') },
+    { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
+    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    { value: 'DIAMOND_PLUS', label: t('tier.diamondPlus') },
+    { value: 'EMERALD_PLUS', label: t('tier.emeraldPlus') },
+    { value: 'PLATINUM_PLUS', label: t('tier.platinumPlus') },
+    { value: 'GOLD', label: t('tier.gold') },
+    { value: 'SILVER', label: t('tier.silver') },
+    { value: 'BRONZE', label: t('tier.bronze') },
+    { value: 'IRON', label: t('tier.iron') },
+  ].map(tr => ({ ...tr, color: rankTierColor(tr.value) as string }));
+
+  // Ohne Divisions-Auswahl: die Apex-Ligen und alle X+-Gruppen (die API steigt
+  // bei den Gruppen selbst von oben durch die Divisionen ab).
+  const APEX_TIERS = ['CHALLENGER', 'GRANDMASTER_PLUS', 'MASTER_PLUS', 'DIAMOND_PLUS', 'EMERALD_PLUS', 'PLATINUM_PLUS'];
+  const DIVISIONS = ['I', 'II', 'III', 'IV'];
+
+  const [fetchedEntries, setEntries] = useState<LeaderboardBody['entries']>([]);
+  const [fetchedLoading, setLoading] = useState(true);
+  const [region, setRegion] = useState(LOL_LEADERBOARD_START.region);
+  const [tier, setTier] = useState(LOL_LEADERBOARD_START.tier);
+  const [division, setDivision] = useState('I');
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [fetchedHasNextPage, setHasNextPage] = useState(false);
+  const [fetchedTotalPlayers, setTotalPlayers] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
+  // Ref statt State: der Timer wird nie gezeichnet.
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [fetchedSource, setSource] = useState('');
+  const [fetchedFailed, setFailed] = useState(false);
+  // Rangliste und Suche laufen ueber dieselbe Liste: nur die juengste Anfrage schreibt.
+  const reqSeq = useRef(0);
+  const [fetchedMessage, setMessage] = useState('');
+  // Still nachgeladene Startansicht (START_FRESH_MS); ersetzt die Datei der Box.
+  const [freshStart, setFreshStart] = useState<LeaderboardBody | null>(null);
+
+  // Startansicht (EUW, Challenger, Seite 1, ohne Suche) aus den Startdaten —
+  // auch bei der Rueckkehr dorthin. Beide Abrufwege kennen sie.
+  const query = lolLeaderboardQuery(tier, region, APEX_TIERS.includes(tier) ? null : division, page);
+  const startBody = freshStart ?? initial?.body ?? null;
+  const start = startBody && !search.trim() && sameQuery(query, LOL_LEADERBOARD_START) ? startBody : null;
+  const atStart = start !== null;
+  const entries = start ? start.entries : fetchedEntries;
+  const source = start ? (start.source || '') : fetchedSource;
+  const message = start ? (start.message || '') : fetchedMessage;
+  const hasNextPage = start ? !!start.hasNextPage : fetchedHasNextPage;
+  const totalPlayers = start ? (start.totalPlayers || null) : fetchedTotalPlayers;
+  const loading = !start && fetchedLoading;
+  const failed = !start && fetchedFailed;
+
+  useEffect(() => {
+    if (!initial || Date.now() - Date.parse(initial.builtAt) < START_FRESH_MS) return;
+    let cancelled = false;
+    fetch(`/api/leaderboard?${queryString(LOL_LEADERBOARD_START)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: LeaderboardBody | null) => {
+        // Bei Fehler oder leerer Liste bleibt die Datei der Box stehen.
+        if (!cancelled && d && Array.isArray(d.entries) && d.entries.length > 0) setFreshStart(d);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [initial]);
+  const [proLookup, setProLookup] = useState<Map<string, ProPlayer>>(new Map());
+  const [tierDist, setTierDist] = useState<{ month: string; tiers: { key: string; label: string; pct: number; color: string }[] } | null>(null);
+
+  // Load real tier distribution (sourced from esportstales / leagueofgraphs).
+  useEffect(() => {
+    fetch('/tier-distribution.json')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.tiers) setTierDist({ month: d.month || '', tiers: d.tiers }); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadProLookup().then(setProLookup);
+  }, []);
+
+  useEffect(() => {
+    if (!search.trim()) {
+      if (!atStart) fetchLeaderboard();
+    } else if (search.trim().length >= 2) {
+      // Regionwechsel waehrend einer Suche: in der neuen Region suchen.
+      fetchSearch(search);
+    }
+  }, [region, tier, division, page]);
+
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (search.trim().length >= 2) {
+      searchTimer.current = setTimeout(() => fetchSearch(search), 400);
+    } else if (!search.trim()) {
+      if (!atStart) fetchLeaderboard();
+    }
+  }, [search]);
+
+  async function fetchLeaderboard() {
+    const seq = ++reqSeq.current;
+    setLoading(true);
+    setMessage('');
+    setFailed(false);
+    try {
+      const res = await fetch(`/api/leaderboard?${queryString(query)}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      if (seq !== reqSeq.current) return;
+      setEntries(data.entries || []);
+      setSource(data.source || '');
+      setMessage(data.message || '');
+      setHasNextPage(data.hasNextPage || false);
+      setTotalPlayers(data.totalPlayers || null);
+    } catch {
+      if (seq !== reqSeq.current) return;
+      setEntries([]);
+      setFailed(true);
+    }
+    setLoading(false);
+  }
+
+  async function fetchSearch(q: string) {
+    const seq = ++reqSeq.current;
+    setLoading(true);
+    setFailed(false);
+    try {
+      const res = await fetch(`/api/leaderboard?search=${encodeURIComponent(q)}&region=${region}`);
+      if (!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      if (seq !== reqSeq.current) return;
+      setEntries(data.entries || []);
+      setSource('search');
+    } catch {
+      if (seq !== reqSeq.current) return;
+      setEntries([]);
+      setFailed(true);
+    }
+    setLoading(false);
+  }
+
+  const formatValue = (v: number | null) => {
+    if (!v) return '-';
+    return '$' + v.toLocaleString('de-DE');
+  };
+
+  const tierColor = TIERS.find(t => t.value === tier)?.color || '#c89b3c';
+
+  const pageSize = APEX_TIERS.includes(tier) ? 100 : 205;
+  const totalPages = totalPlayers ? Math.ceil(totalPlayers / pageSize) : null;
+
+  // Als Aufruf statt als Komponente: eine hier definierte Komponente waere bei
+  // jedem Rendern eine neue und wuerde neu eingehaengt.
+  const paginationBar = () => {
+    if (search.trim() || entries.length === 0 || (page <= 1 && !hasNextPage)) return null;
+
+    // Build page numbers to show: first, last, current +-2, with ellipsis
+    const getVisiblePages = (): (number | '...')[] => {
+      if (!totalPages || totalPages <= 7) {
+        return Array.from({ length: totalPages || 1 }, (_, i) => i + 1);
+      }
+      const pages: (number | '...')[] = [];
+      pages.push(1);
+      if (page > 3) pages.push('...');
+      for (let i = Math.max(2, page - 1); i <= Math.min((totalPages || 1) - 1, page + 1); i++) {
+        pages.push(i);
+      }
+      if (page < (totalPages || 1) - 2) pages.push('...');
+      pages.push(totalPages || 1);
+      return pages;
+    };
+
+    return (
+      <div className="flex items-center justify-center gap-2 bg-surface-base border border-border-subtle rounded px-3 sm:px-4 py-3">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={page <= 1}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+            page <= 1
+              ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+              : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
+          }`}
+        >
+          {t('team.prev')}
+        </button>
+
+        {/* Page numbers — desktop */}
+        {totalPages && totalPages > 1 && (
+          <div className="hidden sm:flex items-center gap-1">
+            {getVisiblePages().map((p, i) =>
+              p === '...' ? (
+                <span key={`e${i}`} className="text-fg-muted text-xs px-1">...</span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setPage(p as number)}
+                  className={`min-w-[2rem] px-2 py-1 rounded text-xs font-medium transition-colors ${
+                    page === p
+                      ? 'bg-accent-a15 text-accent border border-accent-a30'
+                      : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
+                  }`}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          </div>
+        )}
+
+        {/* Page dropdown */}
+        <select
+          value={page}
+          onChange={e => setPage(Number(e.target.value))}
+          className="bg-surface-raised border border-border-default rounded px-2 py-1 text-white text-xs outline-none"
+        >
+          {Array.from({ length: totalPages || Math.max(page + 1, 1) }, (_, i) => i + 1).map(p => (
+            <option key={p} value={p}>{t('team.page')} {p}</option>
+          ))}
+        </select>
+
+        {totalPlayers && (
+          <span className="text-fg-muted text-xs hidden sm:inline">({totalPlayers.toLocaleString(numLocale)})</span>
+        )}
+
+        <button
+          onClick={() => setPage(p => p + 1)}
+          disabled={!hasNextPage}
+          className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+            !hasNextPage
+              ? 'bg-surface-raised text-fg-muted cursor-not-allowed'
+              : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
+          }`}
+        >
+          {t('team.next')}
+        </button>
+      </div>
+    );
+  };
+
+  const makePlayerLink = (name: string | null, playerRegion?: string, puuid?: string | null) => {
+    // Ohne Namen: Riot-ID erst beim Klick aufloesen lassen.
+    if (!name) return puuid ? '/api/leaderboard/resolve?puuid=' + encodeURIComponent(puuid) + '&region=' + (playerRegion || region || 'euw1') : '#';
+    const parts = name.split('#');
+    // Name ohne Tag: nicht "EUW" raten, sondern ueber die puuid aufloesen
+    // (ohne puuid die Trefferliste ueber alle Server).
+    if (!parts[1]) {
+      return puuid
+        ? '/api/leaderboard/resolve?puuid=' + encodeURIComponent(puuid) + '&region=' + (playerRegion || region || 'euw1')
+        : '/search?q=' + encodeURIComponent(parts[0]);
+    }
+    return '/player/' + encodeURIComponent(parts[0]) + '--' + encodeURIComponent(parts[1]) + '?region=' + (playerRegion || region || 'euw1');
+  };
+
+  return (
+    <main className="min-h-screen bg-surface-page">
+      <Nav active="leaderboard" />
+
+      <PageHero title={t('lb.title')} subtitle={t('lb.subtitle')} leftChampion="Ahri" rightChampion="DrMundo" />
+
+      <div className="max-w-6xl mx-auto px-6 pb-8">
+        {/* Search */}
+        <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+          <input
+            type="text"
+            placeholder={t('lb.searchPlaceholder')}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full bg-surface-raised border border-border-default rounded px-4 py-2.5 text-white text-sm outline-none placeholder-fg-muted"
+          />
+        </div>
+
+        {/* Rank distribution overview (moved from /champions). Data source:
+            esportstales.com (which sources leagueofgraphs). Refreshed weekly
+            by scripts/fetch-tier-distribution.mjs. Hidden during search. */}
+        {!search.trim() && tierDist && tierDist.tiers.length > 0 && (
+          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-4">
+            <div className="flex items-baseline justify-between mb-4">
+              <div className="text-fg-secondary text-xs uppercase tracking-widest">{t('champ.rankDistribution')}</div>
+              {tierDist.month && (
+                <div className="text-fg-muted text-[10px]">{tierDist.month}</div>
+              )}
+            </div>
+            <div className="flex items-end gap-2 sm:h-40 mb-3 overflow-x-auto sm:overflow-visible">
+              {(() => {
+                const maxPct = Math.max(...tierDist.tiers.map(t => t.pct), 1);
+                return tierDist.tiers.map(item => {
+                  const barHeight = Math.max((item.pct / maxPct) * 100, 2);
+                  const display = item.pct >= 1 ? item.pct.toFixed(1) + '%' : item.pct + '%';
+                  // Farbe aus der zentralen Liste, nicht aus der Wochen-Datei:
+                  // die schreibt ein Bot und kennt neue Werte erst nach seinem Lauf.
+                  const color = rankTierColor(item.key) ?? item.color;
+                  return (
+                    <div key={item.key} className="flex-1 shrink-0 sm:shrink min-w-[2.5rem] sm:min-w-0 flex flex-col items-center gap-1">
+                      <div className="text-[10px] font-medium" style={{ color }}>
+                        {display}
+                      </div>
+                      <div className="w-full relative" style={{ height: '120px' }}>
+                        <div
+                          className="absolute bottom-0 w-full rounded-t transition-all duration-500"
+                          style={{
+                            height: `${barHeight}%`,
+                            backgroundColor: color,
+                            opacity: 0.7,
+                            boxShadow: `0 0 8px ${withAlpha(color, 0x40)}`,
+                          }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-center" style={{ color }}>
+                        {item.label}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Region — auch waehrend der Suche sichtbar, die Suche laeuft je Region */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {REGIONS.map(r => (
+            <button
+              key={r.value}
+              onClick={() => { setRegion(r.value); setPage(1); }}
+              className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                region === r.value ? 'bg-accent text-surface-sunken' : 'bg-surface-raised text-fg-secondary hover:text-white'
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tier Tabs */}
+        {!search.trim() && (
+          <div className="flex flex-wrap gap-1 mb-4">
+            {TIERS.map(tr => {
+              const isApex = APEX_TIERS.includes(tr.value);
+              const isActive = tier === tr.value;
+              const isDropdownOpen = openDropdown === tr.value;
+
+              return (
+                <div key={tr.value} className="relative">
+                  <button
+                    onClick={() => {
+                      if (tier !== tr.value) setPage(1);
+                      setTier(tr.value);
+                      if (!isApex) {
+                        setOpenDropdown(isDropdownOpen ? null : tr.value);
+                        if (!isActive) { setDivision('I'); setPage(1); }
+                      } else {
+                        setOpenDropdown(null);
+                      }
+                    }}
+                    className={`px-3 py-2 rounded text-xs font-medium transition-colors flex items-center gap-1 ${
+                      isActive
+                        ? 'text-surface-sunken'
+                        : 'bg-surface-raised text-fg-secondary hover:text-white'
+                    }`}
+                    style={isActive ? { backgroundColor: tr.color } : {}}
+                  >
+                    {tr.label}
+                    {!isApex && isActive && (
+                      <span className="text-[10px] opacity-70">{division}</span>
+                    )}
+                    {!isApex && (
+                      <svg className={`w-3 h-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Division Dropdown */}
+                  {!isApex && isDropdownOpen && (
+                    <div className="absolute top-full left-0 mt-1 z-20 bg-surface-base border border-border-subtle rounded shadow-lg overflow-hidden min-w-[80px]">
+                      {DIVISIONS.map(div => (
+                        <button
+                          key={div}
+                          onClick={() => {
+                            setTier(tr.value);
+                            setDivision(div);
+                            setPage(1);
+                            setOpenDropdown(null);
+                          }}
+                          className={`w-full px-3 py-1.5 text-xs text-left transition-colors ${
+                            tier === tr.value && division === div
+                              ? 'text-surface-sunken font-medium'
+                              : 'text-fg-secondary hover:text-white hover:bg-surface-raised'
+                          }`}
+                          style={tier === tr.value && division === div ? { backgroundColor: tr.color } : {}}
+                        >
+                          {tr.label} {div}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Search indicator */}
+        {search.trim() && source === 'search' && (
+          <div className="bg-surface-raised border border-border-default rounded p-3 mb-4 flex items-center justify-between">
+            <span className="text-fg-secondary text-xs">
+              {t('lb.searchResult')} "{search}" — {entries.length} {t('lb.playersFound')}
+            </span>
+            <button onClick={() => setSearch('')} className="text-accent text-xs hover:text-white">
+              {t('lb.clearSearch')}
+            </button>
+          </div>
+        )}
+
+        {/* Pagination Top */}
+        {!loading && <div className="mb-2">{paginationBar()}</div>}
+
+        {/* Content */}
+        {loading ? (
+          <div className="text-center text-fg-secondary py-20">{t('lb.loading')}</div>
+        ) : failed ? (
+          <ApiUnavailable badge={false} messageKey="error.temporarilyUnavailable"
+            onRetry={() => (search.trim() ? fetchSearch(search) : fetchLeaderboard())} />
+        ) : message && entries.length === 0 ? (
+          <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
+            <div className="text-fg-secondary text-sm mb-2">{message}</div>
+            <div className="text-fg-muted text-xs">
+              {t('champ.statsCollecting')}
+            </div>
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="bg-surface-base border border-border-subtle rounded p-8 text-center">
+            <div className="text-fg-secondary text-sm">{t('lb.noPlayers')}</div>
+          </div>
+        ) : (
+          <div className="bg-surface-base border border-border-subtle rounded overflow-hidden">
+            {/* Table Header — Desktop */}
+            <div className="hidden md:grid grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-2.5 border-b border-border-subtle bg-surface-sunken">
+              <div className="text-fg-secondary text-xs">#</div>
+              <div />
+              <div className="text-fg-secondary text-xs">{t('lb.player')}</div>
+              <div className="text-fg-secondary text-xs text-right">LP</div>
+              <div className="text-fg-secondary text-xs text-right">W/L</div>
+              <div className="text-fg-secondary text-xs text-right">{t('home.winrate')}</div>
+              <div className="text-fg-secondary text-xs text-right">{t('lb.region')}</div>
+              <div className="text-fg-secondary text-xs text-right">{t('lb.marketValue')}</div>
+            </div>
+
+            {/* Rows */}
+            {entries.map((entry, i) => (
+              <a
+                key={i}
+                href={withLang(makePlayerLink(entry.summonerName, entry.region, entry.puuid))}
+                className="block md:grid md:grid-cols-[3rem_2.5rem_1fr_5rem_4rem_5rem_5rem_6rem] gap-3 px-4 py-3 border-b border-border-subtle/30 hover:bg-surface-raised transition-colors items-center"
+              >
+                {/* Mobile layout */}
+                <div className="md:hidden flex items-center gap-3">
+                  <div className={`text-sm font-medium w-6 flex-shrink-0 ${
+                    entry.rank === 1 ? 'text-yellow-400' :
+                    entry.rank === 2 ? 'text-gray-300' :
+                    entry.rank === 3 ? 'text-amber-600' :
+                    'text-fg-muted'
+                  }`}>
+                    {entry.rank}
+                  </div>
+                  {entry.profileIcon ? (
+                    <DdragonImg
+                      path={`img/profileicon/${entry.profileIcon}.png`}
+                      className="w-8 h-8 rounded-full border border-border-default flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-border-default flex items-center justify-center text-fg-muted text-xs flex-shrink-0">?</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white text-sm font-medium flex items-center gap-1.5 truncate">
+                      {entry.summonerName || <span className="text-fg-muted">#{entry.rank}</span>}
+                      {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
+                        <span className="inline-flex items-center bg-accent-a15 text-accent text-[10px] font-bold px-1.5 py-0 rounded-full border border-accent-a40 leading-4">PRO</span>
+                      )}
+                    </div>
+                    <div className="text-fg-muted text-xs">{entry.leaguePoints != null ? entry.leaguePoints + ' LP' : ''} · {entry.winrate}%</div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <span className="text-accent text-sm font-medium">{formatValue(entry.marketValue)}</span>
+                  </div>
+                </div>
+                {/* Desktop layout */}
+                <div className="hidden md:contents">
+                  <div className={`text-sm font-medium ${
+                    entry.rank === 1 ? 'text-yellow-400' :
+                    entry.rank === 2 ? 'text-gray-300' :
+                    entry.rank === 3 ? 'text-amber-600' :
+                    'text-fg-muted'
+                  }`}>
+                    {entry.rank}
+                  </div>
+                  <div>
+                    {entry.profileIcon ? (
+                      <DdragonImg
+                        path={`img/profileicon/${entry.profileIcon}.png`}
+                        className="w-8 h-8 rounded-full border border-border-default"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-[#1a2438] border border-border-default flex items-center justify-center text-fg-muted text-xs">
+                        ?
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-white text-sm font-medium flex items-center gap-1.5">
+                      {entry.summonerName || <span className="text-fg-muted">{t('lb.unknownPlayer')} #{entry.rank}</span>}
+                      {entry.summonerName && lookupPro(proLookup, entry.summonerName) && (
+                        <span className="inline-flex items-center bg-accent-a15 text-accent text-[10px] font-bold px-1.5 py-0 rounded-full border border-accent-a40 leading-4">
+                          PRO
+                        </span>
+                      )}
+                    </div>
+                    {entry.summonerName && (() => {
+                      const pro = lookupPro(proLookup, entry.summonerName);
+                      return pro
+                        ? <div className="text-accent text-xs">{pro.proName} · {pro.team}</div>
+                        : <div className="text-fg-muted text-xs">Level {entry.level || '?'}</div>;
+                    })()}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-accent text-sm font-medium">
+                      {entry.leaguePoints != null ? entry.leaguePoints : '-'} LP
+                    </div>
+                    {entry.playerRank && !['CHALLENGER', 'GRANDMASTER', 'MASTER'].includes(entry.tier) && (
+                      <div className="text-fg-muted text-xs">{entry.tier} {entry.playerRank}</div>
+                    )}
+                  </div>
+                  <div className="text-fg-secondary text-xs text-right">
+                    {entry.wins != null ? `${entry.wins}W ${entry.losses}L` : '-'}
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-sm font-medium ${
+                      entry.winrate >= 55 ? 'text-green-400' :
+                      entry.winrate >= 50 ? 'text-white' :
+                      'text-red-400'
+                    }`}>
+                      {entry.winrate}%
+                    </span>
+                  </div>
+                  <div className="text-fg-secondary text-xs text-right">
+                    {regionLabel(entry.region)}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-accent text-sm font-medium">
+                      {formatValue(entry.marketValue)}
+                    </span>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination Bottom */}
+        <div className="mt-2">{paginationBar()}</div>
+
+        <Footer />
+      </div>
+    </main>
+  );
+}

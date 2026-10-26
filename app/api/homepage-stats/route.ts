@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../lib/ddragon-version-server';
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 import { trustedSelfOrigin } from '../../lib/self-origin';
+import { readRouteMirror, withSnapshotHeader } from '../../lib/route-mirror-read';
 
 export async function GET(request: NextRequest) {
+  // Fertige Datei der Box (route-mirror.mjs lolHome), sonst live.
+  const mirrored = await readRouteMirror('lolHome', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored, { cache: ASSET_CACHE_CONTROL }), 'lolHome', true);
+
   try {
     const origin = trustedSelfOrigin(new URL(request.url));
 
@@ -75,7 +80,7 @@ export async function GET(request: NextRequest) {
     // Die drei Quellen oben schlucken ihre Fehler einzeln (catch {}) und
     // liefern dann still leere Werte. Ohne die degraded-Bedingung wuerde so
     // eine halbe Startseite eine halbe Stunde lang festgeschrieben.
-    return cachedJson({
+    return withSnapshotHeader(cachedJson({
       topChampions,
       stats: {
         totalTeams,
@@ -86,7 +91,7 @@ export async function GET(request: NextRequest) {
     }, {
       cache: ASSET_CACHE_CONTROL,
       degraded: topChampions.length === 0 || matchesAnalyzed === 0,
-    });
+    }), 'lolHome', false);
   } catch {
     return NextResponse.json({ topChampions: [], stats: {} }, { status: 500 });
   }

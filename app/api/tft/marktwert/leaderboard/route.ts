@@ -4,6 +4,7 @@ import { supabaseAdmin } from '../../../../lib/supabase';
 import { cachedJson } from '../../../../lib/api-cache';
 import { expandLolTier } from '../../../../lib/rank-groups';
 import { publicError } from '../../../../lib/public-error';
+import { readRouteMirror, withSnapshotHeader } from '../../../../lib/route-mirror-read';
 
 // /api/tft/marktwert/leaderboard?region=euw1&limit=100&tier=CHALLENGER
 //
@@ -22,6 +23,11 @@ import { publicError } from '../../../../lib/public-error';
 // Antwort.
 
 export async function GET(request: NextRequest) {
+  // Top 100 je Region ohne Rang-Filter: fertige Datei der Box (route-mirror.mjs
+  // tftMarktwert), sonst live.
+  const mirrored = await readRouteMirror('tftMarktwert', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored), 'tftMarktwert', true);
+
   const { searchParams } = new URL(request.url);
   const region = (searchParams.get('region') || 'euw1').toLowerCase();
   const limit = Math.max(1, Math.min(500, parseInt(searchParams.get('limit') || '100', 10)));
@@ -65,5 +71,5 @@ export async function GET(request: NextRequest) {
   }
   players = players.slice(0, limit);
 
-  return cachedJson({ region, limit, count: players.length, players });
+  return withSnapshotHeader(cachedJson({ region, limit, count: players.length, players }), 'tftMarktwert', false);
 }

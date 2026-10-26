@@ -1,0 +1,45 @@
+[Unit]
+Description=metastats Route-Spiegel /leaderboard (EUW Challenger Seite 1 als Blob-Datei, nur fuer die Seite)
+Wants=network-online.target
+After=network-online.target
+# Gestartet von metastats-mirror-lol-leaderboard.timer alle 30 min und von
+# scripts/refresh-riot-key.mjs nach jedem verifizierten Key-Deploy (der LoL-Key
+# ist ein Dev-Key und laeuft taeglich ab; ohne gueltigen Key antwortet die Route
+# 503 und die alte Datei bleibt stehen, bis sie nach 26 h ablaeuft).
+
+[Service]
+# Keine Riot-Anfragen von der Box: die Route auf Vercel holt die Liga wie bei
+# jedem Besuch (Publisher-Kopfzeile), die Box legt nur die Antwort ab.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet unter 30 s (1 Abruf). 10 min, damit ein haengender Abruf (Riot 429,
+# bis zu 3 Wiederholungen) nicht den naechsten Termin schluckt.
+TimeoutStartSec=10min
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=lol-leaderboard
+StandardOutput=journal
+StandardError=journal
+Nice=15
+MemoryMax=300M
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

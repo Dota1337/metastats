@@ -58,9 +58,57 @@ export const ROUTE_MIRRORS = Object.freeze({
     params: {},
     forbid: ['league'],
   },
+  // --- Startdaten der Uebersichtsseiten (Soft-404-Plan 26.10.2026). Gruppen
+  // nach Takt der Quelle, nicht nach Seite: ein Fehlschlag haelt nur die
+  // Spiegel derselben Gruppe an (publish-route-mirrors.mjs endet mit Exit 1).
+  //
+  // TFT-Marktwert, Reiter „Top“ ohne Rang-Filter, je Region. Nach jedem
+  // Marktwert-Abgleich (OnSuccess= an metastats-marketvalue-sync) und alle 6 h;
+  // 26 h = ein ganzer Tag mit ausgefallenem Abgleich.
+  tftMarktwert: {
+    group: 'mv-pages', api: '/api/tft/marktwert/leaderboard', maxAgeMs: 26 * HOUR, tftSet: true,
+    params: { region: 'euw1' },
+    fixed: { limit: '100' },
+    forbid: ['tier'],
+    fetchQuery: { limit: '100' },
+  },
+  tftMarktwertSparks: {
+    group: 'mv-pages', api: '/api/tft/marktwert/sparklines', maxAgeMs: 26 * HOUR, tftSet: true,
+    params: { region: 'euw1' },
+    fixed: { limit: '100', days: '14' },
+    fetchQuery: { limit: '100', days: '14' },
+  },
+  // LoL-Marktwert ohne Filter (Wochen-Lauf), TFT-Turniere (taeglicher Crawl)
+  // und die Kennzahlen der LoL-Startseite (Wochen-Dateien): alle 3 h.
+  lolMarktwert: {
+    group: 'slow-pages', api: '/api/marktwert', maxAgeMs: 26 * HOUR, tftSet: false,
+    params: {},
+    fixed: { region: 'all', tier: 'all' },
+  },
+  tftTournaments: {
+    group: 'slow-pages', api: '/api/tft/tournaments', maxAgeMs: 48 * HOUR, tftSet: false,
+    params: {},
+    fixed: { limit: '200' },
+    forbid: ['slug', 'status', 'region', 'tier', 'set'],
+  },
+  lolHome: {
+    group: 'slow-pages', api: '/api/homepage-stats', maxAgeMs: 8 * 24 * HOUR, tftSet: false,
+    params: {},
+  },
+  // LoL-Rangliste (Riot, Dev-Key laeuft taeglich ab): alle 30 min und nach
+  // jedem Key-Wechsel (refresh-riot-key.mjs). NUR die Seite liest diese Datei
+  // (bis 26 h alt, frischt im Browser still nach) — /api/leaderboard bleibt
+  // live mit 5 min Edge-Speicher.
+  lolLeaderboard: {
+    group: 'lol-leaderboard', api: '/api/leaderboard', maxAgeMs: 26 * HOUR, tftSet: false,
+    params: { region: 'euw1', tier: 'CHALLENGER', page: '1' },
+    forbid: ['search', 'division'],
+  },
 });
 
-export const ROUTE_MIRROR_GROUPS = Object.freeze(['rising', 'leaderboard', 'regions', 'ligen']);
+export const ROUTE_MIRROR_GROUPS = Object.freeze([
+  'rising', 'leaderboard', 'regions', 'ligen', 'mv-pages', 'slow-pages', 'lol-leaderboard',
+]);
 
 export function routeMirrorNames(group) {
   return Object.keys(ROUTE_MIRRORS).filter(n => ROUTE_MIRRORS[n].group === group);
@@ -89,8 +137,16 @@ export function routeMirrorVariants(name, activeRegions) {
       ];
     case 'regions':
       return REGION_DAYS.flatMap(days => REGION_BUCKETS.map(bucket => ({ days, bucket, min: '80' })));
+    case 'tftMarktwert':
+    case 'tftMarktwertSparks':
+      return regions.map(region => ({ region }));
+    case 'lolLeaderboard':
+      return [{ region: 'euw1', tier: 'CHALLENGER', page: '1' }];
     case 'tournaments':
     case 'standings':
+    case 'lolMarktwert':
+    case 'tftTournaments':
+    case 'lolHome':
       return [{}];
     default:
       throw new Error(`unbekannter Spiegel: ${name}`);
@@ -165,6 +221,19 @@ const BODY_OK = {
   tournaments: b => Array.isArray(b.tournaments) && b.tournaments.length > 0
     && isObj(b.byLeague) && Array.isArray(b.sortedLeagues),
   standings: b => Array.isArray(b.leagues) && b.leagues.length > 0,
+  tftMarktwert: (b, q) => Array.isArray(b.players) && b.players.length > 0
+    && b.region === q.region && Number(b.limit) === 100,
+  tftMarktwertSparks: (b, q) => b.region === q.region && isObj(b.series) && Object.keys(b.series).length > 0,
+  lolMarktwert: b => Array.isArray(b.players) && b.players.length > 0 && isObj(b.tierStats)
+    && isObj(b.filter) && b.filter.region === 'all' && b.filter.tier === 'all',
+  tftTournaments: b => Array.isArray(b.tournaments) && b.tournaments.length > 0,
+  lolHome: b => isObj(b.stats) && b.stats.totalTeams > 0 && b.stats.totalProPlayers > 0
+    && Array.isArray(b.topChampions),
+  // Nur echte Riot-Liste mit Namen: ohne Namen waere die Rangliste unbrauchbar
+  // und blieb bis zu 26 h stehen.
+  lolLeaderboard: (b, q) => b.source === 'riot' && Array.isArray(b.entries) && b.entries.length > 0
+    && b.entries.filter(e => isObj(e) && e.summonerName).length >= 0.95 * b.entries.length
+    && b.region === q.region && b.tier === q.tier && String(b.page) === q.page,
 };
 
 function keyQuery(key) {

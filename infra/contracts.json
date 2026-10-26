@@ -361,6 +361,72 @@
       "note": "Route-Spiegel Ligen-Uebersicht (/api/tournaments/standings ohne Liga) alle 30 min, scripts/publish-route-mirrors.mjs --group=ligen. Datei gilt 90 min. Rot heisst: kalte Funktionen holen live bei lolesports. Rot: journalctl -u metastats-mirror-ligen."
     },
     {
+      "id": "mirror/tftMarktwert/index-frische",
+      "owner": "metastats-mirror-mv-pages.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/tftMarktwert/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 14,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel /tft/marktwert (Soft-404-Plan 26.10.2026): Top 100 ohne Rang-Filter je Region (15 Ansichten), scripts/publish-route-mirrors.mjs --group=mv-pages nach jedem Marktwert-Abgleich (OnSuccess= aus metastats-marketvalue-sync.service) und alle 6 h. Datei gilt 26 h; Startdaten der Seite. Rot heisst: Route rechnet live (bis 4 s), die Seite laedt im Browser. Rot: journalctl -u metastats-marketvalue-sync -u metastats-mirror-mv-pages."
+    },
+    {
+      "id": "mirror/tftMarktwertSparks/index-frische",
+      "owner": "metastats-mirror-mv-pages.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/tftMarktwertSparks/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 14,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel Verlaeufe /tft/marktwert (Top 100, 14 Tage) je Region (15 Ansichten), gleicher Lauf wie mirror/tftMarktwert. Datei gilt 26 h. Rot heisst: Route rechnet live. Rot: journalctl -u metastats-mirror-mv-pages."
+    },
+    {
+      "id": "mirror/lolMarktwert/index-frische",
+      "owner": "metastats-mirror-slow-pages.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/lolMarktwert/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel /marktwert ohne Filter (Top 100, Gewinner/Verlierer, Rang-Statistik) alle 3 h, scripts/publish-route-mirrors.mjs --group=slow-pages. Datei gilt 26 h; Startdaten der Seite. Rot heisst: Route rechnet live, die Seite laedt im Browser. Rot: journalctl -u metastats-mirror-slow-pages."
+    },
+    {
+      "id": "mirror/tftTournaments/index-frische",
+      "owner": "metastats-mirror-slow-pages.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/tftTournaments/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel /tft/tournaments ohne Filter (200 Turniere) alle 3 h, scripts/publish-route-mirrors.mjs --group=slow-pages. Datei gilt 48 h; Startdaten der Seite. Rot heisst: Route rechnet live. Rot: journalctl -u metastats-mirror-slow-pages."
+    },
+    {
+      "id": "mirror/lolHome/index-frische",
+      "owner": "metastats-mirror-slow-pages.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/lolHome/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 0.5,
+      "note": "Route-Spiegel Kennzahlen der LoL-Startseite (/api/homepage-stats) alle 3 h, scripts/publish-route-mirrors.mjs --group=slow-pages. Datei gilt 8 Tage; Startdaten von /lol. Rot heisst: Route rechnet live. Rot: journalctl -u metastats-mirror-slow-pages."
+    },
+    {
+      "id": "mirror/lolLeaderboard/index-frische",
+      "owner": "metastats-mirror-lol-leaderboard.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/mirror/lolLeaderboard/index.json",
+      "dateField": "builtAt",
+      "entriesField": "entries",
+      "minEntries": 1,
+      "maxAgeDays": 1.1,
+      "note": "Route-Spiegel /leaderboard (EUW Challenger Seite 1), NUR Startdaten der Seite, /api/leaderboard liest ihn nicht. Alle 30 min und nach jedem Key-Wechsel (refresh-riot-key.mjs), scripts/publish-route-mirrors.mjs --group=lol-leaderboard. Der LoL-Key ist ein Dev-Key und laeuft taeglich ab: solange er tot ist, antwortet die Route 503 und es entsteht keine neue Datei. maxAgeDays 1,1 = Datei-Hoechstalter 26 h. Rot heisst: Riot-Key seit ueber einem Tag abgelaufen, die Seite laedt im Browser. Rot: journalctl -u metastats-mirror-lol-leaderboard."
+    },
+    {
       "id": "snapshot/manifest-frische",
       "owner": "metastats-snapshot-publisher.service",
       "type": "endpoint",

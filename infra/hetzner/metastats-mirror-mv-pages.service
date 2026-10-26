@@ -1,0 +1,48 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/marktwert (Top 100 + Verlaeufe je Region als Blob-Datei, nach metastats-marketvalue-sync)
+Wants=network-online.target
+# After=: der Ersatz-Timer wartet, falls der Abgleich gerade laeuft.
+After=network-online.target metastats-marketvalue-sync.service
+# Zwei Ausloeser (Soft-404-Plan 26.10.2026): OnSuccess= aus
+# metastats-marketvalue-sync.service (sofort nach jedem Abgleich nach Supabase,
+# 01/07/13/19:15 UTC) und metastats-mirror-mv-pages.timer alle 6 h als
+# Ersatzweg, falls ein Abgleich fehlschlaegt. Laeuft diese Unit schon, geht ein
+# zweiter Anstoss im laufenden Auftrag auf — kein Doppellauf.
+# Rueckbau: ERST Timer stoppen und metastats-marketvalue-sync.service ohne
+# OnSuccess= aufspielen, DANN den Commit zuruecknehmen.
+
+[Service]
+# Keine Riot-Anfragen, keine DB-Verbindung: ruft die oeffentliche Route
+# (Publisher-Kopfzeile) und schreibt mirror/tftMarktwert*/ in den Blob.
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Erwartet 1-2 min (30 Abrufe nacheinander, live bis 4 s je Region).
+TimeoutStartSec=20min
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=mv-pages
+StandardOutput=journal
+StandardError=journal
+Nice=15
+MemoryMax=300M
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---

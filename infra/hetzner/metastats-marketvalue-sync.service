@@ -2,8 +2,11 @@
 Description=metastats Marktwert-Spiegel Hetzner -> Supabase
 Wants=network-online.target
 After=network-online.target
-# Kein OnSuccess= und keine Kette: dieser Sync muss auch dann laufen, wenn der
+# Keine Kette VOR diesem Sync: er muss auch dann laufen, wenn der
 # Snapshot-Lauf abgebrochen ist — gerade dann liegen Rows ungespiegelt herum.
+# Danach: frische Marktwerte in Supabase → Seiten-Dateien neu ablegen
+# (Soft-404-Plan 26.10.2026; Ersatzweg metastats-mirror-mv-pages.timer).
+OnSuccess=metastats-mirror-mv-pages.service
 
 [Service]
 Type=oneshot

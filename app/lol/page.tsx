@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import HomeClient from '../HomeClient';
+import HomeClient, { type HomeStatsBody } from '../HomeClient';
+import { lolHomeStart } from '../lib/seo/page-start-mirror';
 import { getServerPathLang } from '../lib/server-lang';
 import { SITE_URL } from '../lib/site';
 import { langAlternates, langPathsEnabled, withLangPrefix } from '../lib/lang-path';
@@ -18,6 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function Page() {
-  return <HomeClient />;
+// Kennzahlen aus der Datei der Box im ersten HTML (Soft-404-Plan 26.10.2026).
+export default async function Page() {
+  const start = await lolHomeStart<HomeStatsBody>();
+  return <HomeClient initial={start?.body ?? null} />;
 }

@@ -278,6 +278,10 @@ function kickBoxMarketvalue(env) {
     'set -e',
     'systemctl start --no-block metastats-lol-marketvalue.service',
     'echo "      lol-marketvalue kicked (nach verifiziertem Deploy)"',
+    // Seiten-Datei der LoL-Rangliste: mit dem alten Key schrieb die Box keine
+    // (Route 503), die Seite zeigt sonst bis zum naechsten Takt die alte Liste.
+    'systemctl start --no-block metastats-mirror-lol-leaderboard.service',
+    'echo "      mirror-lol-leaderboard kicked"',
   ], 'marketvalue kick');
 }
 

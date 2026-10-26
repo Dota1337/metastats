@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Route-Spiegel /leaderboard alle 30 Minuten
+
+[Timer]
+# Alle 30 min, versetzt zu mirror-ligen (:10/:40) und mirror-leaderboard (alle
+# 10 min ab :00). Die Datei gilt 26 h; die Seite frischt im Browser still nach,
+# wenn sie aelter als 5 min ist.
+OnCalendar=*-*-* *:05,35:00 UTC
+RandomizedDelaySec=30
+Persistent=false
+
+[Install]
+WantedBy=timers.target

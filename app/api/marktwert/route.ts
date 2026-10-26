@@ -6,6 +6,7 @@ import { fetchAllPages } from '../../lib/supabase-pages';
 import {
   MV_HISTORY_COLUMNS, WEEKLY_LOOKBACK_MS, weeklyReferenceByPlayer, type MvHistoryRow,
 } from '../../lib/marketvalue-history';
+import { readRouteMirror, withSnapshotHeader } from '../../lib/route-mirror-read';
 
 interface PlayerRow {
   id: string;
@@ -21,6 +22,10 @@ interface PlayerRow {
 }
 
 export async function GET(request: NextRequest) {
+  // Ohne Filter: fertige Datei der Box (route-mirror.mjs lolMarktwert), sonst live.
+  const mirrored = await readRouteMirror('lolMarktwert', request);
+  if (mirrored) return withSnapshotHeader(cachedJson(mirrored, { cache: SLOW_CACHE_CONTROL }), 'lolMarktwert', true);
+
   const { searchParams } = new URL(request.url);
   const region = searchParams.get('region') || 'all';
   const tier = searchParams.get('tier') || 'all';
@@ -137,7 +142,7 @@ export async function GET(request: NextRequest) {
 
     // Marktwerte kommen aus dem Tageslauf — 1h frisch, 24h SWR. Fehlt der
     // Verlauf oder die LP-Abfrage, stehen ueberall 0/leer: dann nur kurz halten.
-    return cachedJson({
+    return withSnapshotHeader(cachedJson({
       players: enrichedPlayers,
       gainersPerTier,
       losersPerTier,
@@ -145,7 +150,7 @@ export async function GET(request: NextRequest) {
       // Alle bewerteten Spieler des Filters, nicht nur die 100 gelisteten.
       total: filtered.length,
       filter: { region, tier },
-    }, { cache: SLOW_CACHE_CONTROL, degraded: historyData === null || lpFailed });
+    }, { cache: SLOW_CACHE_CONTROL, degraded: historyData === null || lpFailed }), 'lolMarktwert', false);
 
   } catch (error) {
     return NextResponse.json({ error: 'Server Fehler' }, { status: 500 });

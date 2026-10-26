@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Route-Spiegel /tft/marktwert alle 6 Stunden (Ersatzweg)
+
+[Timer]
+# Hauptweg ist OnSuccess= aus metastats-marketvalue-sync.service. Dieser Takt
+# liegt 2,5 h hinter jedem Abgleich (01/07/13/19:15 UTC) und faengt einen
+# fehlgeschlagenen auf. Die Dateien gelten 26 h, danach rechnet die Route live.
+OnCalendar=*-*-* 03,09,15,21:45:00 UTC
+RandomizedDelaySec=60
+Persistent=false
+
+[Install]
+WantedBy=timers.target

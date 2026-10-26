@@ -346,6 +346,9 @@
       "description": "metastats Marktwert-Spiegel Hetzner -> Supabase",
       "scripts": [
         "scripts/sync-marketvalue-to-supabase.mjs"
+      ],
+      "OnSuccess": [
+        "metastats-mirror-mv-pages.service"
       ]
     },
     {
@@ -442,6 +445,49 @@
       "persistent": false
     },
     {
+      "name": "metastats-mirror-lol-leaderboard.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /leaderboard (EUW Challenger Seite 1 als Blob-Datei, nur fuer die Seite)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ]
+    },
+    {
+      "name": "metastats-mirror-lol-leaderboard.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /leaderboard alle 30 Minuten",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* *:05,35:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-lol-leaderboard.service",
+      "persistent": false
+    },
+    {
+      "name": "metastats-mirror-mv-pages.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /tft/marktwert (Top 100 + Verlaeufe je Region als Blob-Datei, nach metastats-marketvalue-sync)",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ],
+      "After": [
+        "metastats-marketvalue-sync.service"
+      ]
+    },
+    {
+      "name": "metastats-mirror-mv-pages.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel /tft/marktwert alle 6 Stunden (Ersatzweg)",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 03,09,15,21:45:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-mv-pages.service",
+      "persistent": false
+    },
+    {
       "name": "metastats-mirror-regions.service",
       "kind": "service",
       "description": "metastats Route-Spiegel /tft/regions (12 Ansichten als Blob-Datei)",
@@ -483,6 +529,26 @@
       "interval": [],
       "activates": "metastats-mirror-rising.service",
       "persistent": true
+    },
+    {
+      "name": "metastats-mirror-slow-pages.service",
+      "kind": "service",
+      "description": "metastats Route-Spiegel /marktwert, /tft/tournaments, /lol (Kennzahlen) als Blob-Datei",
+      "scripts": [
+        "scripts/publish-route-mirrors.mjs"
+      ]
+    },
+    {
+      "name": "metastats-mirror-slow-pages.timer",
+      "kind": "timer",
+      "description": "metastats Route-Spiegel LoL-Marktwert, TFT-Turniere, LoL-Kennzahlen alle 3 Stunden",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 00/3:05:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-mirror-slow-pages.service",
+      "persistent": false
     },
     {
       "name": "metastats-phase1-probe.service",
@@ -782,6 +848,20 @@
       ]
     },
     {
+      "timer": "metastats-mirror-lol-leaderboard.timer",
+      "activates": "metastats-mirror-lol-leaderboard.service",
+      "onCalendar": [
+        "*-*-* *:05,35:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-mirror-mv-pages.timer",
+      "activates": "metastats-mirror-mv-pages.service",
+      "onCalendar": [
+        "*-*-* 03,09,15,21:45:00 UTC"
+      ]
+    },
+    {
       "timer": "metastats-mirror-regions.timer",
       "activates": "metastats-mirror-regions.service",
       "onCalendar": [
@@ -793,6 +873,13 @@
       "activates": "metastats-mirror-rising.service",
       "onCalendar": [
         "*-*-* 06:30:00 UTC"
+      ]
+    },
+    {
+      "timer": "metastats-mirror-slow-pages.timer",
+      "activates": "metastats-mirror-slow-pages.service",
+      "onCalendar": [
+        "*-*-* 00/3:05:00 UTC"
       ]
     },
     {
@@ -1168,6 +1255,11 @@
       "via": "systemctl-start"
     },
     {
+      "from": "scripts/refresh-riot-key.mjs",
+      "to": "metastats-mirror-lol-leaderboard.service",
+      "via": "systemctl-start"
+    },
+    {
       "from": "scripts/validate-tft-pros-loop.mjs",
       "to": "scripts/crawl-tft-pro-categories.mjs",
       "via": "spawn"
@@ -1447,6 +1539,18 @@
     "metastats-mirror-ligen.service": [
       "mirror/tournaments/index-frische",
       "mirror/standings/index-frische"
+    ],
+    "metastats-mirror-mv-pages.service": [
+      "mirror/tftMarktwert/index-frische",
+      "mirror/tftMarktwertSparks/index-frische"
+    ],
+    "metastats-mirror-slow-pages.service": [
+      "mirror/lolMarktwert/index-frische",
+      "mirror/tftTournaments/index-frische",
+      "mirror/lolHome/index-frische"
+    ],
+    "metastats-mirror-lol-leaderboard.service": [
+      "mirror/lolLeaderboard/index-frische"
     ],
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",

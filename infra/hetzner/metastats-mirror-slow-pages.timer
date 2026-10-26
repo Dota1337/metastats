@@ -1,0 +1,12 @@
+[Unit]
+Description=metastats Route-Spiegel LoL-Marktwert, TFT-Turniere, LoL-Kennzahlen alle 3 Stunden
+
+[Timer]
+# Alle 3 h. Die Dateien gelten 26 h (Marktwert), 48 h (Turniere) bzw. 8 Tage
+# (Kennzahlen), danach rechnen die Routen live.
+OnCalendar=*-*-* 00/3:05:00 UTC
+RandomizedDelaySec=60
+Persistent=false
+
+[Install]
+WantedBy=timers.target

@@ -37,14 +37,39 @@ function positiveOrUndefined(v: unknown): number | undefined {
   return typeof v === 'number' && v > 0 ? v : undefined;
 }
 
-export default function Home() {
+/** Antwort von /api/homepage-stats (Startdaten: seo/page-start-mirror.ts). */
+export interface HomeStatsBody {
+  topChampions?: Champion[];
+  stats?: Record<string, unknown>;
+}
+
+// Leere Liste → Leer-Zustand statt Skelett (die Antwort kam, aber ohne Werte).
+function champsOf(data: HomeStatsBody): Champion[] {
+  return data.topChampions && data.topChampions.length >= 3 ? data.topChampions : [];
+}
+
+function statsOf(data: HomeStatsBody): SiteStats | null {
+  if (!data.stats) return null;
+  return {
+    totalTeams: positiveOrUndefined(data.stats.totalTeams),
+    totalProPlayers: positiveOrUndefined(data.stats.totalProPlayers),
+    regions: positiveOrUndefined(data.stats.regions),
+    matchesAnalyzed: positiveOrUndefined(data.stats.matchesAnalyzed),
+  };
+}
+
+export default function Home({ initial = null }: {
+  /** Kennzahlen vom Server; „Zuletzt gesucht“ kommt nie vorgerendert. */
+  initial?: HomeStatsBody | null;
+}) {
   const [name, setName] = useState('');
   const [region, setRegion] = useState('euw1');
   const [activeTab, setActiveTab] = useState<'search' | 'marktwert'>('search');
   const [topPlayers, setTopPlayers] = useState<any[]>([]);
   const [gainers, setGainers] = useState<any[]>([]);
   const [losers, setLosers] = useState<any[]>([]);
-  const [recentPlayers, setRecentPlayers] = useState<any[]>([]);
+  // null = noch nicht geladen; „Noch keine Suchen“ erst nach der Antwort.
+  const [recentPlayers, setRecentPlayers] = useState<any[] | null>(null);
   const [recentError, setRecentError] = useState(false);
   const [loadingMarket, setLoadingMarket] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -57,8 +82,8 @@ export default function Home() {
   // statisch wären sie ohnehin nur 20 Goldpunkte in der Luft, und ihr
   // doppelter box-shadow-Glow kostet auch unbewegt Paint.
   const reduceMotion = useSyncExternalStore(subscribeReducedMotion, () => window.matchMedia(REDUCED_MOTION).matches, () => false);
-  const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(null);
-  const [siteStats, setSiteStats] = useState<SiteStats | null>(null);
+  const [featuredChamps, setFeaturedChamps] = useState<Champion[] | null>(() => (initial ? champsOf(initial) : null));
+  const [siteStats, setSiteStats] = useState<SiteStats | null>(() => (initial ? statsOf(initial) : null));
   const { t, lang, withLang } = useI18n();
   const locale = LOCALE_MAP[lang];
 
@@ -69,8 +94,9 @@ export default function Home() {
       document.cookie = `visitor_id=${visitorId}; max-age=31536000; path=/`;
     }
     fetchRecentPlayers();
-    fetchHomepageStats();
-  }, []);
+    // Mit Startdaten nicht noch einmal: die Route liest dieselbe Datei der Box.
+    if (!initial) fetchHomepageStats();
+  }, [initial]);
 
   useEffect(() => {
     if (activeTab === 'marktwert') {
@@ -93,15 +119,10 @@ export default function Home() {
   async function fetchHomepageStats() {
     try {
       const res = await fetch('/api/homepage-stats');
-      const data = res.ok ? await res.json() : {};
-      if (data.topChampions?.length >= 3) setFeaturedChamps(data.topChampions);
-      else setFeaturedChamps([]); // API returned but empty → show empty state, not skeleton
-      if (data.stats) setSiteStats({
-        totalTeams: positiveOrUndefined(data.stats.totalTeams),
-        totalProPlayers: positiveOrUndefined(data.stats.totalProPlayers),
-        regions: positiveOrUndefined(data.stats.regions),
-        matchesAnalyzed: positiveOrUndefined(data.stats.matchesAnalyzed),
-      });
+      const data: HomeStatsBody = res.ok ? await res.json() : {};
+      setFeaturedChamps(champsOf(data));
+      const stats = statsOf(data);
+      if (stats) setSiteStats(stats);
     } catch {
       setFeaturedChamps([]);
     }
@@ -340,6 +361,10 @@ export default function Home() {
                 <div className="text-fg-secondary text-xs uppercase tracking-widest mb-4">{t('home.recentSearches')}</div>
                 {recentError ? (
                   <ApiUnavailable compact badge={false} messageKey="error.temporarilyUnavailable" onRetry={fetchRecentPlayers} />
+                ) : recentPlayers === null ? (
+                  <div className="py-8" aria-busy="true">
+                    <div className="h-4 w-40 mx-auto bg-surface-overlay rounded animate-pulse" />
+                  </div>
                 ) : recentPlayers.length === 0 ? (
                   <div className="text-fg-muted text-sm text-center py-8">{t('home.noSearches')}</div>
                 ) : (

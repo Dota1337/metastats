@@ -2264,14 +2264,6 @@ const translations = {
     'Lo que dicen otras herramientas \u2014 compara con nuestros datos.',
     'Ce que disent les autres outils \u2014 compare avec nos donn\u00E9es.'
   ),
-  'tft.marketValue.empty': t6(
-    'Noch keine Daten f\u00FCr diese Region. T\u00E4gliche Snapshots beginnen mit der n\u00E4chsten Aktualisierung.',
-    'No data for this region yet. Daily snapshots start with the next refresh.',
-    '\uC774 \uC9C0\uC5ED\uC5D0 \uB300\uD55C \uB370\uC774\uD130\uAC00 \uC544\uC9C1 \uC5C6\uC2B5\uB2C8\uB2E4. \uB2E4\uC74C \uC5C5\uB370\uC774\uD2B8\uBD80\uD130 \uC77C\uC77C \uC2A4\uB0C5\uC0F7\uC774 \uC2DC\uC791\uB429\uB2C8\uB2E4.',
-    '\u8BE5\u5730\u533A\u6682\u65E0\u6570\u636E\u3002\u4E0B\u6B21\u5237\u65B0\u540E\u5F00\u59CB\u6BCF\u65E5\u5FEB\u7167\u3002',
-    'A\u00FAn no hay datos para esta regi\u00F3n. Los snapshots diarios comienzan con la pr\u00F3xima actualizaci\u00F3n.',
-    'Pas encore de donn\u00E9es pour cette r\u00E9gion. Les snapshots quotidiens commencent \u00E0 la prochaine mise \u00E0 jour.'
-  ),
   'tft.marketValue.col.player': t6(
     'Spieler', 'Player', '\uD50C\uB808\uC774\uC5B4', '\u73A9\u5BB6', 'Jugador', 'Joueur'
   ),

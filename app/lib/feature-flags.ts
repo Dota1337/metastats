@@ -76,3 +76,15 @@ export const TFT_PROS_ENABLED = false;
  * Nur 307, nie 308: eine gemerkte 308 liesse sich nicht mehr zuruecknehmen.
  */
 export const TFT_IS_HOME = true;
+
+/**
+ * Feld-Zahlen im Comp-Builder (seit 2026-10-26): beim Ziehen oder Antippen einer
+ * Unit stehen auf jedem leeren Feld Haeufigkeit und Top-4-Quote dieser Unit auf
+ * diesem Feld, die Felder sind nach Haeufigkeit golden eingefaerbt. User-Wunsch
+ * nach dem Vorbild des MetaTFT-Team-Builders; Daten aus
+ * public/tft-metatft-cells-{set}.json (scripts/refresh-metatft-cells.mjs).
+ *
+ * Aus: der Builder laedt die Datei nicht und zeigt nichts. Danach optional
+ * Workflow-Schritt, Skript, Datei und Vertrag metatft-cells/datei-frische entfernen.
+ */
+export const TFT_BUILDER_CELL_STATS_ENABLED = true;

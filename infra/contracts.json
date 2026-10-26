@@ -460,6 +460,18 @@
     },
 
     {
+      "id": "metatft-cells/datei-frische",
+      "owner": ".github/workflows/metatft-comps-daily.yml",
+      "type": "file",
+      "path": "public/tft-metatft-cells-{set}.json",
+      "dateField": "fetchedAt",
+      "entriesField": "units",
+      "minEntries": 60,
+      "maxAgeDays": 4,
+      "note": "Feld-Zahlen (Haeufigkeit + Top 4 je Brettfeld) fuer den Comp-Builder, aus MetaTFTs tft-stat-api/positions (scripts/refresh-metatft-cells.mjs, Gatter in scripts/lib/metatft-cells.mjs). Gleicher Tageslauf wie metatft-comps, aber eigener Schritt: scheitert er, bleibt die alte Datei liegen und dieser Vertrag meldet es. Beim Set-Wechsel rot, bis MetaTFTs Daten ueberwiegend das neue Set zeigen — gewollt, der Builder zeigt dann keine Zahlen. Abschalten: TFT_BUILDER_CELL_STATS_ENABLED in app/lib/feature-flags.ts."
+    },
+
+    {
       "id": "metatft-comps/familien-abdeckung",
       "owner": ".github/workflows/metatft-comps-daily.yml",
       "type": "guide-coverage",

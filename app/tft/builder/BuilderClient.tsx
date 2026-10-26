@@ -13,6 +13,8 @@ import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 import { HEX_CLIP, costColor, starColor as starColorOf } from '../../lib/tft-ui';
 import { isElderwoodPlant, plantAllowance, plantName, plantRules, plantStar, trimPlants, type PlantRules } from '../../lib/tft-elderwood-plants';
 import { loadItemTexts, itemTextFor, type ItemTexts, type ItemTextView } from '../../lib/tft-item-texts';
+import { CELL_HEAT_COLOR, cellHeatOpacity, formatPermille, loadMetatftCells, type MetatftCells } from '../../lib/tft-metatft-cells';
+import { TFT_BUILDER_CELL_STATS_ENABLED } from '../../lib/feature-flags';
 import { MAX_ITEMS_PER_UNIT, RETIRED_ITEM_IDS, boardTraitCounts, emblemTraitOf, itemBlock, itemTeamSize, slotsUsed, teamLimit, teamSlotsUsed } from '../../lib/tft-builder-items';
 import type { StarLevel } from '../../lib/tft-public-comps';
 import ItemStatLine from '../../components/tft/ItemStatLine';
@@ -248,6 +250,11 @@ export default function BuilderClient({ initialAssets }: {
   // Item-Infokarte: Element-Rechteck des Items, ueber dem sie steht.
   const [infoItem, setInfoItem] = useState<{ id: string; rect: DOMRect; touch: boolean } | null>(null);
   const lastPointerRef = useRef<string>('mouse');
+  // Feld-Zahlen (Haeufigkeit + Top 4 je Feld) fuer die gezogene, ausgewaehlte
+  // oder per Finger angetippte Unit.
+  const [cellStats, setCellStats] = useState<MetatftCells | null>(null);
+  const [dragUnit, setDragUnit] = useState<string | null>(null);
+  const [selectByTouch, setSelectByTouch] = useState(false);
 
   // assetsRef: Brett-Aenderungen laufen in Updatern mit festen Abhaengigkeiten
   // und brauchen fuer trimBoard das aktuelle Bundle.
@@ -262,10 +269,15 @@ export default function BuilderClient({ initialAssets }: {
     });
   }, []);
   useEffect(() => { loadItemTexts().then(setItemTexts); }, []);
+  // Beim Seitenaufruf laden, nicht beim ersten Ziehen: kaeme die Antwort mitten
+  // im Ziehen an, wuerde das Brett waehrenddessen neu gezeichnet.
+  useEffect(() => {
+    if (TFT_BUILDER_CELL_STATS_ENABLED) loadMetatftCells().then(setCellStats);
+  }, []);
 
   // Ziel-Hervorhebung endet mit jedem Ziehen, auch wenn ausserhalb losgelassen.
   useEffect(() => {
-    const clear = () => { setDropTarget(null); dragRef.current = null; };
+    const clear = () => { setDropTarget(null); dragRef.current = null; setDragUnit(null); };
     document.addEventListener('dragend', clear);
     return () => document.removeEventListener('dragend', clear);
   }, []);
@@ -644,6 +656,7 @@ export default function BuilderClient({ initialAssets }: {
   function onBoardDrop(e: React.DragEvent, team: Team) {
     const cell = dropTargetFor(team, e);
     setDropTarget(null);
+    setDragUnit(null);
     if (cell == null) { dragRef.current = null; return; }
     onDropCell(e, team, cell);
   }
@@ -666,6 +679,9 @@ export default function BuilderClient({ initialAssets }: {
 
   function onCellClick(team: Team, cell: number) {
     const occupied = byCell(team).get(cell);
+    // Feld-Zahlen fuer eine angetippte Brett-Unit nur bei Fingerbedienung: mit
+    // der Maus dient die Auswahl den Items (User-Entscheid 2026-10-26).
+    setSelectByTouch(lastPointerRef.current !== 'mouse');
     if (pickerChar) {
       placeAt(team, cell, pickerChar);
       setPickerChar(null);
@@ -714,15 +730,26 @@ export default function BuilderClient({ initialAssets }: {
     setPickerChar(null);
   }
 
+  // Feld-Zahlen erst im naechsten Frame: baut sich das DOM schon waehrend
+  // dragstart um, kann der Browser das Ziehen abbrechen. Ist das Ziehen bis
+  // dahin vorbei (dragend/drop setzen dragRef zurueck), bleibt es aus.
+  function showCellStatsNextFrame(drag: NonNullable<typeof dragRef.current>, unit: string | undefined) {
+    if (!TFT_BUILDER_CELL_STATS_ENABLED || !unit) return;
+    requestAnimationFrame(() => { if (dragRef.current === drag) setDragUnit(unit); });
+  }
   function onDragStartChampion(e: React.DragEvent, cid: string) {
-    dragRef.current = { from: 'palette', payload: cid };
+    const drag = { from: 'palette' as const, payload: cid };
+    dragRef.current = drag;
     e.dataTransfer.effectAllowed = 'copy';
     e.dataTransfer.setData('text/plain', cid);
+    showCellStatsNextFrame(drag, cid);
   }
   function onDragStartBoard(e: React.DragEvent, team: Team, cell: number) {
-    dragRef.current = { from: 'board', payload: cell, fromTeam: team };
+    const drag = { from: 'board' as const, payload: cell, fromTeam: team };
+    dragRef.current = drag;
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', String(cell));
+    showCellStatsNextFrame(drag, byCell(team).get(cell)?.characterId);
   }
   function onDragStartItem(e: React.DragEvent, itemId: string) {
     setInfoItem(null);
@@ -884,9 +911,16 @@ export default function BuilderClient({ initialAssets }: {
     const allowance = rules ? plantAllowance(rules, elderwood) : new Map<string, number>();
     const plantStarLevel = rules ? plantStar(rules, elderwood) : 1;
     const ewIcon = rules ? tftIconUrl(assets, assets?.traits[rules.traitId]?.icon) : null;
+    // Feld-Zahlen: gezogene Unit, sonst die zum Setzen ausgewaehlte, sonst die
+    // per Finger angetippte Unit dieses Bretts (Antippen eines leeren Felds
+    // verschiebt sie dorthin, ein anderes Brett nicht).
+    const statUnit = dragUnit ?? pickerChar
+      ?? (selectByTouch && selectedTeam === team ? selectedPlacement?.characterId : undefined);
+    const unitStats = statUnit ? cellStats?.get(statUnit) ?? null : null;
     return (
       <div
         className="bg-surface-base border border-border-subtle rounded-lg p-3"
+        onPointerDown={e => { lastPointerRef.current = e.pointerType; }}
         onDragOver={e => onBoardDragOver(e, team)}
         onDragLeave={e => onBoardDragLeave(e, team)}
         onDrop={e => onBoardDrop(e, team)}
@@ -897,6 +931,16 @@ export default function BuilderClient({ initialAssets }: {
           <div className="text-fg-secondary text-[10px] uppercase tracking-widest">
             {isOwn ? t('tft.builderOwn') : t('tft.builderOpponent')} · {teamSlotsUsed(assets, ps)}/{teamLimit(itemTexts, ps, assets, resolveMfTrait)}
           </div>
+          {/* Legende der Feld-Zahlen (obere Zahl, untere Zahl). Der Platz bleibt
+              immer belegt, damit das Brett beim Ziehbeginn nicht springt. */}
+          {TFT_BUILDER_CELL_STATS_ENABLED && (
+            <div
+              className={`text-fg-secondary text-[10px] uppercase tracking-widest ${unitStats ? '' : 'invisible'}`}
+              aria-hidden={!unitStats}
+            >
+              {t('tft.unit.frequency')} · {t('tft.top4')}
+            </div>
+          )}
           {/* Elderwood-Pflanzen ab der ersten Stufe: Ziehen oder Antippen +
               Feld. Die Zahl ist, was die Stufe noch erlaubt. */}
           {rules && allowance.size > 0 && (
@@ -974,6 +1018,8 @@ export default function BuilderClient({ initialAssets }: {
             const url = champ ? tftChampionTileUrl(assets, champ) : null;
             const cost = champ?.cost ?? 1;
             const isPlant = !!p && isElderwoodPlant(p.characterId);
+            // Feld-Zahlen nur auf leeren Feldern, wie bei MetaTFT.
+            const stat = !p && unitStats ? unitStats.cells.get(cell) : undefined;
             const unitName = p ? (isPlant && plantName(p.characterId, lang)) || champ?.name || p.characterId : '';
             // Pflanzen-Stern folgt der Stufe, nicht der Auswahl.
             const star = isPlant ? plantStarLevel : (p?.star ?? 1);
@@ -1023,7 +1069,25 @@ export default function BuilderClient({ initialAssets }: {
                   {url && (
                     <img src={url} alt={unitName} className="w-full h-full object-cover pointer-events-none" />
                   )}
+                  {/* Je haeufiger die Unit hier steht, desto kraeftiger golden. */}
+                  {stat && unitStats && (
+                    <div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: CELL_HEAT_COLOR, opacity: cellHeatOpacity(stat, unitStats) }}
+                    />
+                  )}
                 </button>
+                {/* Haeufigkeit oben, Top 4 unten — auf halbdurchsichtiger
+                    schwarzer Pille: weisse Schrift bleibt auf jedem Goldton
+                    lesbar (auf vollem Gold ~9:1), die Faerbung scheint durch. */}
+                {stat && (
+                  <div aria-hidden className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                    <div className="px-0.5 sm:px-1 py-px rounded bg-black/60 text-white text-[10px] sm:text-[11px] leading-tight font-bold tabular-nums text-center">
+                      <div>{formatPermille(stat.freq)}</div>
+                      <div>{stat.top4 != null ? formatPermille(stat.top4) : '–'}</div>
+                    </div>
+                  </div>
+                )}
                 {/* Sterne und Items AUSSERHALB des Sechseck-Zuschnitts, sonst
                     schneidet die Spitze sie ab. Sterne als Pille auf der oberen
                     Spitze (4 % Hoehe), Items als Reihe auf der Unterkante

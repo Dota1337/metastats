@@ -979,7 +979,8 @@
         "30 5 * * *"
       ],
       "scripts": [
-        "scripts/refresh-metatft-comps.mjs"
+        "scripts/refresh-metatft-comps.mjs",
+        "scripts/refresh-metatft-cells.mjs"
       ],
       "manualDispatch": true,
       "onPush": false
@@ -1554,6 +1555,7 @@
     ],
     ".github/workflows/metatft-comps-daily.yml": [
       "metatft-comps/datei-frische",
+      "metatft-cells/datei-frische",
       "metatft-comps/familien-abdeckung"
     ],
     "metastats-explorer-build.service": [

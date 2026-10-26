@@ -41,18 +41,28 @@ jobs:
           node-version: '22'
           cache: npm
 
-      - run: npm ci --no-audit --no-fund
+      - id: deps
+        run: npm ci --no-audit --no-fund
 
       - name: Comps von MetaTFT holen
         # Das Script haelt selbst einen Floor (min. 40 Comps, max. 30 % Rueckgang)
         # und ein Set-Gate — ein kaputter Lauf ueberschreibt die Datei nicht.
         run: node scripts/refresh-metatft-comps.mjs
 
+      - name: Feld-Zahlen fuer den Comp-Builder holen
+        # Eigener Endpunkt (tft-stat-api/positions), eigene Gatter. Laeuft auch,
+        # wenn der Comps-Schritt scheitert — der Job bleibt trotzdem rot.
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
+        run: node scripts/refresh-metatft-cells.mjs
+
       - name: Aenderungen committen
+        # Committet, was die Schritte davor geschrieben haben, auch wenn einer
+        # gescheitert ist (der hat seine Datei dann nicht angefasst).
+        if: ${{ !cancelled() && steps.deps.outcome == 'success' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/tft-metatft-comps-*.json public/tft-metatft-boards-*.json
+          git add public/tft-metatft-*.json
           if git diff --staged --quiet; then
             echo "Keine Aenderungen an den Comp-Daten"
           else

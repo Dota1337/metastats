@@ -4,14 +4,19 @@ import { buildCells, MIN_UNITS, TOP4_MIN_OBS } from './metatft-cells.mjs';
 
 const NOW = Date.parse('2026-10-26T21:00:00Z');
 
-// n Units DA_U0..DA_U{n-1} im Bundle, je zwei Felder mit 3000/1000 Beobachtungen.
+// Beobachtungen je Einheit: so viele wie die Top-4-Schwelle, damit beide Felder
+// sie erreichen.
+const T = TOP4_MIN_OBS;
+const PER_UNIT = 4 * T;
+
+// n Units DA_U0..DA_U{n-1} im Bundle, je zwei Felder mit 3T/1T Beobachtungen.
 function setup({ n = MIN_UNITS, extraRows = [], updated = NOW - 3600_000 } = {}) {
   const champions = {};
   const positions = [];
   for (let i = 0; i < n; i++) {
     champions[`DA_U${i}`] = { name: `U${i}` };
-    positions.push({ unit: `DA_U${i}`, position: 'cell_1', win_rate: 0.5, count: 3000 });
-    positions.push({ unit: `DA_U${i}`, position: 'cell_28', win_rate: 0.6, count: 1000 });
+    positions.push({ unit: `DA_U${i}`, position: 'cell_1', win_rate: 0.5, count: 3 * T });
+    positions.push({ unit: `DA_U${i}`, position: 'cell_28', win_rate: 0.6, count: T });
   }
   return { champions, raw: { positions: [...positions, ...extraRows], updated } };
 }
@@ -20,10 +25,10 @@ test('Feld cell_N wird Index N-1, Haeufigkeit und Top 4 in Promille', () => {
   const { champions, raw } = setup();
   const out = buildCells(raw, { champions, now: NOW });
   const u = out.units.find(x => x.id === 'DA_U0');
-  assert.equal(u.n, 4000);
+  assert.equal(u.n, PER_UNIT);
   assert.deepEqual(u.cells, [[0, 750, 500], [27, 250, 600]]);
   assert.equal(out.units.length, MIN_UNITS);
-  assert.equal(out.total, MIN_UNITS * 4000);
+  assert.equal(out.total, MIN_UNITS * PER_UNIT);
 });
 
 test('Top 4 unter der Mindestzahl ist null, die Haeufigkeit bleibt', () => {
@@ -38,10 +43,10 @@ test('Top 4 unter der Mindestzahl ist null, die Haeufigkeit bleibt', () => {
 
 test('doppelte Zeilen laufen gewichtet zusammen', () => {
   const { champions, raw } = setup({
-    extraRows: [{ unit: 'DA_U0', position: 'cell_1', win_rate: 1, count: 1000 }],
+    extraRows: [{ unit: 'DA_U0', position: 'cell_1', win_rate: 1, count: T }],
   });
   const u = buildCells(raw, { champions, now: NOW }).units.find(x => x.id === 'DA_U0');
-  // (3000×0,5 + 1000×1) / 4000 = 0,625
+  // (3T×0,5 + T×1) / 4T = 0,625; Haeufigkeit 4T von 5T
   assert.deepEqual(u.cells[0], [0, 800, 625]);
 });
 
@@ -55,7 +60,7 @@ test('fremde Units fallen weg, solange sie unter 5 % bleiben', () => {
 
 test('Set-Gatter: zu viele Beobachtungen auf fremden Units → Abbruch', () => {
   const { champions, raw } = setup({
-    extraRows: [{ unit: 'TFT17_Alt', position: 'cell_3', win_rate: 0.5, count: MIN_UNITS * 4000 }],
+    extraRows: [{ unit: 'TFT17_Alt', position: 'cell_3', win_rate: 0.5, count: MIN_UNITS * PER_UNIT }],
   });
   assert.throws(() => buildCells(raw, { champions, now: NOW }), /Units des Sets/);
 });
@@ -71,7 +76,7 @@ test('ungueltige Einzelzeilen werden uebersprungen', () => {
     extraRows: [{ unit: 'DA_U0', position: 'cell_0', win_rate: 0.5, count: 10 }],
   });
   const u = buildCells(raw, { champions, now: NOW }).units.find(x => x.id === 'DA_U0');
-  assert.equal(u.n, 4000);
+  assert.equal(u.n, PER_UNIT);
 });
 
 test('zu wenige Units → Abbruch', () => {
@@ -81,7 +86,7 @@ test('zu wenige Units → Abbruch', () => {
 
 test('Rueckgang ueber 30 % gegen den Vorlauf → Abbruch, knapp darunter nicht', () => {
   const { champions, raw } = setup();
-  const total = MIN_UNITS * 4000;
+  const total = MIN_UNITS * PER_UNIT;
   assert.throws(() => buildCells(raw, { champions, now: NOW, previousTotal: Math.ceil(total / 0.69) }), /Rueckgang/);
   assert.doesNotThrow(() => buildCells(raw, { champions, now: NOW, previousTotal: Math.floor(total / 0.71) }));
 });

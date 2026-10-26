@@ -17,9 +17,10 @@
 
 export const BOARD_CELLS = 28;
 // Top 4 erst ab so vielen Beobachtungen auf dem Feld, darunter "–" (User-Entscheid
-// 2026-10-26). Beobachtungen sind keine Spiele: ein Spiel kann ein Feld ueber
-// mehrere Runden fuellen.
-export const TOP4_MIN_OBS = 500;
+// 2026-10-26: erst 500, dann 2.000). Beobachtungen sind keine Spiele: ein Spiel
+// kann ein Feld ueber mehrere Runden fuellen, 500 waeren oft nur ein paar
+// Dutzend Spiele.
+export const TOP4_MIN_OBS = 2000;
 // Gatter: bei Verstoss bleibt die alte Datei liegen.
 export const MAX_INVALID_SHARE = 0.05;
 export const MIN_SET_SHARE = 0.95;

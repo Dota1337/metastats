@@ -574,6 +574,26 @@
       "persistent": true
     },
     {
+      "name": "metastats-player-scoring.service",
+      "kind": "service",
+      "description": "metastats Spieler-Bewertung: Lobby-Raenge nachtragen und Bezugswerte bauen (/tft/compare)",
+      "scripts": [
+        "scripts/build-player-scoring-population.mjs"
+      ]
+    },
+    {
+      "name": "metastats-player-scoring.timer",
+      "kind": "timer",
+      "description": "metastats Spieler-Bewertung taeglich",
+      "scripts": [],
+      "onCalendar": [
+        "*-*-* 05:17:00 UTC"
+      ],
+      "interval": [],
+      "activates": "metastats-player-scoring.service",
+      "persistent": false
+    },
+    {
       "name": "metastats-position-aggregator.service",
       "kind": "service",
       "description": "metastats — aggregate companion position observations into tft_position_comp_cell",
@@ -890,6 +910,13 @@
       ]
     },
     {
+      "timer": "metastats-player-scoring.timer",
+      "activates": "metastats-player-scoring.service",
+      "onCalendar": [
+        "*-*-* 05:17:00 UTC"
+      ]
+    },
+    {
       "timer": "metastats-position-aggregator.timer",
       "activates": "metastats-position-aggregator.service",
       "onCalendar": []
@@ -967,7 +994,8 @@
       "schedule": [],
       "scripts": [
         "scripts/publish-route-mirrors.mjs",
-        "scripts/lib/explorer-unit-warm.mjs"
+        "scripts/lib/explorer-unit-warm.mjs",
+        "scripts/lib/tft-player-scoring.mjs"
       ],
       "manualDispatch": true,
       "onPush": true
@@ -1508,12 +1536,16 @@
     ],
     "metastats-marketvalue-snapshot.service": [
       "marketvalue/hetzner-snapshots",
+      "player-scoring/lobbies",
       "marketvalue/regionen-abdeckung",
       "marketvalue/regionen-abdeckung-hetzner",
       "set-achse/marktwert-snapshots"
     ],
     "metastats-tft-ladder.service": [
       "tft/ladder-daily"
+    ],
+    "metastats-player-scoring.service": [
+      "player-scoring/population"
     ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",

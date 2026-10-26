@@ -11,6 +11,7 @@
 
 import { buildSnapshotForPlayer } from './tft-marketvalue.mjs';
 import { timed } from './perf-timing.mjs';
+import { buildLobbyRow, lobbyCaptureEnabled, lobbySet, noteLobbyFailure, saveLobbies } from './tft-match-lobby.mjs';
 
 // Match-V1 detail endpoint has a 200/10s method limit per routing cluster.
 // riot-client.mjs enforces a sliding window, so callers can fetch with bounded
@@ -110,6 +111,11 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   // the old serial loop. A failed fetch is skipped, same as before.
   const concurrency = Math.max(1, opts.concurrency ?? 1);
   const newRows = [];
+  // Lobby aller 8 fuer die Spieler-Bewertung (tft-match-lobby.mjs). Nur hier
+  // liegt das volle Match vor; ein Fehler darf den Cache-Write nie kippen.
+  const captureLobby = lobbyCaptureEnabled();
+  const captureSet = captureLobby ? lobbySet() : null;
+  const lobbyRows = [];
   const fetchOne = async (id) => {
     const raw = await riot.fetchJson(
       `https://${regional}.api.riotgames.com/tft/match/v1/matches/${id}`,
@@ -119,6 +125,14 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
     if ((raw.info?.queue_id ?? raw.info?.queueId) !== TFT_RANKED_QUEUE) return;
     const row = buildCachedRow(raw, puuid, region);
     if (row) newRows.push(row);
+    if (row && captureSet != null && row.set_number === captureSet) {
+      try {
+        const lobby = buildLobbyRow(raw, region, captureSet);
+        if (lobby) lobbyRows.push(lobby);
+      } catch (e) {
+        noteLobbyFailure(e, log);
+      }
+    }
   };
   // Wandzeit des ganzen Detail-Abrufs, nicht pro Match — das ist die Zahl, die
   // gegen die anderen Segmente steht. Bei concurrency > 1 wäre eine Summe der
@@ -140,6 +154,10 @@ export async function refreshPlayerMatchCache(db, puuid, region, regional, riot,
   });
 
   if (newRows.length > 0) {
+    // Lobby VOR dem Cache-Write: bricht der Prozess dazwischen ab, holt der
+    // naechste Lauf das Match neu (Cache-Zeile fehlt noch) statt die Lobby
+    // fuer immer zu verlieren. saveLobbies wirft nie.
+    if (lobbyRows.length > 0) await timed('cache.lobby', () => saveLobbies(db, lobbyRows, log));
     await timed('cache.upsertMatchRows', () => upsertMatchRows(db, newRows));
     // Mirror to Supabase so Vercel-side aggregations see the new matches.
     // Failure is non-fatal — Hetzner-PG is the source of truth, Supabase is

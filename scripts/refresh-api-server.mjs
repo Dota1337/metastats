@@ -118,6 +118,7 @@ import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
 import { queryRisingCandidates, playstyleOf, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
+import { createPlayerScoring } from './lib/tft-player-scoring-endpoint.mjs';
 import { BOX_TLS_CERTS, BOX_TLS_PORT } from '../app/lib/box-tls.mjs';
 
 // ─ env loader (matches crawler) ────────────────────────────────────────────
@@ -131,7 +132,7 @@ import { BOX_TLS_CERTS, BOX_TLS_PORT } from '../app/lib/box-tls.mjs';
 // infra/hetzner/metastats-refresh-api-env.sh ergaenzen (refresh-api-env.test.mjs
 // prueft beides gegen alle Zugriffe im Importbaum).
 const ENV_KEYS = [
-  'CONTRACTS_READ_TOKEN', 'CONTRACTS_STATUS_PATH', 'DATABASE_URL', 'EXPLORER_API_URL', 'MV_TIMING',
+  'CONTRACTS_READ_TOKEN', 'CONTRACTS_STATUS_PATH', 'DATABASE_URL', 'EXPLORER_API_URL', 'LOBBY_CAPTURE', 'MV_TIMING',
   'NEXT_PUBLIC_SUPABASE_URL', 'REFRESH_API_PORT', 'REFRESH_API_TOKEN', 'RIOT_API_KEY_TFT',
   'SUPABASE_SERVICE_ROLE_KEY',
 ];
@@ -313,7 +314,10 @@ async function refreshOnePlayer(puuid, region) {
     throw Object.assign(new Error(unknown ? 'unknown_player' : 'riot_unavailable'), { status: unknown ? 404 : 503 });
   }
 
-  // 1) Cache refresh (Hetzner-PG, with Supabase mirror of new rows)
+  // 1) Cache refresh (Hetzner-PG, with Supabase mirror of new rows). Laeuft
+  //    gerade der Cache-Abruf der Spieler-Bewertung, erst darauf warten — sonst
+  //    holen beide dieselben Matches doppelt bei Riot.
+  await cacheInflight.get(`${puuid}|${region}`)?.catch(() => {});
   await refreshPlayerMatchCache(pool, puuid, region, regional, riot, { force: true });
 
   // 1b) Backfill Supabase with ANY cached matches not yet mirrored. The
@@ -442,6 +446,26 @@ async function refreshOnePlayer(puuid, region) {
 const recent = new Map();        // key → last completion timestamp
 const inflight = new Map();      // key → Promise<result>  (dedupe concurrent calls)
 const REFRESH_MIN_INTERVAL_MS = 60_000;
+
+// Nur Match-Cache, fuer die Spieler-Bewertung (/player-scoring). Laeuft fuer
+// den Spieler schon ein Komplett-Refresh (/refresh-player), wird der genutzt.
+const cacheInflight = new Map();   // key → Promise
+function refreshCacheShared(puuid, region, opts) {
+  const key = `${puuid}|${region}`;
+  if (inflight.has(key)) return inflight.get(key);
+  if (cacheInflight.has(key)) return cacheInflight.get(key);
+  const p = refreshPlayerMatchCache(pool, puuid, region, REGIONAL[region], riot, opts)
+    .finally(() => cacheInflight.delete(key));
+  cacheInflight.set(key, p);
+  return p;
+}
+const playerScoring = createPlayerScoring({
+  pool,
+  riot,
+  regionalOf: (region) => REGIONAL[region],
+  accountRoutingOf: getAccountRouting,
+  refreshCache: refreshCacheShared,
+});
 
 // Prune stale throttle entries so `recent` doesn't grow unbounded on this
 // long-lived server (an entry older than the interval can never throttle again).
@@ -1069,7 +1093,8 @@ async function handleRequest(req, res) {
   const isProsByComp = req.method === 'POST' && req.url === '/pros-by-comp';
   const isCompHistogram = req.method === 'POST' && req.url === '/player-comp-histogram';
   const isRising = req.method === 'POST' && req.url === '/rising';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram && !isRising) {
+  const isScoring = req.method === 'POST' && req.url === '/player-scoring';
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram && !isRising && !isScoring) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -1097,6 +1122,7 @@ async function handleRequest(req, res) {
                   : isProsByComp ? await handleProsByComp(body)
                   : isCompHistogram ? await handlePlayerCompHistogram(body)
                   : isRising ? await handleRising(body)
+                  : isScoring ? await playerScoring.handle(body)
                   : await handleRefresh(body);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

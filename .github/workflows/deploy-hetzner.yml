@@ -29,6 +29,8 @@ on:
       - 'app/lib/tft-comp-catalog.mjs'
       # Gepinntes Zertifikat + boxFetch (refresh-api-server, Vertrag tls-cert, Skripte).
       - 'app/lib/box-tls.mjs'
+      # Rang-Zahl der Spieler-Bewertung (scripts/lib/tft-player-scoring.mjs).
+      - 'app/lib/tft-rank-score.mjs'
       - 'package.json'
       - 'package-lock.json'
       - 'public/tft-graph-*.json'

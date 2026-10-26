@@ -1,0 +1,44 @@
+[Unit]
+Description=metastats Spieler-Bewertung: Lobby-Raenge nachtragen und Bezugswerte bauen (/tft/compare)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/metastats-crawler
+EnvironmentFile=/etc/metastats-crawler/env
+# Box hat 2 Kerne und 3 GB, die Sammler gehen vor: niedrigste Prioritaet,
+# harte Speichergrenze (Node-Heap darunter, damit Node sauber abbricht statt
+# vom Kernel beendet zu werden).
+Nice=19
+IOSchedulingClass=idle
+MemoryMax=500M
+TimeoutStartSec=40min
+ExecStart=/usr/bin/node --max-old-space-size=420 scripts/build-player-scoring-population.mjs
+StandardOutput=journal
+StandardError=journal
+
+# --- BEGIN metastats-hardening-floor ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# --- END metastats-hardening-floor ---
+
+[Install]
+WantedBy=multi-user.target

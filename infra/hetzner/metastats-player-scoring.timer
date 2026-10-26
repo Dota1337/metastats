@@ -1,0 +1,13 @@
+[Unit]
+Description=metastats Spieler-Bewertung taeglich
+
+[Timer]
+# Nach der Rangliste (04:30 UTC) und nach dem harten Ende des Marktwert-Laufs
+# (05:15 UTC). Kein Nachholen nach Ausfall: ein verpasster Tag laesst die
+# Bezugswerte von gestern stehen, ein Nachlauf zur falschen Zeit stoert die
+# Sammler.
+OnCalendar=*-*-* 05:17:00 UTC
+Persistent=false
+
+[Install]
+WantedBy=timers.target

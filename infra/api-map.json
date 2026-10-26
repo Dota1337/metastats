@@ -6,19 +6,19 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 90,
+    "routes": 91,
     "groups": 30,
     "tables": 44,
     "rpcs": 36,
     "files": 13,
-    "edges": 517,
+    "edges": 519,
     "unused": 7,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 26
+      "count": 27
     },
     {
       "name": "tft/comps",
@@ -1294,6 +1294,22 @@
       "used": true,
       "usedBy": [
         "app/components/SideDrawer.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/tft/player-scoring",
+      "kind": "route",
+      "label": "/api/tft/player-scoring",
+      "group": "tft",
+      "file": "app/api/tft/player-scoring/route.ts",
+      "via": [
+        "app/lib/box-tls.mjs",
+        "app/lib/regions.ts",
+        "app/lib/tft-hetzner-matches.ts"
+      ],
+      "used": true,
+      "usedBy": [
+        "app/tft/compare/page.tsx"
       ]
     },
     {
@@ -4026,6 +4042,16 @@
       "from": "api:/api/tft/patch-notes",
       "to": "fn:get_tft_set_bucket_coverage",
       "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/player-scoring",
+      "to": "box:hetzner",
+      "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/player-scoring",
+      "to": "ext:riot-api",
+      "kind": "fetches"
     },
     {
       "from": "api:/api/tft/player-stats",

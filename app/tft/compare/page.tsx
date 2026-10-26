@@ -18,6 +18,9 @@ import {
   TraitsBlock, UnitsBlock, SetRanksBlock, SharedLobbies,
 } from '../../components/tft/compare/CompareBlocks';
 import { PlacementChart, FormChart, HistoryChart, FactorBlock } from '../../components/tft/compare/CompareCharts';
+import { ScoringBlock } from '../../components/tft/compare/ScoringBlock';
+import { TFT_PLAYER_SCORING_ENABLED } from '../../lib/feature-flags';
+import type { PlayerScoringResponse } from '../../lib/tft-player-scoring-types';
 
 const REGIONS: { value: string; label: string }[] = [
   { value: 'euw1', label: 'EUW' }, { value: 'eun1', label: 'EUNE' },
@@ -87,6 +90,7 @@ function ComparePageInner() {
   });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [histories, setHistories] = useState<HistoryPoint[][]>([]);
+  const [scorings, setScorings] = useState<(PlayerScoringResponse | null)[]>([]);
   const [loading, setLoading] = useState(false);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   // Jeder Vergleich bekommt eine Nummer; Antworten eines ueberholten Laufs
@@ -119,12 +123,30 @@ function ComparePageInner() {
     }
   };
 
+  // Spieler-Bewertung (rechnet auf der Box). Hat die Box beim ersten Aufruf
+  // noch Partien nachgeladen, einmal spaeter neu holen.
+  const loadScoring = async (run: number, i: number, puuid: string, reg: string, again = true) => {
+    if (!TFT_PLAYER_SCORING_ENABLED) return;
+    const r = await fetch('/api/tft/player-scoring', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ puuid, region: reg }),
+    }).catch(() => null);
+    const data = r?.ok ? (await r.json().catch(() => null)) as PlayerScoringResponse | null : null;
+    if (runId.current !== run) return;
+    setScorings(prev => prev.map((x, idx) => (idx === i ? data : x)));
+    if (again && data?.available && data.refreshing) {
+      setTimeout(() => { if (runId.current === run) loadScoring(run, i, puuid, reg, false); }, 30_000);
+    }
+  };
+
   const runCompare = async (names: string[], reg: string) => {
     const run = ++runId.current;
     const list = names.map(n => n.trim());
     setLoading(true);
     setSlots(list.map(() => null));
     setHistories(list.map(() => []));
+    setScorings(list.map(() => null));
 
     const params = new URLSearchParams();
     list.filter(Boolean).forEach(n => params.append('p', n));
@@ -167,10 +189,11 @@ function ComparePageInner() {
     //    unbewertete nacheinander, weil sie Einzelabrufe bei Riot ausloesen.
     const rated = players.map((p, i) => ({ p, i })).filter(x => x.p?.puuid && x.p.rated);
     const unrated = players.map((p, i) => ({ p, i })).filter(x => x.p?.puuid && !x.p.rated);
-    await Promise.all(rated.map(({ p, i }) => loadStats(run, i, p!.puuid, reg)));
+    await Promise.all(rated.map(({ p, i }) => loadStats(run, i, p!.puuid, reg).then(() => { void loadScoring(run, i, p!.puuid, reg); })));
     for (const { p, i } of unrated) {
       if (runId.current !== run) return;
       await loadStats(run, i, p!.puuid, reg);
+      void loadScoring(run, i, p!.puuid, reg);
     }
     if (runId.current === run) setLoading(false);
   };
@@ -286,6 +309,7 @@ function ComparePageInner() {
             <CategoryWins players={loaded} />
             <KeyStats players={loaded} />
             <FactorBlock players={loaded} />
+            <ScoringBlock players={loaded} scorings={scorings} />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-4">
               <PlacementChart players={loaded} />
               <FormChart players={loaded} />

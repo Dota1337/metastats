@@ -341,3 +341,26 @@ export async function fetchHetznerRising(opts: { days: number; region: string; s
     players: Array.isArray(data?.players) ? data.players as RisingPlayer[] : [],
   };
 }
+
+// ── Spieler-Bewertung (/tft/compare) ─────────────────────────────────────────
+
+/**
+ * Bewertung eines Spielers von der Box. Die Box frischt dabei den Match-Cache
+ * auf (hoechstens 10 s) — daher kein stilles Wiederholen. 404 `not_found` heisst:
+ * die Box kennt den Endpunkt noch nicht (Deploy-Fenster) → nicht verfuegbar.
+ */
+export async function fetchHetznerPlayerScoring(opts: { puuid: string; region: string; signalTimeoutMs?: number }): Promise<{ status: number; data: unknown }> {
+  if (!HETZNER_URL || !TOKEN) return { status: 200, data: { available: false, reason: 'box_disabled' } };
+  const res = await boxFetch(`${HETZNER_URL}/player-scoring`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+    body: JSON.stringify({ puuid: opts.puuid, region: opts.region }),
+    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 25_000),
+    retry: false,
+  });
+  const data = await res.json().catch(() => null);
+  if (res.status === 404 && (data as { error?: unknown } | null)?.error === 'not_found') {
+    return { status: 200, data: { available: false, reason: 'box_endpoint_missing' } };
+  }
+  return { status: res.status, data };
+}

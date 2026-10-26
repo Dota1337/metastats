@@ -88,3 +88,15 @@ export const TFT_IS_HOME = true;
  * Workflow-Schritt, Skript, Datei und Vertrag metatft-cells/datei-frische entfernen.
  */
 export const TFT_BUILDER_CELL_STATS_ENABLED = true;
+
+/**
+ * Spieler-Bewertung im Spielervergleich /tft/compare (Plan 2026-10-26, Vorlage
+ * „TFT Player Scoring Framework — API edition"): 5 Hauptwerte aus 13
+ * Unterwerten, 0–100, 50 = typisch unter den bewerteten Spielern. Rechnet auf
+ * der Box (/player-scoring), Bezugswerte naechtlich
+ * (metastats-player-scoring.timer), Lobbys aller 8 ab LOBBY_CAPTURE=1.
+ *
+ * Aus: Route /api/tft/player-scoring antwortet 404, der Block faellt weg.
+ * Danach optional Timer abschalten, LOBBY_CAPTURE=0, Vertraege entfernen.
+ */
+export const TFT_PLAYER_SCORING_ENABLED = true;

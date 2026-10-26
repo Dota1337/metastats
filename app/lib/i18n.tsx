@@ -2382,6 +2382,90 @@ const translations = {
   'tft.compare.factors': t6(
     'Marktwert-Faktoren', 'Market value factors', '\uC2DC\uC7A5 \uAC00\uCE58 \uC694\uC778', '\u5E02\u573A\u4EF7\u503C\u56E0\u7D20', 'Factores del valor de mercado', 'Facteurs de la valeur marchande'
   ),
+  'tft.compare.scoring': t6(
+    'Spieler-Bewertung', 'Player rating', '\uD50C\uB808\uC774\uC5B4 \uD3C9\uAC00', '\u73A9\u5BB6\u8BC4\u5206', 'Valoraci\u00F3n del jugador', '\u00C9valuation du joueur'
+  ),
+  'tft.compare.scoring.overall': t6(
+    'Gesamt', 'Overall', '\uC885\uD569', '\u7EFC\u5408', 'General', 'Global'
+  ),
+  'tft.compare.scoring.main.results': t6(
+    'Ergebnis', 'Results', '\uACB0\uACFC', '\u6210\u7EE9', 'Resultados', 'R\u00E9sultats'
+  ),
+  'tft.compare.scoring.main.board': t6(
+    'Endbrett', 'Final board', '\uCD5C\uC885 \uBCF4\uB4DC', '\u6700\u7EC8\u9635\u5BB9', 'Tablero final', 'Plateau final'
+  ),
+  'tft.compare.scoring.main.range': t6(
+    'Vielseitigkeit', 'Versatility', '\uB2E4\uC591\uC131', '\u591A\u6837\u6027', 'Versatilidad', 'Polyvalence'
+  ),
+  'tft.compare.scoring.main.economy': t6(
+    'Gold & Level', 'Gold & level', '\uACE8\uB4DC & \uB808\uBCA8', '\u91D1\u5E01\u4E0E\u7B49\u7EA7', 'Oro y nivel', 'Or et niveau'
+  ),
+  'tft.compare.scoring.main.ceiling': t6(
+    'Top & Bot', 'Top & Bot', '\uC0C1\uC704\uAD8C & \uD558\uC704\uAD8C', '\u524D\u56DB\u4E0E\u672B\u4F4D', 'Top y Bot', 'Top et Bot'
+  ),
+  'tft.compare.scoring.main.tempo': t6(
+    'Druck', 'Pressure', '\uC555\uBC15', '\u538B\u5236\u529B', 'Presi\u00F3n', 'Pression'
+  ),
+  'tft.compare.scoring.m.1_1': t6(
+    'Platzierung', 'Placement', '\uC21C\uC704', '\u540D\u6B21', 'Posici\u00F3n', 'Classement'
+  ),
+  'tft.compare.scoring.m.1_2': t6(
+    'Gegen die Lobby', 'Vs. the lobby', '\uB85C\uBE44 \uB300\uBE44', '\u76F8\u5BF9\u5BF9\u5C40', 'Frente al lobby', 'Face au lobby'
+  ),
+  'tft.compare.scoring.m.1_3': t6(
+    'Form', 'Form', '\uD3FC', '\u8FD1\u671F\u72B6\u6001', 'Forma', 'Forme'
+  ),
+  'tft.compare.scoring.m.2_1': t6(
+    'Brettaufbau', 'Board strength', '\uBCF4\uB4DC \uC644\uC131\uB3C4', '\u9635\u5BB9\u5F3A\u5EA6', 'Fuerza del tablero', 'Force du plateau'
+  ),
+  'tft.compare.scoring.m.2_2': t6(
+    'Synergien', 'Traits', '\uC2DC\uB108\uC9C0', '\u7F81\u7ECA', 'Sinergias', 'Synergies'
+  ),
+  'tft.compare.scoring.m.2_3': t6(
+    'Item-Passung', 'Item fit', '\uC544\uC774\uD15C \uC801\uD569\uB3C4', '\u88C5\u5907\u9002\u914D', 'Ajuste de objetos', 'Ad\u00E9quation des objets'
+  ),
+  'tft.compare.scoring.m.3_1': t6(
+    'Comp-Bandbreite', 'Comp range', '\uC870\uD569 \uD3ED', '\u9635\u5BB9\u5E7F\u5EA6', 'Variedad de comps', 'Vari\u00E9t\u00E9 de compos'
+  ),
+  'tft.compare.scoring.m.3_2': t6(
+    'Patch-Start', 'Patch start', '\uD328\uCE58 \uCD08\uBC18', '\u7248\u672C\u521D\u671F', 'Inicio de parche', 'D\u00E9but de patch'
+  ),
+  'tft.compare.scoring.m.3_3': t6(
+    'Umk\u00E4mpft', 'Contested', '\uACBD\uD569', '\u649E\u9635\u5BB9', 'Disputadas', 'Contest\u00E9es'
+  ),
+  'tft.compare.scoring.m.4_1': t6(
+    'Level-Tempo', 'Level tempo', '\uB808\uBCA8 \uC18D\uB3C4', '\u5347\u7EA7\u8282\u594F', 'Ritmo de nivel', 'Rythme de niveau'
+  ),
+  'tft.compare.scoring.m.4_2': t6(
+    'Restgold', 'Gold left', '\uB0A8\uC740 \uACE8\uB4DC', '\u5269\u4F59\u91D1\u5E01', 'Oro restante', 'Or restant'
+  ),
+  'tft.compare.scoring.m.5_1': t6(
+    'Bot 2 vermeiden', 'Avoid bot 2', '7\u00B78\uB4F1 \uD68C\uD53C', '\u907F\u514D\u672B\u4E24\u540D', 'Evitar bot 2', '\u00C9viter le bot 2'
+  ),
+  'tft.compare.scoring.m.5_2': t6(
+    'Top 4 zu Sieg', 'Top 4 to win', '\uC0C1\uC704 4 \u2192 1\uB4F1', '\u524D\u56DB\u8F6C\u7B2C\u4E00', 'Top 4 a victoria', 'Top 4 en victoire'
+  ),
+  'tft.compare.scoring.m.6_1': t6(
+    'Schaden', 'Damage', '\uD53C\uD574\uB7C9', '\u4F24\u5BB3', 'Da\u00F1o', 'D\u00E9g\u00E2ts'
+  ),
+  'tft.compare.scoring.m.6_2': t6(
+    'K.o.s', 'Eliminations', '\uCC98\uCE58', '\u6DD8\u6C70', 'Eliminaciones', '\u00C9liminations'
+  ),
+  'tft.compare.scoring.games': t6(
+    '{n} Spiele', '{n} games', '{n}\uACBD\uAE30', '{n} \u573A', '{n} partidas', '{n} parties'
+  ),
+  'tft.compare.scoring.known': t6(
+    '{n} mit bekannter Lobby', '{n} with known lobby', '\uB85C\uBE44 \uC815\uBCF4 {n}\uACBD\uAE30', '{n} \u573A\u5DF2\u77E5\u5BF9\u5C40', '{n} con lobby conocido', '{n} avec lobby connu'
+  ),
+  'tft.compare.scoring.recent': t6(
+    'Letzte 10 Spiele', 'Last 10 games', '\uCD5C\uADFC 10\uACBD\uAE30', '\u6700\u8FD1 10 \u573A', '\u00DAltimas 10 partidas', '10 derni\u00E8res parties'
+  ),
+  'tft.compare.scoring.expected': t6(
+    'Erwarteter Platz', 'Expected place', '\uC608\uC0C1 \uC21C\uC704', '\u9884\u671F\u540D\u6B21', 'Puesto esperado', 'Place attendue'
+  ),
+  'tft.compare.scoring.contest': t6(
+    'Gegner mit gleichem Carry', 'Opponents with same carry', '\uAC19\uC740 \uCE90\uB9AC \uC0C1\uB300', '\u540C\u4E3BC\u5BF9\u624B', 'Rivales con el mismo carry', 'Adversaires au m\u00EAme carry'
+  ),
   'tft.compare.categoryWins': t6(
     'Kategorie-Siege', 'Category wins', '\uBD80\uBB38\uBCC4 \uC6B0\uC704', '\u5206\u9879\u80DC\u51FA', 'Categor\u00EDas ganadas', 'Cat\u00E9gories remport\u00E9es'
   ),

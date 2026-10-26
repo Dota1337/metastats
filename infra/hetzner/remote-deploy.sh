@@ -100,7 +100,8 @@ crawl_running() {
            metastats-marketvalue-snapshot.service \
            metastats-tft-pro-fullsync.service \
            metastats-snapshot-publisher.service \
-           metastats-explorer-build.service; do
+           metastats-explorer-build.service \
+           metastats-player-scoring.service; do
     state=$(systemctl is-active "$u" 2>/dev/null || true)
     if [ "$state" = active ] || [ "$state" = activating ] || [ "$state" = reloading ]; then
       echo "$u is $state"

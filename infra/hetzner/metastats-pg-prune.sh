@@ -44,6 +44,14 @@ if [ "$OLD" -gt 0 ]; then
   psqlc "vacuum (analyze) tft_player_match_cache;" >/dev/null
 fi
 
+# Lobbys + Bezugswerte der Spieler-Bewertung (0105): dieselbe Regel, nur das
+# laufende Set bleibt. Tabellen fehlen, solange 0105 nicht eingespielt ist.
+if [ "$(psqlc "select to_regclass('public.tft_match_lobby') is not null;")" = "t" ]; then
+  LOBBY_OLD=$(psqlc "with d as (delete from tft_match_lobby where set_number is distinct from $CUR returning 1) select count(*) from d;")
+  POP_OLD=$(psqlc "with d as (delete from tft_player_scoring_population where set_number is distinct from $CUR returning 1) select count(*) from d;")
+  echo "  lobby: $LOBBY_OLD alte Lobbys, $POP_OLD alte Bezugswerte geloescht"
+fi
+
 # ──────────────────────────────────────────────────────────────────────────
 # Backup-Tables aus dem Marktwert-Daily-Driver pruning (A3, 2026-06-20).
 #

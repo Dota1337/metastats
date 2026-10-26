@@ -87,21 +87,8 @@ export interface HistoryPoint {
   finalValue: number | null;
 }
 
-// Rang als fortlaufende Zahl: je Stufe 400 Punkte (4 Divisionen zu 100 LP).
-// Ab Master teilen sich Master/GM/Challenger eine LP-Leiter, deshalb zaehlt
-// dort nur noch LP auf den Master-Sockel.
-const TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND'];
-const DIVS: Record<string, number> = { IV: 0, III: 1, II: 2, I: 3 };
-export const MASTER_BASE = TIERS.length * 400;
-
-export function rankScore(tier: string | null | undefined, div: string | null | undefined, lp: number | null | undefined): number | null {
-  if (!tier) return null;
-  const t = tier.toUpperCase();
-  if (t === 'MASTER' || t === 'GRANDMASTER' || t === 'CHALLENGER') return MASTER_BASE + (lp ?? 0);
-  const i = TIERS.indexOf(t);
-  if (i < 0) return null;
-  return i * 400 + (DIVS[(div || 'IV').toUpperCase()] ?? 0) * 100 + (lp ?? 0);
-}
+// Rang als fortlaufende Zahl — eine Quelle mit der Box (Spieler-Bewertung).
+export { MASTER_BASE, rankScore } from '../../../lib/tft-rank-score.mjs';
 
 export function shortName(name: string): string {
   return name.split('#')[0];

@@ -212,6 +212,28 @@
       "note": "Rangliste Smaragd bis Challenger für /tft/rising. Testlauf 2026-09-27: euw1 allein 35.862 Spieler; fällt ein Tag unter 20.000, fehlen große Regionen."
     },
     {
+      "id": "player-scoring/population",
+      "owner": "metastats-player-scoring.service",
+      "backend": "hetzner",
+      "table": "tft_player_scoring_population",
+      "dateColumn": "computed_at",
+      "windowDays": 2,
+      "minRows": 1,
+      "armed": false,
+      "note": "Bezugswerte der Spieler-Bewertung (/tft/compare), jede Nacht 05:17 UTC komplett ersetzt — deshalb Fenster statt Tageszählung. Ohne Zeile all|* blendet der Vergleich den Block aus. Beobachtung bis 2–3 Nächte nach dem Start auf der Box, dann scharf schalten und minRows auf die gemessene Zeilenzahl setzen."
+    },
+    {
+      "id": "player-scoring/lobbies",
+      "owner": "metastats-marketvalue-snapshot.service",
+      "backend": "hetzner",
+      "table": "tft_match_lobby",
+      "dateColumn": "captured_at",
+      "windowDays": 1,
+      "minRows": 1000,
+      "armed": false,
+      "note": "Lobbys aller 8 Spieler, mitgeschrieben beim Nachladen der Spiele (LOBBY_CAPTURE=1). Fehlen sie, rechnet die Bewertung nur noch mit dem erwarteten Platz 4,5. Beobachtung, bis die Tagesmenge nach dem Start gemessen ist; minRows dann auf etwa die Hälfte davon."
+    },
+    {
       "id": "marketvalue/supabase-mirror",
       "owner": "scripts/sync-marketvalue-to-supabase.mjs",
       "backend": "supabase",

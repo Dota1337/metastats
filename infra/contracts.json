@@ -589,7 +589,22 @@
       "baseUrlEnv": "SITE_STATUS_BASE_URL",
       "baseUrl": "https://www.metastats.gg",
       "expectStartLinks": { "/tft/comps/atlas": 15, "/tft/comps": 30 },
-      "note": "Startdaten der Comp-Seiten (Uebersicht = TFT-Startseite, Liste): ohne Cookie stehen Comp-Namen und Links im ersten HTML. Faellt der Lader still aus (kein vorgerechneter Stand, 1,5-s-Zeitlimit, Teilmengen-Pruefung in shownFamilyRows schlaegt an, weitergetragener Stand mit Endtag E-1 bei vollen Tagen), laedt die Seite im Browser nach und sieht fuer Besucher normal aus — nur Google sieht eine leere Seite. Schwellen: Uebersicht zeigt ~24 entdoppelte Familien, Liste 40 Familien (mehr Links durch Varianten); 15/30 lassen Platz fuer kleine Tage. Bis zu 3 Abrufe, der beste zaehlt."
+      "expectStartText": {
+        "/teams": ["\\shref=\"(?:/[a-z]{2})?/teams/[^\"/?#]+", 200],
+        "/ligen": ["static\\.lolesports\\.com/[^\"\\s?]+", 10],
+        "/tft/augments": ["\\shref=\"(?:/[a-z]{2})?/tft/augments/[^\"?#]+", 100],
+        "/tft/builder": ["\\salt=\"[^\"]+\"", 30],
+        "/tft/patch": ["\\shref=\"(?:/[a-z]{2})?/tft/patch/[^\"?#]+", 5],
+        "/tft/patch/winners": ["\\shref=\"(?:/[a-z]{2})?/tft/units/[^\"?#]+", 5],
+        "/tft/rising": ["\\shref=\"(?:/[a-z]{2})?/tft/player/[^\"?#]+", 5],
+        "/tft/leaderboard": ["\\shref=\"(?:/[a-z]{2})?/tft/player/[^\"?#]+", 20],
+        "/tft/marktwert": ["\\shref=\"(?:/[a-z]{2})?/tft/player/[^\"?#]+", 50],
+        "/marktwert": ["\\shref=\"(?:/[a-z]{2})?/player/[^\"?#]+", 10],
+        "/leaderboard": ["\\shref=\"(?:/[a-z]{2})?/player/[^\"?#]+", 50],
+        "/tft/tournaments": ["\\shref=\"(?:/[a-z]{2})?/tft/tournaments/[^\"?#]+", 50],
+        "/lol": ["\\shref=\"(?:/[a-z]{2})?/champions/[^\"?#]+", 3]
+      },
+      "note": "Startdaten der Comp-Seiten (Uebersicht = TFT-Startseite, Liste): ohne Cookie stehen Comp-Namen und Links im ersten HTML. Faellt der Lader still aus (kein vorgerechneter Stand, 1,5-s-Zeitlimit, Teilmengen-Pruefung in shownFamilyRows schlaegt an, weitergetragener Stand mit Endtag E-1 bei vollen Tagen), laedt die Seite im Browser nach und sieht fuer Besucher normal aus — nur Google sieht eine leere Seite. Schwellen: Uebersicht zeigt ~24 entdoppelte Familien, Liste 40 Familien (mehr Links durch Varianten); 15/30 lassen Platz fuer kleine Tage. Bis zu 3 Abrufe, der beste zaehlt. expectStartText (Soft-404-Plan 26.10.2026, app/lib/seo/page-start-*.ts): 13 Uebersichtsseiten, gezaehlt werden verschiedene Treffer im HTML ohne <script>/<style>. Gemessen 26.10.2026 live / mit SEO_PAGE_START=0: Teams 515/0, Ligen-Logos 51/0, Augments 259/0, Builder-Bilder 74/0, Patch-Links 18/1, Gewinner 24/0, Rising 20/0, TFT-Rangliste 50/0, TFT-Marktwert 100/0, LoL-Marktwert 40/0, LoL-Rangliste 100/0, TFT-Turniere 200/0, LoL-Start 3/0. Schwellen grob ein Drittel, LoL-Start genau 3 (immer die 3 meistgespielten). Rot: zuerst die Spiegel-Vertraege mirror/*/index-frische (Box-Datei alt) — sind die gruen, haengt der Seiten-Lader (Zeitlimit 1,5 s, page-start-mirror.ts) oder ein Notschalter SEO_PAGE_START=0 / SEO_START_DATA=0 / ROUTE_MIRRORS=0 ist gesetzt. LoL-Rangliste wird zusaetzlich rot, wenn der LoL-Dev-Key ueber 26 h tot ist."
     },
 
     {

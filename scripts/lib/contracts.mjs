@@ -1380,6 +1380,12 @@ async function checkEndpoint(c, r) {
  * Zeitlimit, Pruefung der Teilmenge schlaegt an), laedt die Seite im Browser
  * weiter und sieht fuer Besucher normal aus — nur Google sieht eine leere
  * Liste. Das hier ist das einzige Signal dafuer.
+ *
+ * `expectStartText` (Pfad → [Muster, Mindestzahl], Startdaten der
+ * Uebersichtsseiten, Soft-404-Plan 26.10.2026): das erste HTML ohne <script>
+ * und <style> enthaelt mindestens so viele VERSCHIEDENE Treffer des Musters
+ * (meist Detail-Links, sonst Bilder). Gleicher Grund wie bei den Comp-Seiten:
+ * ohne Startdaten laedt die Seite im Browser nach, nur Google sieht ein Geruest.
  */
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
@@ -1417,8 +1423,14 @@ async function checkHttpStatus(c, r) {
   }
   const langLinks = Object.entries(c.expectLangLinks || {});
   const startLinks = Object.entries(c.expectStartLinks || {});
-  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0) {
-    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks und expectStartLinks leer)');
+  const startText = Object.entries(c.expectStartText || {});
+  for (const [path, spec] of startText) {
+    if (!Array.isArray(spec) || typeof spec[0] !== 'string' || !(spec[1] > 0)) {
+      return r('error', `expectStartText ${path}: erwartet [Muster, Mindestzahl]`);
+    }
+  }
+  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0 && startText.length === 0) {
+    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks, expectStartLinks und expectStartText leer)');
   }
 
   const wrong = [];
@@ -1441,7 +1453,7 @@ async function checkHttpStatus(c, r) {
   // schon im ersten HTML. Gezaehlt werden verschiedene Comp-Detail-Links.
   // Bis zu 3 Abrufe, der beste zaehlt: das Zeitlimit von 1,5 s
   // (initial-data.ts) laesst einen kalten Abruf auch mal ohne Startdaten.
-  for (const [path, min] of startLinks) {
+  const bestCount = async (path, min, count) => {
     let best = 0;
     let lastCode = 200;
     for (let i = 0; i < 3 && best < min; i++) {
@@ -1449,13 +1461,24 @@ async function checkHttpStatus(c, r) {
       const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });
       lastCode = res.status;
       if (!res.ok) continue;
-      const html = await res.text();
-      const slugs = new Set([...html.matchAll(/\shref="(?:\/[a-z]{2})?\/tft\/comps\/([^/?#"]+)/g)]
-        .map(m => m[1])
-        .filter(s => !['atlas', 'community', 'compare'].includes(s)));
-      best = Math.max(best, slugs.size);
+      best = Math.max(best, count(await res.text()));
     }
-    if (best < min) wrong.push(`${path}: ${best} Comp-Links im ersten HTML (soll ≥${min}${lastCode !== 200 ? `, zuletzt HTTP ${lastCode}` : ''})`);
+    return { best, httpNote: lastCode !== 200 ? `, zuletzt HTTP ${lastCode}` : '' };
+  };
+  for (const [path, min] of startLinks) {
+    const { best, httpNote } = await bestCount(path, min, html => new Set([...html.matchAll(/\shref="(?:\/[a-z]{2})?\/tft\/comps\/([^/?#"]+)/g)]
+      .map(m => m[1])
+      .filter(s => !['atlas', 'community', 'compare'].includes(s))).size);
+    if (best < min) wrong.push(`${path}: ${best} Comp-Links im ersten HTML (soll ≥${min}${httpNote})`);
+  }
+  // Nur Gezeichnetes zaehlt: die Startdaten stehen auch im Flight-Teil der
+  // <script>-Bloecke, die Google nicht als Inhalt liest.
+  for (const [path, [pattern, min]] of startText) {
+    const re = new RegExp(pattern, 'g');
+    const { best, httpNote } = await bestCount(path, min, html => new Set(
+      [...html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<style[\s\S]*?<\/style>/g, ' ').matchAll(re)].map(m => m[0]),
+    ).size);
+    if (best < min) wrong.push(`${path}: ${best} Treffer im ersten HTML (soll ≥${min}${httpNote})`);
   }
   for (const p of probes) {
     const got = await status(p.path);
@@ -1477,10 +1500,10 @@ async function checkHttpStatus(c, r) {
     }
   }
   const count = want => probes.filter(p => p.want === want).length;
-  const total = probes.length + langLinks.length + startLinks.length;
+  const total = probes.length + langLinks.length + startLinks.length + startText.length;
   return wrong.length
     ? r('broken', `${wrong.length}/${total} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length}× Startdaten)`);
+    : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length + startText.length}× Startdaten)`);
 }
 
 /**

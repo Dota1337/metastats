@@ -25,8 +25,8 @@ export interface ActiveTrait {
   style: number;            // Bundle-Style, nur zum Sortieren — Farbe über `tier`
   tier: TraitTier | null;   // Stufe aus `style`
   minUnits: number;         // Schwelle für den aktuellen Style
-  nextStyleMinUnits: number | null;  // Schwelle für den nächsthöheren Style (null = max erreicht)
-  nextStyle: number | null; // Bundle-Style des nächsten Tiers
+  nextStyleMinUnits: number | null;  // Schwelle der nächsten Stufe über `count` (null = max erreicht)
+  nextStyle: number | null; // Bundle-Style der nächsten Stufe (kann gleich `style` sein)
   desc?: string;
   // Drill-Down: welche Units tragen zu dieser Trait-Aktivierung bei. stack=2
   // bei TwoTanky-Multiplicity, sonst 1. Reihenfolge entspricht typicalUnits-
@@ -104,8 +104,11 @@ export function computeActiveTraits(
     const matchingTiers = trait.tiers.filter(t => count >= t.minUnits);
     if (matchingTiers.length === 0) continue; // nicht aktiv
     const current = matchingTiers.reduce((a, b) => (a.style > b.style ? a : b));
+    // Naechste Schwelle ueber der Unit-Zahl, nicht der naechsthoehere Style:
+    // Stufen koennen denselben Style tragen (Elderwood 7 und 9 sind beide Gold)
+    // — sonst zeigte Elderwood 7 „noch 4“ (bis 11) statt „noch 2“.
     const higher = trait.tiers
-      .filter(t => t.style > current.style)
+      .filter(t => t.minUnits > count)
       .sort((a, b) => a.minUnits - b.minUnits)[0];
     active.push({
       apiName,

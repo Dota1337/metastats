@@ -12,7 +12,7 @@
     "https://www.metastats.gg/tft/marktwert",
     "https://www.metastats.gg/tft/rising"
   ],
-  "lastCheck": "25.10.2026: lokaler Browser-Check der 9 Seiten + LoL-Rangliste (berechnete Farben, Kopfzeile auf dem Bild gemessen). Offen: Tier A/B (Ausnahme), Trait-Zahlen Bronze/Pink in Comp-Ansichten, gedimmte Zeilen mit wenig Spielen.",
-  "fingerprint": "98af75e07797",
-  "checkedAt": "2026-10-25"
+  "lastCheck": "27.10.2026: impeccable 4.7.0 Live-Scan der 9 Seiten, 70 Kontrast-Funde, alle bekannt: Akzent-Lila @tft 4,45 (39, Ausnahme), Tier-Buchstaben A/B auf eigener Toenung 3,6-4,4 (29, Ausnahme), Comp-Trait-Bronze #cd7f32 4,4 (1, offen), gedimmte Tabellenzeile #778193 4,0 (1, offen). Trait-Pink entfernt.",
+  "fingerprint": "d2ed389b4ab7",
+  "checkedAt": "2026-10-27"
 }

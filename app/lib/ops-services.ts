@@ -70,7 +70,7 @@ export const OPS_SERVICES: Record<string, OpsService> = {
 
   'metastats-tft-ladder.service': { kind: 'oneshot', maxAgeMs: 26 * H, text:
     'Holt einmal am Tag die TFT-Rangliste von Smaragd bis Challenger fuer die Aufsteiger-Seite und ergaenzt dabei die Partien im Speicher der Box.' },
-  'metastats-player-scoring.service': { kind: 'prepared', text:
+  'metastats-player-scoring.service': { kind: 'oneshot', maxAgeMs: 26 * H, text:
     'Spieler-Bewertung im Spielervergleich. Traegt nachts die Raenge der Mitspieler in die gespeicherten Lobbys ein und berechnet daraus die Vergleichswerte, an denen jeder Spieler gemessen wird (50 = typisch unter den bewerteten Spielern).' },
   'metastats-mirror-rising.service': { kind: 'oneshot', maxAgeMs: 26 * H, text:
     'Legt die Aufsteiger-Seite in ihren 48 Ansichten als fertige Dateien ab, direkt nach der Rangliste und zur Sicherheit zwei Stunden spaeter noch einmal.' },

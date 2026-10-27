@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { TRAIT_STYLE_COLOR } from '../../lib/tft-trait-style';
+import { traitTierColor, traitTierFromRiot } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
@@ -311,8 +311,9 @@ function prettyCharId(id: string) {
 function costToColor(cost: number) {
   return cost === 1 ? '#9aa6b2' : cost === 2 ? '#3a8' : cost === 3 ? '#3a8ddc' : cost === 4 ? '#c39bff' : '#e0c75a';
 }
+// `style` ist hier Riots Match-Zaehlung, nicht die des Bundles.
 function traitStyleColor(style: number) {
-  return TRAIT_STYLE_COLOR[style] ?? 'var(--fg-muted)';
+  return traitTierColor(traitTierFromRiot(style), 'var(--fg-muted)');
 }
 function prettyTraitName(raw: string) {
   return raw.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '').replace(/([A-Z])/g, ' $1').trim();

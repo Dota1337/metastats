@@ -98,6 +98,13 @@ const translations = {
   'tft.tables.all': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.tables.upgrade': t6('Upgrade', 'Upgrade', '\uC5C5\uADF8\uB808\uC774\uB4DC', '\u5347\u7EA7', 'Mejora', 'Am\u00E9lioration'),
   'tft.tables.prismatic': t6('Prismatisch', 'Prismatic', '\uD504\uB9AC\uC998', '\u68F1\u5F69', 'Prism\u00E1tico', 'Prismatique'),
+  // Trait-Stufen (Trait-Detail). ZH/KO wie im Spiel-Client (CDragon tft.stringtable,
+  // Einzigartig = Schluessel {19dfe823d0}; ZH-Bronze wie in den Trait-Texten des Spiels).
+  'tft.trait.tier.bronze': t6('Bronze', 'Bronze', '\uBE0C\uB860\uC988', '\u9EC4\u94DC', 'Bronce', 'Bronze'),
+  'tft.trait.tier.silver': t6('Silber', 'Silver', '\uC2E4\uBC84', '\u767D\u94F6', 'Plata', 'Argent'),
+  'tft.trait.tier.unique': t6('Einzigartig', 'Unique', '\uACE0\uC720', '\u552F\u4E00', '\u00DAnico', 'Unique'),
+  'tft.trait.tier.gold': t6('Gold', 'Gold', '\uACE8\uB4DC', '\u9EC4\u91D1', 'Oro', 'Or'),
+  'tft.trait.tier.prismatic': t6('Prismatisch', 'Prismatic', '\uD504\uB9AC\uC998', '\u68F1\u5F69', 'Prism\u00E1tico', 'Prismatique'),
   'tft.tables.requires': t6('Bedingung:', 'Requires:', '\uC870\uAC74:', '\u6761\u4EF6\uFF1A', 'Requisito:', 'Condition :'),
   'tft.tables.excludes': t6('Nicht zusammen mit:', 'Excludes:', '\uD568\uAED8 \uBD88\uAC00:', '\u4E92\u65A5\uFF1A', 'Excluye:', 'Exclut :'),
   'tft.tables.round.Early': t6('Fr\u00FCh', 'Early', '\uCD08\uBC18', '\u524D\u671F', 'Temprano', 'D\u00E9but'),

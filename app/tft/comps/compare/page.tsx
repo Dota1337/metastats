@@ -920,7 +920,7 @@ function TraitColumn({
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {traits.map(tr => {
-            const color = activeTraitStyleColor(tr.style);
+            const color = activeTraitStyleColor(tr.tier);
             const iconUrl = tr.icon ? tftIconUrl(assets, tr.icon) : null;
             return (
               <div

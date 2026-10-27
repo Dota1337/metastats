@@ -27,7 +27,7 @@ export default function CompLevelActiveTraits({
   return (
     <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-2 border-t border-border-subtle">
       {traits.map(tr => {
-        const color = activeTraitStyleColor(tr.style);
+        const color = activeTraitStyleColor(tr.tier);
         const iconUrl = tr.icon ? tftIconUrl(assets, tr.icon) : null;
         return (
           <div

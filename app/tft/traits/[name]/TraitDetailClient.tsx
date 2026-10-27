@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { TRAIT_STYLE_COLOR } from '../../../lib/tft-trait-style';
+import { TRAIT_STYLE_COLOR, traitTierColor, traitTierFromBundle, type TraitTier } from '../../../lib/tft-trait-style';
 import { withAlpha } from '../../../lib/color';
 import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
@@ -49,13 +49,14 @@ interface UnitStat {
   pickRate?: number | null;
 }
 
-// Visual map for trait activation styles. Mirrors the in-game frame colors.
-const STYLE_COLORS: Record<number, { label: string; hex: string }> = {
-  1: { label: 'Bronze',    hex: TRAIT_STYLE_COLOR[1] },
-  3: { label: 'Silver',    hex: TRAIT_STYLE_COLOR[3] },
-  4: { label: 'Gold',      hex: TRAIT_STYLE_COLOR[4] },
-  5: { label: 'Prismatic', hex: TRAIT_STYLE_COLOR[5] },
-};
+// Beschriftung der Stufen; die Stufe kommt aus dem Bundle-Style (tft-trait-style.ts).
+const TIER_LABEL_KEY = {
+  bronze: 'tft.trait.tier.bronze',
+  silver: 'tft.trait.tier.silver',
+  unique: 'tft.trait.tier.unique',
+  gold: 'tft.trait.tier.gold',
+  prismatic: 'tft.trait.tier.prismatic',
+} as const satisfies Record<TraitTier, string>;
 
 // `initial`: Startdaten der Server-Huelle (page.tsx) — die Zeilen der drei
 // Listen-Abrufe, schon auf diesen Trait gekuerzt, oder null je Block.
@@ -442,17 +443,17 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
               // vorher verglich der Vergleich die Stufe mit Unit-Zahlen.
               const units = traitTierMinUnits(assets, s.name, s.activation);
               const tier = units != null ? findTrait(assets, s.name)?.tiers?.[s.activation - 1] : undefined;
-              const styleColor = tier ? STYLE_COLORS[tier.style] : null;
+              const tierName = tier ? traitTierFromBundle(tier.style) : null;
               return (
                 <div key={`${s.name}-${s.activation}`} className="grid grid-cols-[4rem_1fr_5rem_5rem_5rem_5rem] gap-2 px-4 py-2 items-center text-xs border-t border-border-subtle">
                   <div className="text-right text-accent font-medium">{units ?? '—'}</div>
                   <div>
-                    {styleColor && (
+                    {tierName && (
                       <span
                         className="px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
-                        style={{ backgroundColor: `${withAlpha(styleColor.hex, 0x20)}`, color: styleColor.hex }}
+                        style={{ backgroundColor: `${withAlpha(TRAIT_STYLE_COLOR[tierName], 0x20)}`, color: TRAIT_STYLE_COLOR[tierName] }}
                       >
-                        {styleColor.label}
+                        {t(TIER_LABEL_KEY[tierName])}
                       </span>
                     )}
                   </div>
@@ -564,15 +565,16 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
 }
 
 function TierPill({ tier }: { tier: TftTraitTier }) {
-  const sc = STYLE_COLORS[tier.style];
-  const color = sc?.hex || 'var(--fg-muted)';
+  const { t } = useI18n();
+  const tierName = traitTierFromBundle(tier.style);
+  const color = traitTierColor(tierName, 'var(--fg-muted)');
   return (
     <div
       className="flex items-center gap-2 rounded px-2.5 py-1 text-xs font-medium tabular-nums"
       style={{ backgroundColor: `${withAlpha(color, 0x18)}`, color, border: `1px solid ${withAlpha(color, 0x40)}` }}
     >
       <span className="text-base font-bold">{tier.minUnits}</span>
-      {sc && <span className="text-[10px] uppercase tracking-widest opacity-80">{sc.label}</span>}
+      {tierName && <span className="text-[10px] uppercase tracking-widest opacity-80">{t(TIER_LABEL_KEY[tierName])}</span>}
     </div>
   );
 }

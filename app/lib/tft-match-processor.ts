@@ -14,7 +14,7 @@ export interface TftTraitSummary {
   numUnits: number;
   tierCurrent: number;   // active activation level (0 = none)
   tierTotal: number;     // max activation level for this trait
-  style: number;         // 0 = inactive, 1 = bronze, 3 = silver, 4 = gold, 5 = prismatic (Riot styles)
+  style: number;         // Riot-Zaehlung: 0 inaktiv, 1 Bronze, 2 Silber, 3 Einzigartig, 4 Gold, 5 Prismatisch (traitTierFromRiot)
 }
 
 export interface TftUnitSummary {

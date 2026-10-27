@@ -17,7 +17,9 @@
 //     bewusst getrennt.
 //   Units: 3★/4★ = Kopien mit Stern 3/4; doppelte = Units mit ≥ 2 Kopien;
 //     Kosten k = Kopien mit Bundle-Kosten k (Alias-Kennungen wie ihre Quelle).
-//   Traits: Bronze = style 1 und aktiv; Traits = aktive Traits (fuer „keine
+//   Traits: Bronze = style 1 und aktiv (Riots Match-Zaehlung; Bronze ist dort
+//     wie im Bundle 1, die anderen Stufen nicht — app/lib/tft-trait-style.ts);
+//     Traits = aktive Traits (fuer „keine
 //     Traits"); +1 Traits = Summe ueber ALLE Trait-Zeilen (auch inaktive) von
 //     max(0, num_units − eigene verschiedene Units mit dem Trait), minus 1 je
 //     Form-Unit (Lux), deren Form-Trait so ein Plus hat — die gewaehlte Form

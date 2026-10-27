@@ -1,6 +1,6 @@
 // Active-Trait-Aggregation aus comp.typicalUnits — berechnet welche
 // Synergien bei den meistgespielten Units aktiv sind, und auf welcher
-// Style-Stufe (Bronze/Silver/Gold/Prismatic/Chromatic).
+// Stufe (Bronze/Silber/Einzigartig/Gold/Prismatisch, siehe tft-trait-style.ts).
 //
 // Wichtige Klassifikations-Befunde (Classification-Reviewer 2026-06-21):
 //   - bundle.champions[id].traits[] enthält DISPLAY-NAMES, NICHT apiNames
@@ -8,22 +8,25 @@
 //   - Multi-Variant-Traits (Stargazer-Constellations) teilen denselben
 //     display-Namen → Constellation-Variante MUSS aus dem cluster_key
 //     (parseClusterKey(comp.clusterKey).trait) bestimmt werden
-//   - Style-Enum ist {1, 3, 4, 5, 6} mit 6 = Chromatic/Prismatic+
+//   - Bundle-Style ist {1, 3, 4, 5, 6} = Bronze/Silber/Einzigartig/Gold/
+//     Prismatisch (NICHT Riots Match-Zaehlung, siehe tft-trait-style.ts)
 //   - Tier-less Traits (MFUndetermined, CarouselMarket) müssen geskipt werden
 //   - bundle.champions[id]?.traits ?? [] guard für ungeknown Champions
 
 import { findChampion, findTrait, tftTraitDisplayName, type TftAssetsBundle, type TftTrait } from './tft-cdragon';
 import { parseClusterKey } from './tft-cluster';
+import { traitTierFromBundle, type TraitTier } from './tft-trait-style';
 
 export interface ActiveTrait {
   apiName: string;
   displayName: string;
   icon: string | null;
   count: number;
-  style: number;            // 1=Bronze 3=Silver 4=Gold 5=Prismatic 6=Chromatic
+  style: number;            // Bundle-Style, nur zum Sortieren — Farbe über `tier`
+  tier: TraitTier | null;   // Stufe aus `style`
   minUnits: number;         // Schwelle für den aktuellen Style
   nextStyleMinUnits: number | null;  // Schwelle für den nächsthöheren Style (null = max erreicht)
-  nextStyle: number | null; // Style-Wert des nächsten Tiers
+  nextStyle: number | null; // Bundle-Style des nächsten Tiers
   desc?: string;
   // Drill-Down: welche Units tragen zu dieser Trait-Aktivierung bei. stack=2
   // bei TwoTanky-Multiplicity, sonst 1. Reihenfolge entspricht typicalUnits-
@@ -110,6 +113,7 @@ export function computeActiveTraits(
       icon: trait.icon,
       count,
       style: current.style,
+      tier: traitTierFromBundle(current.style),
       minUnits: current.minUnits,
       nextStyleMinUnits: higher?.minUnits ?? null,
       nextStyle: higher?.style ?? null,
@@ -127,15 +131,17 @@ export function computeActiveTraits(
   return active;
 }
 
-// Style-Color-Mapping passend zum bestehenden tier-letter UI-Pattern.
-// 1=Bronze, 3=Silver, 4=Gold, 5=Prismatic, 6=Chromatic (Unique-Max-Tier).
-export function activeTraitStyleColor(style: number): string {
-  switch (style) {
-    case 1: return '#cd7f32';   // Bronze
-    case 3: return '#c0c0c0';   // Silver
-    case 4: return '#e0c75a';   // Gold
-    case 5: return '#c39bff';   // Prismatic (lila)
-    case 6: return '#e75480';   // Chromatic (pink/magenta)
-    default: return 'var(--fg-faint)';  // Fallback grau
-  }
+// Farben der Comp-Ansichten (Rahmen, Leuchten, Zahl und Überschrift). Eigene
+// Töne neben TRAIT_STYLE_COLOR, nicht im Kontrast-Wächter; Einzigartig vorerst
+// wie Gold (siehe tft-trait-style.ts).
+const COMP_TRAIT_COLOR: Readonly<Record<TraitTier, string>> = {
+  bronze: '#cd7f32',
+  silver: '#c0c0c0',
+  unique: '#e0c75a',
+  gold: '#e0c75a',
+  prismatic: '#c39bff',
+};
+
+export function activeTraitStyleColor(tier: TraitTier | null): string {
+  return tier ? COMP_TRAIT_COLOR[tier] : 'var(--fg-faint)';
 }

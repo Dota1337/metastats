@@ -234,6 +234,18 @@
       "note": "Lobbys aller 8 Spieler, mitgeschrieben beim Nachladen der Spiele (LOBBY_CAPTURE=1). Fehlen sie, rechnet die Bewertung nur noch mit dem erwarteten Platz 4,5. Beobachtung, bis die Tagesmenge nach dem Start gemessen ist; minRows dann auf etwa die Hälfte davon."
     },
     {
+      "id": "tft/trait-style-axis",
+      "owner": "app/lib/tft-trait-style.ts",
+      "type": "trait-style-axis",
+      "backend": "hetzner",
+      "lookbackDays": 2,
+      "samplePercent": 0.2,
+      "minShare": 0.99,
+      "minRows": 500,
+      "expected": { "1": 1, "2": 3, "3": 4, "4": 5, "5": 6 },
+      "note": "Zählt Riot die Trait-Stufen noch wie traitTierFromRiot? Paare Riot-style → Bundle-style (Bronze, Silber, Einzigartig, Gold, Prismatisch); Riots Doku ist veraltet, die Reihe ist gemessen. Gemessen 27.10.2026 vor dem Scharfschalten: 4.512/4.512 aktive Traits der letzten 2 Tage (Stichprobe 0,2 %, 13,6 s). Rot heisst: Farben, Explorer-Bronze und Haupt-Trait der Comp-Einordnung stimmen nicht mehr."
+    },
+    {
       "id": "marketvalue/supabase-mirror",
       "owner": "scripts/sync-marketvalue-to-supabase.mjs",
       "backend": "supabase",

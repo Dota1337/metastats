@@ -289,7 +289,8 @@ async function main() {
     const apiName = t.apiName;
     if (!apiName) continue;
     // CD stores tier breakpoints as `effects[]` with minUnits/maxUnits + style
-    // (1=bronze, 3=silver, 4=gold, 5=prismatic) and a `variables` map of
+    // (1=bronze, 3=silver, 4=unique, 5=gold, 6=prismatic — NOT Riot's match
+    // numbering, see app/lib/tft-trait-style.ts) and a `variables` map of
     // numeric stat bonuses. Multi-tier descs (Challenger, etc.) interleave
     // per-tier templated copy in `desc`, so we keep the raw desc + structured
     // tiers and let the frontend render either the full text once or

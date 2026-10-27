@@ -98,7 +98,7 @@ function TraitPill({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const color = activeTraitStyleColor(trait.style);
+  const color = activeTraitStyleColor(trait.tier);
   const iconUrl = trait.icon ? tftIconUrl(assets, trait.icon) : null;
   const tooltip = tftTraitDescription(assets, trait.apiName) || trait.displayName;
   const nextHint = trait.nextStyleMinUnits != null
@@ -153,7 +153,7 @@ function TraitDrillDown({
   bucket?: string;
 }) {
   const { withLang } = useI18n();
-  const color = activeTraitStyleColor(trait.style);
+  const color = activeTraitStyleColor(trait.tier);
   return (
     <div
       className="mt-3 p-3 rounded-md border bg-surface-sunken"

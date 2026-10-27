@@ -76,6 +76,7 @@ export interface CompanionMatch {
   queue: number | null;
   placement: number;
   level: number | null;
+  /** `style` in Riots Match-Zaehlung (nicht Bundle), siehe app/lib/tft-trait-style.ts. */
   traits: Array<{ id: string; units: number; style: number }>;
   units: Array<{ id: string; star: number; items: string[] }>;
   /** Alle 8 Spieler der Lobby, nach Platz (ab 0.5). */
@@ -207,6 +208,7 @@ export interface CompanionLobbyPlayer {
   puuid: string;
   placement: number;
   level: number | null;
+  /** `style` in Riots Match-Zaehlung (nicht Bundle), siehe app/lib/tft-trait-style.ts. */
   traits: Array<{ id: string; units: number; style: number }>;
   units: Array<{ id: string; star: number; items: string[] }>;
 }

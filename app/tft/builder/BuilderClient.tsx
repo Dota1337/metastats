@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { TRAIT_STYLE_COLOR } from '../../lib/tft-trait-style';
+import { traitTierColor, traitTierFromBundle } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
 import { CURRENT_SET } from '../../lib/current-set';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -1142,7 +1142,7 @@ export default function BuilderClient({ initialAssets }: {
                     const tierIdx = tr.activeIdx;
                     const iconUrl = tftIconUrl(assets, tr.icon);
                     const tier = tierIdx != null ? tr.tiers[tierIdx] : null;
-                    const styleColor = (tier ? TRAIT_STYLE_COLOR[tier.style] : undefined) ?? 'var(--fg-faint)';
+                    const styleColor = traitTierColor(tier ? traitTierFromBundle(tier.style) : null, 'var(--fg-faint)');
                     return (
                       <div
                         key={tr.apiName}

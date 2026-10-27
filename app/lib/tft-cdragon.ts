@@ -37,7 +37,7 @@ export interface TftChampion {
 export interface TftTraitTier {
   minUnits: number;
   maxUnits: number | null;
-  style: number;                              // 1=bronze 3=silver 4=gold 5=prismatic
+  style: number;                              // Bundle-Zaehlung 1/3/4/5/6 — Stufe nur ueber traitTierFromBundle (tft-trait-style.ts)
   variables: Record<string, number>;
 }
 export interface TftTrait {

@@ -466,6 +466,7 @@ async function runCheck(c) {
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
     if (c.type === 'set-axis') return await checkSetAxis(c, r);
+    if (c.type === 'trait-style-axis') return await checkTraitStyleAxis(c, r);
     if (c.type === 'patch-axis') return await checkPatchAxis(c, r);
     if (c.type === 'lol-patch-shift') return await checkLolPatchShift(c, r);
     if (c.type === 'box-main') return await checkBoxMain(c, r);
@@ -630,6 +631,89 @@ async function checkSetAxis(c, r) {
     return r('broken', `keine Zeilen fuer Set ${set} (min ${minRows}) — die Seite zeigt Daten des Vorsets oder nichts`);
   }
   return r('ok', `${current} Zeilen im Set ${set}, 0 ohne ${col}`);
+}
+
+/**
+ * Vertrag trait-style-axis: zaehlt Riot die Trait-Stufen noch so, wie
+ * app/lib/tft-trait-style.ts sie uebersetzt?
+ *
+ * Riot (Match-V1 traits[].style) und das Bundle (CommunityDragon tiers[].style)
+ * nummerieren verschieden, und Riots Doku ist veraltet — die Riot-Reihe ist nur
+ * gemessen (27.10.2026). Nummeriert Riot zu einem neuen Set still um, faerben
+ * Spielverlauf und Spiel-Detail falsch, der Explorer zaehlt „Bronze“ falsch
+ * und classifyComp waehlt den Haupt-Trait nach style. Kein Test sieht das,
+ * weil es nur in echten Spielen steht.
+ *
+ * Je aktivem Trait: Riot-style gegen den Bundle-Stil derselben Stufe
+ * (tiers[tier_current - 1].style). `expected` sind die Paare Riot → Bundle aus
+ * dem Vertrag; tft-trait-style.test.mjs prueft, dass sie zu den Uebersetzern
+ * passen. Traits ohne Stufen im Bundle (Eclipse, Riot 6) zaehlen nicht mit.
+ *
+ * @param {{ rows: {name: string, tier: number, style: number, n: number}[],
+ *   tiersOf: (name: string) => number[] | undefined,
+ *   expected: Record<string, number>, minShare?: number, minRows?: number }} o
+ * @returns {{ status: 'ok'|'warn'|'broken', detail: string }}
+ */
+export function evaluateTraitStyleAxis({ rows, tiersOf, expected, minShare = 0.99, minRows = 500 }) {
+  let total = 0;
+  let match = 0;
+  let unknownTraits = 0;
+  const bad = new Map();
+  for (const { name, tier, style, n } of rows) {
+    if (!(tier > 0)) continue;
+    const tiers = tiersOf(name);
+    if (tiers === undefined) { unknownTraits += n; continue; }
+    if (tiers.length === 0) continue;
+    const bundle = tiers[tier - 1];
+    total += n;
+    if (bundle != null && expected[String(style)] === bundle) { match += n; continue; }
+    const k = `Riot ${style} → Bundle ${bundle ?? 'keine Stufe'}`;
+    bad.set(k, (bad.get(k) ?? 0) + n);
+  }
+  const extra = unknownTraits ? `, ${unknownTraits} ohne Bundle-Eintrag` : '';
+  if (total < minRows) {
+    return { status: 'warn', detail: `nur ${total} aktive Traits in der Stichprobe (min ${minRows})${extra}` };
+  }
+  const share = match / total;
+  const pct = (share * 100).toFixed(2).replace('.', ',');
+  if (share >= minShare) return { status: 'ok', detail: `${match}/${total} = ${pct} % wie erwartet${extra}` };
+  const worst = [...bad].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k}: ${v}×`).join('; ');
+  return {
+    status: 'broken',
+    detail: `nur ${pct} % wie erwartet (min ${(minShare * 100).toFixed(0)} %) — ${worst}${extra}. `
+      + 'Riot zaehlt die Stufen anders: traitTierFromRiot in app/lib/tft-trait-style.ts und die Paare im Vertrag anpassen',
+  };
+}
+
+async function checkTraitStyleAxis(c, r) {
+  if (!isOnBox()) return r('skipped', 'nur auf der Hetzner-Box pruefbar');
+  const set = readCurrentSet();
+  if (set == null) return r('error', 'public/tft-set.json fehlt oder hat keine Set-Nummer');
+  if (!c.expected || Object.keys(c.expected).length === 0) return r('error', 'Vertrag ohne erwartete Paare (expected)');
+  const file = resolve(REPO_ROOT, 'public', `tft-assets-${set}.json`);
+  if (!existsSync(file)) return r('error', `public/tft-assets-${set}.json fehlt — ohne Bundle des laufenden Sets nichts zu vergleichen`);
+  const traits = JSON.parse(readFileSync(file, 'utf8')).traits ?? {};
+  const pct = Number(c.samplePercent ?? 0.2);
+  if (!(pct > 0 && pct <= 100)) return r('error', `samplePercent ungueltig: ${c.samplePercent}`);
+  const since = Date.now() - (c.lookbackDays ?? 2) * 86_400_000;
+  const pool = await hetznerPool();
+  const q = await pool.query(
+    `select t->>'name' as name, (t->>'tier_current')::int as tier, (t->>'style')::int as style, count(*)::int as n
+       from (select traits from tft_player_match_cache tablesample system (${pct})
+              where set_number = $1 and game_datetime >= $2) m,
+            jsonb_array_elements(m.traits) t
+      where (t->>'tier_current')::int > 0
+      group by 1, 2, 3`,
+    [set, since],
+  );
+  const res = evaluateTraitStyleAxis({
+    rows: q.rows,
+    tiersOf: (name) => traits[name] ? (traits[name].tiers ?? []).map((x) => x.style) : undefined,
+    expected: c.expected,
+    minShare: c.minShare,
+    minRows: c.minRows,
+  });
+  return r(res.status, `Set ${set}, ${c.lookbackDays ?? 2} Tage: ${res.detail}`);
 }
 
 /**

@@ -90,6 +90,12 @@ function readHexMap(file, constName) {
 
 const RANK = readHexMap('app/lib/rank-format.ts', 'RANK_TIER_COLOR');
 const TRAIT = readHexMap('app/lib/tft-trait-style.ts', 'TRAIT_STYLE_COLOR');
+// Der Text-Leser uebersieht Eintraege still (Verweis statt Hex, Name im
+// Kommentar davor) — deshalb die fuenf Stufen ausdruecklich verlangen.
+const TRAIT_TIERS = ['bronze', 'silver', 'unique', 'gold', 'prismatic'];
+if (Object.keys(TRAIT).sort().join() !== [...TRAIT_TIERS].sort().join()) {
+  throw new Error(`TRAIT_STYLE_COLOR gelesen als {${Object.keys(TRAIT).join(', ')}}, erwartet ${TRAIT_TIERS.join(', ')}`);
+}
 const TIER = readHexMap('app/lib/tft-tier-letter.ts', 'TIER_COLORS');
 const tierNone = /TIER_NONE_COLOR\s*=\s*'(#[0-9a-fA-F]{6})'/.exec(read('app/lib/tft-tier-letter.ts'))?.[1];
 if (!tierNone) throw new Error('TIER_NONE_COLOR nicht gefunden');

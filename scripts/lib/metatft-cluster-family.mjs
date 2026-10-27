@@ -72,6 +72,11 @@ function loadTraitStyles(setNumber) {
  *
  * Das Suffix in "TFT17_DRX_2" ist der 1-basierte Stufen-Index, nicht die
  * Unit-Zahl — Stufe 2 von DRX ist also style 5.
+ *
+ * Achtung: das ist die BUNDLE-Zaehlung (1/3/4/5/6), im echten Riot-Match steht
+ * dieselbe Stufe als 1/2/3/4/5 (app/lib/tft-trait-style.ts). Fuer die
+ * Sortierung in classifyComp ist das gleich, weil beide Reihen dieselbe
+ * Reihenfolge haben; als Farbe oder Stufe darf der Wert nicht gelesen werden.
  */
 function styleFor(styles, name, tier) {
   const list = styles.get(name);

@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { TRAIT_STYLE_COLOR } from '../../lib/tft-trait-style';
+import { traitTierColor, traitTierFromBundle } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
@@ -41,9 +41,6 @@ interface GroupedTrait {
   pickRate: number | null;
   rare: boolean;
 }
-
-// Visual map for trait activation styles — mirrors the in-game frame colors.
-const STYLE_COLORS = TRAIT_STYLE_COLOR;
 
 export default function TraitsClient({ initialFilters, initial }: {
   // Vom Server (page.tsx), siehe UnitsClient.tsx.
@@ -226,7 +223,7 @@ function TierStrip({ tiers }: { tiers: TftTraitTier[] }) {
   return (
     <div className="flex gap-1 flex-wrap">
       {tiers.map((tier, i) => {
-        const color = STYLE_COLORS[tier.style] || 'var(--fg-muted)';
+        const color = traitTierColor(traitTierFromBundle(tier.style), 'var(--fg-muted)');
         return (
           <div
             key={i}

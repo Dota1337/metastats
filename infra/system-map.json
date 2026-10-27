@@ -1547,6 +1547,9 @@
     "metastats-player-scoring.service": [
       "player-scoring/population"
     ],
+    "app/lib/tft-trait-style.ts": [
+      "tft/trait-style-axis"
+    ],
     "scripts/sync-marketvalue-to-supabase.mjs": [
       "marketvalue/supabase-mirror",
       "marketvalue/sync-parity"

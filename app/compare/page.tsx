@@ -11,6 +11,9 @@ import { useI18n, LOCALE_MAP } from '../lib/i18n';
 import { formatTier, NO_DIVISION_TIERS, rankTierColor } from '../lib/rank-format';
 import { CDRAGON_PLUGINS_BASE, rankEmblemUrl } from '../lib/cdragon-base';
 import { isRiftGame, MIN_RIFT_GAMES } from '../lib/lol-queue';
+import { lineAt, replaceLine } from '../lib/tft-player-search';
+import { usePlayerSuggest } from '../lib/usePlayerSuggest';
+import PlayerSuggestList, { RegionTag } from '../components/PlayerSuggestList';
 
 const CompareRadar = dynamic(() => import('../components/CompareRadar'), { ssr: false });
 
@@ -502,12 +505,30 @@ function parseMultiLine(line: string, region: string): PlayerResult {
   return { name: name || line, tag, region, loading: ok, error: ok ? '' : 'tagMissing', data: null };
 }
 
+// Tasten, mit denen der Cursor die Zeile verlassen kann: deren Vorschlaege
+// passen dann nicht mehr (↑/↓ verbraucht die offene Liste vorher selbst).
+const CARET_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
+
 function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; setRegion: (r: string) => void; initialQuery: string }) {
   const { t, withLang } = useI18n();
   const [input, setInput] = useState(initialQuery);
   const [results, setResults] = useState<PlayerResult[]>([]);
   const [searching, setSearching] = useState(false);
   const searchReq = useRef(0);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  // Zeile, fuer die die Vorschlaege gerade laufen.
+  const lineRef = useRef({ start: 0, end: 0 });
+  // Per Vorschlag eingesetzte Zeilen → Name, Tag, Server. Schluessel ist die
+  // ganze Zeile: Tags koennen Leerzeichen haben („KR 1“), die parseMultiLine
+  // als Lobby-Zusatz abschneiden wuerde.
+  const picked = useRef(new Map<string, { name: string; tag: string; region: string | null }>());
+  const suggest = usePlayerSuggest(hit => {
+    const value = `${hit.gameName}#${hit.tagLine}`;
+    const next = replaceLine(input, lineRef.current.start, lineRef.current.end, value);
+    picked.current.set(value.trim(), { name: hit.gameName.trim(), tag: hit.tagLine.trim(), region: hit.region });
+    setInput(next.text);
+    requestAnimationFrame(() => textRef.current?.setSelectionRange(next.caret, next.caret));
+  });
 
   const setRow = (req: number, index: number, patch: Partial<PlayerResult>) => {
     if (req !== searchReq.current) return;
@@ -519,7 +540,12 @@ function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; s
     if (lines.length === 0) return;
 
     const req = ++searchReq.current;
-    const initial = lines.map(line => parseMultiLine(line, region));
+    const initial = lines.map((line): PlayerResult => {
+      const p = picked.current.get(line);
+      return p
+        ? { name: p.name, tag: p.tag, region: p.region ?? region, loading: true, error: '', data: null }
+        : parseMultiLine(line, region);
+    });
     setResults(initial);
     setSearching(true);
 
@@ -571,12 +597,27 @@ function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; s
           {t('multi.subtitle')} ({t('multi.inputHint')})
         </label>
         <textarea
+          ref={textRef}
           value={input}
-          onChange={e => setInput(e.target.value)}
+          {...suggest.inputProps('multi')}
+          onChange={e => {
+            setInput(e.target.value);
+            // Eingefuegter Text (oft mehrere Namen aus der Lobby): keine Liste.
+            if ((e.nativeEvent as InputEvent).inputType === 'insertFromPaste') { suggest.close(); return; }
+            const at = lineAt(e.target.value, e.target.selectionStart);
+            lineRef.current = at;
+            suggest.update('multi', at.line, e.currentTarget);
+          }}
+          onKeyDown={e => {
+            if (suggest.onKeyDown(e)) return;
+            if (CARET_KEYS.has(e.key)) suggest.close();
+          }}
+          onClick={() => suggest.close()}
           placeholder={t('compare.placeholder')}
           rows={4}
           className="w-full bg-surface-page border border-border-subtle rounded-lg p-3 text-white text-sm placeholder-fg-muted focus:outline-none focus:border-accent resize-none"
         />
+        <PlayerSuggestList s={suggest} game="lol" />
         <div className="flex flex-wrap items-center gap-3 mt-3">
           <select value={region} onChange={e => setRegion(e.target.value)}
             className="bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm outline-none">
@@ -674,12 +715,21 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
   const numLocale = LOCALE_MAP[lang];
   const [player1Input, setPlayer1Input] = useState('');
   const [player2Input, setPlayer2Input] = useState('');
+  // Server aus einem gewaehlten Vorschlag; null = gemeinsame Auswahl unten.
+  // Tippen loescht ihn, weil dann ein anderer Spieler gemeint sein kann.
+  const [player1Region, setPlayer1Region] = useState<string | null>(null);
+  const [player2Region, setPlayer2Region] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [player1, setPlayer1] = useState<any>(null);
   const [player2, setPlayer2] = useState<any>(null);
+  const suggest = usePlayerSuggest((hit, key) => {
+    const value = `${hit.gameName}#${hit.tagLine}`;
+    if (key === 'p1') { setPlayer1Input(value); setPlayer1Region(hit.region); }
+    else { setPlayer2Input(value); setPlayer2Region(hit.region); }
+  });
 
-  async function fetchPlayer(name: string) {
+  async function fetchPlayer(name: string, region: string) {
     const summonerRes = await fetch(`/api/summoner?name=${encodeURIComponent(name)}&region=${region}`);
     if (summonerRes.status === 404) throw new Error(`"${name}" ${t('compare.notFound').toLowerCase()}`);
     // 429/502/503: Riot ueberlastet — nicht als "nicht gefunden" ausgeben.
@@ -702,9 +752,9 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
     setLoading(true); setError(''); setPlayer1(null); setPlayer2(null);
     try {
       // Sequential to avoid rate limiting (each player uses ~30-70 API calls)
-      const p1 = await fetchPlayer(player1Input.trim());
+      const p1 = await fetchPlayer(player1Input.trim(), player1Region ?? region);
       setPlayer1(p1);
-      const p2 = await fetchPlayer(player2Input.trim());
+      const p2 = await fetchPlayer(player2Input.trim(), player2Region ?? region);
       setPlayer2(p2);
     } catch (e: any) { setError(e.message || t('tft.player.error')); }
     finally { setLoading(false); }
@@ -765,18 +815,27 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
           <div>
             <label className="block text-fg-secondary text-xs mb-1">{t('compare.player1')}</label>
-            <input type="text" placeholder="Name#Tag" value={player1Input}
-              onChange={e => setPlayer1Input(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent" />
+            <div className="relative">
+              <input type="text" placeholder="Name#Tag" value={player1Input}
+                {...suggest.inputProps('p1')}
+                onChange={e => { setPlayer1Input(e.target.value); setPlayer1Region(null); suggest.update('p1', e.target.value, e.currentTarget); }}
+                onKeyDown={e => { if (suggest.onKeyDown(e)) return; if (e.key === 'Enter') { suggest.close(); handleCompare(); } }}
+                className={`w-full bg-surface-page border border-border-subtle rounded pl-3 ${player1Region ? 'pr-12' : 'pr-3'} py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent`} />
+              <RegionTag region={player1Region} />
+            </div>
           </div>
           <div>
             <label className="block text-fg-secondary text-xs mb-1">{t('compare.player2')}</label>
-            <input type="text" placeholder="Name#Tag" value={player2Input}
-              onChange={e => setPlayer2Input(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCompare()}
-              className="w-full bg-surface-page border border-border-subtle rounded px-3 py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent" />
+            <div className="relative">
+              <input type="text" placeholder="Name#Tag" value={player2Input}
+                {...suggest.inputProps('p2')}
+                onChange={e => { setPlayer2Input(e.target.value); setPlayer2Region(null); suggest.update('p2', e.target.value, e.currentTarget); }}
+                onKeyDown={e => { if (suggest.onKeyDown(e)) return; if (e.key === 'Enter') { suggest.close(); handleCompare(); } }}
+                className={`w-full bg-surface-page border border-border-subtle rounded pl-3 ${player2Region ? 'pr-12' : 'pr-3'} py-2 text-white text-sm placeholder-fg-muted outline-none focus:border-accent`} />
+              <RegionTag region={player2Region} />
+            </div>
           </div>
+          <PlayerSuggestList s={suggest} game="lol" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <select value={region} onChange={e => setRegion(e.target.value)}

@@ -3,8 +3,32 @@
 // Die Spielerfarben stehen nur hier. Jeder Block faerbt ueber den Index des
 // Spielers, damit Kopfkarte, Balken, Linien und Radar dieselbe Farbe tragen.
 
+import { isValidRegion, normalizeRegion } from '../../../lib/regions';
+
 export const MAX_PLAYERS = 4;
 export const MIN_PLAYERS = 2;
+
+/** Eingabefeld: getippter Name und — nach Wahl eines Vorschlags — dessen Server
+ *  (null = gemeinsame Server-Auswahl). Ein Array, damit beides beim Hinzufuegen
+ *  und Entfernen eines Feldes nicht auseinanderlaeuft. */
+export interface CompareField { text: string; region: string | null }
+
+/** Eintrag `p` der Adresse: „Name#Tag“ oder „Name#Tag@kr“, wenn der Server aus
+ *  einem Vorschlag stammt. Riot-Tags enthalten kein '@' (gemessen 27.10.2026,
+ *  0 von 1,6 Mio. Namen und Tags); ein unbekannter Zusatz bleibt Teil des Namens,
+ *  alte Links ohne Zusatz nutzen weiter `region=`. */
+export function parseCompareParam(raw: string): CompareField {
+  const at = raw.lastIndexOf('@');
+  if (at > 0 && isValidRegion(raw.slice(at + 1))) {
+    return { text: raw.slice(0, at).trim(), region: normalizeRegion(raw.slice(at + 1)) };
+  }
+  return { text: raw.trim(), region: null };
+}
+
+export function compareParam(f: CompareField): string {
+  const text = f.text.trim();
+  return f.region ? `${text}@${f.region}` : text;
+}
 
 export const PLAYER_COLORS = [
   'var(--accent-tft)',
@@ -52,6 +76,8 @@ export interface AgentSignal { signal: string; z: number | null; available: bool
 export interface ComparePlayer {
   name: string;
   puuid: string;
+  /** Server, auf dem dieser Spieler abgefragt wurde (Profil-Link). */
+  region: string;
   tier: string | null;
   rank: string | null;
   lp: number | null;

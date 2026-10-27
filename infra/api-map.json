@@ -1479,6 +1479,7 @@
       "used": true,
       "usedBy": [
         "app/components/Nav.tsx",
+        "app/lib/usePlayerSuggest.ts",
         "app/search/LolSearchResults.tsx",
         "app/tft/search/TftSearchResults.tsx"
       ]

@@ -39,19 +39,19 @@ function tierLabel(t: T, tier: string | null | undefined, div?: string | null): 
   return div && !NO_DIVISION_TIERS.has(up) ? `${name} ${div}` : name;
 }
 
-function PlayerName({ p, i, region }: { p: ComparePlayer; i: number; region: string }) {
+function PlayerName({ p, i }: { p: ComparePlayer; i: number }) {
   const { withLang } = useI18n();
   const [gn, tl] = p.name.split('#');
-  const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || region.replace(/\d+$/, '').toUpperCase())}`;
+  const slug = `${encodeURIComponent(gn)}--${encodeURIComponent(tl || p.region.replace(/\d+$/, '').toUpperCase())}`;
   return (
-    <a href={withLang(`/tft/player/${slug}?region=${region}`)} className="font-medium hover:underline truncate block" style={{ color: PLAYER_COLORS[i] }}>
+    <a href={withLang(`/tft/player/${slug}?region=${p.region}`)} className="font-medium hover:underline truncate block" style={{ color: PLAYER_COLORS[i] }}>
       {gn}{tl ? <span className="text-fg-muted font-normal">#{tl}</span> : null}
     </a>
   );
 }
 
 // ── Kopfkarten ───────────────────────────────────────────────────────────────
-export function PlayerCards({ players, region }: { players: Loaded[]; region: string }) {
+export function PlayerCards({ players }: { players: Loaded[] }) {
   const { t, lang } = useI18n();
   const eur = (v: number) => new Intl.NumberFormat(LOCALE_MAP[lang], { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(v);
   return (
@@ -64,7 +64,7 @@ export function PlayerCards({ players, region }: { players: Loaded[]; region: st
             <div className="flex items-center gap-3">
               <RankEmblem tier={r.tier} label={tierLabel(t, r.tier)} className="w-14 h-14 shrink-0" />
               <div className="min-w-0 flex-1">
-                <PlayerName p={p} i={i} region={region} />
+                <PlayerName p={p} i={i} />
                 <div className="text-xs mt-0.5" style={{ color: (r.tier && RANK_TIER_COLOR[r.tier.toUpperCase()]) || 'var(--fg-secondary)' }}>
                   {tierLabel(t, r.tier, r.rank)}
                   {r.tier && r.lp != null && <span className="text-fg-secondary"> · {r.lp} LP</span>}

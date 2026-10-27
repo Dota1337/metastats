@@ -47,3 +47,35 @@ export function tftRankLabel(h: Pick<TftAccountHit, 'tier' | 'division' | 'lp'>,
   if (APEX_TIERS.has(h.tier)) return h.lp != null ? `${name} ${h.lp} LP` : name;
   return h.division ? `${name} ${h.division}` : name;
 }
+
+/** Ab so vielen Zeichen im Namen (ohne Leerzeichen) fragt die Vorschlagsliste
+ *  an — gleiche Schwelle wie /api/tft/search-players (MIN_CHARS) und Nav.tsx. */
+export const SUGGEST_MIN_CHARS = 3;
+
+const lowerAscii = (s: string) => s.replace(/[A-Z]/g, c => c.toLowerCase());
+
+/** Abfrage-Text fuer die Vorschlagsliste, null unter der Schwelle. Schreibweise
+ *  vereinheitlicht, damit „Dish Soap“ und „dishsoap“ dieselbe zwischengespeicherte
+ *  Antwort treffen. Verlustfrei: der Server macht ohnehin klein und entfernt
+ *  Leerzeichen (tft_name_norm, Migration 0072) — hier nur ASCII, weil JS und
+ *  Postgres Sonderbuchstaben unterschiedlich klein schreiben (z. B. „İ“). */
+export function suggestQuery(raw: string): string | null {
+  const hash = raw.indexOf('#');
+  const name = (hash >= 0 ? raw.slice(0, hash) : raw).replace(/\s/g, '');
+  if (name.length < SUGGEST_MIN_CHARS) return null;
+  const tag = hash >= 0 ? raw.slice(hash + 1).trim() : '';
+  return tag ? `${lowerAscii(name)}#${lowerAscii(tag)}` : lowerAscii(name);
+}
+
+/** Zeile eines Textfelds, in der der Cursor steht (Mehrfachsuche). */
+export function lineAt(text: string, caret: number): { start: number; end: number; line: string } {
+  const start = text.lastIndexOf('\n', caret - 1) + 1;
+  const nl = text.indexOf('\n', caret);
+  const end = nl === -1 ? text.length : nl;
+  return { start, end, line: text.slice(start, end) };
+}
+
+/** Ersetzt eine Zeile; caret = Ende des eingesetzten Textes. */
+export function replaceLine(text: string, start: number, end: number, value: string): { text: string; caret: number } {
+  return { text: text.slice(0, start) + value + text.slice(end), caret: start + value.length };
+}

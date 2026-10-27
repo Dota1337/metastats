@@ -7,6 +7,9 @@ import { useI18n, LOCALE_MAP } from './lib/i18n';
 import { REGIONS, regionLabel } from './lib/regions';
 import ApiUnavailable from './components/ApiUnavailable';
 import { formatTier } from './lib/rank-format';
+import { lolProfileHref } from './lib/tft-player-search';
+import { usePlayerSuggest } from './lib/usePlayerSuggest';
+import PlayerSuggestList from './components/PlayerSuggestList';
 import crest from './assets/brand/crest.png';
 
 interface Champion {
@@ -140,6 +143,11 @@ export default function Home({ initial = null }: {
     setLoadingMarket(false);
   }
 
+  // Vorschlag gewaehlt: direkt zum Profil auf dem Server des Treffers, wie in
+  // der Kopfleiste — die Server-Auswahl daneben gilt nur fuer Getipptes.
+  const suggest = usePlayerSuggest(hit => { window.location.href = withLang(lolProfileHref(hit)); });
+  const searchBarRef = useRef<HTMLDivElement>(null);
+
   const search = () => {
     if (!name.trim()) return;
     const parts = name.split('#');
@@ -227,7 +235,7 @@ export default function Home({ initial = null }: {
           </h1>
 
           {/* Search bar with gold border */}
-          <div className="max-w-xl mx-auto gold-border rounded-lg p-0.5 mb-8">
+          <div ref={searchBarRef} className="max-w-xl mx-auto gold-border rounded-lg p-0.5 mb-8">
             <div className="flex flex-col sm:flex-row bg-surface-base rounded-lg overflow-hidden">
               <select
                 value={region}
@@ -242,9 +250,11 @@ export default function Home({ initial = null }: {
                 className="flex-1 bg-transparent text-white text-sm px-5 py-3.5 outline-none placeholder-fg-muted"
                 placeholder={t('home.searchPlaceholder')}
                 value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && search()}
+                {...suggest.inputProps('home')}
+                onChange={e => { setName(e.target.value); suggest.update('home', e.target.value, searchBarRef.current ?? e.currentTarget); }}
+                onKeyDown={e => { if (suggest.onKeyDown(e)) return; if (e.key === 'Enter') { suggest.close(); search(); } }}
               />
+              <PlayerSuggestList s={suggest} game="lol" />
               <button
                 onClick={search}
                 className="bg-[#c89b3c] hover:bg-[#d4a94a] text-surface-sunken text-sm font-semibold px-6 py-3 sm:py-0 transition-colors"

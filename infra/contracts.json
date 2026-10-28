@@ -74,8 +74,10 @@
       "table": "tft_daily_comp_matchups",
       "dateColumn": "day",
       "maxLagDays": 1,
-      "minRows": 500000,
-      "note": "Seit Migration 0092 (erster Tag 10.10.2026): Comp-Duelle je Familie, Rang und Region, beide Richtungen. 13 von 15 Regionen = 1.120.566 Zeilen; der schwaechste Tag der letzten 14 hatte 0,67x der Lobbys. maxLagDays 1, weil Block 10 im Writer seine Fehler schluckt: mit 2 bliebe ein ausgefallener Duell-Tag unsichtbar. Speist Gegner auf /tft/comps/[slug], Companion-Konter und /tft/comps/compare. Eine einzelne fehlende Region faellt in keiner Tagessumme auf. Kein noGapsInDays: supaDistinctDays bricht nach 200.000 Zeilen ab."
+      "minRows": 1,
+      "minSum": { "column": "games", "min": 1500000 },
+      "minDistinct": { "column": "region", "min": 15 },
+      "note": "Seit Migration 0092 (erster Tag 10.10.2026): Comp-Duelle je Familie, Rang und Region, beide Richtungen. maxLagDays 1, weil Block 10 im Writer seine Fehler schluckt: mit 2 bliebe ein ausgefallener Duell-Tag unsichtbar. Speist Gegner auf /tft/comps/[slug], Companion-Konter und /tft/comps/compare. Seit 29.10.2026 Volumen ueber sum(games) statt Zeilen: mit dem Comp-Katalog (Sammeltag 24.10.) fielen die Zeilen von 1,14-1,25 Mio auf 381-413k, sum(games) blieb bei 2,45-3,26 Mio (= Vergleiche x2, beide Richtungen; 18.-27.10.). 1,5 Mio = ~0,6x des schwaechsten Tages. minDistinct region 15, weil eine kleine Region (me1 ~0,4 %) in keiner Summe auffaellt — bei Aenderung von ACTIVE_REGIONS mitziehen. Kein noGapsInDays: supaDistinctDays bricht nach 200.000 Zeilen ab."
     },
     {
       "id": "daily-crawl/comp-matchups-all",
@@ -84,8 +86,9 @@
       "table": "tft_daily_comp_matchups_all",
       "dateColumn": "day",
       "maxLagDays": 1,
-      "minRows": 200000,
-      "note": "Seit Migration 0094 (2026-10-11): Tagessumme der Comp-Duelle ueber alle Regionen, gebildet am Laufende (runMatchupRollup). 13 Regionen = 502.504 Zeilen. Fehlt der neueste Tag, lesen Detailseite, Companion und Vergleich ihn aus der Regionen-Tabelle (richtig, aber langsam) — der Bruch heisst also: Schritt am Laufende scheitert."
+      "minRows": 1,
+      "minSum": { "column": "games", "min": 1500000 },
+      "note": "Seit Migration 0094 (2026-10-11): Tagessumme der Comp-Duelle ueber alle Regionen, gebildet am Laufende (runMatchupRollup). Seit 29.10.2026 Volumen ueber sum(games) wie daily-crawl/comp-matchups (gleiche Summe, gemessen 27.10.: 2.567.562); Zeilen fielen mit dem Comp-Katalog von ~500k auf 69-89k. Fehlt der neueste Tag, lesen Detailseite, Companion und Vergleich ihn aus der Regionen-Tabelle (richtig, aber langsam) — der Bruch heisst also: Schritt am Laufende scheitert."
     },
     {
       "id": "snapshot-publisher/comp-list-precomputed",

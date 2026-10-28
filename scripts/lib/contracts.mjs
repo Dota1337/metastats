@@ -123,6 +123,100 @@ export function rowFilterSupported(c) {
   return !c.windowDays && !c.noGapsInDays;
 }
 
+/**
+ * Optionale Tages-Aggregate eines Vertrags, gemessen am selben abgeschlossenen
+ * Tag wie minRows:
+ *   `"minSum": {"column": "games", "min": 1500000}`      Summe einer Spalte
+ *   `"minDistinct": {"column": "region", "min": 15}`     verschiedene Werte
+ *
+ * Anlass 2026-10-29: Seit dem Comp-Katalog (Sammeltag 24.10.) bildet der
+ * Sammler viel weniger, groessere Familien. Die Duell-Tabellen hatten danach
+ * ein Drittel der Zeilen bei gleich vielen Vergleichen — minRows schlug jeden
+ * Abend an, ohne dass etwas fehlte. Die Summe misst die Spiele, die
+ * Zeilenzahl nur die Gruppierung. Die Region-Zahl braucht es zusaetzlich: eine
+ * kleine Region (me1 ~0,4 % der Summe) faellt in keiner Summe auf.
+ *
+ * PostgREST-Aggregate sind auf Supabase aus (PGRST123), deshalb laeuft die
+ * Abfrage ueber eine direkte, nur lesende PG-Verbindung wie bei patch-axis.
+ * Ausgewertet nur vom Standard-Frischecheck mit Datumsspalte auf Supabase; jeder
+ * andere Modus lehnt die Felder laut ab (dayAggregatesSupported).
+ * @returns {null | {sum: null | {column: string, min: number}, distinct: null | {column: string, min: number}}}
+ */
+export function dayAggregateParts(c) {
+  if (c.minSum == null && c.minDistinct == null) return null;
+  const part = (name) => {
+    const f = c[name];
+    if (f == null) return null;
+    if (typeof f.column !== 'string' || !/^[a-z_]+$/.test(f.column)) {
+      throw new Error(`${name}.column ungueltig: ${JSON.stringify(f.column)}`);
+    }
+    if (!Number.isFinite(f.min) || f.min < 1) throw new Error(`${name}.min muss eine Zahl >= 1 sein`);
+    return { column: f.column, min: f.min };
+  };
+  return { sum: part('minSum'), distinct: part('minDistinct') };
+}
+
+/** Wertet der Pruefpfad dieses Vertrags minSum/minDistinct ueberhaupt aus? */
+export function dayAggregatesSupported(c) {
+  if (c.type) return false;
+  if (c.backend !== 'supabase') return false;
+  if (c.dateType === 'timestamp') return false;
+  if (!c.dateColumn || c.totalRowsMin != null) return false;
+  return !c.windowDays && !c.noGapsInDays;
+}
+
+/**
+ * Bewertet gemessene Tages-Aggregate. Reine Funktion, damit der Test ohne DB
+ * auskommt.
+ * @param {{sum?: number|null, distinct?: number|null}} got
+ * @returns {{ok: boolean, detail: string}}
+ */
+export function evaluateDayAggregates(parts, got) {
+  const ok = [], bad = [];
+  if (parts.sum) {
+    const v = Number(got.sum ?? 0);
+    const s = `sum(${parts.sum.column}) ${v} (min ${parts.sum.min})`;
+    (v >= parts.sum.min ? ok : bad).push(s);
+  }
+  if (parts.distinct) {
+    const v = Number(got.distinct ?? 0);
+    const s = `${v} verschiedene ${parts.distinct.column} (min ${parts.distinct.min})`;
+    (v >= parts.distinct.min ? ok : bad).push(s);
+  }
+  return bad.length
+    ? { ok: false, detail: `zu wenig: ${bad.join(', ')}` }
+    : { ok: true, detail: ok.join(', ') };
+}
+
+async function supaPgDayAggregates(table, dateCol, day, parts, and = '') {
+  if (!/^[a-z_][a-z0-9_]*$/.test(table) || !/^[a-z_][a-z0-9_]*$/.test(dateCol)) {
+    throw new Error(`ungueltiger Tabellen-/Spaltenname ${table}.${dateCol}`);
+  }
+  const cols = [
+    parts.sum ? `coalesce(sum(${parts.sum.column}), 0)::bigint::text as n_sum` : 'null as n_sum',
+    parts.distinct ? `count(distinct ${parts.distinct.column})::int as n_distinct` : 'null as n_distinct',
+  ];
+  const [{ default: pg }, { supabasePgUrl }] = await Promise.all([import('pg'), import('./pg-url.mjs')]);
+  const client = new pg.Client({
+    connectionString: supabasePgUrl(process.env),
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15_000,
+    application_name: 'contract-day-aggregates',
+  });
+  client.on('error', (e) => console.error(`day-aggregates: Verbindung verworfen: ${e.message}`));
+  await client.connect();
+  try {
+    await client.query('begin transaction read only');
+    await client.query(`set local statement_timeout = '30s'`);
+    const q = await client.query(
+      `select ${cols.join(', ')} from ${table} where ${dateCol} = $1::date${and}`, [day]);
+    return { sum: q.rows[0].n_sum, distinct: q.rows[0].n_distinct };
+  } finally {
+    await client.query('rollback').catch(() => {});
+    await client.end().catch(() => {});
+  }
+}
+
 /** Neuester Wert einer Datums-/Timestamp-Spalte, als YYYY-MM-DD. */
 async function supaMaxDate(table, col, filter = '') {
   const res = await supaGet(`${table}?select=${col}${filter}&order=${col}.desc.nullslast&limit=1`);
@@ -458,6 +552,9 @@ async function runCheck(c) {
         return r('error', 'rowFilter wird in diesem Pruefmodus nicht ausgewertet');
       }
     }
+    if (dayAggregateParts(c) && !dayAggregatesSupported(c)) {   // wirft bei ungueltigem Feld → 'error'
+      return r('error', 'minSum/minDistinct werden in diesem Pruefmodus nicht ausgewertet');
+    }
     if (c.type === 'mirror') return await checkMirror(c, r);
     if (c.type === 'file') return checkFile(c, r);
     if (c.type === 'endpoint') return await checkEndpoint(c, r);
@@ -577,9 +674,16 @@ async function runCheck(c) {
       ? await supaCount(c.table, dayFilter + rf.supa)
       : await pgCountOnDay(c.table, c.dateColumn, countDay, rf.pg);
     const where = countDay === latest ? countDay : `${countDay} (neuester Tag: ${latest})`;
-    return n >= c.minRows
-      ? r('ok', `${where}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`)
-      : r('broken', `${where}: nur ${n} Rows, erwartet mindestens ${c.minRows}`);
+    if (n < c.minRows) return r('broken', `${where}: nur ${n} Rows, erwartet mindestens ${c.minRows}`);
+    const agg = dayAggregateParts(c);
+    if (agg) {
+      const got = await supaPgDayAggregates(c.table, c.dateColumn, countDay, agg, rf.pg);
+      const ev = evaluateDayAggregates(agg, got);
+      return ev.ok
+        ? r('ok', `${where}: ${n} Rows, ${ev.detail}, Lag ${lag}d`)
+        : r('broken', `${where}: ${ev.detail}`);
+    }
+    return r('ok', `${where}: ${n} Rows (min ${c.minRows}, Lag ${lag}d)`);
   } catch (err) {
     // Ein gescheiterter Check ist NICHT grün — sonst hätten wir Silent Success
     // an genau der Stelle, die Silent Success verhindern soll.

@@ -115,7 +115,7 @@ import { loadPopulation, writeUnratedMarker } from './lib/tft-marketvalue-pipeli
 
 import { REGIONAL_ROUTING as REGIONAL, getAccountRouting } from './lib/regional-routing.mjs';
 import { CURRENT_SET, loadCurrentSet } from './lib/current-set.mjs';
-import { queryRisingCandidates, playstyleOf, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
+import { queryRisingCandidates, playstyleOf, risingCacheUsable, RISING_DAYS, RISING_LIMIT } from './lib/tft-rising.mjs';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
 import { redactReport, verifySignature } from './lib/contracts-alert.mjs';
 import { createPlayerScoring } from './lib/tft-player-scoring-endpoint.mjs';
@@ -777,11 +777,63 @@ async function handleRising(body) {
     const e = new Error('invalid_region'); e.status = 400; throw e;
   }
   const region = regionRaw === 'all' ? null : regionRaw;
+  const warm = body?.warm === true;
+  if (warm && region !== null) {
+    const e = new Error('warm_only_all'); e.status = 400; throw e;
+  }
+  if (warm) return await warmRising(days);
 
-  const cands = await queryRisingCandidates(pool, { setNumber: SET_NUMBER, days, region, limit: RISING_LIMIT });
+  // „Alle Regionen" kostet live 18-26 s (5,8 Mio Ranglisten-Zeilen), die
+  // Vercel-Route wartet 15 s. Der Sammler legt die Liste deshalb am Laufende
+  // ab (tft_rising_cache, 0106). Fehlt sie oder ist sie zu alt: live wie bisher.
+  if (region === null) {
+    try {
+      const { rows } = await pool.query(
+        'select set_number, payload, built_at from tft_rising_cache where days = $1', [days]);
+      if (risingCacheUsable(rows[0], { setNumber: SET_NUMBER })) return rows[0].payload;
+    } catch (err) {
+      console.error(`[rising] Vorrat nicht lesbar: ${err.message}`);
+    }
+  }
+  return computeRising(pool, days, region, regionRaw);
+}
+
+// Rechnet „alle Regionen" neu und legt das Ergebnis ab. Nur der Ranglisten-
+// Sammler ruft das, nach dem Schreiben — so liegt nie ein Teilstand im Vorrat.
+// Eigene Verbindung mit 120 s statt der Pool-Frist von 30 s: direkt nach dem
+// Sammeln ist der Plattencache kalt.
+async function warmRising(days) {
+  const client = await pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(`set local statement_timeout = '120s'`);
+    const result = await computeRising(client, days, null, 'all');
+    if (!result.hasData) {
+      await client.query('rollback');
+      return { warmed: false, days, players: 0, endDay: null };
+    }
+    await client.query(
+      `insert into tft_rising_cache (days, set_number, payload, built_at)
+       values ($1, $2, $3::jsonb, now())
+       on conflict (days) do update
+         set set_number = excluded.set_number, payload = excluded.payload, built_at = excluded.built_at`,
+      [days, SET_NUMBER, JSON.stringify(result)],
+    );
+    await client.query('commit');
+    return { warmed: true, days, players: result.players.length, endDay: result.endDay };
+  } catch (err) {
+    await client.query('rollback').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function computeRising(db, days, region, regionRaw) {
+  const cands = await queryRisingCandidates(db, { setNumber: SET_NUMBER, days, region, limit: RISING_LIMIT });
   if (cands.length === 0) return { hasData: false, days, region: regionRaw, endDay: null, players: [] };
 
-  const { rows } = await pool.query(
+  const { rows } = await db.query(
     `select m.puuid, m.region, m.placement, m.level, m.units, m.traits, m.augments, m.game_datetime
        from unnest($1::text[], $2::text[], $3::bigint[], $4::bigint[]) as c(puuid, region, s, e)
        join tft_player_match_cache m

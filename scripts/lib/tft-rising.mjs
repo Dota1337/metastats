@@ -31,6 +31,23 @@ export function ratingSql(a) {
     + ${a}.lp)`;
 }
 
+// Vorgerechnete Liste fuer „alle Regionen" (tft_rising_cache, 0106). Der
+// Sammler schreibt sie jede Nacht neu; faellt ein Lauf aus, gilt die alte noch
+// bis 36 h, danach rechnet der Endpunkt wieder live.
+export const RISING_CACHE_MAX_AGE_MS = 36 * 3600_000;
+
+/**
+ * Darf die gespeicherte Zeile ausgeliefert werden?
+ * @param {{ set_number: number, payload: any, built_at: Date|string } | undefined} row
+ */
+export function risingCacheUsable(row, { setNumber, now = Date.now(), maxAgeMs = RISING_CACHE_MAX_AGE_MS }) {
+  if (!row || !row.payload?.hasData) return false;
+  if (Number(row.set_number) !== Number(setNumber)) return false;
+  const built = new Date(row.built_at).getTime();
+  if (!Number.isFinite(built)) return false;
+  return now - built <= maxAgeMs && built <= now + 60_000;
+}
+
 export function playstyleOf(share) {
   if (share == null) return null;
   if (share > 0.65) return 'oneTrick';

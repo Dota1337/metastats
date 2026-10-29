@@ -209,6 +209,40 @@ async function fillMatches(region, setStartSec) {
   return cands;
 }
 
+// Legt „alle Regionen" fuer 1/3/5 Tage im Vorrat des Box-Dienstes ab
+// (tft_rising_cache, 0106). Live braucht die Liste 18-26 s, die Vercel-Route
+// wartet 15 s. Nacheinander, weil die Abfrage an der Platte haengt. Laeuft auch
+// im Fehlerweg — sonst traefe der Nachhol-Spiegel um 06:30 einen alten Vorrat.
+// Fehler werden nur gemeldet, der Exit-Code des Sammlers bleibt unberuehrt.
+let warmed = false;
+async function warmRising() {
+  if (warmed) return;
+  warmed = true;
+  const token = process.env.REFRESH_API_TOKEN;
+  if (!token) { console.log('[rising-vorrat] REFRESH_API_TOKEN fehlt — nicht vorgerechnet'); return; }
+  const port = Number(process.env.REFRESH_API_PORT || 4000);   // gleicher Default wie refresh-api-server
+  for (const days of RISING_DAYS) {
+    const t = Date.now();
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/rising`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days, region: 'all', warm: true }),
+        signal: AbortSignal.timeout(150_000),
+      });
+      const j = await res.json().catch(() => ({}));
+      const s = Math.round((Date.now() - t) / 1000);
+      console.log(!res.ok
+        ? `[rising-vorrat] ${days} Tage: HTTP ${res.status} ${j.error ?? ''}`
+        : j.warmed
+          ? `[rising-vorrat] ${days} Tage: ${j.players} Spieler, Endtag ${j.endDay}, ${s} s`
+          : `[rising-vorrat] ${days} Tage: keine Daten — Vorrat unveraendert`);
+    } catch (err) {
+      console.log(`[rising-vorrat] ${days} Tage: ${err.message}`);
+    }
+  }
+}
+
 async function main() {
   const started = Date.now();
   console.log(`=== Rangliste ${today} — Set ${CURRENT_SET}, ${REGIONS.length} Regionen ===`);
@@ -234,6 +268,8 @@ async function main() {
     await resolveNames(all.flat());
   }
 
+  await warmRising();
+
   const size = await pool.query(`select pg_size_pretty(pg_total_relation_size('tft_ladder_daily')) as s, count(*)::int as n from tft_ladder_daily`);
   console.log(`[tabelle] ${size.rows[0].n} Zeilen, ${size.rows[0].s}`);
   const failed = results.filter(r => !r.ok).map(r => r.region);
@@ -245,6 +281,7 @@ async function main() {
 
 main().catch(async (err) => {
   console.error(err);
+  await warmRising().catch(() => {});
   try { await pool.end(); } catch {}
   process.exit(1);
 });

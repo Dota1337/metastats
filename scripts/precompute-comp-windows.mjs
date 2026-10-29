@@ -24,7 +24,17 @@
  * bis der Publisher sein neues Manifest schreibt (~1,5 h), lesen Besucher noch
  * mit dem alten Endtag.
  *
- * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--end <YYYY-MM-DD>] [--dry-run] [--force]
+ * Seit 0108 (Plan 2026-10-29) in derselben Schleife und mit demselben Endtag
+ * auch die Item-Listen (tft_item_list_precomputed, gleiche Fenster) und fuer
+ * die Region-Gruppen West/Asien Comps + Items in den schweren Fenstern
+ * (precomputeCovers in snapshot-matrix.ts). Reihenfolge: Comps alle → Items
+ * alle → Gruppen, jede Tabelle als zusammenhaengender Block (warmer Cache).
+ * Fehler zaehlt jede Tabelle selbst, aufgeraeumt wird je Tabelle. Bremse:
+ * Gesamtfrist PRECOMPUTE_BUDGET_MIN (Standard 75) und Abbruch nach 3
+ * Zeitueberschreitungen in Folge — der Rest faellt dann auf die Live-Abfrage.
+ * Notschalter: PRECOMPUTE_ITEMS=0, PRECOMPUTE_REGION_GROUPS=0.
+ *
+ * Aufruf: node scripts/precompute-comp-windows.mjs [--only <patchKey|current>] [--kinds comps,items,groups] [--end <YYYY-MM-DD>] [--dry-run] [--force]
  */
 
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
@@ -32,6 +42,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 import {
   compPrecomputeJobs,
+  precomputeCovers,
   establishedPatches,
   previousPatchOf,
   listKey,
@@ -39,8 +50,9 @@ import {
   addDays,
   COMP_PRECOMPUTE_MIN_GAMES,
   META_PULSE_COMPLETE_LOOKBACK_DAYS,
+  PRECOMPUTE_GROUP_TARGETS,
 } from '../app/lib/snapshot-matrix.generated.mjs';
-import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } from './lib/active-regions.mjs';
 import { CURRENT_SET } from './lib/current-set.mjs';
 import { supabasePgUrl } from './lib/pg-url.mjs';
 import { isIsoDay, writeDataEndHandoff } from './lib/data-end-handoff.mjs';
@@ -58,8 +70,52 @@ if (END_ARG != null && !isIsoDay(END_ARG)) {
 // --force: laufenden Patch immer neu rechnen, auch wenn er bestaetigt werden koennte
 // (z. B. nach einer Reklassifizierung, die keine Spielzahl aendert).
 const FORCE = args.includes('--force');
+// --kinds: Teil-Lauf von Hand (comps = Comps alle, items = Items alle,
+// groups = West/Asien). Ohne Angabe alle drei; Teil-Laeufe raeumen nicht auf.
+const kindsIdx = args.indexOf('--kinds');
+const KINDS_ARG = kindsIdx >= 0 ? new Set(String(args[kindsIdx + 1] ?? '').split(',').filter(Boolean)) : null;
+if (KINDS_ARG && [...KINDS_ARG].some(k => !['comps', 'items', 'groups'].includes(k))) {
+  console.error(`[precompute] --kinds erwartet comps,items,groups, nicht ${args[kindsIdx + 1]}`);
+  process.exit(2);
+}
 // Erzwungener Neubau beendeter Patches, auch wenn die Spielzahl gleich blieb.
 const REBUILD_AFTER_MS = 6 * 24 * 3600 * 1000;
+// Bremse (Lehre 01.10.: wiederholte kalte Abfragen legten die DB lahm).
+const BUDGET_MS = (Number(process.env.PRECOMPUTE_BUDGET_MIN) || 75) * 60_000;
+const MAX_TIMEOUTS_IN_ROW = 3;
+
+// Je Sorte: Zieltabelle, jsonb-Spalte, Schwelle und die Abfrage, deren Zeilen
+// unveraendert abgelegt werden. Parameter wie im INSERT unten ($8 = Schwelle,
+// $9 Regionen, $10 Raenge, $11 p_days, $12 Patch, $15 Endtag).
+const KINDS = {
+  comps: {
+    table: 'tft_comp_list_precomputed',
+    rowsCol: 'comp_rows',
+    minGames: COMP_PRECOMPUTE_MIN_GAMES,
+    // Benannte Argumente: v2 hat vor p_end_day noch p_min_share/p_min_cap.
+    // p_end_day null = altes Fenster (bis heute, ohne Obergrenze).
+    rowsSql: `coalesce((select jsonb_agg(to_jsonb(v))
+                          from get_tft_comp_stats_list_v2(
+                                 p_regions => $9::text[], p_buckets => $10::text[], p_days => $11::int,
+                                 p_patch => $12::text, p_set => $2::int, p_min_games => $8::int,
+                                 p_end_day => $15::date) v), '[]'::jsonb)`,
+  },
+  items: {
+    table: 'tft_item_list_precomputed',
+    rowsCol: 'item_rows',
+    // Die Item-RPC kennt keine Schwelle; 0 haelt precomputedEntryUsable passend.
+    minGames: 0,
+    rowsSql: `coalesce((select jsonb_agg(to_jsonb(v))
+                          from get_tft_item_stats_list(
+                                 p_regions => $9::text[], p_buckets => $10::text[], p_days => $11::int,
+                                 p_patch => $12::text, p_set => $2::int,
+                                 p_end_day => $15::date) v), '[]'::jsonb)`,
+  },
+};
+
+function isStatementTimeout(e) {
+  return e?.code === '57014' || /statement timeout/i.test(String(e?.message ?? ''));
+}
 
 function loadEnv() {
   for (const path of ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')]) {
@@ -106,6 +162,7 @@ const client = new pg.Client({
   connectionString: DB_URL,
   ssl: { rejectUnauthorized: false },
   statement_timeout: 120_000,
+  connectionTimeoutMillis: 20_000,
 });
 
 // Endtag E wie die Seite (resolveDataEnd fuer den Publisher): letzter Tag,
@@ -147,22 +204,44 @@ async function main() {
     return 1;
   }
   const latestDay = patches[0].last_day;
-  const regionsKey = listKey(ACTIVE_REGIONS);
   const dataEnd = await pinDataEnd(runStart);
   // Auch bei Teil-Laeufen (nicht bei --dry-run): der Publisher nimmt denselben Tag.
   if (!DRY) writeDataEndHandoff(dataEnd);
-  let jobs = compPrecomputeJobs({ patches, setNumber: CURRENT_SET, today: runStart, dataEnd });
-  if (ONLY) jobs = jobs.filter(j => (ONLY === 'current' ? j.patchKey === '' : j.patchKey === ONLY));
+  const onlyPatch = j => !ONLY || (ONLY === 'current' ? j.patchKey === '' : j.patchKey === ONLY);
+  const base = { patches, setNumber: CURRENT_SET, today: runStart, dataEnd };
+  const allJobs = compPrecomputeJobs(base).filter(onlyPatch);
+  const want = k => !KINDS_ARG || KINDS_ARG.has(k);
+  const itemsOn = process.env.PRECOMPUTE_ITEMS !== '0';
+  const groupsOn = process.env.PRECOMPUTE_REGION_GROUPS !== '0';
+  // Eine Zeile je Abfrage, in Rechen-Reihenfolge: Comps alle, Items alle,
+  // dann die Gruppen — je Tabelle zusammenhaengend, damit ihr Cache warm bleibt.
+  const work = [];
+  if (want('comps')) for (const job of allJobs) work.push({ kind: 'comps', region: 'all', regions: ACTIVE_REGIONS, job });
+  if (want('items') && itemsOn) for (const job of allJobs) work.push({ kind: 'items', region: 'all', regions: ACTIVE_REGIONS, job });
+  if (want('groups') && groupsOn) {
+    const groupRegions = { west: ACTIVE_REGIONS_WEST, asia: ACTIVE_REGIONS_ASIA };
+    for (const kind of itemsOn ? ['comps', 'items'] : ['comps']) {
+      for (const region of PRECOMPUTE_GROUP_TARGETS.regionLabels) {
+        const regions = groupRegions[region];
+        if (!regions) throw new Error(`keine Regionsliste fuer Gruppe ${region}`);
+        const jobs = compPrecomputeJobs({ ...base, include: c => precomputeCovers({ regionLabel: region, ...c }) })
+          .filter(onlyPatch);
+        for (const job of jobs) work.push({ kind, region, regions, job });
+      }
+    }
+  }
   // Vorpatch nach derselben Regel wie die Seite (previousPatchOf); ein dabei
   // uebersprungener Kurz-Patch wird nicht vorgerechnet und hier genannt.
   const prevPatch = previousPatchOf(patches, patches[0].patch);
   const prevIdx = prevPatch ? patches.indexOf(prevPatch) : patches.length;
   const skippedPatches = patches.slice(1, prevIdx).map(p => p.patch);
-  console.log(`[precompute] set ${CURRENT_SET}, letzter Tag ${latestDay}, Endtag ${dataEnd ?? '— (altes Fenster)'}, ${jobs.length} Abfragen`
+  console.log(`[precompute] set ${CURRENT_SET}, letzter Tag ${latestDay}, Endtag ${dataEnd ?? '— (altes Fenster)'}, ${work.length} Abfragen`
     + ` (Patches: ${[patches[0].patch, prevPatch?.patch].filter(Boolean).join(', ')}`
     + `${skippedPatches.length ? `; uebersprungen, zu kurz: ${skippedPatches.join(', ')}` : ''})`);
   if (DRY) {
-    for (const j of jobs) console.log(`  ${j.patchKey || 'aktuell'} ${j.bucketLabel} p_days=${j.days} ${j.dataStart}..${j.windowEnd}${j.fullDay ? '' : ' (altes Fenster)'}`);
+    for (const { kind, region, job: j } of work) {
+      console.log(`  ${kind} ${region} ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.requestedDays}d p_days=${j.days} ${j.dataStart}..${j.windowEnd}${j.fullDay ? '' : ' (altes Fenster)'}`);
+    }
     return 0;
   }
 
@@ -176,25 +255,38 @@ async function main() {
   // der 100k-Schwelle von establishedPatches — deren Spiele stecken mit drin.
   const allMatches = rawPatches.reduce((n, p) => n + Number(p.total_matches), 0);
 
-  let failed = 0;
-  let confirmed = 0;
-  for (const j of jobs) {
+  // Zaehler je Tabelle: ein Item-Fehler darf das Aufraeumen der Comps nicht blockieren.
+  const stats = Object.fromEntries(Object.keys(KINDS).map(k => [k, { computed: 0, confirmed: 0, failed: 0, skipped: 0 }]));
+  let timeoutsInRow = 0;
+  let stopReason = null;
+  for (const { kind, region, regions, job: j } of work) {
+    const K = KINDS[kind];
+    const st = stats[kind];
+    if (!stopReason && Date.now() - runStart.getTime() > BUDGET_MS) stopReason = `Gesamtfrist ${BUDGET_MS / 60_000} min erreicht`;
+    if (stopReason) {
+      st.skipped++;
+      continue;
+    }
+    const regionsKey = listKey(regions);
+    // Comps fuer alle behalten das bisherige Log-Format, alles andere traegt Sorte/Region.
+    const tag = `${kind === 'comps' && region === 'all' ? '' : `${kind}/${region} `}${j.patchKey || 'aktuell'} ${j.bucketLabel}`;
     const t0 = Date.now();
     const patchMatches = j.patchFilter ? (matchesByPatch.get(j.patchFilter) ?? null) : null;
     try {
       if (j.patchFilter && endedPatches.has(j.patchFilter) && patchMatches != null) {
         const u = await client.query(
-          `update tft_comp_list_precomputed
+          `update ${K.table}
               set last_day = $6::date, computed_at = now()
             where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
               and window_end = $10::date
               and patch_matches = $7 and min_games = $8 and built_at > now() - make_interval(secs => $9)`,
           [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, latestDay,
-            patchMatches, COMP_PRECOMPUTE_MIN_GAMES, REBUILD_AFTER_MS / 1000, j.windowEnd],
+            patchMatches, K.minGames, REBUILD_AFTER_MS / 1000, j.windowEnd],
         );
         if (u.rowCount === 1) {
-          confirmed++;
-          console.log(`  = ${j.patchKey} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: unveraendert (${patchMatches} Spiele), bestaetigt`);
+          st.confirmed++;
+          timeoutsInRow = 0;
+          console.log(`  = ${tag} ${j.days}d ab ${j.dataStart}: unveraendert (${patchMatches} Spiele), bestaetigt`);
           continue;
         }
       }
@@ -207,7 +299,7 @@ async function main() {
       const writerActive = ended ? false : statsWriterActive();
       if (!ended && !FORCE && !writerActive && fingerprint != null) {
         const u = await client.query(
-          `update tft_comp_list_precomputed
+          `update ${K.table}
               set computed_at = now()
             where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
               and window_end = $9::date
@@ -215,11 +307,12 @@ async function main() {
               and built_at > now() - interval '20 hours'
               and built_at > (select max(finished_at) from tft_daily_crawl_meta where set_number = $2) + interval '2 minutes'`,
           [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, latestDay,
-            fingerprint, COMP_PRECOMPUTE_MIN_GAMES, j.windowEnd],
+            fingerprint, K.minGames, j.windowEnd],
         );
         if (u.rowCount === 1) {
-          confirmed++;
-          console.log(`  = ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: seit dem Rechnen nichts Neues, bestaetigt`);
+          st.confirmed++;
+          timeoutsInRow = 0;
+          console.log(`  = ${tag} ${j.days}d ab ${j.dataStart}: seit dem Rechnen nichts Neues, bestaetigt`);
           continue;
         }
       }
@@ -229,54 +322,64 @@ async function main() {
       // Nur genau dieses Fenster ersetzen: die Vortags-Generation (anderes
       // window_end, bei Patch-Fenstern evtl. gleiches data_start) bleibt stehen.
       await client.query(
-        `delete from tft_comp_list_precomputed
+        `delete from ${K.table}
           where patch_key = $1 and set_number = $2 and regions_key = $3 and buckets_key = $4 and data_start = $5
             and window_end = $6::date`,
         [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, j.windowEnd],
       );
-      // Benannte Argumente: v2 hat vor p_end_day noch p_min_share/p_min_cap.
-      // p_end_day null = altes Fenster (bis heute, ohne Obergrenze).
       const r = await client.query(
-        `insert into tft_comp_list_precomputed
-           (patch_key, set_number, regions_key, buckets_key, data_start, window_end, patch_first_day, last_day, min_games, comp_rows, computed_at, patch_matches, built_at)
+        `insert into ${K.table}
+           (patch_key, set_number, regions_key, buckets_key, data_start, window_end, patch_first_day, last_day, min_games, ${K.rowsCol}, computed_at, patch_matches, built_at)
          select $1, $2, $3, $4, $5::date, $14::date, $6::date, $7::date, $8,
-                coalesce((select jsonb_agg(to_jsonb(v))
-                            from get_tft_comp_stats_list_v2(
-                                   p_regions => $9::text[], p_buckets => $10::text[], p_days => $11::int,
-                                   p_patch => $12::text, p_set => $2::int, p_min_games => $8::int,
-                                   p_end_day => $15::date) v), '[]'::jsonb),
+                ${K.rowsSql},
                 now(), $13::bigint, now()
-         returning jsonb_array_length(comp_rows) as n, pg_column_size(comp_rows) as bytes`,
+         returning jsonb_array_length(${K.rowsCol}) as n, pg_column_size(${K.rowsCol}) as bytes`,
         [j.patchKey, CURRENT_SET, regionsKey, listKey(j.tiers), j.dataStart, j.patchFirstDay, latestDay,
-          COMP_PRECOMPUTE_MIN_GAMES, ACTIVE_REGIONS, [...j.tiers], j.days, j.patchFilter, storedMatches,
+          K.minGames, regions, [...j.tiers], j.days, j.patchFilter, storedMatches,
           j.windowEnd, j.fullDay ? j.windowEnd : null],
       );
       await client.query('commit');
-      console.log(`  ✓ ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ${j.dataStart}..${j.windowEnd}: `
-        + `${r.rows[0].n} Comps, ${Math.round(r.rows[0].bytes / 1024)} KB, ${Date.now() - t0} ms`);
+      st.computed++;
+      timeoutsInRow = 0;
+      console.log(`  ✓ ${tag} ${j.days}d ${j.dataStart}..${j.windowEnd}: `
+        + `${r.rows[0].n} ${kind === 'items' ? 'Items' : 'Comps'}, ${Math.round(r.rows[0].bytes / 1024)} KB, ${Date.now() - t0} ms`);
     } catch (e) {
-      failed++;
+      st.failed++;
       await client.query('rollback').catch(() => {});
-      console.error(`  ✗ ${j.patchKey || 'aktuell'} ${j.bucketLabel} ${j.days}d ab ${j.dataStart}: ${e.message}`);
+      console.error(`  ✗ ${tag} ${j.days}d ab ${j.dataStart}: ${e.message}`);
+      if (!isStatementTimeout(e)) timeoutsInRow = 0;
+      else if (++timeoutsInRow >= MAX_TIMEOUTS_IN_ROW) stopReason = `${MAX_TIMEOUTS_IN_ROW} Zeitueberschreitungen in Folge`;
     }
   }
+  const total = key => Object.values(stats).reduce((n, s) => n + s[key], 0);
+  if (stopReason) {
+    console.error(`[precompute] Bremse: ${stopReason} — ${total('skipped')} Abfragen uebersprungen, die Route rechnet sie live`);
+  }
 
-  // Aufraeumen: Eintraege aus frueheren Laeufen, die heute nicht neu gerechnet
-  // wurden (anderer Tag, alter Patch, altes Set). Bei Fehlern bleiben die alten
-  // stehen — die Route prueft ohnehin das Fenster-Ende. Mit Endtag bleibt die
+  // Aufraeumen je Tabelle: Eintraege aus frueheren Laeufen, die heute nicht neu
+  // gerechnet wurden (anderer Tag, alter Patch, altes Set). Nur wenn diese
+  // Tabelle heute vollstaendig ist — bei Fehlern oder Bremse bleiben die alten
+  // stehen, die Route prueft ohnehin das Fenster-Ende. Mit Endtag bleibt die
   // Generation E-1 stehen (window_end >= E-1): Besucher lesen bis zum neuen
-  // Manifest des Publishers noch mit dem alten Endtag.
-  if (failed === 0 && !ONLY) {
+  // Manifest des Publishers noch mit dem alten Endtag. Teil-Laeufe und
+  // abgeschaltete Sorten raeumen nicht auf.
+  for (const [kind, K] of Object.entries(KINDS)) {
+    const st = stats[kind];
+    if (ONLY || KINDS_ARG || st.failed > 0 || st.skipped > 0) continue;
+    if (kind === 'items' && !itemsOn) continue;
     const del = dataEnd
       ? await client.query(
-        'delete from tft_comp_list_precomputed where computed_at < $1 and window_end < $2::date',
+        `delete from ${K.table} where computed_at < $1 and window_end < $2::date`,
         [runStart, addDays(dataEnd, -1)],
       )
-      : await client.query('delete from tft_comp_list_precomputed where computed_at < $1', [runStart]);
-    console.log(`[precompute] ${del.rowCount} alte Eintraege entfernt`);
+      : await client.query(`delete from ${K.table} where computed_at < $1`, [runStart]);
+    console.log(`[precompute] ${kind}: ${del.rowCount} alte Eintraege entfernt`);
   }
-  console.log(`[precompute] fertig: ${jobs.length - failed - confirmed} gerechnet, ${confirmed} unveraendert bestaetigt, ${failed} Fehler, ${Math.round((Date.now() - runStart) / 1000)} s`);
-  return failed === 0 ? 0 : 1;
+  for (const [kind, st] of Object.entries(stats)) {
+    console.log(`[precompute] ${kind}: ${st.computed} gerechnet, ${st.confirmed} bestaetigt, ${st.failed} Fehler, ${st.skipped} uebersprungen`);
+  }
+  console.log(`[precompute] fertig: ${total('computed')} gerechnet, ${total('confirmed')} unveraendert bestaetigt, ${total('failed')} Fehler, ${Math.round((Date.now() - runStart) / 1000)} s`);
+  return total('failed') === 0 && total('skipped') === 0 ? 0 : 1;
 }
 
 main()

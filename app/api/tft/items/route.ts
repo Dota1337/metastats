@@ -16,6 +16,7 @@ import { lookupSnapshot, isSnapshotPublisher } from '../../../lib/snapshot-looku
 import { lookupFallbackSnapshot, FALLBACK_HEADER, type FallbackFilters } from '../../../lib/snapshot-fallback';
 import { snapshotFilterOpts, transitionCacheControl, withDisplayPatch } from '../../../lib/stats-patch-display';
 import { publicError } from '../../../lib/public-error';
+import { COMP_PRECOMPUTE_BUCKETS, listKey, precomputeCovers, precomputedEntryUsable } from '../../../lib/snapshot-matrix';
 
 // C3 (2026-07-04): raised so the snapshot publisher's per-permutation fetch of a
 // heavy detoast perm doesn't 504 on the Vercel default (~15s) and leave a gap.
@@ -29,6 +30,54 @@ interface ItemListRow {
   top1: number;
   total_item_slots: number;
   top_users_merged: any[][];
+}
+
+// Der Publisher darf laenger warten als ein Besucher (wie /api/tft/comps):
+// 25 s liegt ueber dem DB-Deckel von 20 s, damit der sprechende PG-Fehler
+// ankommt. Besucher bleiben beim 8-s-Default von callRpc.
+const PUBLISHER_RPC_TIMEOUT_MS = 25_000;
+
+// Vorab gerechnete Item-Liste (Migration 0108, scripts/precompute-comp-windows.mjs).
+// Region alle/West/Asien x breite Raenge x mehrere Tage braucht live bis 28 s
+// (kalt) und reisst die 8 s der Besucher und den 20-s-Deckel der DB. fresh =
+// passender, frischer Eintrag; stale = derselbe Eintrag, aber nicht mehr frisch
+// (Notreserve nur fuer Besucher). Abschalter: TFT_ITEM_PRECOMPUTED_DISABLED=1.
+const PRECOMPUTED_TIMEOUT_MS = 5000;
+async function readPrecomputedItems(
+  filters: ResolvedFilters,
+  latestDay: string | undefined,
+  timeoutMs: number = PRECOMPUTED_TIMEOUT_MS,
+): Promise<{ fresh: ItemListRow[] | null; stale: ItemListRow[] | null }> {
+  const none = { fresh: null, stale: null };
+  if (process.env.TFT_ITEM_PRECOMPUTED_DISABLED === '1' || filters.setNumber == null) return none;
+  if (!precomputeCovers({
+    regionLabel: filters.regionLabel,
+    bucketLabel: filters.bucketLabel,
+    requestedDays: filters.requestedDays,
+    patchKey: filters.patchFilter ?? '',
+  })) return none;
+  const tiers = COMP_PRECOMPUTE_BUCKETS[filters.bucketLabel];
+  if (!tiers || listKey(tiers) !== listKey(filters.buckets)) return none;
+  try {
+    const found = await callRpc<Array<{ last_day: string; window_end?: string | null; min_games: number; computed_at: string; item_rows: ItemListRow[] }>>(
+      'get_tft_item_list_precomputed',
+      {
+        p_patch_key: filters.patchFilter ?? '',
+        p_set: filters.setNumber,
+        p_regions_key: listKey(filters.regions),
+        p_buckets_key: listKey(filters.buckets),
+        ...rpcWindowArgs(filters),
+      },
+      timeoutMs,
+    );
+    const e = found?.[0];
+    const rows = e && Array.isArray(e.item_rows) && e.item_rows.length > 0 ? e.item_rows : null;
+    if (!precomputedEntryUsable(e, { latestDay, endDay: filters.endDay, requestedMinGames: 0, now: Date.now() })) return { fresh: null, stale: rows };
+    return { fresh: rows, stale: rows };
+  } catch (err) {
+    console.error('[tft/items] precomputed read failed, live fallback:', (err as Error).message);
+    return none;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -51,7 +100,8 @@ export async function GET(request: NextRequest) {
     let filterPatch: string | null = null;
     let carriers: Blocks<CarrierRow[]> = 'failed';
     try {
-      const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
+      const publisher = isSnapshotPublisher(request);
+      const filters = await resolveFilters(searchParams, { publisher });
       filterSet = filters.setNumber;
       filterPatch = filters.displayPatch;
       const carriersP = itemCarriersFor(filters, id).catch((e: Error) => {
@@ -63,13 +113,16 @@ export async function GET(request: NextRequest) {
       if (Array.isArray(snapItems) && snapItems.length > 0) {
         core = coreFromListRow(snapItems.find(x => x.apiName === id));
       } else {
-        const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
+        // Dieselbe Quelle wie die Liste: erst der Vorrat (0108), dann live.
+        const pre = await readPrecomputedItems(filters, (await getAvailablePatches())[0]?.last_day,
+          publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined);
+        const rows = pre.fresh ?? await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
           p_regions: filters.regions,
           p_buckets: filters.buckets,
           ...rpcWindowArgs(filters),
           p_patch: filters.patchFilter,
           p_set: filters.setNumber,
-        });
+        }, publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined);
         const row = rows.find(r => r.api_name === id);
         const games = row ? Number(row.games) : 0;
         const top1Raw = row ? Number(row.top1) : 0;
@@ -100,7 +153,8 @@ export async function GET(request: NextRequest) {
     const redirect = maybeRedirectByPatchAlias(request, patches);
     if (redirect) return redirect;
 
-    const filters = await resolveFilters(searchParams, { publisher: isSnapshotPublisher(request) });
+    const publisher = isSnapshotPublisher(request);
+    const filters = await resolveFilters(searchParams, { publisher });
     fallbackFilters = filters;
     // resolveFilters laedt die Liste neu, wenn das Manifest schon einen neueren
     // Patch kennt — dieselbe Liste in die Antwort.
@@ -113,7 +167,7 @@ export async function GET(request: NextRequest) {
       const hit = await lookupSnapshot('items', {
         ...snapshotFilterOpts(filters),
         minGames: 0,
-        skip: isSnapshotPublisher(request),
+        skip: publisher,
       });
       // Guard 2026-06-21: kein leeres Snapshot-Bundle ausliefern.
       const payload = hit?.payload as { hasData?: boolean; items?: unknown[] } | undefined;
@@ -129,12 +183,22 @@ export async function GET(request: NextRequest) {
     // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
     // default (9s→72ms). Returns the same shape; the merged list is wrapped so
     // the mergeJsonbCountArrays call below still works unchanged.
-    const rows = await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
+    // Vorab gerechnete Zeilen (0108) zuerst, sonst live. Der Publisher bekommt
+    // nie einen veralteten Vorrat, sonst schriebe er alte Zahlen als neuen Stand.
+    const pre = await readPrecomputedItems(filters, patches[0]?.last_day,
+      publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined);
+    let servedStale = false;
+    const rows = pre.fresh ?? await callRpc<ItemListRow[]>('get_tft_item_stats_list', {
       p_regions: filters.regions,
       p_buckets: filters.buckets,
       ...rpcWindowArgs(filters),
       p_patch: filters.patchFilter,
       p_set: filters.setNumber,
+    }, publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined).catch((err: unknown) => {
+      if (publisher || !pre.stale) throw err;
+      console.error('[api/tft/items] Live-Liste fehlgeschlagen, alte vorberechnete Liste:', (err as Error)?.message ?? err);
+      servedStale = true;
+      return pre.stale;
     });
     const totalSlots = rows[0]?.total_item_slots || 0;
 
@@ -171,7 +235,7 @@ export async function GET(request: NextRequest) {
       });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));
 
-    return cachedJson({
+    const listResp = cachedJson({
       hasData: items.length > 0,
       filters: {
         region: filters.regionLabel,
@@ -189,7 +253,10 @@ export async function GET(request: NextRequest) {
       },
       patches,
       items,
-    }, { cache: cacheControl });
+    }, { cache: servedStale ? DEGRADED_CACHE_CONTROL : cacheControl });
+    if (pre.fresh) listResp.headers.set('x-precomputed', '1');
+    if (servedStale) listResp.headers.set(FALLBACK_HEADER, 'precomputed-stale');
+    return listResp;
   } catch (e: any) {
     // Trifft v. a. Anfragen, die am Bundle vorbei live laufen: dann lieber
     // der Vorrat als eine leere Seite. Nie fuer den Publisher.

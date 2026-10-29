@@ -45,8 +45,8 @@ import {
 import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
-  COMP_PRECOMPUTE_REGION,
   listKey,
+  precomputeCovers,
   precomputedEntryUsable,
 } from '../../../lib/snapshot-matrix';
 import { publicError } from '../../../lib/public-error';
@@ -132,7 +132,13 @@ async function readPrecomputedList(
 ): Promise<{ fresh: CompRow[] | null; stale: CompRow[] | null }> {
   const none = { fresh: null, stale: null };
   if (process.env.TFT_COMP_PRECOMPUTED_DISABLED === '1') return none;
-  if (filters.regionLabel !== COMP_PRECOMPUTE_REGION || filters.setNumber == null) return none;
+  // Region alle immer, West/Asien nur in den schweren Fenstern (Plan 2026-10-29).
+  if (filters.setNumber == null || !precomputeCovers({
+    regionLabel: filters.regionLabel,
+    bucketLabel: filters.bucketLabel,
+    requestedDays: filters.requestedDays,
+    patchKey: filters.patchFilter ?? '',
+  })) return none;
   const tiers = COMP_PRECOMPUTE_BUCKETS[filters.bucketLabel];
   // Nur wenn die Gruppe hier dieselben Raenge meint wie in der Rang-Datei —
   // sonst gehoert der Eintrag zu einer anderen Abfrage.
@@ -869,7 +875,14 @@ export async function GET(request: NextRequest) {
       return null;
     });
     const liveList = () => {
-      if (minorWanted && !lightRows) lightRows = lightList();
+      if (minorWanted && !lightRows) {
+        lightRows = lightList();
+        // Sofort als behandelt markieren: gewartet wird erst nach der Hauptliste
+        // (unten). Scheitert die Nebenabfrage beim Publisher vorher, meldete Node
+        // sonst eine unbehandelte Ablehnung (Sentry 29.10.2026). Das await unten
+        // wirft unveraendert, der Publisher scheitert weiter laut.
+        lightRows.catch(() => {});
+      }
       return callRpc<CompRow[]>('get_tft_comp_stats_list_v2', {
         p_regions: filters.regions,
         p_buckets: filters.buckets,

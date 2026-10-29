@@ -556,6 +556,35 @@ export const COMP_PRECOMPUTE_BUCKETS: Record<string, readonly string[]> = {
   master_plus: plusFrom('master'),
 };
 export const COMP_PRECOMPUTE_REGION = 'all';
+// Region-Gruppen West/Asien (Plan 2026-10-29): nur die Fenster, die live
+// gemessen in 502 liefen — 4-7 Tage, breite Raenge, aktueller Patch ohne
+// Filter. Die Regionslisten kommen von aussen (diese Datei importiert nichts):
+// Skript aus scripts/lib/active-regions.mjs, Route aus filters.regions.
+export const PRECOMPUTE_GROUP_TARGETS = {
+  regionLabels: ['west', 'asia'] as readonly string[],
+  buckets: ['all', 'platinum_plus', 'emerald_plus'] as readonly string[],
+  minDays: 4,
+  patchKeys: [''] as readonly string[],
+};
+
+/**
+ * Rechnet die Box fuer diese Anfrage einen Vorrat (Comps und Items)? Route und
+ * Skript fragen beide hier, damit sie nie auseinanderlaufen.
+ */
+export function precomputeCovers(o: {
+  regionLabel: string;
+  bucketLabel: string;
+  requestedDays: number;
+  patchKey: string;           // '' = aktuell ungefiltert
+}): boolean {
+  if (!COMP_PRECOMPUTE_BUCKETS[o.bucketLabel]) return false;
+  if (o.regionLabel === COMP_PRECOMPUTE_REGION) return true;
+  const t = PRECOMPUTE_GROUP_TARGETS;
+  return t.regionLabels.includes(o.regionLabel)
+    && t.buckets.includes(o.bucketLabel)
+    && o.requestedDays >= t.minDays
+    && t.patchKeys.includes(o.patchKey);
+}
 // = ADAPTIVE_FLOOR der Route: die Comps-Seite fragt ohne ?minGames und damit
 // mit 30. Jede hoehere Schwelle bedient die Route durch Nachfiltern.
 export const COMP_PRECOMPUTE_MIN_GAMES = 30;
@@ -577,6 +606,7 @@ export interface CompPrecomputeJob {
   patchFirstDay: string | null; // nur bei festem Patch
   bucketLabel: string;
   tiers: readonly string[];
+  requestedDays: number;        // Tagesstufe der Seite (1..7), erste bei gleichem Fenster
   days: number;                 // p_days fuer v2
   dataStart: string;            // Schluessel, siehe Migration 0070
   // Letzter Tag des Fensters (Migration 0095, Teil des Schluessels). Mit
@@ -597,6 +627,10 @@ export function compPrecomputeJobs(o: {
   today: Date;
   // Globaler Endtag (vom Publisher gepinnt). null/fehlend = altes Fenster.
   dataEnd?: string | null;
+  // Nur diese Kombinationen (Region-Gruppen, precomputeCovers). Greift VOR dem
+  // Zusammenlegen gleicher Fenster, damit keine Stufe durch eine ausgefilterte
+  // kleinere verloren geht.
+  include?: (c: { patchKey: string; bucketLabel: string; requestedDays: number }) => boolean;
 }): CompPrecomputeJob[] {
   const p = o.patches;
   if (p.length === 0) return [];
@@ -616,6 +650,7 @@ export function compPrecomputeJobs(o: {
   for (const c of cases) {
     for (const [bucketLabel, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
       for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
+        if (o.include && !o.include({ patchKey: c.patchKey, bucketLabel, requestedDays })) continue;
         let days: number;
         let dataStart: string;
         let windowEnd: string;
@@ -644,6 +679,7 @@ export function compPrecomputeJobs(o: {
           patchFirstDay: c.patchFilter ? c.startDay : null,
           bucketLabel,
           tiers,
+          requestedDays,
           days,
           dataStart,
           windowEnd,

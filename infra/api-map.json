@@ -8,10 +8,10 @@
   "counts": {
     "routes": 91,
     "groups": 30,
-    "tables": 44,
-    "rpcs": 36,
+    "tables": 45,
+    "rpcs": 37,
     "files": 13,
-    "edges": 519,
+    "edges": 521,
     "unused": 7,
     "unresolved": 1
   },
@@ -1897,6 +1897,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_item_list_precomputed",
+      "kind": "table",
+      "label": "tft_item_list_precomputed",
+      "declared": true
+    },
+    {
       "id": "db:tft_mv_population_stats",
       "kind": "table",
       "label": "tft_mv_population_stats",
@@ -2225,6 +2231,12 @@
       "id": "fn:get_tft_item_carriers",
       "kind": "rpc",
       "label": "get_tft_item_carriers",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_item_list_precomputed",
+      "kind": "rpc",
+      "label": "get_tft_item_list_precomputed",
       "declared": true
     },
     {
@@ -3631,6 +3643,11 @@
     },
     {
       "from": "api:/api/tft/items",
+      "to": "fn:get_tft_item_list_precomputed",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
       "to": "fn:get_tft_item_stats_list",
       "kind": "calls"
     },
@@ -4802,6 +4819,11 @@
     {
       "from": "fn:get_tft_item_carriers",
       "to": "db:tft_daily_item_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_item_list_precomputed",
+      "to": "db:tft_item_list_precomputed",
       "kind": "reads"
     },
     {

@@ -469,6 +469,31 @@ export const COMP_PRECOMPUTE_BUCKETS = {
     master_plus: plusFrom('master'),
 };
 export const COMP_PRECOMPUTE_REGION = 'all';
+// Region-Gruppen West/Asien (Plan 2026-10-29): nur die Fenster, die live
+// gemessen in 502 liefen — 4-7 Tage, breite Raenge, aktueller Patch ohne
+// Filter. Die Regionslisten kommen von aussen (diese Datei importiert nichts):
+// Skript aus scripts/lib/active-regions.mjs, Route aus filters.regions.
+export const PRECOMPUTE_GROUP_TARGETS = {
+    regionLabels: ['west', 'asia'],
+    buckets: ['all', 'platinum_plus', 'emerald_plus'],
+    minDays: 4,
+    patchKeys: [''],
+};
+/**
+ * Rechnet die Box fuer diese Anfrage einen Vorrat (Comps und Items)? Route und
+ * Skript fragen beide hier, damit sie nie auseinanderlaufen.
+ */
+export function precomputeCovers(o) {
+    if (!COMP_PRECOMPUTE_BUCKETS[o.bucketLabel])
+        return false;
+    if (o.regionLabel === COMP_PRECOMPUTE_REGION)
+        return true;
+    const t = PRECOMPUTE_GROUP_TARGETS;
+    return t.regionLabels.includes(o.regionLabel)
+        && t.buckets.includes(o.bucketLabel)
+        && o.requestedDays >= t.minDays
+        && t.patchKeys.includes(o.patchKey);
+}
 // = ADAPTIVE_FLOOR der Route: die Comps-Seite fragt ohne ?minGames und damit
 // mit 30. Jede hoehere Schwelle bedient die Route durch Nachfiltern.
 export const COMP_PRECOMPUTE_MIN_GAMES = 30;
@@ -506,6 +531,8 @@ export function compPrecomputeJobs(o) {
     for (const c of cases) {
         for (const [bucketLabel, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
             for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
+                if (o.include && !o.include({ patchKey: c.patchKey, bucketLabel, requestedDays }))
+                    continue;
                 let days;
                 let dataStart;
                 let windowEnd;
@@ -536,6 +563,7 @@ export function compPrecomputeJobs(o) {
                     patchFirstDay: c.patchFilter ? c.startDay : null,
                     bucketLabel,
                     tiers,
+                    requestedDays,
                     days,
                     dataStart,
                     windowEnd,

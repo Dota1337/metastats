@@ -16,10 +16,12 @@ import {
   listWindowDays,
   establishedPatches,
   compPrecomputeJobs,
+  precomputeCovers,
   precomputedEntryUsable,
   listKey,
   COMP_PRECOMPUTE_BUCKETS,
   COMP_PRECOMPUTE_MAX_AGE_MS,
+  PRECOMPUTE_GROUP_TARGETS,
   isValidMetaPulseDiff,
   metaPulseDiffPath,
   META_PULSE_DIFF_BUCKETS,
@@ -153,6 +155,44 @@ test('Gruppen: Raenge stimmen mit der Rang-Datei ueberein', async () => {
   for (const [label, tiers] of Object.entries(COMP_PRECOMPUTE_BUCKETS)) {
     assert.equal(listKey(tiers), listKey(BUCKET_GROUPS[label]), label);
   }
+});
+
+test('Vorrat-Ziele: alle Regionen immer, West/Asien nur schwere Fenster des aktuellen Patches', () => {
+  const c = (regionLabel, bucketLabel, requestedDays, patchKey = '') => precomputeCovers({ regionLabel, bucketLabel, requestedDays, patchKey });
+  assert.equal(c('all', 'all', 1), true);
+  assert.equal(c('all', 'master_plus', 7, '18.2'), true);
+  assert.equal(c('all', 'diamond', 7), false); // keine Rang-Gruppe der Vorabrechnung
+  assert.equal(c('west', 'all', 4), true);
+  assert.equal(c('asia', 'emerald_plus', 7), true);
+  assert.equal(c('west', 'all', 3), false);
+  assert.equal(c('west', 'master_plus', 7), false);
+  assert.equal(c('west', 'all', 7, '18.2'), false);
+  assert.equal(c('euw1', 'all', 7), false);
+});
+
+test('Gruppen-Jobs: nur Ziel-Fenster, keine Stufe geht beim Zusammenlegen verloren', () => {
+  const include = x => precomputeCovers({ regionLabel: 'west', ...x });
+  const jobs = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY, include });
+  assert.ok(jobs.length > 0);
+  assert.ok(jobs.every(j => j.patchKey === '' && PRECOMPUTE_GROUP_TARGETS.buckets.includes(j.bucketLabel)
+    && j.requestedDays >= PRECOMPUTE_GROUP_TARGETS.minDays));
+  // Jede Ziel-Stufe hat einen Eintrag mit demselben Fenster wie der volle Job-Satz.
+  const all = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY }).filter(j => j.patchKey === '');
+  for (const b of PRECOMPUTE_GROUP_TARGETS.buckets) {
+    const want = new Set(all.filter(j => j.bucketLabel === b && j.requestedDays >= 4).map(j => j.dataStart));
+    const got = new Set(jobs.filter(j => j.bucketLabel === b).map(j => j.dataStart));
+    for (const d of want) assert.ok(got.has(d), `${b}: Fenster ab ${d} fehlt`);
+  }
+  // ohne include: requestedDays ist gesetzt und 1..7
+  assert.ok(all.every(j => j.requestedDays >= 1 && j.requestedDays <= 7));
+});
+
+test('Gruppen: West/Asien-Regionen in Route und Box-Skript gleich', async () => {
+  const { REGION_GROUPS } = await import('./tft-supabase-reader.ts');
+  const { ACTIVE_REGIONS, ACTIVE_REGIONS_WEST, ACTIVE_REGIONS_ASIA } = await import('../../scripts/lib/active-regions.mjs');
+  assert.equal(listKey(REGION_GROUPS.west), listKey(ACTIVE_REGIONS_WEST));
+  assert.equal(listKey(REGION_GROUPS.asia), listKey(ACTIVE_REGIONS_ASIA));
+  assert.equal(listKey(REGION_GROUPS.all), listKey(ACTIVE_REGIONS));
 });
 
 test('Eintrag: nur mit gleichem letzten Tag, frisch und niedriger Schwelle', () => {

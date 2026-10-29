@@ -8,9 +8,11 @@ import {
 import { cachedJson, maybeRedirectByPatchAlias } from '../../../lib/api-cache';
 import { CURRENT_SET } from '../../../lib/current-set';
 import { loadMetaPulseDiff, loadMetaPulseVelocity } from '../../../lib/meta-pulse-diff-snapshot';
-import { compMarkedDays } from '../../../lib/comp-assign-server';
+import { compMarkedDays, NO_COMP_DAYS } from '../../../lib/comp-assign-server';
+import { PATCH_DELTA_MIN_GAMES } from '../../../lib/tft-patch-delta';
 import {
   compDeltaAssign,
+  compMinRowGames,
   META_PULSE_COMPLETE_LOOKBACK_DAYS,
   META_PULSE_DIFF_MIN_GAMES,
   META_PULSE_VELOCITY_DEFAULT_SHIFT,
@@ -150,8 +152,9 @@ export async function GET(request: NextRequest) {
     // welchem Stand eine vorgerechnete Velocity-Datei steht.
     const marked = sel ? await compMarkedDays(Number(setNumber), filters.regions) : null;
     if (sel && !marked) degraded = true;
-    const markedOf = (patch: string | null | undefined) => (patch ? marked?.get(patch) ?? 0 : 0);
-    const compAssign = marked && sel && previousPatch ? compDeltaAssign(markedOf(sel.patch), markedOf(previousPatch)) : null;
+    const daysOf = (patch: string | null | undefined) => (patch ? marked?.get(patch) ?? NO_COMP_DAYS : NO_COMP_DAYS);
+    const markedOf = (patch: string | null | undefined) => daysOf(patch).marked;
+    const compAssign = marked && sel && previousPatch ? compDeltaAssign(daysOf(sel.patch), daysOf(previousPatch)) : null;
     const diffRows = async (p: typeof sel | undefined, days: number): Promise<CompStatsRow[]> => {
       if (!p || !compAssign) return [];
       const pre = await loadMetaPulseDiff({
@@ -162,9 +165,11 @@ export async function GET(request: NextRequest) {
         bucketLabel: filters.bucketLabel,
         buckets,
         assign: compAssign,
-        markedDays: markedOf(p.patch),
+        days: daysOf(p.patch),
       });
       if (pre) { snapshotHits++; return pre; }
+      // Klassische Seite eines gemischten Patches: nur Zeilen ab 8 Spielen (0107).
+      const minRow = compMinRowGames(compAssign, daysOf(p.patch));
       return callRpc<CompStatsRow[]>('get_tft_comp_stats_for_diff', {
         p_regions: filters.regions,
         p_buckets: buckets,
@@ -173,6 +178,7 @@ export async function GET(request: NextRequest) {
         p_set: setNumber,
         p_min_games: META_PULSE_DIFF_MIN_GAMES,
         p_assign: compAssign,
+        ...(minRow != null ? { p_min_row_games: minRow } : {}),
       }, 20000).catch(() => { degraded = true; return [] as CompStatsRow[]; });
     };
 
@@ -223,11 +229,14 @@ export async function GET(request: NextRequest) {
       .slice(0, 5);
 
     // Patch movers — compute simple comp diff inline from the two RPC outputs.
+    // Mindestspiele je Seite wie die Δ-Spalte der Listen (User 29.10.2026: 150
+    // statt 80 — bei 2 Starttagen gegen den Vorpatch lagen 7 von 10 Bewegern
+    // unter 200 Spielen und rauschten).
     const prevMap = new Map(prevTopComps.map(r => [r.cluster_key, r]));
     const patchDiffs: PatchDiffRow[] = [];
     for (const c of currentTopComps) {
       const p = prevMap.get(c.cluster_key);
-      if (!p || c.games < 80 || p.games < 80) continue;
+      if (!p || c.games < PATCH_DELTA_MIN_GAMES || p.games < PATCH_DELTA_MIN_GAMES) continue;
       const cParts = Number(c.participants) || 1;
       const pParts = Number(p.participants) || 1;
       patchDiffs.push({

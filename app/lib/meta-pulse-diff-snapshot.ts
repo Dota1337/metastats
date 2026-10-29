@@ -14,6 +14,8 @@ import {
   META_PULSE_DIFF_BUCKETS,
   PATCH_DIFF_BUCKETS,
   RUNNING_PATCH_GRACE_MS,
+  compFileWant,
+  type CompPatchDays,
   type MetaPulseDiffRow,
   type MetaPulseVelocityRow,
   type MetaPulseVelocityWindow,
@@ -73,14 +75,16 @@ export async function fetchBlob(path: string): Promise<unknown | null> {
   }
 }
 
-// assign/markedDays: Zaehlart der Comp-Zeilen (compDeltaAssign, comp-assign-server.ts).
+// assign/days: Zaehlart der Comp-Zeilen und Tage des Patches (compDeltaAssign,
+// comp-assign-server.ts); daraus der Stand, den die Datei tragen muss (compFileWant).
 export async function loadMetaPulseDiff(o: Scope & {
   patch: MetaPulsePatchInfo;
   closed: boolean;
   assign?: CompAssign;
-  markedDays?: number;
+  days?: CompPatchDays;
 }): Promise<MetaPulseDiffRow[] | null> {
   if (!inScope(o)) return null;
+  const comp = o.assign && o.days ? compFileWant(o.assign, o.days) : { assign: o.assign };
   const snap = await fetchBlob(metaPulseDiffPath(o.patch.patch, o.bucketLabel, o.assign));
   const ok = isValidMetaPulseDiff(snap, {
     set: Number(o.patch.set_number),
@@ -92,8 +96,7 @@ export async function loadMetaPulseDiff(o: Scope & {
     now: Date.now(),
     closed: o.closed,
     graceMs: RUNNING_PATCH_GRACE_MS,
-    assign: o.assign,
-    markedDays: o.markedDays,
+    ...comp,
   });
   return ok ? snap.rows : null;
 }
@@ -108,12 +111,13 @@ export async function loadPatchDiff(o: {
   patch: MetaPulsePatchInfo;
   set: number;
   closed: boolean;
-  /** Nur Comps: Zaehlart und Katalog-Tage des Patches. */
+  /** Nur Comps: Zaehlart und Tage des Patches je Zaehlart. */
   assign?: CompAssign;
-  markedDays?: number;
+  days?: CompPatchDays;
 }): Promise<PatchDiffRow[] | null> {
   const groupBuckets = PATCH_DIFF_BUCKETS[o.bucketLabel];
   if (!groupBuckets || listKey(groupBuckets) !== listKey(o.buckets)) return null;
+  const comp = o.assign && o.days ? compFileWant(o.assign, o.days) : { assign: o.assign };
   const snap = await fetchBlob(patchDiffPath(o.patch.patch, o.entity, o.bucketLabel, o.assign));
   const ok = isValidPatchDiff(snap, {
     set: o.set,
@@ -126,8 +130,7 @@ export async function loadPatchDiff(o: {
     now: Date.now(),
     closed: o.closed,
     graceMs: RUNNING_PATCH_GRACE_MS,
-    assign: o.assign,
-    markedDays: o.markedDays,
+    ...comp,
   });
   return ok ? snap.rows : null;
 }

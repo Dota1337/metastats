@@ -257,6 +257,7 @@ export function emptyAggregate() {
     byCompPair: new Map(), // "a||b" sorted -> { games, aBetter } — for counter edges
     byFamilyPair: new Map(), // "bucket\0famLo\0famHi" -> Duelle je Familie und Rang (0092)
     classic: new Map(),    // klassische Familie -> Schattenzaehlung (0101), Raenge zusammengelegt
+    classicBucket: new Map(), // "bucket\0clusterKey" -> klassische Cluster je Rang (0107)
     participantsByBucket: new Map(), // bucket -> count (matches × 8). Exact denominator
                                      //   for pickRate; bypasses minCompGames filter
                                      //   that byComp roll-ups would impose.
@@ -490,6 +491,9 @@ export function aggregateMatch(rawMatch, agg, opts) {
   const rowClass = catalog ? participants.map(p => catalogRowOf(p, catalog)) : compClass;
 
   if (agg.classic && SHADOW_BUCKETS.has(tierBucket)) addClassicShadow(agg.classic, participants, compClass);
+  // Klassische Cluster je Rang (0107), an klassischen UND Katalog-Tagen:
+  // Rang des Matches plus pro_pool, ohne iron (wie die Schattenzaehlung).
+  if (agg.classicBucket && SHADOW_BUCKETS.has(tierBucket)) addClassicBucket(agg.classicBucket, buckets, participants, compClass);
 
   // W4-B: count cluster_key occurrences in this lobby so we can attribute a
   // contested-level (1 / 2 / 3+) to every participant when we hit the comp
@@ -974,6 +978,41 @@ export function classicShadowRows(map) {
   return rows.sort((a, b) => (a.family < b.family ? -1 : 1));
 }
 
+// Klassische Cluster je Rang (tft_daily_comp_classic_bucket, 0107): dieselbe
+// Einteilung wie die Comp-Zeilen ohne Katalog (classifyComp, Schluessel
+// `<trait>@<level>_<carry>~<aug>`), je Brett einmal in jedem Rang der Liste
+// (Rang des Matches, bei Pro-Lobbys zusaetzlich pro_pool).
+function addClassicBucket(map, buckets, participants, compClass) {
+  for (let i = 0; i < participants.length; i++) {
+    const key = compClass[i]?.clusterKey;
+    if (!key) continue;
+    const placement = participants[i].placement ?? 9;
+    for (const bucket of buckets) {
+      const id = `${bucket}\0${key}`;
+      let e = map.get(id);
+      if (!e) {
+        e = { bucket, clusterKey: key, games: 0, sumPlacement: 0, top4: 0, top1: 0 };
+        map.set(id, e);
+      }
+      e.games++;
+      e.sumPlacement += placement;
+      if (placement <= 4) e.top4++;
+      if (placement === 1) e.top1++;
+    }
+  }
+}
+
+// Zeilen fuer tft_daily_comp_classic_bucket: Cluster ab 2 Spielen je Rang
+// (Schwelle wie die Schattenzaehlung), sortiert fuer stabile Pakete.
+export function classicBucketRows(map) {
+  const rows = [];
+  for (const e of (map || new Map()).values()) {
+    if (e.games < SHADOW_MIN_GAMES) continue;
+    rows.push({ bucket: e.bucket, clusterKey: e.clusterKey, games: e.games, sumPlacement: e.sumPlacement, top4: e.top4, top1: e.top1 });
+  }
+  return rows.sort((a, b) => (a.bucket < b.bucket ? -1 : a.bucket > b.bucket ? 1 : a.clusterKey < b.clusterKey ? -1 : a.clusterKey > b.clusterKey ? 1 : 0));
+}
+
 // Comp-Duelle je Familie und Rang (Tabelle tft_daily_comp_matchups, 0092).
 // Ein Vergleich je Spielerpaar mit verschiedener Familie (<trait>__<carry>,
 // wie familyKeyForMerge) — spielen zwei Spieler A und einer B, sind das zwei
@@ -1214,6 +1253,8 @@ export function finalize(agg, opts = {}) {
     compMatchups: agg.byFamilyPair ? familyPairRows(agg.byFamilyPair) : [],
     // Nur fuer die DB (Schattentabelle 0101), nicht fuer die JSON-Datei.
     compClassic: classicShadowRows(agg.classic),
+    // Nur fuer die DB (klassische Cluster je Rang, 0107), nicht fuer die JSON-Datei.
+    compClassicBucket: classicBucketRows(agg.classicBucket),
   };
 
   for (const [cid, buckets] of agg.byUnit) {

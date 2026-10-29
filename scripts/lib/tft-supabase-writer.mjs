@@ -45,6 +45,7 @@ export const DAILY_TABLES = [
   'tft_daily_comp_outcome',
   'tft_daily_comp_matchups',
   'tft_daily_comp_classic',
+  'tft_daily_comp_classic_bucket',
 ];
 
 // Schattenzaehlung (0101): 40 Tage — reicht fuer den laengsten Patch plus den
@@ -53,6 +54,9 @@ const SHADOW_KEEP_DAYS = 40;
 // Raenge der Comp-Zeilen (Aufraeumen nach run_id mit Rang-Filter: ohne ihn
 // 0,2-0,7 s je Tabelle statt 3-8 ms, perf-critic 20.10.2026).
 const COMP_TIER_BUCKETS = PERSIST_BUCKETS.filter(b => b !== 'pro_pool');
+// tft_daily_comp_classic_bucket (0107): schmale Zeilen (Zahlen + Schluessel),
+// je Region und Tag Raenge × Cluster — groessere Pakete wie bei den Duellen.
+const CLASSIC_BUCKET_BATCH = 1000;
 
 // tft_daily_comp_matchups (0092): 17k (me1) bis 188k (kr) schmale Zeilen je
 // Region und Tag (gemessen am 10.10.2026) — 200er-Pakete waeren bis zu 940
@@ -269,6 +273,25 @@ export async function writeTftStatsToSupabase(opts) {
   } catch (e) {
     if (catalogId) throw e;
     log(`  [supabase] comp_classic FAILED (non-fatal): ${e.message}`);
+  }
+
+  // 1c) Klassische Cluster je Rang (0107), an klassischen UND Katalog-Tagen —
+  // Spur fuer kuenftige Wechsel der Zaehlart. Noch kein Leser, deshalb nie
+  // fatal. Aufraeumen per run_id wie die Schattenzaehlung, 40 Tage aufbewahrt.
+  try {
+    const bucketRows = (payload.compClassicBucket || []).map(r => ({
+      ...baseRow, bucket: r.bucket, cluster_key: r.clusterKey, games: r.games, sum_placement: r.sumPlacement,
+      top4: r.top4, top1: r.top1, run_id: runId,
+    }));
+    log(`  [supabase] comp_classic_bucket: ${bucketRows.length} rows`);
+    await upsertRows('tft_daily_comp_classic_bucket', bucketRows, 'region,set_number,day,bucket,cluster_key', log, CLASSIC_BUCKET_BATCH);
+    if (bucketRows.length > 0 && !partial) {
+      await deleteRows('tft_daily_comp_classic_bucket', staleFilter({ region, day, setNumber, runId, buckets: PERSIST_BUCKETS }), log);
+    }
+    await deleteRows('tft_daily_comp_classic_bucket',
+      { region: `eq.${region}`, day: `lt.${matchupKeepFrom(day, SHADOW_KEEP_DAYS)}` }, log);
+  } catch (e) {
+    log(`  [supabase] comp_classic_bucket FAILED (non-fatal): ${e.message}`);
   }
 
   // 2) Units

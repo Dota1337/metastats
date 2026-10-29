@@ -51,6 +51,17 @@
       "note": "Seit Migration 0101 (erster Tag 21.10.2026): Schattenzaehlung der klassischen Familien je Region und Tag, Raenge zusammengelegt, ab 2 Spielen. Aus ihr baut der Tagestreiber die Comp-Katalog-Versionen (scripts/lib/comp-catalog-day.mjs); fehlt sie an einem Katalog-Tag, fehlt dem naechsten Katalog dieser Tag. Mit Katalog bricht der Writer die Region ab, wenn sie fehlt; klassisch nur Logzeile — daher maxLagDays 1."
     },
     {
+      "id": "daily-crawl/comp-classic-bucket",
+      "owner": "metastats-daily-crawl.service",
+      "backend": "supabase",
+      "table": "tft_daily_comp_classic_bucket",
+      "dateColumn": "day",
+      "maxLagDays": 1,
+      "minRows": 1,
+      "armed": false,
+      "note": "Seit Migration 0107 (29.10.2026): klassische Cluster je Region, Tag und Rang (inkl. pro_pool), an klassischen UND Katalog-Tagen, ab 2 Spielen, 40 Tage aufbewahrt. Spur fuer kuenftige Wechsel der Zaehlart; noch kein Leser. Der Writer schreibt sie nie fatal (nur Logzeile). minRows 1 als Platzhalter — scharf nach erster Messung (Zeilen je Tag ueber alle Regionen)."
+    },
+    {
       "id": "daily-crawl/comp-catalog-days",
       "owner": "metastats-daily-crawl.service",
       "type": "comp-catalog-days",

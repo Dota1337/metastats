@@ -627,6 +627,7 @@ async function main() {
       'daily-crawl/comp-matchups',
       'daily-crawl/comp-matchups-all',
       'daily-crawl/comp-classic',
+      'daily-crawl/comp-classic-bucket',
       'daily-crawl/patch-axis',
     ]).catch(err => console.error('[contract] Prüfung fehlgeschlagen:', err.message));
   }

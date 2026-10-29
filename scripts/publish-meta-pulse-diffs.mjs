@@ -15,6 +15,12 @@
 // (/api/tft/patch-diff, RSS-Feed; live 11-21 s, Items und Comps liefen in den
 // 20-s-Deckel): je Art × Patch × Rang-Gruppe (PATCH_DIFF_*), ganz am Ende.
 //
+// Seit 2026-10-29 (Migration 0107): ein Patch mit Katalog- UND klassischen Tagen
+// bekommt zusaetzlich eine klassische Comp-Fassung (nur Zeilen ab 8 Spielen,
+// Felder classicDays/minRowGames) — fuer den Vergleich mit einem rein
+// klassischen Vorpatch. Sie rechnet nur neu, wenn sich die klassischen Tage
+// aendern, und laeuft ganz am Ende des Laufs.
+//
 // Stuendlich per systemd-Timer (metastats-meta-pulse-diffs.timer). Rechnet nur
 // neu, wenn der Blob fehlt, seine Spielzahl/sein letzter Tag nicht mehr zur
 // Patch-Liste passt oder er aelter als 12 h ist — sonst kostet ein Lauf eine
@@ -53,7 +59,8 @@ import {
   patchDiffPath,
   isValidPatchDiff,
   normalizePatchDiffRows,
-  compFileAssign,
+  compFileAssigns,
+  compFileWant,
 } from '../app/lib/snapshot-matrix.generated.mjs';
 
 if (existsSync('.env.local')) {
@@ -178,28 +185,42 @@ async function main() {
     if (ms > SLOW_QUERY_MS) throw new Brake(`${path} brauchte ${(ms / 1000).toFixed(1)} s`);
   };
 
-  // Katalog-Tage je Patch (Comp-Katalog Phase 3, Migration 0102): Comp-Dateien
-  // zaehlen einen Patch mit Katalog-Tagen nur ueber diese (compFileAssign),
-  // dieselbe Abfrage wie die Seite (comp-assign-server.ts). Kleine Abfrage je
-  // Set; nicht lesbar → null, die Comp-Dateien bleiben dann stehen.
-  const markedBySet = new Map();
-  const markedOf = async (set, patch) => {
-    if (!markedBySet.has(set)) {
-      markedBySet.set(set, await pool.query(
-        'select patch, marked_days from get_tft_comp_marked_days($1::int, $2::text[])', [set, regions],
-      ).then(r => new Map(r.rows.map(x => [String(x.patch), Number(x.marked_days) || 0])))
+  // Tage je Patch und Zaehlart (Comp-Katalog Phase 3, Migration 0102; klassische
+  // Tage seit 0107 = region_days − marked_days): Comp-Dateien zaehlen einen Patch
+  // mit Katalog-Tagen ueber diese, ein gemischter Patch bekommt zusaetzlich eine
+  // klassische Fassung (compFileAssigns) — dieselbe Abfrage wie die Seite
+  // (comp-assign-server.ts). Kleine Abfrage je Set; nicht lesbar → null, die
+  // Comp-Dateien bleiben dann stehen.
+  const daysBySet = new Map();
+  const daysOf = async (set, patch) => {
+    if (!daysBySet.has(set)) {
+      daysBySet.set(set, await pool.query(
+        'select patch, marked_days, region_days from get_tft_comp_marked_days($1::int, $2::text[])', [set, regions],
+      ).then(r => new Map(r.rows.map(x => {
+        const marked = Number(x.marked_days) || 0;
+        return [String(x.patch), { marked, classic: Math.max(0, (Number(x.region_days) || 0) - marked) }];
+      })))
         .catch((e) => { log(`Katalog-Tage fuer Set ${set} nicht lesbar: ${e.message}`); return null; }));
     }
-    const m = markedBySet.get(set);
-    return m ? m.get(patch) ?? 0 : null;
+    const m = daysBySet.get(set);
+    return m ? m.get(patch) ?? { marked: 0, classic: 0 } : null;
   };
 
+  // Klassische Fassungen gemischter Patches (0107): abfragen ueber alle Tage
+  // eines laufenden Patches, die nur die klassischen zaehlen — schwer und ohne
+  // Eile (Tage liegen fest). Sie laufen deshalb ganz am Ende des Laufs, eine
+  // Notbremse davor haelt alles andere nicht auf.
+  const deferred = [];
+
   // Laufender Patch zuerst (Diffs, dann Velocity), alte Patch-Diffs danach,
-  // Patch-Gewinner ganz am Ende (neuer Teil, darf die alten nicht aufhalten).
+  // Patch-Gewinner ganz am Ende (neuer Teil, darf die alten nicht aufhalten),
+  // danach die zurueckgestellten klassischen Fassungen.
   if (runs('diff')) await runDiffs(patches[0], REFRESH_AFTER_MS, false);
   if (runs('velocity')) await runVelocity();
   for (const p of runs('diff') ? patches.slice(1) : []) await runDiffs(p, CLOSED_REFRESH_AFTER_MS, true);
   if (runs('patchdiff')) await runPatchDiffs();
+  if (deferred.length > 0) log(`klassische Fassungen gemischter Patches: ${deferred.length} zu rechnen`);
+  for (const job of deferred) await job();
 
   log(`fertig: ${computed} neu, ${skipped} aktuell, ${failed} Fehler (Patches ${patches.map(p => p.patch).join(', ')}${runs('patchdiff') ? `; Patch-Gewinner ${allPatches.map(p => p.patch).join(', ')}` : ''})`);
   return failed;
@@ -229,76 +250,94 @@ async function main() {
           const win = patchDiffWindowArgs({ first_day: isoDay(p.first_day), last_day: isoDay(p.last_day) });
           if (!win) { failed++; log(`FEHLER ${p0.patch}: keine Patch-Tage`); continue; }
           const isComp = entity === 'comp';
-          const marked = isComp ? await markedOf(Number(p.set_number), p.patch) : 0;
-          if (marked === null) { failed++; log(`FEHLER ${p0.patch}/${entity}: Katalog-Tage nicht lesbar`); continue; }
-          const assign = compFileAssign(marked);
-          for (const bucketLabel of labels) {
-            const buckets = PATCH_DIFF_BUCKETS[bucketLabel];
-            const path = patchDiffPath(p.patch, entity, bucketLabel, assign);
-            const want = {
-              set: Number(p.set_number), patch: p.patch, entity, lastDay: isoDay(p.last_day),
-              totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
-              requireWindow: true,
-              ...(isComp ? { assign, markedDays: marked } : {}),
-            };
-            if (!FORCE) {
-              const old = await existing(path);
-              // Laufend: neu bei jeder neuen Spielzahl oder nach 12 h.
-              // Abgeschlossen: neu nur bei mehr Spielen (Nachzuegler) oder nach 7 Tagen.
-              // Comps zusaetzlich bei jedem neuen Katalog-Tag.
-              if (isValidPatchDiff(old, want)
-                && (closed ? Number(old.totalMatches) >= want.totalMatches : Number(old.totalMatches) === want.totalMatches)
-                && (!isComp || Number(old.markedDays ?? 0) === marked)
-                && Date.now() - Date.parse(old.generatedAt) < (closed ? CLOSED_REFRESH_AFTER_MS : REFRESH_AFTER_MS)) {
-                skipped++;
-                if (!closed) runningOk.push(path);
-                continue;
-              }
-            }
-            if (closed && closedComputed >= CLOSED_PATCHDIFF_PER_RUN) { closedDeferred++; continue; }
-            try {
-              const { rows, ms } = await guardedQuery(
-                `select ${PATCH_DIFF_COLUMNS[entity].join(', ')} from ${PATCH_DIFF_RPC[entity]}(
-                   p_regions => $1::text[], p_buckets => $2::text[], p_days => $3::int,
-                   p_patch => $4::text, p_set => $5::int, p_end_day => $6::date${isComp ? ', p_min_games => $7::int, p_assign => $8::text' : ''})`,
-                [regions, [...buckets], win.p_days, p.patch, want.set, win.p_end_day, ...(isComp ? [PATCH_DIFF_MIN_GAMES, assign] : [])],
-              );
-              if (closed) closedComputed++;
-              const snap = {
-                v: 1,
-                generatedAt: new Date().toISOString(),
-                set: want.set,
-                patch: p.patch,
-                entity,
-                lastDay: want.lastDay,
-                totalMatches: want.totalMatches,
-                regions,
-                buckets: [...buckets],
-                days: win.p_days,
-                minGames: PATCH_DIFF_MIN_GAMES,
-                window: PATCH_DIFF_WINDOW,
-                ...(isComp ? { assign, markedDays: marked } : {}),
-                rows: normalizePatchDiffRows(entity, rows),
+          const days = isComp ? await daysOf(Number(p.set_number), p.patch) : null;
+          if (isComp && days === null) { failed++; log(`FEHLER ${p0.patch}/${entity}: Katalog-Tage nicht lesbar`); continue; }
+          for (const assign of isComp ? compFileAssigns(days) : ['classic']) {
+            // Stand der Comp-Datei (Zaehlart, Katalog-Tage; klassische Fassung
+            // eines gemischten Patches zusaetzlich classicDays + minRowGames).
+            const comp = isComp ? compFileWant(assign, days) : null;
+            const mixedClassic = !!comp?.minRowGames;
+            for (const bucketLabel of labels) {
+              const buckets = PATCH_DIFF_BUCKETS[bucketLabel];
+              const path = patchDiffPath(p.patch, entity, bucketLabel, assign);
+              const want = {
+                set: Number(p.set_number), patch: p.patch, entity, lastDay: isoDay(p.last_day),
+                totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
+                requireWindow: true,
+                ...(comp ?? {}),
               };
-              if (!isValidPatchDiff(snap, want)) throw new Error('eigener Blob faellt durch die Pruefung');
-              if (!DRY_RUN) {
-                await put(path, JSON.stringify(snap), {
-                  access: 'public',
-                  contentType: 'application/json',
-                  token: TOKEN,
-                  addRandomSuffix: false,
-                  allowOverwrite: true,
-                  cacheControlMaxAge: 60,
-                });
+              if (!FORCE) {
+                const old = await existing(path);
+                // Laufend: neu bei jeder neuen Spielzahl oder nach 12 h.
+                // Abgeschlossen: neu nur bei mehr Spielen (Nachzuegler) oder nach 7 Tagen.
+                // Comps zusaetzlich bei jedem neuen Katalog-Tag. Klassische Fassung
+                // eines gemischten Patches: wie abgeschlossen, neu nur bei anderen
+                // klassischen Tagen (prueft isValidPatchDiff) oder nach 7 Tagen.
+                if (mixedClassic
+                  ? isValidPatchDiff(old, want) && Date.now() - Date.parse(old.generatedAt) < CLOSED_REFRESH_AFTER_MS
+                  : isValidPatchDiff(old, want)
+                    && (closed ? Number(old.totalMatches) >= want.totalMatches : Number(old.totalMatches) === want.totalMatches)
+                    && (!isComp || Number(old.markedDays ?? 0) === comp.markedDays)
+                    && Date.now() - Date.parse(old.generatedAt) < (closed ? CLOSED_REFRESH_AFTER_MS : REFRESH_AFTER_MS)) {
+                  skipped++;
+                  if (!closed && !mixedClassic) runningOk.push(path);
+                  continue;
+                }
               }
-              computed++;
-              if (!closed) runningOk.push(path);
-              log(`${path}: ${snap.rows.length} Zeilen in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
-              brakeIfSlow(ms, path);
-            } catch (e) {
-              if (e instanceof Brake) throw e;
-              failed++;
-              log(`FEHLER ${path}: ${e.message}`);
+              const job = async () => {
+                try {
+                  const params = [regions, [...buckets], win.p_days, p.patch, want.set, win.p_end_day];
+                  let named = '';
+                  if (isComp) { named += ', p_min_games => $7::int, p_assign => $8::text'; params.push(PATCH_DIFF_MIN_GAMES, assign); }
+                  if (mixedClassic) { named += ', p_min_row_games => $9::int'; params.push(comp.minRowGames); }
+                  const { rows, ms } = await guardedQuery(
+                    `select ${PATCH_DIFF_COLUMNS[entity].join(', ')} from ${PATCH_DIFF_RPC[entity]}(
+                       p_regions => $1::text[], p_buckets => $2::text[], p_days => $3::int,
+                       p_patch => $4::text, p_set => $5::int, p_end_day => $6::date${named})`,
+                    params,
+                  );
+                  if (closed && !mixedClassic) closedComputed++;
+                  const snap = {
+                    v: 1,
+                    generatedAt: new Date().toISOString(),
+                    set: want.set,
+                    patch: p.patch,
+                    entity,
+                    lastDay: want.lastDay,
+                    totalMatches: want.totalMatches,
+                    regions,
+                    buckets: [...buckets],
+                    days: win.p_days,
+                    minGames: PATCH_DIFF_MIN_GAMES,
+                    window: PATCH_DIFF_WINDOW,
+                    ...(comp ?? {}),
+                    rows: normalizePatchDiffRows(entity, rows),
+                  };
+                  // Zurueckgestellte Fassungen laufen spaeter: Pruefzeit neu setzen.
+                  if (!isValidPatchDiff(snap, { ...want, now: Date.now() })) throw new Error('eigener Blob faellt durch die Pruefung');
+                  if (!DRY_RUN) {
+                    await put(path, JSON.stringify(snap), {
+                      access: 'public',
+                      contentType: 'application/json',
+                      token: TOKEN,
+                      addRandomSuffix: false,
+                      allowOverwrite: true,
+                      cacheControlMaxAge: 60,
+                    });
+                  }
+                  computed++;
+                  if (!closed && !mixedClassic) runningOk.push(path);
+                  log(`${path}: ${snap.rows.length} Zeilen in ${(ms / 1000).toFixed(1)} s${mixedClassic ? ' (klassisch, gemischter Patch)' : ''}${DRY_RUN ? ' (dry-run)' : ''}`);
+                  brakeIfSlow(ms, path);
+                } catch (e) {
+                  if (e instanceof Brake) throw e;
+                  failed++;
+                  log(`FEHLER ${path}: ${e.message}`);
+                }
+              };
+              if (mixedClassic) { deferred.push(job); continue; }
+              if (closed && closedComputed >= CLOSED_PATCHDIFF_PER_RUN) { closedDeferred++; continue; }
+              await job();
             }
           }
         }
@@ -319,74 +358,88 @@ async function main() {
   }
 
   async function runDiffs(p, refreshAfterMs, closed) {
-    const marked = await markedOf(Number(p.set_number), p.patch);
-    if (marked === null) { failed++; log(`FEHLER ${p.patch}: Katalog-Tage nicht lesbar`); return; }
-    const assign = compFileAssign(marked);
-    for (const [bucketLabel, buckets] of Object.entries(META_PULSE_DIFF_BUCKETS)) {
-      const path = metaPulseDiffPath(p.patch, bucketLabel, assign);
-      const want = {
-        set: Number(p.set_number), patch: p.patch, lastDay: isoDay(p.last_day),
-        totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
-        assign, markedDays: marked,
-      };
-      if (!FORCE) {
-        const old = await existing(path);
-        // Abgeschlossene Patches: die 30-Tage-Patchliste laesst ihre Summe
-        // schrumpfen, Gleichheit wuerde sie bei jedem Lauf neu rechnen lassen.
-        if (isValidMetaPulseDiff(old, want)
-          && (closed || Number(old.totalMatches) === want.totalMatches)
-          && Number(old.markedDays ?? 0) === marked
-          && Date.now() - Date.parse(old.generatedAt) < refreshAfterMs) {
-          skipped++;
-          continue;
-        }
-      }
-      try {
-        // Fenster ab dem ersten Patch-Tag (current_date wie in der Route).
-        const { rows, ms } = await guardedQuery(
-          `select * from get_tft_comp_stats_for_diff($1::text[], $2::text[],
-             (current_date - $3::date + 1)::int, $4::text, $5::int, $6::int, p_assign => $7::text)`,
-          [regions, [...buckets], isoDay(p.first_day), p.patch, Number(p.set_number), META_PULSE_DIFF_MIN_GAMES, assign],
-        );
-        const snap = {
-          v: 1,
-          generatedAt: new Date().toISOString(),
-          set: want.set,
-          patch: p.patch,
-          lastDay: want.lastDay,
-          totalMatches: want.totalMatches,
-          regions,
-          buckets: [...buckets],
-          minGames: META_PULSE_DIFF_MIN_GAMES,
-          assign,
-          markedDays: marked,
-          rows: rows.map(r => ({
-            cluster_key: r.cluster_key,
-            games: Number(r.games),
-            sum_placement: Number(r.sum_placement),
-            top4: Number(r.top4),
-            top1: Number(r.top1),
-            participants: Number(r.participants),
-          })),
+    const days = await daysOf(Number(p.set_number), p.patch);
+    if (days === null) { failed++; log(`FEHLER ${p.patch}: Katalog-Tage nicht lesbar`); return; }
+    for (const assign of compFileAssigns(days)) {
+      // Stand der Datei; klassische Fassung eines gemischten Patches mit
+      // classicDays + minRowGames (0107), die Funktion zaehlt dann nur Zeilen ab 8.
+      const comp = compFileWant(assign, days);
+      const mixedClassic = !!comp.minRowGames;
+      for (const [bucketLabel, buckets] of Object.entries(META_PULSE_DIFF_BUCKETS)) {
+        const path = metaPulseDiffPath(p.patch, bucketLabel, assign);
+        const want = {
+          set: Number(p.set_number), patch: p.patch, lastDay: isoDay(p.last_day),
+          totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
+          ...comp,
         };
-        if (!isValidMetaPulseDiff(snap, want)) throw new Error('eigener Blob faellt durch die Pruefung');
-        if (!DRY_RUN) {
-          await put(path, JSON.stringify(snap), {
-            access: 'public',
-            contentType: 'application/json',
-            token: TOKEN,
-            addRandomSuffix: false,
-            allowOverwrite: true,
-            cacheControlMaxAge: 60,
-          });
+        if (!FORCE) {
+          const old = await existing(path);
+          // Abgeschlossene Patches: die 30-Tage-Patchliste laesst ihre Summe
+          // schrumpfen, Gleichheit wuerde sie bei jedem Lauf neu rechnen lassen.
+          // Klassische Fassung eines gemischten Patches: wie abgeschlossen, neu
+          // nur bei anderen klassischen Tagen (prueft isValidMetaPulseDiff).
+          if (mixedClassic
+            ? isValidMetaPulseDiff(old, want) && Date.now() - Date.parse(old.generatedAt) < CLOSED_REFRESH_AFTER_MS
+            : isValidMetaPulseDiff(old, want)
+              && (closed || Number(old.totalMatches) === want.totalMatches)
+              && Number(old.markedDays ?? 0) === comp.markedDays
+              && Date.now() - Date.parse(old.generatedAt) < refreshAfterMs) {
+            skipped++;
+            continue;
+          }
         }
-        computed++;
-        log(`${path}: ${rows.length} Comps in ${(ms / 1000).toFixed(1)} s${DRY_RUN ? ' (dry-run)' : ''}`);
-        brakeIfSlow(ms, path);
-      } catch (e) {
-        if (e instanceof Brake) throw e;
-        failed++;
-        log(`FEHLER ${path}: ${e.message}`);
+        const job = async () => {
+          try {
+            // Fenster ab dem ersten Patch-Tag (current_date wie in der Route).
+            const { rows, ms } = await guardedQuery(
+              `select * from get_tft_comp_stats_for_diff($1::text[], $2::text[],
+                 (current_date - $3::date + 1)::int, $4::text, $5::int, $6::int, p_assign => $7::text${mixedClassic ? ', p_min_row_games => $8::int' : ''})`,
+              [regions, [...buckets], isoDay(p.first_day), p.patch, Number(p.set_number), META_PULSE_DIFF_MIN_GAMES, assign,
+                ...(mixedClassic ? [comp.minRowGames] : [])],
+            );
+            const snap = {
+              v: 1,
+              generatedAt: new Date().toISOString(),
+              set: want.set,
+              patch: p.patch,
+              lastDay: want.lastDay,
+              totalMatches: want.totalMatches,
+              regions,
+              buckets: [...buckets],
+              minGames: META_PULSE_DIFF_MIN_GAMES,
+              ...comp,
+              rows: rows.map(r => ({
+                cluster_key: r.cluster_key,
+                games: Number(r.games),
+                sum_placement: Number(r.sum_placement),
+                top4: Number(r.top4),
+                top1: Number(r.top1),
+                participants: Number(r.participants),
+              })),
+            };
+            // Zurueckgestellte Fassungen laufen spaeter: Pruefzeit neu setzen.
+            if (!isValidMetaPulseDiff(snap, { ...want, now: Date.now() })) throw new Error('eigener Blob faellt durch die Pruefung');
+            if (!DRY_RUN) {
+              await put(path, JSON.stringify(snap), {
+                access: 'public',
+                contentType: 'application/json',
+                token: TOKEN,
+                addRandomSuffix: false,
+                allowOverwrite: true,
+                cacheControlMaxAge: 60,
+              });
+            }
+            computed++;
+            log(`${path}: ${rows.length} Comps in ${(ms / 1000).toFixed(1)} s${mixedClassic ? ' (klassisch, gemischter Patch)' : ''}${DRY_RUN ? ' (dry-run)' : ''}`);
+            brakeIfSlow(ms, path);
+          } catch (e) {
+            if (e instanceof Brake) throw e;
+            failed++;
+            log(`FEHLER ${path}: ${e.message}`);
+          }
+        };
+        if (mixedClassic) deferred.push(job);
+        else await job();
       }
     }
   }
@@ -425,10 +478,10 @@ async function main() {
     const previousPatch = rawCmp && Number(rawCmp.set_number) === setNumber ? rawCmp.patch : null;
     // Katalog-Tage beider Patches als Stand der Datei (die Velocity-Funktion
     // waehlt die Zaehlart selbst); ein neuer Katalog-Tag rechnet neu.
-    const markedSel = await markedOf(setNumber, sel.patch);
-    const markedCmp = previousPatch ? await markedOf(setNumber, previousPatch) : 0;
-    if (markedSel === null || markedCmp === null) { failed++; log(`FEHLER Velocity ${sel.patch}: Katalog-Tage nicht lesbar`); continue; }
-    const markedDays = markedSel + markedCmp;
+    const daysSel = await daysOf(setNumber, sel.patch);
+    const daysCmp = previousPatch ? await daysOf(setNumber, previousPatch) : { marked: 0, classic: 0 };
+    if (daysSel === null || daysCmp === null) { failed++; log(`FEHLER Velocity ${sel.patch}: Katalog-Tage nicht lesbar`); continue; }
+    const markedDays = daysSel.marked + daysCmp.marked;
     const windows = new Map();
     for (let requestedDays = 1; requestedDays <= 7; requestedDays++) {
       for (const velocityShift of META_PULSE_VELOCITY_SHIFTS) {

@@ -6,7 +6,7 @@ import 'server-only';
 // die der Browser von der Route bekaeme.
 import { loadPatchDiff } from './meta-pulse-diff-snapshot';
 import { compAssignForPair } from './comp-assign-server';
-import { PATCH_DIFF_BUCKETS, type CompAssign, type PatchDiffEntity, type PatchDiffRow } from './snapshot-matrix';
+import { PATCH_DIFF_BUCKETS, type CompAssign, type CompPatchDays, type PatchDiffEntity, type PatchDiffRow } from './snapshot-matrix';
 import type { PatchInfo } from './tft-filters';
 import type { PatchDeltaRow } from './tft-patch-delta';
 
@@ -45,17 +45,17 @@ export async function loadPatchDeltaBlobs(o: {
   const buckets = PATCH_DIFF_BUCKETS[o.bucketLabel];
   if (!buckets) return null;
   const set = Number(o.current.set_number);
-  let comp: { assign: CompAssign; marked: [number, number] } | null = null;
+  let comp: { assign: CompAssign; days: [CompPatchDays, CompPatchDays] } | null = null;
   if (o.entity === 'comp') {
     const pair = await compAssignForPair(set, o.regions, o.current.patch, o.previous.patch);
     if (!pair) return null;
     if (!pair.assign) return { kind: 'assign' };
-    comp = { assign: pair.assign, marked: [pair.markedCurrent, pair.markedPrevious] };
+    comp = { assign: pair.assign, days: [pair.current, pair.previous] };
   }
   const [c, p] = await Promise.all([o.current, o.previous].map((info, i) => loadPatchDiff({
     entity: o.entity, regions: o.regions, bucketLabel: o.bucketLabel, buckets,
     patch: info, set, closed: info.patch !== o.newestPatch,
-    ...(comp ? { assign: comp.assign, markedDays: comp.marked[i] } : {}),
+    ...(comp ? { assign: comp.assign, days: comp.days[i] } : {}),
   })));
   const usable = (rows: PatchDiffRow[] | null) =>
     rows && (o.entity !== 'trait' || rows.every(r => r.level != null)) ? rows : null;

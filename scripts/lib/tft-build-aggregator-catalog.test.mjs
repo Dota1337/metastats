@@ -97,6 +97,35 @@ test('Schattenzaehlung laeuft in beiden Modi klassisch, ab 2 Spielen, Units je S
   assert.equal(finalize(agg, {}).compClassic.length, 0);
 });
 
+test('Klassische Cluster je Rang (0107): beide Modi, Schluessel wie klassische Comp-Zeilen, pro_pool, ohne Eisen', () => {
+  // Klassischer Lauf: dieselben Schluessel und Zahlen wie die Comp-Zeilen (ab 2 Spielen).
+  const plain = emptyAggregate();
+  aggregateMatch(match(lobby()), plain, { tierBucket: 'diamond', currentSet: 18 });
+  const outPlain = finalize(plain, { minCompGames: 1 });
+  const want = Object.entries(outPlain.byComp)
+    .filter(([, v]) => v.diamond.games >= 2)
+    .map(([k, v]) => [k, v.diamond.games, v.diamond.top4, v.diamond.top1]).sort();
+  assert.ok(want.length >= 1);
+  const rowsOf = (out, bucket) => out.compClassicBucket.filter(r => r.bucket === bucket)
+    .map(r => [r.clusterKey, r.games, r.top4, r.top1]).sort();
+  assert.deepEqual(rowsOf(outPlain, 'diamond'), want);
+  assert.ok(outPlain.compClassicBucket.every(r => r.games >= 2 && r.sumPlacement >= r.games));
+  // Mit Katalog: Comp-Zeilen zugeordnet, die klassischen Cluster bleiben gleich.
+  const cat = emptyAggregate();
+  aggregateMatch(match(lobby()), cat, { tierBucket: 'diamond', currentSet: 18, catalog: CATALOG });
+  assert.deepEqual(rowsOf(finalize(cat, { minCompGames: 1 }), 'diamond'), want);
+  // Pro-Lobby: zusaetzlich pro_pool mit denselben Zahlen.
+  const pro = emptyAggregate();
+  aggregateMatch(match(lobby()), pro, { tierBucket: 'diamond', currentSet: 18, proPuuids: new Set(['p3']) });
+  const outPro = finalize(pro, { minCompGames: 1 });
+  assert.deepEqual(rowsOf(outPro, 'pro_pool'), want);
+  assert.deepEqual(rowsOf(outPro, 'diamond'), want);
+  // Eisen zaehlt nicht (wie die Schattenzaehlung).
+  const iron = emptyAggregate();
+  aggregateMatch(match(lobby()), iron, { tierBucket: 'iron', currentSet: 18 });
+  assert.equal(finalize(iron, {}).compClassicBucket.length, 0);
+});
+
 test('Klassisch: keine Perfekt-Zaehler, Schluessel wie bisher', () => {
   const agg = emptyAggregate();
   aggregateMatch(match(lobby()), agg, { tierBucket: 'diamond', currentSet: 18 });

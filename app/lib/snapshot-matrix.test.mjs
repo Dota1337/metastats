@@ -48,7 +48,10 @@ import {
   isValidPatchDiff,
   RUNNING_PATCH_GRACE_MS,
   compDeltaAssign,
-  compFileAssign,
+  compFileAssigns,
+  compFileWant,
+  compMinRowGames,
+  COMP_CLASSIC_MIN_ROW_GAMES,
 } from './snapshot-matrix.ts';
 
 const TODAY = new Date('2026-09-13T08:30:00Z');
@@ -667,12 +670,59 @@ test('Eintrag volle Tage: nur mit gleichem Fenster-Ende', () => {
 // Comp-Katalog Phase 3 (Migration 0102): Comps vergleichen nur gleich
 // gezaehlte Patches. Route, Startdaten und Box muessen dieselbe Datei waehlen.
 test('Zaehlart: Vergleich nur zwischen gleich gezaehlten Patches (D2 streng)', () => {
-  assert.equal(compDeltaAssign(0, 0), 'classic');
-  assert.equal(compDeltaAssign(9, 140), 'catalog');
-  assert.equal(compDeltaAssign(9, 0), null); // erster Katalog-Patch gegen klassischen Vorpatch
-  assert.equal(compDeltaAssign(0, 140), null); // Anlauf-Tage des neuen Patches
-  assert.equal(compFileAssign(0), 'classic');
-  assert.equal(compFileAssign(1), 'catalog');
+  const d = (marked, classic) => ({ marked, classic });
+  assert.equal(compDeltaAssign(d(0, 0), d(0, 0)), 'classic'); // ohne Eintrag: klassisch wie vor 0107
+  assert.equal(compDeltaAssign(d(0, 30), d(0, 210)), 'classic');
+  assert.equal(compDeltaAssign(d(9, 0), d(140, 0)), 'catalog');
+  // Beide mit Katalog-Tagen: Katalog gewinnt, auch wenn beide klassische haben.
+  assert.equal(compDeltaAssign(d(9, 30), d(140, 20)), 'catalog');
+  // Gemischter Patch (18.5b: 4 Katalog-, 2 klassische Tage) gegen rein klassischen (18.4).
+  assert.equal(compDeltaAssign(d(60, 30), d(0, 210)), 'classic');
+  // Neuer Patch nur Katalog gegen gemischten Vorpatch: Katalog.
+  assert.equal(compDeltaAssign(d(15, 0), d(60, 30)), 'catalog');
+  assert.equal(compDeltaAssign(d(9, 0), d(0, 210)), null); // nur Katalog gegen nur klassisch
+  assert.equal(compDeltaAssign(d(0, 30), d(140, 0)), null); // Anlauf-Tage gegen reinen Katalog-Patch
+  assert.equal(compDeltaAssign(d(9, 0), d(0, 0)), null);
+  assert.deepEqual(compFileAssigns(d(0, 0)), ['classic']);
+  assert.deepEqual(compFileAssigns(d(0, 210)), ['classic']);
+  assert.deepEqual(compFileAssigns(d(1, 0)), ['catalog']);
+  assert.deepEqual(compFileAssigns(d(60, 30)), ['catalog', 'classic']);
+});
+
+test('Zaehlart: Grenze 8 nur fuer die klassische Seite eines gemischten Patches', () => {
+  const d = (marked, classic) => ({ marked, classic });
+  assert.equal(compMinRowGames('classic', d(60, 30)), COMP_CLASSIC_MIN_ROW_GAMES);
+  assert.equal(COMP_CLASSIC_MIN_ROW_GAMES, 8);
+  assert.equal(compMinRowGames('classic', d(0, 210)), null);
+  assert.equal(compMinRowGames('catalog', d(60, 30)), null);
+  assert.deepEqual(compFileWant('classic', d(0, 210)), { assign: 'classic', markedDays: 0 });
+  assert.deepEqual(compFileWant('catalog', d(60, 30)), { assign: 'catalog', markedDays: 60 });
+  assert.deepEqual(compFileWant('classic', d(60, 30)), { assign: 'classic', markedDays: 60, classicDays: 30, minRowGames: 8 });
+});
+
+test('Zaehlart: klassische Fassung eines gemischten Patches gilt nur mit gleichen klassischen Tagen', () => {
+  const d = { marked: 60, classic: 30 };
+  // Meta Pulse: Patch waechst weiter (letzter Tag, Spiele) — die Datei bleibt gueltig.
+  const mpWant = { ...MP_WANT, lastDay: '2026-10-05', totalMatches: 9_000_000, ...compFileWant('classic', d) };
+  const mpFile = { ...MP_SNAP, assign: 'classic', markedDays: 40, classicDays: 30, minRowGames: 8 };
+  assert.equal(isValidMetaPulseDiff(mpFile, mpWant), true);
+  assert.equal(isValidMetaPulseDiff({ ...mpFile, classicDays: 29 }, mpWant), false);
+  assert.equal(isValidMetaPulseDiff({ ...mpFile, minRowGames: undefined }, mpWant), false); // alte Datei ohne Grenze
+  assert.equal(isValidMetaPulseDiff(MP_SNAP, mpWant), false);
+  // 13 Tage alt: gilt noch (wie abgeschlossen), 15 Tage nicht.
+  assert.equal(isValidMetaPulseDiff({ ...mpFile, generatedAt: new Date(MP_NOW - 13 * 86_400_000).toISOString() }, mpWant), true);
+  assert.equal(isValidMetaPulseDiff({ ...mpFile, generatedAt: new Date(MP_NOW - 15 * 86_400_000).toISOString() }, mpWant), false);
+  // Rein klassischer Patch: alte Datei ohne Grenze gilt weiter, eine mit Grenze nicht.
+  const plain = { ...MP_WANT, ...compFileWant('classic', { marked: 0, classic: 210 }) };
+  assert.equal(isValidMetaPulseDiff(MP_SNAP, plain), true);
+  assert.equal(isValidMetaPulseDiff(mpFile, plain), false);
+  // Patch-Gewinner (Comps) mit derselben Regel.
+  const pdWant = { ...PD_WANT, entity: 'comp', lastDay: '2026-10-20', totalMatches: 9_000_000, ...compFileWant('classic', d) };
+  const pdFile = { ...PD_SNAP, entity: 'comp', window: 'patch', days: 6, assign: 'classic', markedDays: 40, classicDays: 30, minRowGames: 8 };
+  assert.equal(isValidPatchDiff(pdFile, pdWant), true);
+  assert.equal(isValidPatchDiff({ ...pdFile, classicDays: 31 }, pdWant), false);
+  assert.equal(isValidPatchDiff({ ...pdFile, minRowGames: undefined, classicDays: undefined }, pdWant), false);
+  assert.equal(isValidPatchDiff(pdFile, { ...PD_WANT, entity: 'comp', assign: 'classic', markedDays: 0 }), false);
 });
 
 test('Zaehlart: Katalog-Dateien liegen in eigenem Ordner, nur Comps', () => {

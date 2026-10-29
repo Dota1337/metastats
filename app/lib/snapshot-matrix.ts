@@ -689,20 +689,67 @@ export function precomputedEntryUsable(
 export type CompAssign = 'catalog' | 'classic';
 
 /**
- * Zaehlart eines Comp-Vergleichs aus den Katalog-Tagen (Region×Tage) beider
- * Seiten; null = kein Vergleich. Hat die neuere Seite Katalog-Tage, zaehlen
- * beide nur Katalog-Tage — ohne solche im Vorpatch gibt es keinen. Hat nur die
- * aeltere welche (Anlauftage eines neuen Patches nach dem Einschalten: klassisch,
- * aber mit Mindestspielen 3 statt 8), ebenfalls keinen.
+ * Tage eines Patches je Zaehlart (Region×Tage, get_tft_comp_marked_days):
+ * marked = Katalog-Tage, classic = region_days − marked_days (Migration 0107).
  */
-export function compDeltaAssign(markedCurrent: number, markedPrevious: number): CompAssign | null {
-  if (markedCurrent > 0) return markedPrevious > 0 ? 'catalog' : null;
-  return markedPrevious > 0 ? null : 'classic';
+export interface CompPatchDays {
+  marked: number;
+  classic: number;
 }
 
-/** Zaehlart, in der die Box die Comp-Datei eines Patches rechnet. */
-export function compFileAssign(markedDays: number): CompAssign {
-  return markedDays > 0 ? 'catalog' : 'classic';
+// Klassische Tage eines Patches, der spaeter Katalog-Tage bekam, liefen mit
+// Mindestspielen 3 je Zeile statt 8 (crawl-allranks-all-regions.mjs
+// --min-comp-games); ~10 % ihrer Spiele lagen in Zeilen unter 8 und verzerrten
+// den Pickrate-Nenner. Ihre klassische Seite zaehlt deshalb nur Zeilen ab 8
+// (p_min_row_games, Migration 0107) — so wie jeder rein klassische Patch.
+export const COMP_CLASSIC_MIN_ROW_GAMES = 8;
+
+// Ohne Eintrag (marked 0, classic 0) gilt ein Patch als klassisch wie vor 0107.
+function compHasClassic(d: CompPatchDays): boolean {
+  return d.classic > 0 || d.marked <= 0;
+}
+
+/**
+ * Zaehlart eines Comp-Vergleichs aus den Tagen beider Seiten; null = kein
+ * Vergleich. Haben beide Seiten Katalog-Tage, zaehlen beide nur diese. Sonst,
+ * wenn beide klassische Tage haben, zaehlen beide nur die klassischen (Plan
+ * 29.10.2026: ein gemischter Patch vergleicht so seine Starttage mit dem rein
+ * klassischen Vorpatch). Sonst keiner.
+ */
+export function compDeltaAssign(current: CompPatchDays, previous: CompPatchDays): CompAssign | null {
+  if (current.marked > 0 && previous.marked > 0) return 'catalog';
+  if (compHasClassic(current) && compHasClassic(previous)) return 'classic';
+  return null;
+}
+
+/** Mindestspiele je Zeile fuer die Comp-Abfrage einer Seite; null = keine Grenze noetig. */
+export function compMinRowGames(assign: CompAssign, days: CompPatchDays): number | null {
+  return assign === 'classic' && days.marked > 0 ? COMP_CLASSIC_MIN_ROW_GAMES : null;
+}
+
+/**
+ * Fassungen, die die Box fuer die Comp-Datei eines Patches rechnet: mit
+ * Katalog-Tagen die Katalog-Fassung, bei gemischten Patches zusaetzlich die
+ * klassische (Vergleich mit einem rein klassischen Vorpatch), sonst klassisch.
+ */
+export function compFileAssigns(days: CompPatchDays): CompAssign[] {
+  if (days.marked <= 0) return ['classic'];
+  return days.classic > 0 ? ['catalog', 'classic'] : ['catalog'];
+}
+
+/** Stand, den eine Comp-Datei dieser Zaehlart tragen muss (Felder der Pruefung unten). */
+export function compFileWant(assign: CompAssign, days: CompPatchDays): {
+  assign: CompAssign;
+  markedDays: number;
+  classicDays?: number;
+  minRowGames?: number;
+} {
+  const minRowGames = compMinRowGames(assign, days);
+  return {
+    assign,
+    markedDays: days.marked,
+    ...(minRowGames != null ? { classicDays: days.classic, minRowGames } : {}),
+  };
 }
 
 // Gemeinsame Pruefung der Comp-Dateien: Zaehlart muss passen (Dateien von vor
@@ -715,6 +762,28 @@ function compAssignMatches(s: { assign?: unknown }, want: { assign?: CompAssign 
 }
 function compMarkedBehind(s: { markedDays?: unknown }, want: { markedDays?: number }): boolean {
   return Number(s.markedDays ?? 0) < Number(want.markedDays ?? 0);
+}
+// Zeilen-Grenze muss passen: alte klassische Dateien (ohne minRowGames) gelten
+// fuer Patches ohne Katalog-Tage weiter, die klassische Fassung eines gemischten
+// Patches nur mit Grenze 8.
+function compRowFloorMatches(s: { minRowGames?: unknown }, want: { minRowGames?: number | null }): boolean {
+  return Number(s.minRowGames ?? 0) === Number(want.minRowGames ?? 0);
+}
+// Klassische Fassung eines gemischten Patches: ihre Tage liegen fest (neue
+// Tage zaehlen als Katalog-Tage), deshalb gilt sie wie ein abgeschlossener
+// Patch, solange die Zahl der klassischen Tage gleich ist — wachsende Spielzahl
+// und neuer letzter Tag des Patches aendern an ihr nichts.
+function compClassicOfMixed(want: { assign?: CompAssign; minRowGames?: number | null }): boolean {
+  return want.assign === 'classic' && Number(want.minRowGames ?? 0) > 0;
+}
+function compClassicFileUsable(
+  s: { classicDays?: unknown; generatedAt?: unknown },
+  want: { classicDays?: number; now: number },
+  maxAgeMs: number,
+): boolean {
+  if (Number(s.classicDays) !== Number(want.classicDays)) return false;
+  const age = want.now - Date.parse(String(s.generatedAt));
+  return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAgeMs;
 }
 
 // ---------------------------------------------------------------------------
@@ -785,6 +854,10 @@ export interface MetaPulseDiffSnapshot {
   assign?: CompAssign;
   /** Katalog-Tage (Region×Tage) des Patches zum Rechenzeitpunkt. */
   markedDays?: number;
+  /** Nur klassische Fassung eines gemischten Patches (0107): klassische Tage. */
+  classicDays?: number;
+  /** Nur klassische Fassung eines gemischten Patches (0107): Zeilen ab so vielen Spielen. */
+  minRowGames?: number;
   rows: MetaPulseDiffRow[];
 }
 
@@ -804,6 +877,10 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   assign?: CompAssign;
   /** Katalog-Tage des Patches laut get_tft_comp_marked_days. */
   markedDays?: number;
+  /** Klassische Fassung eines gemischten Patches (compFileWant): klassische Tage. */
+  classicDays?: number;
+  /** Klassische Fassung eines gemischten Patches (compFileWant): Zeilen-Grenze. */
+  minRowGames?: number | null;
 }): snap is MetaPulseDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<MetaPulseDiffSnapshot>;
@@ -811,7 +888,8 @@ export function isValidMetaPulseDiff(snap: unknown, want: {
   if (Number(s.set) !== want.set || s.patch !== want.patch) return false;
   if (listKey(s.regions) !== listKey(want.regions) || listKey(s.buckets) !== listKey(want.buckets)) return false;
   if (Number(s.minGames) !== META_PULSE_DIFF_MIN_GAMES) return false;
-  if (!compAssignMatches(s, want)) return false;
+  if (!compAssignMatches(s, want) || !compRowFloorMatches(s, want)) return false;
+  if (compClassicOfMixed(want)) return compClassicFileUsable(s, want, META_PULSE_DIFF_CLOSED_MAX_AGE_MS);
   // Kennt der Blob weniger Tage oder Spiele als die Patch-Liste der Route,
   // sind seither Daten dazugekommen → live rechnen (ausser Kulanz, s. o.).
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)
@@ -931,6 +1009,10 @@ export interface PatchDiffSnapshot {
   assign?: CompAssign;
   /** Nur Comps: Katalog-Tage (Region×Tage) des Patches zum Rechenzeitpunkt. */
   markedDays?: number;
+  /** Nur klassische Comp-Fassung eines gemischten Patches (0107): klassische Tage. */
+  classicDays?: number;
+  /** Nur klassische Comp-Fassung eines gemischten Patches (0107): Zeilen-Grenze. */
+  minRowGames?: number;
   rows: PatchDiffRow[];
 }
 
@@ -1008,6 +1090,9 @@ export function isValidPatchDiff(snap: unknown, want: {
   assign?: CompAssign;
   /** Nur Comps: Katalog-Tage des Patches laut get_tft_comp_marked_days. */
   markedDays?: number;
+  /** Nur Comps, klassische Fassung eines gemischten Patches (compFileWant). */
+  classicDays?: number;
+  minRowGames?: number | null;
 }): snap is PatchDiffSnapshot {
   if (!snap || typeof snap !== 'object') return false;
   const s = snap as Partial<PatchDiffSnapshot>;
@@ -1021,7 +1106,8 @@ export function isValidPatchDiff(snap: unknown, want: {
   }
   if (Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
   const comp = want.entity === 'comp';
-  if (comp && !compAssignMatches(s, want)) return false;
+  if (comp && (!compAssignMatches(s, want) || !compRowFloorMatches(s, want))) return false;
+  if (comp && compClassicOfMixed(want)) return compClassicFileUsable(s, want, PATCH_DIFF_CLOSED_MAX_AGE_MS);
   // Katalog-Tage kommen auch bei abgeschlossenen Patches noch dazu (der Marker
   // eines Nachzueglers), deshalb hier nicht nur fuer den laufenden Patch.
   if (String(s.lastDay ?? '').slice(0, 10) < String(want.lastDay).slice(0, 10)

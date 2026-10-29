@@ -109,7 +109,7 @@
       "dateColumn": "computed_at",
       "windowDays": 2,
       "minRows": 30,
-      "note": "Vorab berechnete Comp-Listen (Region alle x 5 Rang-Gruppen x Tagesstufen x Patch-Faelle, seit 29.10.2026 dazu West/Asien x 3 Rang-Gruppen x 4-7 Tage, nur aktueller Patch), jeder Lauf ersetzt oder bestaetigt sie. Lauf 29.10.: 105 Abfragen fuer Region alle (70 gerechnet, 35 bestaetigt). Fehlen sie, rechnet /api/tft/comps live und die schweren Kombinationen laufen in 502."
+      "note": "Vorab berechnete Comp-Listen (Region alle x 5 Rang-Gruppen x Tagesstufen x Patch-Faelle, seit 29.10.2026 dazu West/Asien x 3 Rang-Gruppen x 1-7 Tage, nur aktueller Patch), jeder Lauf ersetzt oder bestaetigt sie. Lauf 29.10.: 105 Abfragen fuer Region alle (70 gerechnet, 35 bestaetigt). Fehlen sie, rechnet /api/tft/comps live und die schweren Kombinationen laufen in 502."
     },
     {
       "id": "snapshot-publisher/item-list-precomputed",
@@ -120,7 +120,7 @@
       "windowDays": 2,
       "minRows": 1,
       "armed": false,
-      "note": "Seit Migration 0108 (29.10.2026): vorab berechnete Item-Listen, gleiche Fenster wie die Comp-Listen (Region alle x 5 Rang-Gruppen x 1-7 Tage x Patch-Faelle, West/Asien x 3 Rang-Gruppen x 4-7 Tage), gerechnet in scripts/precompute-comp-windows.mjs. Fehlen sie, rechnet /api/tft/items live: alle/West x 4-7 Tage laufen dann in 502 (gemessen 29.10.). minRows 1 als Platzhalter — scharf nach erstem Nachtlauf."
+      "note": "Seit Migration 0108 (29.10.2026): vorab berechnete Item-Listen, gleiche Fenster wie die Comp-Listen (Region alle x 5 Rang-Gruppen x 1-7 Tage x Patch-Faelle, West/Asien x 3 Rang-Gruppen x 1-7 Tage), gerechnet in scripts/precompute-comp-windows.mjs. Fehlen sie, rechnet /api/tft/items live: alle/West x 4-7 Tage laufen dann in 502 (gemessen 29.10.). minRows 1 als Platzhalter — scharf nach erstem Nachtlauf."
     },
     {
       "id": "daily-crawl/crawl-meta",

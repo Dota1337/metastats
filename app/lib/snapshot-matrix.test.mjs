@@ -157,14 +157,15 @@ test('Gruppen: Raenge stimmen mit der Rang-Datei ueberein', async () => {
   }
 });
 
-test('Vorrat-Ziele: alle Regionen immer, West/Asien nur schwere Fenster des aktuellen Patches', () => {
+test('Vorrat-Ziele: alle Regionen immer, West/Asien breite Raenge des aktuellen Patches', () => {
   const c = (regionLabel, bucketLabel, requestedDays, patchKey = '') => precomputeCovers({ regionLabel, bucketLabel, requestedDays, patchKey });
   assert.equal(c('all', 'all', 1), true);
   assert.equal(c('all', 'master_plus', 7, '18.2'), true);
   assert.equal(c('all', 'diamond', 7), false); // keine Rang-Gruppe der Vorabrechnung
   assert.equal(c('west', 'all', 4), true);
   assert.equal(c('asia', 'emerald_plus', 7), true);
-  assert.equal(c('west', 'all', 3), false);
+  assert.equal(c('west', 'all', 1), true);
+  assert.equal(c('asia', 'platinum_plus', 2), true);
   assert.equal(c('west', 'master_plus', 7), false);
   assert.equal(c('west', 'all', 7, '18.2'), false);
   assert.equal(c('euw1', 'all', 7), false);
@@ -179,7 +180,7 @@ test('Gruppen-Jobs: nur Ziel-Fenster, keine Stufe geht beim Zusammenlegen verlor
   // Jede Ziel-Stufe hat einen Eintrag mit demselben Fenster wie der volle Job-Satz.
   const all = compPrecomputeJobs({ patches: PATCHES, setNumber: 18, today: TODAY }).filter(j => j.patchKey === '');
   for (const b of PRECOMPUTE_GROUP_TARGETS.buckets) {
-    const want = new Set(all.filter(j => j.bucketLabel === b && j.requestedDays >= 4).map(j => j.dataStart));
+    const want = new Set(all.filter(j => j.bucketLabel === b && j.requestedDays >= PRECOMPUTE_GROUP_TARGETS.minDays).map(j => j.dataStart));
     const got = new Set(jobs.filter(j => j.bucketLabel === b).map(j => j.dataStart));
     for (const d of want) assert.ok(got.has(d), `${b}: Fenster ab ${d} fehlt`);
   }

@@ -469,14 +469,14 @@ export const COMP_PRECOMPUTE_BUCKETS = {
     master_plus: plusFrom('master'),
 };
 export const COMP_PRECOMPUTE_REGION = 'all';
-// Region-Gruppen West/Asien (Plan 2026-10-29): nur die Fenster, die live
-// gemessen in 502 liefen — 4-7 Tage, breite Raenge, aktueller Patch ohne
-// Filter. Die Regionslisten kommen von aussen (diese Datei importiert nichts):
+// Region-Gruppen West/Asien (Plan 2026-10-29): breite Raenge, aktueller Patch
+// ohne Filter, alle Tagesstufen — 4-7 Tage liefen live in 502, 2 Tage lagen
+// warm schon bei 6,1 s (Grenze 8 s). Die Regionslisten kommen von aussen (diese Datei importiert nichts):
 // Skript aus scripts/lib/active-regions.mjs, Route aus filters.regions.
 export const PRECOMPUTE_GROUP_TARGETS = {
     regionLabels: ['west', 'asia'],
     buckets: ['all', 'platinum_plus', 'emerald_plus'],
-    minDays: 4,
+    minDays: 1,
     patchKeys: [''],
 };
 /**

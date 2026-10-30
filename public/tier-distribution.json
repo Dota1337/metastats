@@ -1,25 +1,25 @@
 {
   "queue": "RANKED_SOLO_5x5",
   "month": "August 2026",
-  "fetchedAt": "2026-10-23T06:29:51.090Z",
+  "fetchedAt": "2026-10-30T07:03:05.146Z",
   "source": "esportstales.com (data: leagueofgraphs.com)",
   "tiers": [
     {
       "key": "IRON",
       "label": "Iron",
-      "color": "#6b6b6b",
+      "color": "#949494",
       "pct": 3.4
     },
     {
       "key": "BRONZE",
       "label": "Bronze",
-      "color": "#a0652a",
+      "color": "#cc843c",
       "pct": 16
     },
     {
       "key": "SILVER",
       "label": "Silver",
-      "color": "#8fa0a8",
+      "color": "#a9b8c0",
       "pct": 21
     },
     {
@@ -43,19 +43,19 @@
     {
       "key": "DIAMOND",
       "label": "Dia",
-      "color": "#576cce",
+      "color": "#8090da",
       "pct": 4
     },
     {
       "key": "MASTER",
       "label": "Master",
-      "color": "#9d48e0",
+      "color": "#b778e8",
       "pct": 0.83
     },
     {
       "key": "GRANDMASTER",
       "label": "GM",
-      "color": "#e44040",
+      "color": "#ea6c6c",
       "pct": 0.054
     },
     {

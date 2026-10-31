@@ -1,25 +1,25 @@
 {
   "queue": "RANKED_TFT",
   "month": "September 2026",
-  "fetchedAt": "2026-10-24T06:59:21.133Z",
+  "fetchedAt": "2026-10-31T06:52:09.380Z",
   "source": "esportstales.com",
   "tiers": [
     {
       "key": "IRON",
       "label": "Iron",
-      "color": "#6b6b6b",
+      "color": "#949494",
       "pct": 2.7
     },
     {
       "key": "BRONZE",
       "label": "Bronze",
-      "color": "#a0652a",
+      "color": "#cc843c",
       "pct": 19
     },
     {
       "key": "SILVER",
       "label": "Silver",
-      "color": "#8fa0a8",
+      "color": "#a9b8c0",
       "pct": 36
     },
     {
@@ -43,19 +43,19 @@
     {
       "key": "DIAMOND",
       "label": "Dia",
-      "color": "#576cce",
+      "color": "#8090da",
       "pct": 0.74
     },
     {
       "key": "MASTER",
       "label": "Master",
-      "color": "#9d48e0",
+      "color": "#b778e8",
       "pct": 0.21
     },
     {
       "key": "GRANDMASTER",
       "label": "GM",
-      "color": "#e44040",
+      "color": "#ea6c6c",
       "pct": 0.05
     },
     {

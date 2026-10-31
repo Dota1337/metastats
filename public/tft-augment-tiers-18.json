@@ -1,7 +1,7 @@
 {
   "set": 18,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-10-24T06:17:23.629Z",
+  "fetchedAt": "2026-10-31T06:11:16.030Z",
   "counts": {
     "silver": 69,
     "gold": 112,
@@ -255,7 +255,7 @@
     "TFT_Augment_NoScoutNoPivot": 2,
     "DA_18_ElderwoodTraitAugment": 2,
     "DA_18_RiftbeastTraitAugment": 2,
-    "DA_PandorasItemsII": 2,
+    "DA_PandorasItemsIIMinus": 2,
     "TFT9_Augment_PandorasItems2": 2,
     "DA_PatientStudy": 2,
     "TFT9_Augment_LearningFromExperience2": 2,

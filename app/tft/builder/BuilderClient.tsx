@@ -21,15 +21,15 @@ import ItemStatLine from '../../components/tft/ItemStatLine';
 
 // Visual comp-builder with TFT-standard 4×7 pointy-top hex board.
 // Row layout (cell indices) — matches in-game player POV:
-//   Row 0 (back)  cells 0..6                            → visual BOTTOM row
-//   Row 1         cells 7..13   (shifted right by half) → 2nd from bottom
-//   Row 2         cells 14..20                          → 2nd from top
-//   Row 3 (front) cells 21..27 (shifted right)          → visual TOP row
+//   Row 0 (back)  cells 0..6    (shifted right by half) → visual BOTTOM row
+//   Row 1         cells 7..13                           → 2nd from bottom
+//   Row 2         cells 14..20  (shifted right by half) → 2nd from top
+//   Row 3 (front) cells 21..27                          → visual TOP row
 //
 // Cells are positioned absolutely; we flip the topPct so data-row 3
 // (frontline) lands at the top of the board — what the player sees in-game.
-// Stagger stays bound to the data-row index, so odd data-rows (1, 3) keep
-// their half-cell right-shift, matching the in-game silhouette.
+// Even data-rows (0, 2) carry the half-cell right-shift, like boardLayout()
+// in tft-comp-board.ts, the app and MetaTFT (measured 2026-11-01).
 //
 // Two boards (own + optional opponent) share the same cell coordinate
 // space; placements are kept in separate arrays. URL ?b= encodes both,
@@ -41,6 +41,9 @@ import ItemStatLine from '../../components/tft/ItemStatLine';
 
 const ROWS = 4;
 const COLS = 7;
+// Halbes Feld Versatz nach rechts: gerade Datenreihen. Zeichnen und Ablegen
+// rechnen beide damit.
+const rowShift = (row: number) => (row % 2 === 0 ? 0.5 : 0);
 // Brettgrenze: teamLimit (tft-builder-items.ts) — 10 plus Tactician-Items und
 // Riftbeast 10; belegt werden Plaetze (teamSlotsUsed, Elder Dragon 2).
 const STORAGE_KEY = 'tft.savedComps';
@@ -620,7 +623,7 @@ export default function BuilderClient({ initialAssets }: {
       if (occupiedOnly && !occupied.has(cell)) continue;
       const row = Math.floor(cell / COLS);
       const col = cell % COLS;
-      const cx = r.left + (col + (row % 2 === 1 ? 0.5 : 0) + 0.5) * cw;
+      const cx = r.left + (col + rowShift(row) + 0.5) * cw;
       const cy = r.top + (ROWS - 1 - row + 0.5) * ch;
       const d = Math.hypot(clientX - cx, clientY - cy);
       // Gleichstand: die kleinere Zellnummer gewinnt (fest, kein Flackern).
@@ -985,11 +988,11 @@ export default function BuilderClient({ initialAssets }: {
             </button>
           )}
         </div>
-        {/* Hex math: 7 cells per row, odd rows shifted by half-cell to the
-            RIGHT. To get the staggered silhouette on both sides (like the
+        {/* Hex math: 7 cells per row, even data-rows shifted by half-cell to
+            the RIGHT. To get the staggered silhouette on both sides (like the
             in-game board), each cell is sized as 1/7.5 of the container
-            width — that way odd rows extend exactly half a cell past the
-            right edge while even rows leave that same half-cell gap.
+            width — that way shifted rows reach the right edge while the
+            others leave that same half-cell gap.
             Position absolutely on the container (NOT inside row-flex) so
             cell widths stay identical regardless of row offset. */}
         <div
@@ -1004,7 +1007,7 @@ export default function BuilderClient({ initialAssets }: {
           {Array.from({ length: ROWS * COLS }).map((_, cellIdx) => {
             const rowIdx = Math.floor(cellIdx / COLS);
             const colIdx = cellIdx % COLS;
-            const offset = rowIdx % 2 === 1 ? 0.5 : 0;
+            const offset = rowShift(rowIdx);
             const leftPct = ((colIdx + offset) / 7.5) * 100;
             // Flip vertically: data-row 3 (frontline) renders at the top of
             // the board — player POV matches in-game.

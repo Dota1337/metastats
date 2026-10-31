@@ -82,6 +82,15 @@ export function comparePatchLabels(a: string, b: string): number {
 }
 
 async function loadView(set: number, start: string, end: string, patches: string[] | null): Promise<CompCatalogView | null> {
+  // Parallel: der Seitentitel wartet hoechstens 400 ms auf diese Sicht
+  // (compKeyForDefaultView). Der eigene catch verhindert eine unbehandelte
+  // Ablehnung, falls der Katalog vorher scheitert.
+  const mergeRead: Promise<MergeRow[] | null> = compMergeReadEnabled()
+    ? callRpc<MergeRow[]>('get_tft_comp_merges', { p_set: set }, 4000).catch(err => {
+      console.error('[comp-catalog] Zuordnung nicht lesbar, Comps getrennt:', (err as Error)?.message ?? err);
+      return null;
+    })
+    : Promise.resolve([]);
   const rows = await callRpc<CatalogRow[]>('get_tft_comp_catalog_window',
     { p_set: set, p_start: start, p_end: end, p_patches: patches }, 8000);
   if (!Array.isArray(rows) || rows.length === 0) return null;
@@ -103,18 +112,12 @@ async function loadView(set: number, start: string, end: string, patches: string
   const baseLookup = mergedAliasMap(catalogs);
   // Comps zusammenlegen (0109): hier, damit Liste, Detail, Duelle und Vorrat
   // dieselbe Zuordnung sehen. Fehler → Comps getrennt, die Seite bleibt stehen.
-  let merged = noMerges(baseLookup);
-  let mergeFailed = false;
-  if (compMergeReadEnabled()) {
-    try {
-      const mergeRows = await callRpc<MergeRow[]>('get_tft_comp_merges', { p_set: set }, 4000);
-      const windowFamilies = [...new Set(sorted.map(r => r.patch.replace(/[a-z]$/, '')))];
-      merged = applyMerges(baseLookup, mergeTargets(mergeRowsForWindow(mergeRows || [], windowFamilies)));
-    } catch (err) {
-      mergeFailed = true;
-      console.error('[comp-catalog] Zuordnung nicht lesbar, Comps getrennt:', (err as Error)?.message ?? err);
-    }
-  }
+  const mergeRows = await mergeRead;
+  const mergeFailed = mergeRows === null;
+  const windowFamilies = [...new Set(sorted.map(r => r.patch.replace(/[a-z]$/, '')))];
+  const merged = mergeRows
+    ? applyMerges(baseLookup, mergeTargets(mergeRowsForWindow(mergeRows, windowFamilies)))
+    : noMerges(baseLookup);
   for (const list of merged.parts.values()) for (const part of list.slice(1)) comps.delete(part);
   return {
     id: merged.stamp ? `${baseId}|${merged.stamp}` : baseId,

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   parseMidpatch, categoryKind, notesFromHtml, notesUrl, fetchNotes,
-  basesToCheck, mergeBaseCuts, run, LOOKBACK_DAYS,
+  basesToCheck, mergeBaseCuts, metatftCut, run, LOOKBACK_DAYS,
 } from './detect-tft-bpatches.mjs';
 import { AUTO_SCAN_DAYS } from './lib/tft-patch-relabel.mjs';
 
@@ -45,6 +45,81 @@ test('echte Seiten ergeben die richtigen Schnitte', () => {
   assert.deepEqual(parseMidpatch(n.body, n.publishIso).map(u => `${u.day} ${u.balance}`), ['2026-09-28 false', '2026-09-24 true']);
   assert.equal(n.url, notesUrl('18.3'));
   assert.equal(n.publishIso, '2026-09-22T18:00:00.000Z');
+});
+
+test('echte Seite 18.5: Update ohne Kategorie, nur Werte mit Pfeil, ist Balance', () => {
+  const n = notesOf('18.5');
+  assert.deepEqual(parseMidpatch(n.body, n.publishIso).map(u => `${u.day} ${u.balance}`), ['2026-10-27 true', '2026-10-22 true']);
+  assert.deepEqual(parseMidpatch(n.body, n.publishIso)[0].categories, []);
+});
+
+test('ohne Kategorie und ohne Pfeil kein Balance, Pfeil im naechsten Datum zaehlt nicht mit', () => {
+  const body = '<h2 id="patch-midpatch-updates">X</h2><h3>OCTOBER 27TH</h3><p>Wir haben einen Fehler behoben.</p><h3>OCTOBER 22ND</h3><p>A 1 ⇒ 2</p>';
+  assert.deepEqual(parseMidpatch(body, '2026-10-20T00:00:00Z').map(u => `${u.day} ${u.balance}`), ['2026-10-27 false', '2026-10-22 true']);
+  // Bugfix-Kategorie mit Pfeil im Text bleibt kein Balance.
+  const bug = '<h2 id="patch-midpatch-updates">X</h2><h3>OCTOBER 27TH</h3><h4>BUG FIXES</h4><p>A 1 ⇒ 2</p>';
+  assert.equal(parseMidpatch(bug, '2026-10-20T00:00:00Z')[0].balance, false);
+});
+
+const MT = (b_patch_version, start = '2026-10-27T17:17:28.790Z', patch = '18.5') => ({ patch, b_patch_version, start });
+const cut185 = [cut('18.5b', '2026-10-22')];
+const mtArgs = (mt, extra = {}) => ({ mt, base: '18.5', set: 18, existing: cut185, updates: [], goLive: '2026-10-21', nowIso: NOW, ...extra });
+
+test('MetaTFT eine Stufe voraus: Schnitt mit eigenem Buchstaben ab dem Tag nach dem Start, pinned', () => {
+  const { cut: c } = metatftCut(mtArgs(MT('c')));
+  assert.equal(c.patch, '18.5c');
+  assert.equal(c.from_day, '2026-10-28');
+  assert.equal(c.pinned, true);
+  // Start vor 05:00 UTC gehoert zum Fenster des Vortags.
+  assert.equal(metatftCut(mtArgs(MT('c', '2026-10-27T03:00:00.000Z'))).cut.from_day, '2026-10-27');
+  // Noch kein eigener Schnitt: aus MetaTFT b wird unser b.
+  assert.equal(metatftCut(mtArgs(MT('b', '2026-10-25T10:00:00Z'), { existing: [] })).cut.patch, '18.5b');
+});
+
+test('MetaTFT: kein Schnitt bei Gleichstand, Rueckstand von MetaTFT, anderer Nummer darunter', () => {
+  assert.match(metatftCut(mtArgs(MT('b'))).note, /stimmt ueberein/);
+  assert.match(metatftCut(mtArgs(MT(''))).note, /hinkt/);
+  assert.match(metatftCut(mtArgs(MT('', undefined, '18.4'))).note, /meldet Patch 18\.4/);
+});
+
+test('MetaTFT: Befund statt Schnitt', () => {
+  const f = (mt, extra) => { const r = metatftCut(mtArgs(mt, extra)); assert.equal(r.cut, undefined); return r.finding; };
+  assert.match(f(MT('d')), /mehr als eine Stufe/);
+  assert.match(f(MT('c', '2026-10-20T10:00:00Z')), /liegt nicht nach/);
+  assert.match(f(MT('c', 'quatsch')), /Startzeit nicht lesbar/);
+  assert.match(f(MT('', undefined, '18.6')), /meldet Patch 18\.6/);
+  assert.match(f({ patch: 42 }), /nicht lesbar/);
+  assert.match(f(MT('c'), { updates: [{ day: '2026-10-27', balance: false, categories: ['BUG FIXES'] }] }), /nur BUG FIXES/);
+});
+
+test('Lauf: MetaTFT-Schnitt 18.5c, Riots Datum 27.10. verschiebt ihn nicht', async () => {
+  const m = meta([cut('18.5b', '2026-10-22')], { latestPatch: '18.5' });
+  const r = await run({ meta: m, today: '2026-10-28', nowIso: NOW, fetchNotes: async b => (b === '18.5' ? notesOf('18.5') : null), fetchMetatft: async () => MT('c') });
+  assert.deepEqual(show(r.cuts), ['18.5b 2026-10-22', '18.5c 2026-10-28']);
+  assert.equal(r.cuts[1].pinned, true);
+  assert.equal(r.changed, true);
+  assert.equal(r.perBase['18.5'], '18.5c neu ab 2026-10-28 (MetaTFT)');
+  // Am Tag danach: nichts mehr zu tun, Gleichstand.
+  const again = await run({ meta: { ...m, patchCuts: r.cuts }, today: '2026-10-29', nowIso: NOW, fetchNotes: async b => (b === '18.5' ? notesOf('18.5') : null), fetchMetatft: async () => MT('c') });
+  assert.equal(again.changed, false);
+  assert.deepEqual(show(again.cuts), ['18.5b 2026-10-22', '18.5c 2026-10-28']);
+});
+
+test('Lauf: MetaTFT nicht erreichbar ist Befund, Riot-Schnitte laufen weiter', async () => {
+  const m = meta([], { latestPatch: '18.5' });
+  const r = await run({ meta: m, today: '2026-10-23', nowIso: NOW, fetchNotes: async b => (b === '18.5' ? notesOf('18.5') : null), fetchMetatft: async () => { throw new Error('HTTP 503'); } });
+  assert.equal(r.exitCode, 2);
+  assert.match(r.findings.join('\n'), /MetaTFT nicht erreichbar — HTTP 503/);
+  assert.ok(show(r.cuts).includes('18.5b 2026-10-22'));
+});
+
+test('Update am Go-Live-Tag ist kein Schnitt und kein Befund, ein Tag davor bleibt verworfen', async () => {
+  const fetcher = day => async base => (base === '18.3' ? fakeNotes(base, `<h4>SEPTEMBER ${day}</h4><h4>UNITS</h4>`, '2026-09-22T18:00:00.000Z') : notesOf(base));
+  const r = await run({ meta: meta(), today: '2026-10-05', nowIso: NOW, fetchNotes: fetcher('23RD') });
+  assert.equal(r.exitCode, 0);
+  assert.deepEqual(show(r.cuts), ['18.2b 2026-09-14']);
+  const early = await run({ meta: meta(), today: '2026-10-05', nowIso: NOW, fetchNotes: fetcher('22ND') });
+  assert.match(early.findings.join('\n'), /verworfen/);
 });
 
 test('Seite ohne __NEXT_DATA__ oder ohne Text wirft', () => {

@@ -5,8 +5,8 @@ import 'server-only';
 // Uebersicht zeigt ihre Pfeile so schon im ersten HTML, mit denselben Zahlen,
 // die der Browser von der Route bekaeme.
 import { loadPatchDiff } from './meta-pulse-diff-snapshot';
-import { compAssignForPair } from './comp-assign-server';
-import { PATCH_DIFF_BUCKETS, type CompAssign, type CompPatchDays, type PatchDiffEntity, type PatchDiffRow } from './snapshot-matrix';
+import { compAssignForPair, NO_COMP_DAYS, type CompSide } from './comp-assign-server';
+import { joinPatchDiffRows, PATCH_DIFF_BUCKETS, type CompAssign, type PatchDiffEntity, type PatchDiffRow } from './snapshot-matrix';
 import type { PatchInfo } from './tft-filters';
 import type { PatchDeltaRow } from './tft-patch-delta';
 
@@ -31,7 +31,8 @@ export type PatchDeltaBlobs =
  * 18.10.2026 ohne Stufe, die die Box erst stuendlich nach und nach ersetzt.
  * `current`/`previous` muessen aus get_tft_available_patches(180) stammen: die
  * Pruefung vergleicht letzten Tag und Matchzahl, und die 30-Tage-Liste schneidet
- * aeltere Patches ab. Comps: beide Seiten in derselben Zaehlart
+ * aeltere Patches ab (`patches` ist dieselbe Liste). Comps: beide Seiten in
+ * derselben Zaehlart, eine Seite kann mehrere Patches lesen
  * (comp-assign-server.ts); sind die Katalog-Tage nicht lesbar → null.
  */
 export async function loadPatchDeltaBlobs(o: {
@@ -41,25 +42,36 @@ export async function loadPatchDeltaBlobs(o: {
   current: PatchInfo;
   previous: PatchInfo;
   newestPatch: string;
+  patches: ReadonlyArray<PatchInfo>;
 }): Promise<PatchDeltaBlobs | null> {
   const buckets = PATCH_DIFF_BUCKETS[o.bucketLabel];
   if (!buckets) return null;
   const set = Number(o.current.set_number);
-  let comp: { assign: CompAssign; days: [CompPatchDays, CompPatchDays] } | null = null;
+  let assign: CompAssign | undefined;
+  let sides: CompSide[][] = [[{ patch: o.current.patch, days: NO_COMP_DAYS }], [{ patch: o.previous.patch, days: NO_COMP_DAYS }]];
   if (o.entity === 'comp') {
     const pair = await compAssignForPair(set, o.regions, o.current.patch, o.previous.patch);
     if (!pair) return null;
     if (!pair.assign) return { kind: 'assign' };
-    comp = { assign: pair.assign, days: [pair.current, pair.previous] };
+    assign = pair.assign;
+    sides = [pair.current, pair.previous];
   }
-  const [c, p] = await Promise.all([o.current, o.previous].map((info, i) => loadPatchDiff({
-    entity: o.entity, regions: o.regions, bucketLabel: o.bucketLabel, buckets,
-    patch: info, set, closed: info.patch !== o.newestPatch,
-    ...(comp ? { assign: comp.assign, days: comp.days[i] } : {}),
-  })));
+  const readSide = async (list: CompSide[]): Promise<PatchDiffRow[] | null> => {
+    const rows = await Promise.all(list.map(s => {
+      const info = o.patches.find(p => p.patch === s.patch);
+      if (!info) return null;
+      return loadPatchDiff({
+        entity: o.entity, regions: o.regions, bucketLabel: o.bucketLabel, buckets,
+        patch: info, set, closed: info.patch !== o.newestPatch,
+        ...(assign ? { assign, days: s.days } : {}),
+      });
+    }));
+    return rows.every((r): r is PatchDiffRow[] => r != null) ? joinPatchDiffRows(rows) : null;
+  };
+  const [c, p] = await Promise.all(sides.map(readSide));
   const usable = (rows: PatchDiffRow[] | null) =>
     rows && (o.entity !== 'trait' || rows.every(r => r.level != null)) ? rows : null;
   const cu = usable(c);
   const pu = usable(p);
-  return cu && pu ? { kind: 'rows', current: cu, previous: pu, ...(comp ? { assign: comp.assign } : {}) } : null;
+  return cu && pu ? { kind: 'rows', current: cu, previous: pu, ...(assign ? { assign } : {}) } : null;
 }

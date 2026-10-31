@@ -50,6 +50,15 @@
       "from_day": "2026-10-22",
       "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-5/",
       "detected_at": "2026-10-23T02:39:37.527Z"
+    },
+    {
+      "set": 18,
+      "patch": "18.5c",
+      "base": "18.5",
+      "from_day": "2026-10-28",
+      "pinned": true,
+      "source": "https://teamfighttactics.leagueoflegends.com/en-us/news/game-updates/teamfight-tactics-patch-18-5/",
+      "detected_at": "2026-10-31T22:00:00.000Z"
     }
   ],
   "patchStarts": [

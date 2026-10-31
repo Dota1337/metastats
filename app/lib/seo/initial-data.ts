@@ -372,10 +372,10 @@ export async function compDeltaStart(
     if (!current || !previous || !all[0]) return null;
     const blobs = await loadPatchDeltaBlobs({
       entity: 'comp', regions: ALL_REGIONS, bucketLabel: filters.bucket,
-      current, previous, newestPatch: all[0].patch,
+      current, previous, newestPatch: all[0].patch, patches: all,
     });
     if (!blobs) return null;
-    // Seiten zaehlen verschieden (compDeltaAssign): dieselbe Antwort wie die
+    // Seiten zaehlen verschieden (compDeltaSides): dieselbe Antwort wie die
     // Route, der Browser fragt dann nicht nach.
     if (blobs.kind === 'assign') {
       return { url, res: { hasData: false, currentPatch: pair.patch, previousPatch: pair.prev, reason: 'assign' } };

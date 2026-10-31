@@ -1,12 +1,12 @@
 import 'server-only';
 // Tage je Patch und Zaehlart (Comp-Katalog Phase 3, Migration 0102; klassische
 // Tage seit 0107): daraus waehlen Patch-Vergleich und Meta Pulse die Zaehlart
-// beider Seiten (compDeltaAssign in snapshot-matrix.ts — dieselbe Regel rechnet
-// die Box). Kleine Abfrage auf tft_daily_crawl_meta, 10 min je Set und Regionen
+// beider Seiten (compDeltaSides in snapshot-matrix.ts — die Fassungen je Patch
+// rechnet die Box). Kleine Abfrage auf tft_daily_crawl_meta, 10 min je Set und Regionen
 // gemerkt: ein Marker kommt einmal am Tag je Region dazu, und eine Katalog-Datei
 // mit mehr Tagen als gemerkt gilt trotzdem (compMarkedBehind prueft nur „zu wenige“).
 import { callRpc } from './tft-supabase-reader';
-import { compDeltaAssign, listKey, type CompAssign, type CompPatchDays } from './snapshot-matrix';
+import { compDeltaSides, listKey, type CompAssign, type CompPatchDays } from './snapshot-matrix';
 
 const TTL_MS = 10 * 60 * 1000;
 const ERROR_TTL_MS = 60 * 1000;
@@ -32,14 +32,23 @@ export function compMarkedDays(set: number, regions: ReadonlyArray<string>): Pro
   return entry.value;
 }
 
-export interface CompAssignPair {
-  /** null = kein Vergleich (die Seiten zaehlen verschieden). */
-  assign: CompAssign | null;
-  current: CompPatchDays;
-  previous: CompPatchDays;
+/** Ein Patch, den eine Vergleichs-Seite liest, mit seinen Tagen. */
+export interface CompSide {
+  patch: string;
+  days: CompPatchDays;
 }
 
-/** Zaehlart eines Comp-Vergleichs; null, wenn die Tage nicht lesbar sind. */
+export interface CompAssignPair {
+  /** null = kein Vergleich (auch die Patch-Familien haben nichts Gleiches). */
+  assign: CompAssign | null;
+  current: CompSide[];
+  previous: CompSide[];
+}
+
+/**
+ * Zaehlart eines Comp-Vergleichs und die Patches je Seite (compDeltaSides); null,
+ * wenn die Tage nicht lesbar sind.
+ */
 export async function compAssignForPair(
   set: number,
   regions: ReadonlyArray<string>,
@@ -48,7 +57,8 @@ export async function compAssignForPair(
 ): Promise<CompAssignPair | null> {
   const days = await compMarkedDays(set, regions);
   if (!days) return null;
-  const cur = days.get(current) ?? NO_COMP_DAYS;
-  const prev = days.get(previous) ?? NO_COMP_DAYS;
-  return { assign: compDeltaAssign(cur, prev), current: cur, previous: prev };
+  const sides = compDeltaSides(days, current, previous);
+  if (!sides) return { assign: null, current: [], previous: [] };
+  const withDays = (list: string[]) => list.map(patch => ({ patch, days: days.get(patch) ?? NO_COMP_DAYS }));
+  return { assign: sides.assign, current: withDays(sides.current), previous: withDays(sides.previous) };
 }

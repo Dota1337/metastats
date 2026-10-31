@@ -50,6 +50,8 @@ import {
   isValidPatchDiff,
   RUNNING_PATCH_GRACE_MS,
   compDeltaAssign,
+  compDeltaSides,
+  joinPatchDiffRows,
   compFileAssigns,
   compFileWant,
   compMinRowGames,
@@ -724,6 +726,18 @@ test('Zaehlart: Vergleich nur zwischen gleich gezaehlten Patches (D2 streng)', (
   assert.equal(compDeltaAssign(d(9, 0), d(0, 210)), null); // nur Katalog gegen nur klassisch
   assert.equal(compDeltaAssign(d(0, 30), d(140, 0)), null); // Anlauf-Tage gegen reinen Katalog-Patch
   assert.equal(compDeltaAssign(d(9, 0), d(0, 0)), null);
+  // compDeltaSides: 18.5c (nur Katalog) gegen 18.4 (nur klassisch) liest die
+  // klassischen Fassungen der Familie 18.5, der 18.6-Anlauf gegen 18.5c genauso.
+  const days = new Map([['18.4', d(0, 200)], ['18.5', d(0, 9)], ['18.5b', d(40, 18)], ['18.5c', d(27, 0)], ['18.6', d(0, 9)]]);
+  assert.deepEqual(compDeltaSides(days, '18.5c', '18.4'), { assign: 'classic', current: ['18.5', '18.5b'], previous: ['18.4'] });
+  assert.deepEqual(compDeltaSides(days, '18.6', '18.5c'), { assign: 'classic', current: ['18.6'], previous: ['18.5', '18.5b'] });
+  assert.deepEqual(compDeltaSides(days, '18.5c', '18.5b'), { assign: 'catalog', current: ['18.5c'], previous: ['18.5b'] });
+  // Keine klassischen Tage in der Familie: kein Vergleich.
+  assert.equal(compDeltaSides(new Map([['18.7', d(9, 0)], ['18.4', d(0, 200)]]), '18.7', '18.4'), null);
+  // joinPatchDiffRows: Teilnehmer je Datei zusammengezaehlt, einzelne Datei unveraendert.
+  assert.deepEqual(joinPatchDiffRows([[{ k: 1, participants: 10 }]]), [{ k: 1, participants: 10 }]);
+  assert.deepEqual(joinPatchDiffRows([[{ k: 1, participants: 10 }], [{ k: 1, participants: 5 }, { k: 2, participants: 5 }]]),
+    [{ k: 1, participants: 15 }, { k: 1, participants: 15 }, { k: 2, participants: 15 }]);
   assert.deepEqual(compFileAssigns(d(0, 0)), ['classic']);
   assert.deepEqual(compFileAssigns(d(0, 210)), ['classic']);
   assert.deepEqual(compFileAssigns(d(1, 0)), ['catalog']);

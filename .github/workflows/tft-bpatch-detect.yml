@@ -19,7 +19,8 @@ name: TFT Patch-Erkennung daily
 # Terminplan und Schnitte schon.
 #
 # Befunde (Exit 1 oder 2) → ein Issue mit Label tft-patch-detect, hoechstens
-# eins offen. Der Lauf bleibt dabei gruen; rot wird er nur, wenn Push oder
+# eins offen; weitere Befunde kommen als Kommentar dazu, ein sauberer Lauf
+# schliesst es. Der Lauf bleibt dabei gruen; rot wird er nur, wenn Push oder
 # Deploy-Anstoss scheitern.
 #
 # Aeltere Tage nach einem neuen Schnitt nachziehen macht die Box selbst
@@ -185,18 +186,25 @@ jobs:
             echo "::warning::Patch-Erkennung mit Befund — Details in der Zusammenfassung"
             gh label create tft-patch-detect --color D93F0B \
               --description "Befund der taeglichen TFT-Patch-Erkennung" --force >/dev/null 2>&1
-            open=$(gh issue list --label tft-patch-detect --state open --json number --jq length 2>/dev/null)
-            if [ "$open" = "0" ]; then
+            open=$(gh issue list --label tft-patch-detect --state open --json number --jq '[.[].number] | join(" ")' 2>/dev/null)
+            if [ $? -ne 0 ]; then
+              echo "::warning::Offene Issues nicht abfragbar — kein Issue angelegt"
+            elif [ -z "$open" ]; then
               gh issue create --title "TFT-Patch-Erkennung: Befund vom $(date -u +%F)" \
                 --label tft-patch-detect --body-file "$body" \
                 || echo "::warning::Issue konnte nicht angelegt werden"
-            elif [ -n "$open" ]; then
-              echo "Issue mit Label tft-patch-detect ist bereits offen — kein zweites"
             else
-              echo "::warning::Offene Issues nicht abfragbar — kein Issue angelegt"
+              # Ein neuer Befund darf nicht unter einem alten Issue verschwinden.
+              gh issue comment "${open%% *}" --body-file "$body" \
+                || echo "::warning::Kommentar konnte nicht angelegt werden"
             fi
           else
             echo "Alle drei Erkenner sauber (Exit 0)"
+            # Sauberer Lauf: offene Befunde sind erledigt.
+            for n in $(gh issue list --label tft-patch-detect --state open --json number --jq '.[].number' 2>/dev/null); do
+              gh issue close "$n" --comment "Sauberer Lauf: $RUN_URL" \
+                || echo "::warning::Issue $n konnte nicht geschlossen werden"
+            done
           fi
 
           if [ "$COMMIT" = "failure" ] || [ "$DISPATCH" = "failure" ]; then

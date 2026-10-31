@@ -28,8 +28,20 @@
 //   • Vor dem Schreiben prueft scheduleProblems jede Basis gegen den Terminplan;
 //     eine Basis mit neuen Problemen wird uebersprungen und gemeldet.
 //   • Abruf mit Wiederholung; ein Fehler betrifft nur seine Basis.
-// MetaTFT (tft-stat-api/patch, Feld b_patch_version) ist nur Gegenprobe:
-// Abweichung → Warnung, kein Abbruch.
+//   • Ein Update am Go-Live-Tag der Basis ist kein Schnitt, nur ein Hinweis.
+//   • Riot schreibt kleine Updates auch ganz ohne Kategorie, nur Werte mit
+//     Pfeil (18.5, 27.10.): das zaehlt als Balance. Ohne Kategorie und ohne
+//     Pfeil bleibt es kein Balance (18.3, 28.09.).
+//
+// MetaTFT (tft-stat-api/patch, Felder b_patch_version und start) kann fuer die
+// Basis von heute einen Schnitt ausloesen (User 31.10.2026: „IMMER up to date"):
+// steht MetaTFT genau eine Stufe vor uns und liegt `start` nach unserem letzten
+// Schnitt, gibt es den naechsten eigenen Buchstaben ab dem Tag nach `start`
+// (der Tag des Updates mischt alt und neu und zaehlt zum alten Patch), `pinned`,
+// damit Riots Datum ihn nicht zurueckschiebt. Kein Schnitt, nur Befund: groessere
+// Luecke, `start` nicht nach dem letzten Schnitt, Riot nennt fuer den Tag nur
+// Bugfix-Kategorien, MetaTFT nicht lesbar oder schon auf einer hoeheren Nummer.
+// Ein falscher Schnitt trennt nur Tage, er aendert keine Werte.
 //
 // Exit-Codes: 0 alles sauber · 1 Abbruch, nichts geschrieben · 2 geschrieben
 // (soweit moeglich), aber mit Befund (uebersprungene Basis, zurueckgezogener
@@ -96,6 +108,9 @@ export function categoryKind(label) {
   return 'unknown';
 }
 
+// Pfeil zwischen altem und neuem Wert ("25% ⇒ 10%").
+const VALUE_ARROW_RE = /⇒|&rArr;|&#8658;/;
+
 const text = html => html.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim().toUpperCase();
 
 // Letztes Datum einer Ueberschrift als YYYY-MM-DD. Das Jahr kommt vom
@@ -119,6 +134,9 @@ export function parseMidpatch(body, publishIso) {
   const next = after.slice(1).search(/<h2[\s>]/);
   const section = next < 0 ? after : after.slice(0, next + 1);
   const updates = [];
+  // Anfang des Texts je Datum, fuer Updates ohne Kategorie (siehe unten).
+  const textFrom = [];
+  const dateAt = [];
   for (const h of section.matchAll(/<h([34])[^>]*>([\s\S]*?)<\/h\1>/g)) {
     const label = text(h[2]);
     // Seit 18.2 setzt Riot das Datum als h4 ("SEPTEMBER 14", "SEPTEMBER 28TH").
@@ -126,6 +144,8 @@ export function parseMidpatch(body, publishIso) {
       const day = headingDay(label, publishIso);
       if (!day) throw new Error(`Datums-Ueberschrift nicht lesbar: "${label}"`);
       updates.push({ day, heading: label, categories: [], balance: false });
+      dateAt.push(h.index);
+      textFrom.push(h.index + h[0].length);
       continue;
     }
     const cur = updates[updates.length - 1];
@@ -135,7 +155,52 @@ export function parseMidpatch(body, publishIso) {
     else if (kind !== 'other') throw new Error(`Unbekannte Kategorie "${label}" (${cur.heading}) — Liste in detect-tft-bpatches.mjs pruefen`);
     cur.categories.push(label);
   }
+  // Ohne Kategorie entscheidet der Text: Werte mit Pfeil sind Balance.
+  updates.forEach((u, i) => {
+    if (u.categories.length === 0 && VALUE_ARROW_RE.test(section.slice(textFrom[i], dateAt[i + 1]))) u.balance = true;
+  });
   return updates;
+}
+
+// Stufe eines Patch-Buchstabens: '' = 0, b = 1, c = 2 …
+const stageOf = letter => (letter ? letter.charCodeAt(0) - 97 : 0);
+
+/**
+ * Schnitt, den MetaTFT fuer die Basis von heute ausloest (Regeln oben im Kopf).
+ * Rueckgabe: { cut } oder { finding } oder { note } — hoechstens eines davon.
+ */
+export function metatftCut({ mt, base, set, existing, updates, goLive, nowIso }) {
+  const patch = typeof mt?.patch === 'string' ? mt.patch : null;
+  const letter = String(mt?.b_patch_version ?? '').trim().toLowerCase();
+  if (!patch || !/^\d+\.\d+$/.test(patch) || !/^[a-z]?$/.test(letter)) {
+    return { finding: `MetaTFT-Antwort nicht lesbar: ${JSON.stringify(mt)?.slice(0, 160)}` };
+  }
+  if (patch !== base) {
+    // Am Go-Live-Tag hinkt MetaTFT ein paar Stunden hinterher, das ist normal.
+    const ahead = setOfBase(patch) > setOfBase(base)
+      || (setOfBase(patch) === setOfBase(base) && minorOfBase(patch) > minorOfBase(base));
+    const msg = `MetaTFT meldet Patch ${patch}${letter}, der Terminplan ${base}`;
+    return ahead ? { finding: msg } : { note: msg };
+  }
+  const own = [...existing].sort(byDay);
+  const last = own[own.length - 1];
+  const ours = last ? last.patch.slice(base.length) : '';
+  const gap = stageOf(letter) - stageOf(ours);
+  const names = `MetaTFT ${patch}${letter}, wir ${base}${ours}`;
+  if (gap === 0) return { note: `MetaTFT stimmt ueberein (${patch}${letter})` };
+  if (gap < 0) return { note: `MetaTFT hinkt hinterher: ${names}` };
+  if (gap > 1) return { finding: `${names} — mehr als eine Stufe, bitte pruefen` };
+  const startMs = Date.parse(mt?.start);
+  if (!Number.isFinite(startMs)) return { finding: `${names}, aber Startzeit nicht lesbar: ${JSON.stringify(mt?.start)}` };
+  const startDay = currentWindowDay(new Date(startMs));
+  const day = addDays(startDay, 1);
+  const after = last ? last.from_day : goLive;
+  if (after && day <= after) return { finding: `${names}, aber Schnitt ab ${day} liegt nicht nach ${after}` };
+  const riot = updates.find(u => u.day === startDay || u.day === day);
+  if (riot && !riot.balance && riot.categories.length) {
+    return { finding: `${names}, aber Riot nennt am ${riot.day} nur ${riot.categories.join(', ')} — kein Schnitt` };
+  }
+  return { cut: { set, patch: base + letterAt(own.length), base, from_day: day, pinned: true, source: METATFT_URL, detected_at: nowIso } };
 }
 
 // Notes-Text aus dem __NEXT_DATA__ einer Riot-Seite. Wirft, wenn der Aufbau nicht passt.
@@ -275,7 +340,7 @@ const sortCuts = cs => [...cs].sort((a, b) => Number(a.set) - Number(b.set) || b
 
 // Ein kompletter Lauf ohne Datei- und Netzzugriff (fetchNotes wird uebergeben).
 // Rueckgabe: { cuts, changed, exitCode, findings, conflicts, perBase }.
-export async function run({ meta, today, nowIso, fetchNotes: fetcher, log = () => {} }) {
+export async function run({ meta, today, nowIso, fetchNotes: fetcher, fetchMetatft, log = () => {} }) {
   const set = Number(meta?.setNumber);
   const stored = Array.isArray(meta?.patchCuts) ? meta.patchCuts : [];
   const findings = [];
@@ -290,6 +355,17 @@ export async function run({ meta, today, nowIso, fetchNotes: fetcher, log = () =
   const bases = basesToCheck(meta, today);
   if (!bases.length) findings.push(`keine Basis fuer Set ${set} am ${today} gefunden`);
   log(`Basen am ${today}: ${bases.join(', ') || '—'}`);
+
+  // Ohne fetchMetatft (Tests der reinen Riot-Regeln) gibt es keine Gegenprobe.
+  const todayBase = patchForDay(today, meta, set).base;
+  let mt;
+  if (fetchMetatft) {
+    try {
+      mt = await fetchMetatft();
+    } catch (e) {
+      findings.push(`MetaTFT nicht erreichbar — ${e.message}`);
+    }
+  }
 
   const merged = [];
   for (const base of bases) {
@@ -326,10 +402,24 @@ export async function run({ meta, today, nowIso, fetchNotes: fetcher, log = () =
     for (const u of updates) log(`  ${base} ${u.day} ${u.balance ? 'BALANCE' : 'kein Balance'}: ${u.categories.join(', ') || '—'}`);
     if (!updates.length) log(`  ${base}: keine Mid-Patch-Updates`);
     const existing = stored.filter(c => isOwnCut(c, set, base));
+    const goLive = own.find(s => s.patch === base)?.from_day;
+    // Am Go-Live-Tag gehoert das Update zum Patch selbst.
+    for (const u of updates) {
+      if (u.balance && u.day === goLive) log(`  ${base}: Update am Go-Live-Tag ${u.day} — kein Schnitt`);
+    }
+    // MetaTFT zuerst: sein Schnitt ist pinned, Riots Datum desselben Updates
+    // landet dann in mergeBaseCuts als Hinweis statt als zweiter Schnitt.
+    const fromMt = mt !== undefined && base === todayBase
+      ? metatftCut({ mt, base, set, existing, updates, goLive, nowIso })
+      : {};
+    if (fromMt.note) log(`  ${fromMt.note}`);
+    if (fromMt.finding) findings.push(`${base}: ${fromMt.finding}`);
     const r = mergeBaseCuts({
-      existing, days: updates.filter(u => u.balance).map(u => u.day),
+      existing: fromMt.cut ? [...existing, fromMt.cut] : existing,
+      days: updates.filter(u => u.balance && u.day !== goLive).map(u => u.day),
       base, set, today, source: notes.url, nowIso,
     });
+    if (fromMt.cut && !r.conflict) r.changes.push(`${fromMt.cut.patch} neu ab ${fromMt.cut.from_day} (MetaTFT)`);
     if (r.conflict) {
       perBase[base] = `Abbruch: ${r.conflict}`;
       conflicts.push(r.conflict);
@@ -361,19 +451,10 @@ export async function run({ meta, today, nowIso, fetchNotes: fetcher, log = () =
   return { cuts, changed, exitCode: findings.length ? 2 : 0, findings, conflicts, perBase };
 }
 
-// Gegenprobe MetaTFT — nur fuer die Basis von heute, nur Warnung.
-async function metatftCheck(base, cuts) {
-  if (!base) return;
-  try {
-    const r = await fetch(METATFT_URL, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
-    const mt = await r.json();
-    const ours = cuts.filter(c => c.base === base).map(c => c.patch.slice(base.length)).pop() || '';
-    if (mt.patch !== base) console.warn(`  WARN MetaTFT meldet Patch ${mt.patch}, wir ${base}`);
-    else if ((mt.b_patch_version || '') !== ours) console.warn(`  WARN MetaTFT b_patch_version="${mt.b_patch_version}", Riot-Notes ergeben "${ours}"`);
-    else console.log(`  MetaTFT stimmt ueberein (${mt.patch}${mt.b_patch_version || ''})`);
-  } catch (e) {
-    console.warn(`  WARN MetaTFT-Gegenprobe nicht moeglich: ${e.message}`);
-  }
+async function fetchMetatft() {
+  const r = await fetch(METATFT_URL, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
 }
 
 function argValue(args, name) {
@@ -390,8 +471,7 @@ async function main() {
   const meta = JSON.parse(readFileSync(file, 'utf8'));
   if (!meta?.setNumber) throw new Error(`${file} ohne setNumber`);
 
-  const res = await run({ meta, today, nowIso: new Date().toISOString(), fetchNotes, log: console.log });
-  await metatftCheck(patchForDay(today, meta).base, res.cuts);
+  const res = await run({ meta, today, nowIso: new Date().toISOString(), fetchNotes, fetchMetatft, log: console.log });
 
   for (const [base, state] of Object.entries(res.perBase)) console.log(`  ${base}: ${state}`);
   for (const f of res.findings) console.warn(`  BEFUND ${f}`);

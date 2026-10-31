@@ -621,6 +621,36 @@ export function compDeltaAssign(current, previous) {
         return 'classic';
     return null;
 }
+/**
+ * Wie compDeltaAssign, aber kein Pfeil verschwindet, nur weil eine Seite aus
+ * reinen Katalog-Tagen besteht: 18.5c (nur Katalog) gegen 18.4 (nur klassisch),
+ * 18.6 in den Anlauf-Tagen (nur klassisch) gegen 18.5c. Dann zaehlt fuer diese
+ * Seite die klassische Fassung ihrer Patch-Familie (18.5 + 18.5b). Null nur,
+ * wenn es dort auch keine klassischen Tage gibt. `days` kennt alle Patches.
+ */
+export function compDeltaSides(days, current, previous) {
+    const of = (p) => days.get(p) ?? { marked: 0, classic: 0 };
+    const direct = compDeltaAssign(of(current), of(previous));
+    if (direct)
+        return { assign: direct, current: [current], previous: [previous] };
+    const classicSide = (p) => (compHasClassic(of(p))
+        ? [p]
+        : [...days.keys()].filter(k => patchFamily(k) === patchFamily(p) && of(k).classic > 0).sort());
+    const cur = classicSide(current);
+    const prev = classicSide(previous);
+    return cur.length > 0 && prev.length > 0 ? { assign: 'classic', current: cur, previous: prev } : null;
+}
+/**
+ * Mehrere Dateien einer Vergleichs-Seite zu einer Liste. `participants` steht in
+ * jeder Zeile einer Datei gleich und gilt je Datei — ueber mehrere Patches zaehlt
+ * die Summe, sonst staenden die Anteile zu hoch.
+ */
+export function joinPatchDiffRows(lists) {
+    if (lists.length === 1)
+        return [...lists[0]];
+    const participants = lists.reduce((sum, list) => sum + list.reduce((m, r) => Math.max(m, Number(r.participants) || 0), 0), 0);
+    return lists.flatMap(list => list.map(r => ({ ...r, participants })));
+}
 /** Mindestspiele je Zeile fuer die Comp-Abfrage einer Seite; null = keine Grenze noetig. */
 export function compMinRowGames(assign, days) {
     return assign === 'classic' && days.marked > 0 ? COMP_CLASSIC_MIN_ROW_GAMES : null;

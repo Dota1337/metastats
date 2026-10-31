@@ -11,8 +11,9 @@ import { loadMetaPulseDiff, loadMetaPulseVelocity } from '../../../lib/meta-puls
 import { compMarkedDays, NO_COMP_DAYS } from '../../../lib/comp-assign-server';
 import { PATCH_DELTA_MIN_GAMES } from '../../../lib/tft-patch-delta';
 import {
-  compDeltaAssign,
+  compDeltaSides,
   compMinRowGames,
+  joinPatchDiffRows,
   META_PULSE_COMPLETE_LOOKBACK_DAYS,
   META_PULSE_DIFF_MIN_GAMES,
   META_PULSE_VELOCITY_DEFAULT_SHIFT,
@@ -137,8 +138,6 @@ export async function GET(request: NextRequest) {
     // Vorpatch-Start lieferte fuer den laufenden Patch dasselbe Ergebnis in
     // 17,5 statt 2,8 s (gemessen 2026-10-01, master_plus, alle Regionen).
     const windowFrom = (first: number) => (Number.isFinite(first) ? Math.min(90, Math.max(1, todayNum - first + 1)) : 30);
-    const curDiffDays = windowFrom(dayNum(sel?.first_day));
-    const diffDays = windowFrom(dayNum(cmp?.first_day));
 
     // Patch-Vergleich: vorgerechnet von der Box (nur region=all), sonst live.
     // Ein fehlgeschlagener Aufruf setzt `degraded` — die leere Liste darf dann
@@ -147,16 +146,19 @@ export async function GET(request: NextRequest) {
     let snapshotHits = 0;
     let velocityHit = false;
     // Zaehlart der Comp-Zeilen (Comp-Katalog Phase 3): Patch-Beweger nur
-    // zwischen gleich gezaehlten Patches (compDeltaAssign), sonst leer. Die
-    // Velocity-Funktion waehlt selbst; die Katalog-Tage halten nur fest, auf
-    // welchem Stand eine vorgerechnete Velocity-Datei steht.
+    // zwischen gleich gezaehlten Patches (compDeltaSides, eine Seite kann mehrere
+    // Patches lesen), sonst leer. Die Velocity-Funktion waehlt selbst; die
+    // Katalog-Tage halten nur fest, auf welchem Stand eine vorgerechnete
+    // Velocity-Datei steht.
     const marked = sel ? await compMarkedDays(Number(setNumber), filters.regions) : null;
     if (sel && !marked) degraded = true;
     const daysOf = (patch: string | null | undefined) => (patch ? marked?.get(patch) ?? NO_COMP_DAYS : NO_COMP_DAYS);
     const markedOf = (patch: string | null | undefined) => daysOf(patch).marked;
-    const compAssign = marked && sel && previousPatch ? compDeltaAssign(daysOf(sel.patch), daysOf(previousPatch)) : null;
-    const diffRows = async (p: typeof sel | undefined, days: number): Promise<CompStatsRow[]> => {
+    const compSides = marked && sel && previousPatch ? compDeltaSides(marked, sel.patch, previousPatch) : null;
+    const compAssign = compSides?.assign ?? null;
+    const diffRows = async (p: typeof sel | undefined): Promise<CompStatsRow[]> => {
       if (!p || !compAssign) return [];
+      const days = windowFrom(dayNum(p.first_day));
       const pre = await loadMetaPulseDiff({
         patch: p,
         closed: p.patch !== patches[0]?.patch,
@@ -180,6 +182,20 @@ export async function GET(request: NextRequest) {
         p_assign: compAssign,
         ...(minRow != null ? { p_min_row_games: minRow } : {}),
       }, 20000).catch(() => { degraded = true; return [] as CompStatsRow[]; });
+    };
+    // Eine Vergleichs-Seite: eine Zeile je Comp, auch ueber mehrere Patches.
+    const diffSide = async (names: string[] | undefined): Promise<CompStatsRow[]> => {
+      const lists = await Promise.all((names ?? []).map(n => diffRows(patches.find(p => p.patch === n))));
+      const byKey = new Map<string, CompStatsRow>();
+      for (const r of joinPatchDiffRows(lists)) {
+        const cur = byKey.get(r.cluster_key);
+        if (!cur) { byKey.set(r.cluster_key, { ...r }); continue; }
+        cur.games = Number(cur.games) + Number(r.games);
+        cur.sum_placement = Number(cur.sum_placement) + Number(r.sum_placement);
+        cur.top4 = Number(cur.top4) + Number(r.top4);
+        cur.top1 = Number(cur.top1) + Number(r.top1);
+      }
+      return [...byKey.values()];
     };
 
     // Fan out: alle drei Abfragen parallel. „KR voraus" ist seit 2026-09-28
@@ -209,8 +225,8 @@ export async function GET(request: NextRequest) {
       })(),
       // Super-lean diff RPC (migration 0035) — scalar-only, drops the 10 MB
       // jsonb_agg payload the previous list-RPC carried for nothing here.
-      previousPatch ? diffRows(sel, curDiffDays) : Promise.resolve([] as CompStatsRow[]),
-      previousPatch ? diffRows(cmp, diffDays) : Promise.resolve([] as CompStatsRow[]),
+      diffSide(compSides?.current),
+      diffSide(compSides?.previous),
     ]);
 
     // Velocity → Top Rising (most-improved avg-place over the comparison

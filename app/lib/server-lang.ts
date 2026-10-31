@@ -1,30 +1,5 @@
 import { cookies, headers } from 'next/headers';
-import { DEFAULT_LANG, LANG_COOKIE, LANG_HEADER, isLang, isPrefixLang, type Lang } from './lang-path';
-
-/**
- * Parse an Accept-Language header like "de-DE,de;q=0.9,en;q=0.8" into a ranked
- * list of primary-subtags, then pick the first one that we actually support.
- * Returns null if none match.
- */
-function pickFromAcceptLanguage(header: string | null): Lang | null {
-  if (!header) return null;
-  const prefs = header
-    .split(',')
-    .map(part => {
-      const [raw, ...params] = part.trim().split(';');
-      const qParam = params.find(p => p.trim().startsWith('q='));
-      const q = qParam ? parseFloat(qParam.split('=')[1]) : 1;
-      return { tag: raw.trim().toLowerCase(), q: isNaN(q) ? 1 : q };
-    })
-    .sort((a, b) => b.q - a.q);
-
-  for (const { tag } of prefs) {
-    // "de-DE" → "de", "zh-Hans-CN" → "zh"
-    const primary = tag.split('-')[0];
-    if (isLang(primary)) return primary;
-  }
-  return null;
-}
+import { DEFAULT_LANG, LANG_COOKIE, LANG_HEADER, isLang, isPrefixLang, pickFromAcceptLanguage, type Lang } from './lang-path';
 
 /**
  * Sprache der Adresse (`/en/…` → 'en', ohne Vorsatz 'de'). Den Header setzt

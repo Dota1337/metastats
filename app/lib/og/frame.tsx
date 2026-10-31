@@ -1,9 +1,7 @@
 // Gemeinsamer Rahmen fuer alle Vorschaubilder (Link-Vorschau in Discord,
-// WhatsApp, X ...). Die drei festen Bilder (Startseite, /tft, Marktwerte) und
+// WhatsApp, X ...). Die drei festen Bilder je Sprache (app/og/[lang]/[card]) und
 // die drei dynamischen (Comp, TFT-Spieler, LoL-Spieler) teilen Hintergrund,
 // Leisten und Masse — vorher stand derselbe Block dreimal kopiert im Repo.
-//
-// Bewusst ohne Server-Importe: die festen Bilder laufen auf der Edge.
 import type { ReactNode } from 'react';
 
 export const OG_SIZE = { width: 1200, height: 630 };
@@ -79,18 +77,18 @@ export function Pill({ accent, children, size = 24 }: { accent: string; children
 }
 
 /** Die drei festen Bilder: grosser Titel, Unterzeile, Reihe von Schlagworten. */
-export function StaticCard({ accent, title, subtitle, pills }: {
-  accent: string; title: ReactNode; subtitle: string; pills: string[];
+export function StaticCard({ accent, title, subtitle, pills, titleSize = 128 }: {
+  accent: string; title: ReactNode; subtitle: string; pills: string[]; titleSize?: number;
 }) {
   return (
     <OgFrame accent={accent}>
-      <div style={{ fontSize: 128, fontWeight: 700, color: 'white', letterSpacing: '-0.02em', display: 'flex' }}>
+      <div style={{ fontSize: titleSize, fontWeight: 700, color: 'white', letterSpacing: '-0.02em', display: 'flex' }}>
         {title}
       </div>
-      <div style={{ fontSize: 32, color: '#a0b0c5', marginTop: 20, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+      <div style={{ fontSize: 32, color: '#a0b0c5', marginTop: 20, letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: 'center' }}>
         {subtitle}
       </div>
-      <div style={{ display: 'flex', gap: 16, marginTop: 48, fontSize: 24 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 16, marginTop: 48, fontSize: 24 }}>
         {pills.map(label => <Pill key={label} accent={accent}>{label}</Pill>)}
       </div>
     </OgFrame>

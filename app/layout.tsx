@@ -4,6 +4,8 @@ import "./globals.css";
 import { I18nProvider } from "./lib/i18n";
 import { AuthProvider } from "./lib/auth-context";
 import { getServerLang } from "./lib/server-lang";
+import { langRedirectEnabled } from "./lib/lang-path";
+import { ogCardPath } from "./lib/og/card-copy";
 import { siteText } from "./lib/seo/copy";
 import { SITE_URL } from "./lib/site";
 import SideDrawer from "./components/SideDrawer";
@@ -27,6 +29,7 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const lang = await getServerLang();
   const { title, description } = siteText(lang);
+  const image = ogCardPath(lang, "lol");
   return {
     metadataBase: new URL(SITE_URL),
     title,
@@ -39,7 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: "/opengraph-image",
+          url: image,
           width: 1200,
           height: 630,
           alt: "metastats.gg",
@@ -50,7 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
       card: "summary_large_image",
       title,
       description,
-      images: ["/opengraph-image"],
+      images: [image],
     },
   };
 }
@@ -107,7 +110,7 @@ export default async function RootLayout({
             },
           }) }}
         />
-        <I18nProvider initialLang={initialLang}>
+        <I18nProvider initialLang={initialLang} addressFollowsLang={langRedirectEnabled()}>
           <AuthProvider>
             <PrototypeBanner />
             <GameStrip />

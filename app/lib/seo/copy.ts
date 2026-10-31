@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { langAlternates, langPathsEnabled, withLangPrefix, type Lang } from '../lang-path';
+import { ogCardPath, type OgCard } from '../og/card-copy';
 import { SITE_URL } from '../site';
 import { CURRENT_SET } from '../current-set';
 
@@ -423,22 +424,24 @@ export function siteText(lang: Lang): SeoText {
  * die Seite ohne Query nicht dasselbe zeigt (Spieler, Matches haengen an
  * ?region=). Ein eigenes openGraph ersetzt das geerbte als Ganzes — ohne
  * `images` verschwaende das Vorschaubild (gemessen: /tft/rising hatte kein
- * og:image). Hat der Abschnitt eine eigene opengraph-image-Datei, gewinnt die
- * Datei. twitter ohne images: X nimmt dann das og:image.
+ * og:image). Hat der Abschnitt eine eigene opengraph-image-Datei (Comp, Spieler),
+ * gewinnt die Datei. twitter ohne images: X nimmt dann das og:image.
  *
  * `pathLang` = Sprache der ADRESSE (Vorsatz /en/…, ohne = de), nicht des
  * Besuchers: canonical zeigt auf die Adresse selbst, hreflang auf alle sechs
- * Sprach-Adressen plus x-default (Englisch). Eine deutsche Adresse, die ein
- * Besucher mit englischem Cookie auf Englisch sieht, bleibt so die deutsche.
+ * Sprach-Adressen plus x-default (Englisch). Normalerweise stimmen beide ueberein,
+ * weil die Middleware andere Sprachen auf ihre Adresse weiterleitet; verschieden
+ * sind sie nur bei abgeschaltetem Schalter LANG_REDIRECT.
  */
 export function buildMetadata(
   text: SeoText, lang: Lang, path: string | null, game: 'lol' | 'tft', pathLang: Lang = 'de',
+  card: OgCard = game,
 ): Metadata {
   const title = `${text.title} · metastats.gg`;
   const description = text.description;
   const url = path ? `${SITE_URL}${withLangPrefix(pathLang, path)}` : undefined;
   const languages = path && langPathsEnabled() ? langAlternates(SITE_URL, path) : undefined;
-  const image = game === 'tft' ? '/tft/opengraph-image' : '/opengraph-image';
+  const image = ogCardPath(lang, card);
   return {
     title,
     description,

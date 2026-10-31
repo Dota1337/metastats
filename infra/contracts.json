@@ -645,8 +645,17 @@
         "/en/tft": "/en/tft/comps/atlas",
         "/": "/tft/comps/atlas",
         "/en": "/en/tft/comps/atlas",
-        "/fr/tft/player/ViggoZe-EUW": "/fr/tft/player/ViggoZe--EUW"
+        "/fr/tft/player/ViggoZe-EUW": "/fr/tft/player/ViggoZe--EUW",
+        "/tft/opengraph-image": "/og/de/tft"
       },
+      "expectLangRedirect": [
+        { "path": "/impressum", "cookie": "en", "to": "/en/impressum" },
+        { "path": "/impressum", "acceptLanguage": "ko", "browser": true, "to": "/ko/impressum" },
+        { "path": "/impressum", "cookie": "de", "acceptLanguage": "en", "browser": true, "lang": "de" },
+        { "path": "/impressum", "acceptLanguage": "en", "browser": true, "userAgent": "Googlebot/2.1", "lang": "de" },
+        { "path": "/en/impressum", "cookie": "de", "lang": "en" }
+      ],
+      "expectImages": ["/og/de/tft", "/og/en/tft", "/og/ko/lol", "/og/zh/marktwert", "/og/es/lol", "/og/fr/marktwert"],
       "expectLangLinks": { "/en/tft/comps": "en", "/ko/champions": "ko", "/fr/lol": "fr" },
       "expectCompRedirect": { "source": "/api/tft/comps/families", "prefixes": ["", "/en"] },
       "pageRoots": ["champions", "compare", "datenschutz", "impressum", "leaderboard", "ligen", "lol", "marktwert", "player", "search", "teams", "tft"],

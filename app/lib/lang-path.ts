@@ -109,6 +109,70 @@ export function langPathsEnabled(env: Record<string, string | undefined> = proce
   return env.LANG_PATHS !== '0';
 }
 
+/**
+ * Notschalter nur fuer die Weiterleitung auf die Sprach-Adresse: LANG_REDIRECT=0
+ * laesst die Sprach-Adressen stehen, die deutsche Adresse zeigt dann wieder die
+ * Besuchersprache. LANG_PATHS=0 schaltet sie mit ab (sonst Endlosschleife: die
+ * Middleware leitet /en/x dort auf /x).
+ */
+export function langRedirectEnabled(env: Record<string, string | undefined> = process.env): boolean {
+  return langPathsEnabled(env) && env.LANG_REDIRECT !== '0';
+}
+
+/**
+ * Accept-Language wie "de-DE,de;q=0.9,en;q=0.8" → erste Sprache, die es hier
+ * gibt, nach Gewichtung. null, wenn keine passt.
+ */
+export function pickFromAcceptLanguage(header: string | null | undefined): Lang | null {
+  if (!header) return null;
+  const prefs = header
+    .split(',')
+    .map(part => {
+      const [raw, ...params] = part.trim().split(';');
+      const qParam = params.find(p => p.trim().startsWith('q='));
+      const q = qParam ? parseFloat(qParam.split('=')[1]) : 1;
+      return { tag: raw.trim().toLowerCase(), q: isNaN(q) ? 1 : q };
+    })
+    .sort((a, b) => b.q - a.q);
+
+  for (const { tag } of prefs) {
+    // "de-DE" → "de", "zh-Hans-CN" → "zh"
+    const primary = tag.split('-')[0];
+    if (isLang(primary)) return primary;
+  }
+  return null;
+}
+
+/**
+ * Soll eine deutsche Adresse auf die Sprach-Adresse weiterleiten? Damit ein
+ * kopierter Link dieselbe Sprache zeigt wie die Seite, von der er stammt: die
+ * Vorschau-Dienste kennen weder Cookie noch Browsersprache des Teilenden.
+ *
+ * - Die gespeicherte Wahl (Cookie) gilt immer; Deutsch leitet nie weiter.
+ * - Die Browsersprache nur beim echten Seitenaufruf aus dem Browser, nie fuer
+ *   Bots: Google und Vorschau-Dienste bekommen die deutsche Adresse deutsch.
+ * - Nicht bei einem Sprung innerhalb der Seite: sonst kaeme nicht mehr auf
+ *   Deutsch, wer Cookies sperrt und einen englischen Browser hat.
+ */
+export function langRedirectTarget(input: {
+  method: string;
+  pathname: string;
+  cookie: string | null | undefined;
+  acceptLanguage: string | null | undefined;
+  fetchDest: string | null | undefined;
+  fetchSite: string | null | undefined;
+  isBot: boolean;
+  enabled: boolean;
+}): PrefixLang | null {
+  if (!input.enabled) return null;
+  if (input.method !== 'GET' && input.method !== 'HEAD') return null;
+  if (splitLangPrefix(input.pathname).lang || !isPagePath(input.pathname)) return null;
+  if (isLang(input.cookie)) return isPrefixLang(input.cookie) ? input.cookie : null;
+  if (input.isBot || input.fetchDest !== 'document' || input.fetchSite === 'same-origin') return null;
+  const lang = pickFromAcceptLanguage(input.acceptLanguage);
+  return isPrefixLang(lang) ? lang : null;
+}
+
 export type LangRoute =
   | { kind: 'none' }
   | { kind: 'blocked'; lang: PrefixLang }

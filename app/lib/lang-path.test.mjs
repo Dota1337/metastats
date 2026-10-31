@@ -13,7 +13,62 @@ import { join } from 'node:path';
 import {
   LANGS, PREFIX_LANGS, PAGE_ROOTS, HREFLANG,
   splitLangPrefix, stripLangPrefix, withLangPrefix, switchLangPath, langRoute, pathLangOf,
+  pickFromAcceptLanguage, langRedirectEnabled, langRedirectTarget,
 } from './lang-path.ts';
+
+const browser = {
+  method: 'GET', pathname: '/tft/comps', cookie: null, acceptLanguage: null,
+  fetchDest: 'document', fetchSite: 'none', isBot: false, enabled: true,
+};
+
+test('langRedirectTarget: gespeicherte Wahl gilt immer, Deutsch leitet nie weiter', () => {
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en' }), 'en');
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'ko', fetchDest: 'empty', fetchSite: 'same-origin' }), 'ko');
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'de', acceptLanguage: 'en' }), null);
+  // Unbekannter Wert zaehlt wie kein Cookie
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'xx' }), null);
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'xx', acceptLanguage: 'fr' }), 'fr');
+});
+
+test('langRedirectTarget: Browsersprache nur beim echten Seitenaufruf', () => {
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en-US,en;q=0.9' }), 'en');
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en', fetchSite: 'cross-site' }), 'en');
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'de-DE,en;q=0.5' }), null);
+  // Sprache, die es hier nicht gibt: bleibt Deutsch (User-Entscheid 15.10.)
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'pt-BR' }), null);
+  assert.equal(langRedirectTarget({ ...browser }), null);
+  // Bots, Abrufe ohne Sec-Fetch-Dest, Unterabrufe
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en', isBot: true }), null);
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en', fetchDest: null }), null);
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en', fetchDest: 'empty' }), null);
+  // Sackgasse mit gesperrten Cookies: Sprung innerhalb der Seite leitet nicht zurueck
+  assert.equal(langRedirectTarget({ ...browser, acceptLanguage: 'en', fetchSite: 'same-origin' }), null);
+});
+
+test('langRedirectTarget: nie fuer Nicht-Seiten, andere Methoden oder bei schon gesetzter Sprache', () => {
+  for (const pathname of ['/api/tft/comps', '/auth/login', '/internal/login', '/companion/privacy', '/robots.txt', '/og/en/tft', '/de/tft']) {
+    assert.equal(langRedirectTarget({ ...browser, cookie: 'en', pathname }), null, pathname);
+  }
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en', pathname: '/en/tft/comps' }), null);
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'de', pathname: '/en/tft/comps' }), null);
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en', method: 'POST' }), null);
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en', method: 'HEAD' }), 'en');
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en', pathname: '/' }), 'en');
+  assert.equal(langRedirectTarget({ ...browser, cookie: 'en', enabled: false }), null);
+});
+
+test('langRedirectEnabled: beide Schalter, sonst Schleife mit LANG_PATHS=0', () => {
+  assert.equal(langRedirectEnabled({}), true);
+  assert.equal(langRedirectEnabled({ LANG_REDIRECT: '0' }), false);
+  assert.equal(langRedirectEnabled({ LANG_PATHS: '0' }), false);
+});
+
+test('pickFromAcceptLanguage: Gewichtung und Teil-Codes', () => {
+  assert.equal(pickFromAcceptLanguage('en;q=0.5,fr;q=0.9'), 'fr');
+  assert.equal(pickFromAcceptLanguage('zh-Hans-CN'), 'zh');
+  assert.equal(pickFromAcceptLanguage('*'), null);
+  assert.equal(pickFromAcceptLanguage(null), null);
+});
 
 test('splitLangPrefix: nur ganze Pfadteile, kein /de', () => {
   assert.deepEqual(splitLangPrefix('/en/tft/comps'), { lang: 'en', rest: '/tft/comps' });

@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import { getServerLang } from '../lib/server-lang';
+import { ogCardPath } from '../lib/og/card-copy';
 import RiotStatusBanner from '../components/tft/RiotStatusBanner';
 
 // Ohne diesen Block erbt der komplette /tft-Baum den Titel des Wurzel-Layouts
@@ -7,24 +9,27 @@ import RiotStatusBanner from '../components/tft/RiotStatusBanner';
 // `curl -s https://www.metastats.gg/tft/comps | grep -o '<title>[^<]*'`
 // lieferte 'metastats.gg — League of Legends Statistiken & Marktwerte'.
 //
-// Statisch und einsprachig wie die beiden bereits bestehenden TFT-Metadaten
-// (app/tft/onetricks/layout.tsx:3, app/tft/patch/winners/layout.tsx:3). Ein
-// sprachabhaengiger Titel muesste das Sprach-Cookie im Server lesen und wuerde
-// damit jede Route wieder unzwischenspeicherbar machen — genau das Problem, das
-// im Wurzel-Layout ohnehin noch offen ist.
+// Text einsprachig wie die beiden bereits bestehenden TFT-Metadaten
+// (app/tft/onetricks/layout.tsx:3, app/tft/patch/winners/layout.tsx:3); Seiten mit
+// pageMetadata() ersetzen ihn durch ihren Text in der Besuchersprache. Das Bild
+// folgt der Sprache, seit es die Datei app/tft/opengraph-image nicht mehr gibt.
 //
 // Unterordner mit eigener `metadata` (onetricks, patch/winners) ueberschreiben
 // das hier weiterhin; Next nimmt die naechstliegende Angabe.
-export const metadata: Metadata = {
-  title: 'TFT Meta — Comps, Units, Items & Traits · metastats.gg',
-  description: 'Teamfight Tactics meta stats from ranked games: comps, units, items, traits and augments with average placement, top-4 share and pick rate by patch, rank and region.',
-  openGraph: {
-    title: 'TFT Meta — Comps, Units, Items & Traits',
-    description: 'Teamfight Tactics meta stats from ranked games: comps, units, items and traits by patch, rank and region.',
-    siteName: 'metastats.gg',
-    type: 'website',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const lang = await getServerLang();
+  return {
+    title: 'TFT Meta — Comps, Units, Items & Traits · metastats.gg',
+    description: 'Teamfight Tactics meta stats from ranked games: comps, units, items, traits and augments with average placement, top-4 share and pick rate by patch, rank and region.',
+    openGraph: {
+      title: 'TFT Meta — Comps, Units, Items & Traits',
+      description: 'Teamfight Tactics meta stats from ranked games: comps, units, items and traits by patch, rank and region.',
+      siteName: 'metastats.gg',
+      type: 'website',
+      images: [{ url: ogCardPath(lang, 'tft'), width: 1200, height: 630, alt: 'metastats.gg' }],
+    },
+  };
+}
 
 // Anker für den Game-Accent (Design-Update Welle 1).
 //

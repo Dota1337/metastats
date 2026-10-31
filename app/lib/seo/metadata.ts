@@ -28,6 +28,7 @@ export async function pageMetadata(
   const [lang, pathLang] = await Promise.all([getServerLang(), getServerPathLang()]);
   const resolved = typeof name === 'function' ? await name(lang) : name;
   const vars = resolved != null ? { name: resolved } : undefined;
-  const meta = buildMetadata(seoText(key, lang, vars), lang, path, key.startsWith('tft.') ? 'tft' : 'lol', pathLang);
+  const game = key.startsWith('tft.') ? 'tft' : 'lol';
+  const meta = buildMetadata(seoText(key, lang, vars), lang, path, game, pathLang, key === 'tft.marktwert' ? 'marktwert' : game);
   return opts?.noindex ? { ...meta, robots: { index: false, follow: true } } : meta;
 }

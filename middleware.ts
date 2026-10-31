@@ -13,15 +13,20 @@
 //      abgetrennt, alle Pruefungen laufen auf dem Rest, die Antwort ist ein
 //      Rewrite auf den Rest mit Anfrage-Header x-ms-lang. Vorsatz vor etwas,
 //      das keine Seite ist (/en/api, /en/internal, Dateien) → 404, nie Rewrite.
+//   2b. Deutsche Adresse, Besucher will eine andere Sprache → 307 auf die
+//      Sprach-Adresse, damit kopierte Links die richtige Vorschau zeigen.
 
-import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import { NextResponse, userAgent, type NextFetchEvent, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { INTERNAL_COOKIE, verifyCookieValue, internalDashboardEnabled } from './app/lib/internal-auth';
 import { securityHeaderRecord } from './app/lib/security-headers';
 import { isUnknownDetailPath } from './app/lib/seo/not-found-gate';
 import { championGate, championIdFromPath } from './app/lib/seo/champion-gate';
 import { legacyTftPlayerSlug } from './app/lib/og/slugs';
-import { LANG_HEADER, langPathsEnabled, langRoute, withLangPrefix, type PrefixLang } from './app/lib/lang-path';
+import {
+  LANG_COOKIE, LANG_HEADER, langPathsEnabled, langRedirectEnabled, langRedirectTarget, langRoute, withLangPrefix,
+  type PrefixLang,
+} from './app/lib/lang-path';
 import { compReadableEnabled, compRedirect } from './app/lib/tft-comp-path';
 import {
   PUBLISHER_ACCEPTED_HEADER, PUBLISHER_HEADER, PUBLISHER_TOKEN_ENV, PUBLISHER_TOKEN_HEADER, publisherTokenValid,
@@ -44,6 +49,12 @@ function forward(req: NextRequest, lang: PrefixLang | null, rewriteTo?: URL): Ne
   const headers = new Headers(req.headers);
   headers.delete(LANG_HEADER);
   if (lang) headers.set(LANG_HEADER, lang);
+  // Bots und Abrufe, die kein Browser sind, sehen die deutsche Adresse deutsch.
+  // Sonst bekaeme ein Dienst mit `Accept-Language: en` englischen Text unter
+  // deutscher Adresse und deutschem canonical (gemessen 31.10.2026, Googlebot-Kennung).
+  if (langRedirectEnabled() && (!req.headers.has('sec-fetch-mode') || userAgent(req).isBot)) {
+    headers.delete('accept-language');
+  }
   const publisher = publisherTokenValid((n: string) => req.headers.get(n), process.env[PUBLISHER_TOKEN_ENV]);
   if (!publisher) {
     headers.delete(PUBLISHER_HEADER);
@@ -165,6 +176,32 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     }
   }
 
+  // --- Deutsche Adresse → Sprach-Adresse der Besuchersprache --------------
+  // Nach den Pruefungen oben (keine Extra-Spruenge fuer 404 und Umleitungen), vor
+  // Supabase (kein getUser fuer den Sprung). Nie zwischenspeichern: wer danach auf
+  // Deutsch stellt, darf nicht auf eine gemerkte Weiterleitung laufen. clone()
+  // behaelt die Abfrage (auch ?_rsc). Publisher der Box bleiben auf der Adresse.
+  if (!lang && !req.headers.has(PUBLISHER_HEADER)) {
+    const visitorLang = langRedirectTarget({
+      method: req.method,
+      pathname: path,
+      cookie: req.cookies.get(LANG_COOKIE)?.value,
+      acceptLanguage: req.headers.get('accept-language'),
+      fetchDest: req.headers.get('sec-fetch-dest'),
+      fetchSite: req.headers.get('sec-fetch-site'),
+      isBot: userAgent(req).isBot,
+      enabled: langRedirectEnabled(),
+    });
+    if (visitorLang) {
+      const url = req.nextUrl.clone();
+      url.pathname = withLangPrefix(visitorLang, path);
+      return NextResponse.redirect(url, {
+        status: 307,
+        headers: { ...SEC, 'Cache-Control': 'private, no-store', Vary: 'Cookie, Accept-Language' },
+      });
+    }
+  }
+
   // --- Default Supabase-SSR-Pfad ---------------------------------------
   let response = forward(req, lang, target);
   const supabase = createServerClient(
@@ -202,6 +239,7 @@ export const config = {
     // Seiten-Sitzung, ihre Antworten sollen aus der Edge-Kopie kommen.
     // `opengraph-image` (Vorschaubilder, auch unter /tft/comps/<slug>/...)
     // ebenso: sie tragen einen CDN-Cache-Header, den ein Set-Cookie aushebeln wuerde.
-    '/((?!_next/static|_next/image|api/img|api/companion|favicon.ico|.*opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // `og/` = die festen Vorschaubilder je Sprache, aus demselben Grund.
+    '/((?!_next/static|_next/image|api/img|api/companion|favicon.ico|og/|.*opengraph-image|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

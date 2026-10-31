@@ -4415,7 +4415,12 @@ const I18nContext = createContext<I18nContextType>({
   withLang: ((href: string | undefined) => href) as WithLang,
 });
 
-export function I18nProvider({ children, initialLang = 'de' }: { children: ReactNode; initialLang?: Lang }) {
+export function I18nProvider({ children, initialLang = 'de', addressFollowsLang = false }: {
+  children: ReactNode;
+  initialLang?: Lang;
+  /** langRedirectEnabled() vom Server: der Schalter ist im Browser nicht lesbar. */
+  addressFollowsLang?: boolean;
+}) {
   // Sprach-Adressen (lang-path.ts): unter `/en/…` gilt die Adresse, nicht
   // Cookie oder Speicher. Aus usePathname und nicht als Prop vom Layout, weil
   // das Layout beim Navigieren nicht neu rendert.
@@ -4438,6 +4443,15 @@ export function I18nProvider({ children, initialLang = 'de' }: { children: React
     try {
       const saved = localStorage.getItem(LANG_COOKIE);
       if (isLang(saved) && saved !== chosen) {
+        // Ist das Cookie da, hat der Server schon danach entschieden.
+        if (document.cookie.split('; ').some(c => c.startsWith(`${LANG_COOKIE}=`))) return;
+        document.cookie = `${LANG_COOKIE}=${saved}; path=/; max-age=31536000; samesite=lax`;
+        const here = window.location.pathname + window.location.search + window.location.hash;
+        const target = switchLangPath(saved, here);
+        if (addressFollowsLang && target !== here) {
+          window.location.replace(target);
+          return;
+        }
         // eslint-disable-next-line react-hooks/set-state-in-effect -- Absicht: localStorage gibt es erst im Browser
         setChosen(saved);
       }
@@ -4451,14 +4465,21 @@ export function I18nProvider({ children, initialLang = 'de' }: { children: React
     if (typeof document !== 'undefined') {
       document.cookie = `${LANG_COOKIE}=${l}; path=/; max-age=31536000; samesite=lax`;
     }
-    // Unter einer Sprach-Adresse fuehrt die Wahl zur Adresse der Zielsprache
-    // (Deutsch = ohne Vorsatz). Volle Ladung: Titel, <html lang> und alle
-    // Server-Teile kommen so in der neuen Sprache.
-    if (prefixed && typeof window !== 'undefined') {
-      if (l === lang) return false;
+    // Die Wahl fuehrt zur Adresse der Zielsprache (Deutsch = ohne Vorsatz), damit
+    // ein kopierter Link dieselbe Sprache zeigt. Volle Ladung: Titel, <html lang>
+    // und alle Server-Teile kommen so in der neuen Sprache. replace statt assign:
+    // der Zurueck-Knopf liefe sonst auf die alte Adresse, und das Cookie schickte
+    // ihn sofort wieder hierher. Seiten ohne Sprach-Adresse (/auth, /internal …)
+    // bleiben, wo sie sind.
+    if ((prefixed || addressFollowsLang) && typeof window !== 'undefined') {
       const here = window.location;
-      window.location.assign(switchLangPath(l, here.pathname + here.search + here.hash));
-      return true;
+      const current = here.pathname + here.search + here.hash;
+      const target = switchLangPath(l, current);
+      if (target !== current) {
+        window.location.replace(target);
+        return true;
+      }
+      if (prefixed) return false;
     }
     setChosen(l);
     return false;

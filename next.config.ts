@@ -122,7 +122,17 @@ const nextConfig: NextConfig = {
     // `/` ohne Schraegstrich anhaengen (/en, nicht /en/) — so macht es Next
     // selbst bei i18n (node_modules/next/dist/lib/load-custom-routes.js).
     const tail = (p: string) => (p === '/' ? '' : p);
-    return base.flatMap(r => [r, { ...r, source: langSource + tail(r.source), destination: '/:lang' + tail(r.destination) }]);
+    // Alte Vorschaubild-Adressen: Messenger haben sie gespeichert. Nicht gespiegelt,
+    // die Bilder hatten nie eine Adresse mit Sprach-Vorsatz.
+    const oldImages = [
+      { source: '/opengraph-image', destination: '/og/de/lol', permanent: true },
+      { source: '/tft/opengraph-image', destination: '/og/de/tft', permanent: true },
+      { source: '/tft/marktwert/opengraph-image', destination: '/og/de/marktwert', permanent: true },
+    ];
+    return [
+      ...oldImages,
+      ...base.flatMap(r => [r, { ...r, source: langSource + tail(r.source), destination: '/:lang' + tail(r.destination) }]),
+    ];
   },
 };
 

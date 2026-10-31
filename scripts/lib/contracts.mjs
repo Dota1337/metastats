@@ -1609,6 +1609,8 @@ async function checkHttpStatus(c, r) {
     }
     if (empty.length) return r('broken', `Sitemap ohne Eintraege fuer ${empty.join(', ')}`);
   }
+  const langRedirects = c.expectLangRedirect || [];
+  const images = c.expectImages || [];
   const langLinks = Object.entries(c.expectLangLinks || {});
   const startLinks = Object.entries(c.expectStartLinks || {});
   const startText = Object.entries(c.expectStartText || {});
@@ -1617,11 +1619,38 @@ async function checkHttpStatus(c, r) {
       return r('error', `expectStartText ${path}: erwartet [Muster, Mindestzahl]`);
     }
   }
-  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0 && startText.length === 0) {
-    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks, expectStartLinks und expectStartText leer)');
+  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0 && startText.length === 0 && langRedirects.length === 0 && images.length === 0) {
+    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks, expectLangRedirect, expectImages, expectStartLinks und expectStartText leer)');
   }
 
   const wrong = [];
+  // Adresse folgt der Sprache: Besucher wird umgeleitet, Bots und deutsche Wahl nicht.
+  for (const p of langRedirects) {
+    const headers = {};
+    if (p.cookie) headers.Cookie = `metastats-lang=${p.cookie}`;
+    if (p.acceptLanguage) headers['Accept-Language'] = p.acceptLanguage;
+    if (p.userAgent) headers['User-Agent'] = p.userAgent;
+    if (p.browser) Object.assign(headers, { 'Sec-Fetch-Dest': 'document', 'Sec-Fetch-Mode': 'navigate', 'Sec-Fetch-Site': 'none' });
+    const res = await fetch(base + p.path, { headers, redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+    const label = `${p.path} (${JSON.stringify({ cookie: p.cookie, acceptLanguage: p.acceptLanguage, browser: p.browser, userAgent: p.userAgent })})`;
+    if (p.to) {
+      const target = res.headers.get('location') ? new URL(res.headers.get('location'), base).pathname : null;
+      if (res.status !== 307 || target !== p.to) wrong.push(`${label} → ${res.status} ${target} (soll 307 ${p.to})`);
+      else if (!/no-store/.test(res.headers.get('cache-control') || '')) wrong.push(`${label}: Weiterleitung ohne no-store`);
+    } else {
+      const html = await res.text();
+      if (res.status !== 200) wrong.push(`${label} → ${res.status} (soll 200)`);
+      else if (!new RegExp('<html[^>]*\\slang="' + p.lang + '"').test(html)) wrong.push(`${label}: <html lang> ist nicht ${p.lang}`);
+    }
+  }
+  // Vorschaubilder je Sprache: ohne Set-Cookie, sonst nicht zwischenspeicherbar.
+  for (const path of images) {
+    const res = await fetch(base + path, { redirect: 'manual', signal: AbortSignal.timeout(20_000) });
+    await res.arrayBuffer();
+    if (res.status !== 200) wrong.push(`${path} → ${res.status} (soll 200)`);
+    else if (res.headers.get('content-type') !== 'image/png') wrong.push(`${path}: Typ ${res.headers.get('content-type')}`);
+    else if (res.headers.has('set-cookie')) wrong.push(`${path}: traegt Set-Cookie`);
+  }
   const roots = new Set(c.pageRoots || []);
   for (const [path, lang] of langLinks) {
     const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });

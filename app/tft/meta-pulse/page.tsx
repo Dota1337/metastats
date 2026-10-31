@@ -44,7 +44,7 @@ interface MetaPulse {
 const RISING_SHIFT = 3;
 
 export default function TftMetaPulsePage() {
-  const { t, withLang } = useI18n();
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -197,17 +197,6 @@ export default function TftMetaPulsePage() {
             assets={assets}
           />
         )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
-          <a
-            href={withLang("/tft/regions")}
-            className="block bg-surface-base border border-border-subtle rounded p-4 hover:border-[#c39bff]/40 transition-colors"
-          >
-            <div className="text-fg-secondary text-[10px] uppercase tracking-widest">{t('tft.metaPulse.shortcut')}</div>
-            <div className="text-white text-base font-medium mt-1">{t('tft.regions.title')} →</div>
-            <div className="text-fg-muted text-xs mt-0.5">{t('tft.regions.subtitle')}</div>
-          </a>
-        </div>
       </div>
       <Footer />
     </main>

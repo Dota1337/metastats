@@ -687,7 +687,6 @@ const translations = {
   'tft.metaPulse.patchWinners':t6('Patch-Gewinner', 'Patch winners', '\uD328\uCE58 \uC2B9\uC790', '\u7248\u672C\u80DC\u8005', 'Ganadores del parche', 'Gagnants du patch'),
   'tft.metaPulse.patchLosers': t6('Patch-Verlierer', 'Patch losers', '\uD328\uCE58 \uD328\uC790', '\u7248\u672C\u8D25\u8005', 'Perdedores del parche', 'Perdants du patch'),
   'tft.metaPulse.vsPatch':     t6('\u0394 vs {p}', '\u0394 vs {p}', '\u0394 vs {p}', '\u0394 vs {p}', '\u0394 vs {p}', '\u0394 vs {p}'),
-  'tft.metaPulse.shortcut':    t6('Pro-Tool', 'Pro tool', '\uD504\uB85C \uB3C4\uAD6C', '\u4E13\u4E1A\u5DE5\u5177', 'Pro tool', 'Outil pro'),
   'tft.comp.carryStarOutcome': t6('Carry-Sternstufe \u2192 Outcome', 'Carry star \u2192 Outcome', '\uCE90\uB9AC \uBCC4 \u2192 \uACB0\uACFC', '\u4E3BC\u661F\u7EA7 \u2192 \u7ED3\u679C', 'Estrella del carry \u2192 resultado', '\u00C9toile du carry \u2192 r\u00E9sultat'),
   'tft.comp.contestedPenalty': t6('Contested-Penalty', 'Contested penalty', '\uACBD\uC7C1 \uD398\uB110\uD2F0', '\u4E89\u62A2\u60E9\u7F5A', 'Penalizaci\u00F3n por contenci\u00F3n', 'P\u00E9nalit\u00E9 de contention'),
   'tft.comp.contestedSolo':    t6('Solo', 'Solo', '\uB2E8\uB3C5', '\u72EC\u5360', 'Solo', 'Solo'),

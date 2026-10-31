@@ -23,7 +23,7 @@ import CompLevelActiveTraits from '../../../components/tft/CompLevelActiveTraits
 import { GuideAugments, GuideTraitAugments, GuideCarouselPicks, GuideLevelPlan } from '../../../components/tft/CompGuide';
 import CompJumpBar from '../../../components/tft/CompJumpBar';
 import CompFlexUnits from '../../../components/tft/CompFlexUnits';
-import { OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect, hasItemsPerUnit } from '../../../components/tft/CompOutcome';
+import { CompEndUnits, OutcomePlacement, OutcomeItems, OutcomeUnitEffect, OutcomeEndLevel, hasUnitEffect, hasItemsPerUnit } from '../../../components/tft/CompOutcome';
 import CompDna, { hasCompDna } from '../../../components/tft/CompDna';
 import { perfectShare, perfectStats, readPerfectMode, writePerfectMode, type CompPerfect } from '../../../lib/tft-comp-perfect';
 import { computeActiveTraits } from '../../../lib/tft-active-traits';
@@ -352,24 +352,27 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
   const share = perfectShare(perfect);
   const choosePerfect = (on: boolean) => { setPerfectMode(on); writePerfectMode(on); };
   const variantsSwitcher = (bare: boolean) => comp ? (
-    <VariantsSwitcher
-      clusterKey={comp.clusterKey}
-      region={region}
-      bucket={bucket}
-      days={days}
-      patch={null}
-      assets={assets}
-      familyMergeActive={variantMode === 'family'}
-      // switchFamilies: auch die genaue Ansicht nennt alle
-      // zusammengelegten Familien, sonst schrumpft die Knopfreihe
-      // nach dem Klick (mergedFamilies ist dort nur die eigene).
-      families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
-      variants={comp?.variants ?? null}
-      activeKey={variantMode === 'exact' ? slug : null}
-      end={pageEnd}
-      bare={bare}
-      perfectMode={perfectOn}
-    />
+    <>
+      <VariantsSwitcher
+        clusterKey={comp.clusterKey}
+        region={region}
+        bucket={bucket}
+        days={days}
+        patch={null}
+        assets={assets}
+        familyMergeActive={variantMode === 'family'}
+        // switchFamilies: auch die genaue Ansicht nennt alle
+        // zusammengelegten Familien, sonst schrumpft die Knopfreihe
+        // nach dem Klick (mergedFamilies ist dort nur die eigene).
+        families={comp?.switchFamilies ?? comp?.mergedFamilies ?? null}
+        variants={comp?.variants ?? null}
+        activeKey={variantMode === 'exact' ? slug : null}
+        end={pageEnd}
+        bare={bare}
+        perfectMode={perfectOn}
+      />
+      {!perfectOn && <CompEndUnits units={comp.unitOutcomes} assets={assets} bare={bare} t={t} />}
+    </>
   ) : null;
   // Detail-Analyse bei drei Spalten: die Boxen ohne Unit-Wirkung nebeneinander,
   // so viele Spalten wie Boxen (keine leere Spalte). Gleiche Bedingungen wie

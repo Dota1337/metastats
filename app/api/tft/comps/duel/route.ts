@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailablePatches, resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { cachedJson, cacheControlForPatches, maybeRedirectByPatchAlias } from '../../../../lib/api-cache';
-import { FAMILY_KEY_RE, duelOf, opponentsOf, splitOpponents, type MatchupEdge } from '../../../../lib/tft-comp-matchups';
+import { FAMILY_KEY_RE, duelOf, opponentsOf, remapMatchupRows, splitOpponents, type MatchupEdge } from '../../../../lib/tft-comp-matchups';
 import { compRepresentatives, fetchCompMatchups } from '../../../../lib/tft-comp-matchups-server';
+import { compCatalogForFilters } from '../../../../lib/tft-comp-catalog-resolver';
 import { publicError } from '../../../../lib/public-error';
 
 // /api/tft/comps/duel?a=<fam>[,<fam>]&b=<fam>[,<fam>]&region=&bucket=&days=
@@ -14,7 +15,8 @@ import { publicError } from '../../../../lib/public-error';
 // Schwellen aus tft-comp-matchups.ts. days = 0: das Fenster hat noch keine
 // neuen Tage, die Seite blendet Duell und Gegner aus.
 
-const MAX_FAMS = 4;
+// Zusammengelegte Comps (0109) haben mehr Teile: Riftbeast 8 (gemessen 24.–27.10.).
+const MAX_FAMS = 8;
 const OPPONENTS = 3;
 
 function famList(v: string | null): string[] | null {
@@ -37,24 +39,31 @@ export async function GET(request: NextRequest) {
     if (redirect) return redirect;
     const cacheControl = cacheControlForPatches(patches);
     const filters = await resolveFilters(sp);
-    const [m, reps] = await Promise.all([
+    const [m, reps, view] = await Promise.all([
       fetchCompMatchups(filters, [...new Set([...famsA, ...famsB])]),
       compRepresentatives(filters).catch(() => new Map<string, { key: string; games: number }>()),
+      compCatalogForFilters(filters).catch(() => null),
     ]);
+    // Mit Katalog auf Comps umlegen wie die Detailseite: sonst staende ein Teil
+    // einer zusammengelegten Comp als eigener Gegner da.
+    const compsOf = (list: string[]) => (view ? [...new Set(list.map(f => view.lookup.get(f) ?? f))] : list);
+    const rows = view ? remapMatchupRows(m.rows, f => view.lookup.get(f)) : m.rows;
+    const compsA = compsOf(famsA);
+    const compsB = compsOf(famsB);
     const edge = (e: MatchupEdge) => ({ fam: e.fam, slug: reps.get(e.fam)?.key ?? null, games: e.games, rate: round(e.rate, 4) });
     // Gegnerlisten ohne die jeweils andere Seite — die steht im Duell.
     const side = (own: string[], other: string[]) => {
-      const s = splitOpponents(opponentsOf(m.rows, own, other), OPPONENTS);
+      const s = splitOpponents(opponentsOf(rows, own, other), OPPONENTS);
       return { strong: s.strong.map(edge), weak: s.weak.map(edge) };
     };
     const has = m.days > 0;
-    const duel = has ? duelOf(m.rows, famsA, famsB) : null;
+    const duel = has ? duelOf(rows, compsA, compsB) : null;
     return cachedJson({
       filters: { region: filters.regionLabel, bucket: filters.bucketLabel, days: filters.days, patch: filters.patch },
       days: m.days,
       duel: duel ? { ...duel, rate: round(duel.rate, 4) } : null,
-      a: has ? side(famsA, famsB) : null,
-      b: has ? side(famsB, famsA) : null,
+      a: has ? side(compsA, compsB) : null,
+      b: has ? side(compsB, compsA) : null,
     }, { cache: cacheControl });
   } catch (e) {
     return NextResponse.json({ error: publicError('tft/comps/duel', e, 'stats_unavailable') }, { status: 502 });

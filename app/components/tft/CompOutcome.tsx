@@ -521,6 +521,54 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
   );
 }
 
+// Endstufe (User 31.10.2026: „auf 9 dann on top Lux"): 5-Kosten-Units, die nur ein
+// Teil der Bretter dazunimmt, mit den Werten dieser Bretter. Anteil zuerst: wer die
+// Unit erreicht, liegt ohnehin vorne, die Zahl ist keine Wirkung der Unit und traegt
+// deshalb kein Tier. Unter 100 Spielen kein Ø.
+const END_UNIT_COST = 5;
+const END_UNIT_MIN_GAMES = 100;
+const END_UNIT_MAX = 3;
+
+export interface CompUnitOutcome {
+  characterId: string;
+  games: number;
+  share: number;
+  avgPlacement: number | null;
+  top4Rate: number | null;
+  top1Rate: number | null;
+}
+
+export function CompEndUnits({ units, assets, bare, t }: {
+  units: CompUnitOutcome[] | null | undefined; assets: TftAssetsBundle | null; bare: boolean; t: T;
+}) {
+  const rows = (units ?? [])
+    .filter(u => assets?.champions[u.characterId]?.cost === END_UNIT_COST)
+    .sort((a, b) => b.share - a.share)
+    .slice(0, END_UNIT_MAX);
+  if (rows.length === 0) return null;
+  const Wrap = bare ? 'div' : 'section';
+  return (
+    <Wrap className={bare ? 'mb-4 pb-3 border-b border-border-subtle' : 'mt-3 bg-surface-base border border-border-subtle rounded p-3'}>
+      <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.comp.endUnits')}</h2>
+      <div className="flex flex-wrap gap-2">
+        {rows.map(u => {
+          const solid = u.games >= END_UNIT_MIN_GAMES;
+          return (
+            <div key={u.characterId} className="px-3 py-1.5 rounded border text-xs bg-surface-sunken border-border-subtle text-fg-secondary">
+              <span className="font-medium">{(t('tft.comp.variant.with') as string).replace('{name}', unitName(assets, u.characterId))}</span>
+              <span className="ml-2 text-fg-muted tabular-nums">
+                {pct(u.share)} · {solid && u.avgPlacement != null ? u.avgPlacement.toFixed(2) : '—'} · {u.games}
+                {solid && u.top4Rate != null && <> · {t('tft.top4')} {pct(u.top4Rate)}</>}
+                {solid && u.top1Rate != null && <> · {t('tft.top1')} {pct(u.top1Rate)}</>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Wrap>
+  );
+}
+
 /** Endlevel der Boards, die Stage 5 erreicht haben. */
 // bare: ohne eigene Box, als Teil der Leveln-Box der Detailseite.
 export function OutcomeEndLevel({ outcome, t, bare = false }: { outcome: CompOutcome; t: T; bare?: boolean }) {

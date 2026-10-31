@@ -37,6 +37,7 @@ import {
   applyCompCatalog,
   compCatalogForFilters,
   compKeyOf,
+  compPartOf,
   listPayloadForCatalog,
   membersOfComps,
   traitsOfFamilies,
@@ -249,6 +250,44 @@ interface CompVariant {
   belowThreshold: boolean;
   // Perfekt getroffen (nur Katalog-Comps, null ohne bewertete Spiele).
   perfect?: CompPerfect | null;
+  // Zusammengelegte Comp: der Knopf steht fuer diese Teil-Comp.
+  partKey?: string;
+}
+
+// Zusammengelegte Comp (User 31.10.2026: „bei der Comp Detailansicht die Werte
+// individuell"): ein Knopf je Teil-Comp ab 30 Spielen, ohne 5-%-Huerde — gerade
+// die kleine Endstufe soll ihre eigenen Werte zeigen. Kennung = meistgespielte
+// Zeile der Teil-Comp, die genaue Ansicht legt dann alle ihre Zeilen zusammen.
+function compPartVariants(rows: CompRow[], partOf: (key: string) => string | null): CompVariant[] {
+  const byPart = new Map<string, CompRow[]>();
+  for (const r of rows) {
+    const part = partOf(r.cluster_key);
+    if (!part) continue;
+    if (!byPart.has(part)) byPart.set(part, []);
+    byPart.get(part)!.push(r);
+  }
+  const out: CompVariant[] = [];
+  for (const [partKey, list] of byPart) {
+    const sum = (k: 'games' | 'sum_placement' | 'top4' | 'top1') => list.reduce((s, r) => s + (Number(r[k]) || 0), 0);
+    const games = sum('games');
+    if (games < 30) continue;
+    const anchor = [...list].sort((a, b) => Number(b.games) - Number(a.games))[0];
+    out.push({
+      clusterKey: anchor.cluster_key,
+      slug: anchor.cluster_key,
+      games,
+      avgPlacement: sum('sum_placement') / games,
+      top4Rate: sum('top4') / games,
+      top1Rate: sum('top1') / games,
+      carryStar: 0,
+      augmentSlug: null,
+      secondary: null,
+      belowThreshold: false,
+      perfect: sumPerfect(list),
+      partKey,
+    });
+  }
+  return out.sort((a, b) => b.games - a.games);
 }
 
 // Varianten einer Katalog-Comp: Build-Gruppen ueber alle ihre Zeilen, dieselbe
@@ -506,7 +545,10 @@ export async function GET(request: NextRequest) {
         mergedFamilyKeys = [compCtx.key, ...(compFams ?? []).filter(f => f !== compCtx.key)
           .sort((a, b) => (famGames.get(b) ?? 0) - (famGames.get(a) ?? 0) || (a < b ? -1 : a > b ? 1 : 0))];
         switchFamilies = [compCtx.key];
-        variants = compVariants(compRows);
+        const isMerged = compCtx.view.parts.has(compCtx.key);
+        variants = isMerged
+          ? compPartVariants(compRows, k => compPartOf(compCtx.view, k))
+          : compVariants(compRows);
         if (variantMode === 'family') {
           const members = [compAnchor, ...compRows.filter(r => r !== compAnchor && Number(r.games) >= minForList)];
           familySlugs = members.map(m => m.cluster_key);
@@ -525,7 +567,11 @@ export async function GET(request: NextRequest) {
         } else {
           // Genaue Ansicht = Build-Gruppe innerhalb der Comp, dieselbe Regel
           // wie die Knoepfe (compVariants).
-          const groupKeys = buildGroupMembers(compRows, row.cluster_key, r => r.cluster_key, r => Number(r.games), r => r.typical_units_merged || []);
+          // Zusammengelegte Comp: die ganze Teil-Comp, wie der Knopf sie zaehlt.
+          const part = isMerged ? compPartOf(compCtx.view, row.cluster_key) : null;
+          const groupKeys = part
+            ? compRows.filter(r => compPartOf(compCtx.view, r.cluster_key) === part).map(r => r.cluster_key)
+            : buildGroupMembers(compRows, row.cluster_key, r => r.cluster_key, r => Number(r.games), r => r.typical_units_merged || []);
           const members = compRows.filter(r => groupKeys.includes(r.cluster_key));
           mergedRow = members[0] ?? row;
           familySlugs = members.length > 0 ? members.map(m => m.cluster_key) : [row.cluster_key];
@@ -1204,6 +1250,23 @@ function enrichComp(r: CompRow) {
     .filter(u => u.pickrate >= 0.10 && u.n >= 20)
     .sort((a, b) => b.pickrate - a.pickrate)
     .slice(0, 10);
+  // „Mit Lux“ (User 31.10.2026): Spiele mit der Unit, auch wenn sie zu den
+  // meistgespielten zaehlt. Zaehlt je Brett einmal (gamesWithOutcome, nicht
+  // count); welche Units die Seite zeigt, entscheidet sie an den Kosten.
+  const unitOutcomes = allUnitsMerged
+    .map(unit => {
+      const u = unit as typeof unit & { gamesWithOutcome?: number; top4?: number; top1?: number };
+      const n = Number(u.gamesWithOutcome ?? 0);
+      return {
+        characterId: u.characterId,
+        games: n,
+        share: games > 0 ? n / games : 0,
+        avgPlacement: n > 0 ? Number(u.sumPlacement ?? 0) / n : null,
+        top4Rate: n > 0 ? Number(u.top4 ?? 0) / n : null,
+        top1Rate: n > 0 ? Number(u.top1 ?? 0) / n : null,
+      };
+    })
+    .filter(u => u.games >= 30 && u.share >= 0.10 && u.share < 0.90);
   // Board-Composition: jeder Unit-Slot bekommt eine Kategorie aus seiner
   // Cooccurrence-Quote in dieser Comp:
   //   Core   ≥ 75 % — fast immer Pflicht
@@ -1555,6 +1618,7 @@ function enrichComp(r: CompRow) {
     skillCapCategory,
     boardComposition,
     flexUnits,
+    unitOutcomes,
     carryStarOutcome,
     contestedOutcome,
   };

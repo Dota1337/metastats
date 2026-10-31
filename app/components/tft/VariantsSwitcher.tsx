@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
 import { findChampion, traitTierLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
-import { compTraitFamilyKey, parseClusterKey } from '../../lib/tft-cluster';
+import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from '../../lib/tft-cluster';
 import { compPath } from '../../lib/tft-comp-path';
 import { perfectStats, type CompPerfect } from '../../lib/tft-comp-perfect';
 
@@ -35,6 +35,8 @@ interface Variant {
   belowThreshold: boolean;
   // Perfekt getroffen (nur Knoepfe der Detail-API im Katalog-Modus).
   perfect?: CompPerfect | null;
+  // Zusammengelegte Comp: der Knopf steht fuer diese Teil-Comp.
+  partKey?: string;
 }
 
 interface VariantsResponse {
@@ -55,11 +57,14 @@ function samePath(a: string, b: string): boolean {
 }
 
 function variantLabel(
-  v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null },
+  v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null; partKey?: string },
   t: (key: any) => string,
   assets: TftAssetsBundle | null,
   withCarry = false,
 ): string {
+  // Teil-Comp einer zusammengelegten Comp: ihr Carry reicht als Name.
+  const partCarry = v.partKey ? parseFamilyKey(v.partKey)?.carry : null;
+  if (partCarry) return findChampion(assets, partCarry)?.name || prettyChar(partCarry);
   const parts: string[] = [];
   const cluster = parseClusterKey(v.clusterKey);
   // Zusammengelegte Zwei-Carry-Familien (Soraka + Zyra): ohne den Carry

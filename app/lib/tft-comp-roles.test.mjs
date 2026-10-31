@@ -251,3 +251,21 @@ test('sortUnitsByImportance: Reihenfolge der genannten Carries folgt dem Namen, 
   assert.deepEqual(sortUnitsByImportance(t, { carries: ['A'], tanks: ['T'] }, ['A'], opts).map(x => x.characterId), ['A', 'T', 'R']);
   assert.deepEqual(sortUnitsByImportance([], roles, ['A'], opts), []);
 });
+
+test('Key-Carry im Namen: fest auf dem Brett mit vielen Items, auch ohne Schadens-Items', () => {
+  const dmg = [...roleItemSets(18).carry][0];
+  const games = 1000;
+  const units = [
+    u('Cass', 930, { [dmg]: 2100 }, { carryItemGamesAll: 920 }),
+    // Viele Items, aber keine Schadens-Items: faellt durch die Carry-Regeln.
+    u('Rengar', 850, { Utility: 2200 }),
+    u('Klein', 500, { Utility: 1200 }),
+  ];
+  assert.deepEqual(namedCarries(computeRoles(units, games, opts), 'Cass'), ['Cass']);
+  // Hat die meisten Items je Spiel: steht vorne, der Name unterscheidet die Comps.
+  assert.deepEqual(namedCarries(computeRoles(units, games, { ...opts, keyCarry: 'Rengar' }), 'Rengar'), ['Rengar', 'Cass']);
+  // Zu selten auf dem Brett oder zu wenige Items: kein Name.
+  assert.deepEqual(namedCarries(computeRoles(units, games, { ...opts, keyCarry: 'Klein' }), 'Klein'), ['Cass']);
+  const few = [units[0], u('Rengar', 850, { Utility: 1600 })];
+  assert.deepEqual(namedCarries(computeRoles(few, games, { ...opts, keyCarry: 'Rengar' }), 'Rengar'), ['Cass']);
+});

@@ -634,6 +634,7 @@
       "kind": "service",
       "description": "metastats TFT snapshot bundle publisher (Vercel-Blob)",
       "scripts": [
+        "scripts/build-comp-merges.mjs",
         "scripts/precompute-comp-windows.mjs",
         "scripts/publish-snapshot-bundle.mjs"
       ],
@@ -1532,6 +1533,7 @@
       "daily-crawl/patch-axis"
     ],
     "metastats-snapshot-publisher.service": [
+      "comp-merge/set-axis",
       "snapshot-publisher/comp-list-precomputed",
       "snapshot-publisher/item-list-precomputed",
       "snapshot/manifest-frische"

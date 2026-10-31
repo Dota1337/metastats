@@ -88,7 +88,7 @@ function familiesParam(comp: CompData): string {
   const fams = Array.isArray(comp.mergedFamilies) && comp.mergedFamilies.length > 0
     ? comp.mergedFamilies
     : [familyKeyForMerge(comp.clusterKey)];
-  return fams.slice(0, 4).join(',');
+  return fams.slice(0, 8).join(',');
 }
 
 // Streuung der Platzierung aus der Platz-Verteilung 1–8.

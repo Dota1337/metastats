@@ -26,14 +26,32 @@
 import { callRpc, resolveDataEnd, type ResolvedFilters } from './tft-supabase-reader';
 import { compTraitFamilyKey, parseFamilyKey } from './tft-cluster';
 import { mergedAliasMap, type CatalogComp, type Catalog } from './tft-comp-catalog.mjs';
+import { applyMerges, mergeRowsForWindow, mergeTargets, noMerges } from './tft-comp-merge.mjs';
 
 export interface CompCatalogView {
-  /** Kennung des Stands (Kataloge im Fenster), fuer Vorrat und Antworten. */
+  /** Kennung des Stands (Kataloge im Fenster + Zuordnung), fuer Vorrat und Antworten. */
   id: string;
-  /** Klassische Familie → Comp-Name. */
+  /** Klassische Familie → Comp-Name (nach dem Zusammenlegen, Migration 0109). */
   lookup: Map<string, string>;
   /** Comp-Name → Katalog-Eintrag (neuester Katalog im Fenster gewinnt). */
   comps: Map<string, CatalogComp>;
+  /** Zusammengelegte Comps: Grund-Comp → Teil-Comps, Grund-Comp zuerst. */
+  parts: Map<string, string[]>;
+  /** Familie einer zusammengelegten Comp → ihre Teil-Comp. */
+  partOf: Map<string, string>;
+  /** Zuordnung nicht lesbar: nur kurz merken. */
+  mergeFailed?: boolean;
+}
+
+interface MergeRow {
+  patch_family: string;
+  from_key: string;
+  to_key: string;
+}
+
+// Notschalter COMP_MERGE_READ=0 → Comps getrennt wie vor 0109.
+export function compMergeReadEnabled(): boolean {
+  return process.env.COMP_MERGE_READ !== '0';
 }
 
 interface CatalogRow {
@@ -81,10 +99,30 @@ async function loadView(set: number, start: string, end: string, patches: string
   }
   const comps = new Map<string, CatalogComp>();
   for (const cat of catalogs) for (const c of cat.comps) comps.set(c.key, c);
+  const baseId = sorted.map(r => `${r.patch}:${r.hash}`).join(',');
+  const baseLookup = mergedAliasMap(catalogs);
+  // Comps zusammenlegen (0109): hier, damit Liste, Detail, Duelle und Vorrat
+  // dieselbe Zuordnung sehen. Fehler → Comps getrennt, die Seite bleibt stehen.
+  let merged = noMerges(baseLookup);
+  let mergeFailed = false;
+  if (compMergeReadEnabled()) {
+    try {
+      const mergeRows = await callRpc<MergeRow[]>('get_tft_comp_merges', { p_set: set }, 4000);
+      const windowFamilies = [...new Set(sorted.map(r => r.patch.replace(/[a-z]$/, '')))];
+      merged = applyMerges(baseLookup, mergeTargets(mergeRowsForWindow(mergeRows || [], windowFamilies)));
+    } catch (err) {
+      mergeFailed = true;
+      console.error('[comp-catalog] Zuordnung nicht lesbar, Comps getrennt:', (err as Error)?.message ?? err);
+    }
+  }
+  for (const list of merged.parts.values()) for (const part of list.slice(1)) comps.delete(part);
   return {
-    id: sorted.map(r => `${r.patch}:${r.hash}`).join(','),
-    lookup: mergedAliasMap(catalogs),
+    id: merged.stamp ? `${baseId}|${merged.stamp}` : baseId,
+    lookup: merged.lookup,
     comps,
+    parts: merged.parts,
+    partOf: merged.partOf,
+    ...(mergeFailed ? { mergeFailed } : {}),
   };
 }
 
@@ -102,6 +140,7 @@ function compCatalogFor(set: number, start: string, end: string, patches: string
     // Leere Sicht nur kurz merken: die erste Version eines neuen Patches kommt
     // nach dem Lauf dazu.
     if (!v) cache.set(key, { at: now - TTL_MS + NEGATIVE_TTL_MS, view: Promise.resolve(null) });
+    else if (v.mergeFailed) cache.set(key, { at: now - TTL_MS + NEGATIVE_TTL_MS, view: Promise.resolve(v) });
     return v;
   }, err => {
     console.error('[comp-catalog] Laden fehlgeschlagen, klassisch:', (err as Error)?.message ?? err);
@@ -180,6 +219,12 @@ export function compKeyOf(view: CompCatalogView, key: string): string | null {
   return view.lookup.get(fam) ?? null;
 }
 
+/** Teil-Comp einer Kennung in einer zusammengelegten Comp; null = nicht zusammengelegt. */
+export function compPartOf(view: CompCatalogView, key: string): string | null {
+  const fam = parseFamilyKey(key) ? key : compTraitFamilyKey(key);
+  return view.partOf.get(fam) ?? null;
+}
+
 /** Alle klassischen Familien, die zu einer der Comps gehoeren. */
 export function membersOfComps(view: CompCatalogView, compKeys: Iterable<string>): string[] {
   const want = new Set(compKeys);
@@ -214,15 +259,28 @@ export function applyCompCatalog<T extends { clusterKey?: string | null; slug?: 
   comps: T[],
   view: CompCatalogView | null,
 ): T[] {
-  if (!view) {
-    return comps.map(c => {
-      if (!('compKey' in c)) return c;
-      const rest: Partial<T> = { ...c };
-      delete rest.compKey;
-      return rest as T;
-    });
-  }
-  return comps.map(c => ({ ...c, compKey: compKeyOf(view, c.slug || c.clusterKey || '') }));
+  // Felder eines anderen Stands (Vorrat) fallen weg.
+  const clean = (c: T): T => {
+    if (!('compKey' in c) && !('compPart' in c) && !('compParts' in c)) return c;
+    const rest: Partial<T> & { compPart?: unknown; compParts?: unknown } = { ...c };
+    delete rest.compKey;
+    delete rest.compPart;
+    delete rest.compParts;
+    return rest as T;
+  };
+  if (!view) return comps.map(clean);
+  return comps.map(c => {
+    const key = c.slug || c.clusterKey || '';
+    const compKey = compKeyOf(view, key);
+    const parts = compKey ? view.parts.get(compKey) : undefined;
+    return {
+      ...clean(c),
+      compKey,
+      // Zusammengelegt: aus welcher Teil-Comp die Zeile stammt und alle Teile
+      // (Hauptbrett und Vorpatch-Vergleich der Liste, tft-comp-families).
+      ...(parts ? { compPart: compPartOf(view, key), compParts: parts } : {}),
+    };
+  });
 }
 
 /**

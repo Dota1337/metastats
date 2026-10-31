@@ -33,6 +33,8 @@ export interface CompFamily {
   familyKey: string;           // <trait>__<carry> (bei zusammengelegten Familien der Anker)
   // Alle Teil-Familien (<trait>__<carry>), bei zusammengelegten der Anker zuerst.
   memberKeys?: string[];
+  // Zusammengelegte Comp (0109): alle Teil-Comps, Grund-Comp zuerst.
+  partKeys?: string[];
   trait: string;
   carry: string;
   // Aus den Items der ganzen Familie erkannt (tft-comp-roles), staerkster Carry zuerst.

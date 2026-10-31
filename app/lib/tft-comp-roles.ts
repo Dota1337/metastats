@@ -39,6 +39,7 @@ export const ITEM_CARRIER_MAX = 4;
 // (gamesWithUnit), nicht an Kopien — Kopien zaehlen bei ×2-Units doppelt.
 // Genannte Carries stehen trotzdem in Core (splitCoreFlex).
 export const CORE_MIN_PRESENCE = 0.75;
+export const KEY_CARRY_NAME_LOAD = 2;    // Key-Carry im Namen ab so vielen fertigen Items je Spiel
 export const MERGE_MIN_JACCARD = 0.7;    // Ueberlappung der Kern-Units zweier Familien
 
 export interface RoleItem { apiName: string; count: unknown }
@@ -154,6 +155,14 @@ export function computeRoles(
     .filter(s => s.games >= CARRY_MIN_GAMES && s.presence >= CARRY_MIN_PRESENCE
       && s.carryRate >= CARRY_MIN_RATE && s.carryShare >= CARRY_MIN_SHARE)
     .sort((a, b) => b.carryVolume - a.carryVolume || b.games - a.games);
+  // Der Key-Carry steht fest auf dem Brett und traegt viele Items, nur nicht genug
+  // Schadens-Items (Defender Rengar): dann gehoert er in den Namen, sonst hiessen
+  // zwei verschiedene Comps gleich (Defender · Cassiopeia zweimal).
+  const namedKey = stats.find(s => s.characterId === opts.keyCarry);
+  if (namedKey && !carryStats.includes(namedKey) && namedKey.games >= CARRY_MIN_GAMES
+    && namedKey.presence >= CORE_MIN_PRESENCE && namedKey.itemLoad >= KEY_CARRY_NAME_LOAD) {
+    carryStats.push(namedKey);
+  }
   const key = carryStats.find(s => s.characterId === opts.keyCarry);
   if (key && key !== carryStats[0] && carryStats[0].carryVolume < key.carryVolume * KEY_CARRY_MARGIN) {
     carryStats.splice(carryStats.indexOf(key), 1);

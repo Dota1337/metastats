@@ -27,6 +27,9 @@ export interface CompApiRow extends FamilyComp {
   // string = gehoert zu dieser Comp, null = ohne Comp (erscheint nicht),
   // fehlt = klassisch (kein Katalog) → Familie aus dem Cluster-Schluessel.
   compKey?: string | null;
+  // Zusammengelegte Comp (0109): Teil-Comp der Zeile und alle Teil-Comps.
+  compPart?: string | null;
+  compParts?: string[];
   // Kleine Zeilen der Comp (unter der Listen-Schwelle, ab COMP_ROW_FLOOR), nur
   // an der meistgespielten Zeile der Comp. Zaehlen nur in die Familien-Summen.
   minorRows?: MinorCompRow[];
@@ -258,7 +261,16 @@ export function buildCompFamilies(
     // das Original-Objekt in variants[] mutieren und beim Re-Render mit
     // anderem sortBy einen bereits-aggregierten Wert als Input für die
     // nächste Aggregation nutzen (Cascade-Drift).
-    const variantsBySort = [...variants].sort((a, b) => sortKey(a) - sortKey(b));
+    // Zusammengelegte Comp: das Brett kommt aus der meistgespielten Teil-Comp,
+    // sonst zeigte die Zeile je Sortierung das Brett einer seltenen Endstufe.
+    const compParts = rawVariants.find(v => v.compParts?.length)?.compParts ?? null;
+    const partGames = new Map<string, number>();
+    if (compParts) {
+      for (const v of rawVariants) if (v.compPart) partGames.set(v.compPart, (partGames.get(v.compPart) ?? 0) + (v.games || 0));
+    }
+    const mainPart = [...partGames].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0] ?? null;
+    const mainPool = mainPart ? variants.filter(v => v.compPart === mainPart) : variants;
+    const variantsBySort = [...(mainPool.length > 0 ? mainPool : variants)].sort((a, b) => sortKey(a) - sortKey(b));
     const mainComp = { ...variantsBySort[0] };
     // Weighted Family-Stats über alle Variants plus die kleinen Zeilen der
     // Gruppe (tft-comp-minor-rows) — die zaehlen nur hier, nicht in Varianten,
@@ -341,6 +353,7 @@ export function buildCompFamilies(
         ? [...new Set([familyKey, ...(rawByFamily.get(familyKey) || []).map(v => compTraitFamilyKey(v.slug || v.clusterKey || '')),
           ...minor.keys.map(k => compTraitFamilyKey(k))])]
         : membersOf.get(familyKey) || [familyKey],
+      ...(compParts ? { partKeys: compParts } : {}),
       trait,
       carry,
       carries: familyRoles.carries,
@@ -651,7 +664,11 @@ export function attachPatchDeltas(
   }
   // Beide Seiten je Katalog-Comp gezaehlt: ihre Zeilen tragen schon den
   // Comp-Schluessel, die klassischen Mitglieder wuerden fremde Comps mitzaehlen.
-  const keysOf = (f: CompFamily) => (index.assign === 'catalog' ? [f.familyKey] : (f.memberKeys ?? [f.familyKey]));
+  // Zusammengelegte Comp: alle Teil-Comps zaehlen, sonst stuende die Summe gegen
+  // nur eine Teil-Comp des Vorpatches.
+  const keysOf = (f: CompFamily) => (index.assign === 'catalog'
+    ? (f.partKeys ?? [f.familyKey])
+    : [...new Set([...(f.memberKeys ?? [f.familyKey]), ...(f.partKeys ?? [])])]);
   const out = families.map(f => {
     const delta = sumDeltaKeys(index, keysOf(f).flatMap(m => byFamily.get(m) ?? []));
     return {

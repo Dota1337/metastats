@@ -15,6 +15,8 @@ TimeoutStopSec=120
 # Schwere Comp-Listen (Region alle x breite Raenge) vorab in die DB rechnen
 # (Migration 0070), damit die Route sie nicht live rechnen muss. "-": ein
 # Fehler hier darf den Publisher nicht blockieren — die Route rechnet dann live.
+# Zuordnung Comp -> Grund-Comp (0109) vor den Listen, damit alles denselben Stand sieht.
+ExecStartPre=-/usr/bin/node scripts/build-comp-merges.mjs
 ExecStartPre=-/usr/bin/node scripts/precompute-comp-windows.mjs
 ExecStart=/usr/bin/node scripts/publish-snapshot-bundle.mjs --concurrency 2
 StandardOutput=journal

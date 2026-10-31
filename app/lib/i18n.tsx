@@ -3252,6 +3252,11 @@ const translations = {
     '3\uC131', '3\u661F',
     '3\u2605', '3\u2605'
   ),
+  'tft.comp.endUnits': t6(
+    'Endstufe', 'End game',
+    '후반 조합', '后期阵容',
+    'Fase final', 'Fin de partie'
+  ),
   'tft.comp.variant.with': t6(
     'mit {name}', 'with {name}',
     '{name} \uD3EC\uD568', '\u642D\u914D {name}',

@@ -8,10 +8,10 @@
   "counts": {
     "routes": 91,
     "groups": 30,
-    "tables": 45,
-    "rpcs": 37,
+    "tables": 46,
+    "rpcs": 38,
     "files": 13,
-    "edges": 521,
+    "edges": 526,
     "unused": 7,
     "unresolved": 1
   },
@@ -856,6 +856,7 @@
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-comp-matchups-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -1819,6 +1820,12 @@
       "declared": true
     },
     {
+      "id": "db:tft_comp_merge",
+      "kind": "table",
+      "label": "tft_comp_merge",
+      "declared": true
+    },
+    {
       "id": "db:tft_daily_comp_matchups",
       "kind": "table",
       "label": "tft_daily_comp_matchups",
@@ -2183,6 +2190,12 @@
       "id": "fn:get_tft_comp_matchups_all",
       "kind": "rpc",
       "label": "get_tft_comp_matchups_all",
+      "declared": true
+    },
+    {
+      "id": "fn:get_tft_comp_merges",
+      "kind": "rpc",
+      "label": "get_tft_comp_merges",
       "declared": true
     },
     {
@@ -3178,6 +3191,11 @@
     },
     {
       "from": "api:/api/tft/comps",
+      "to": "fn:get_tft_comp_merges",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps",
       "to": "fn:get_tft_comp_outcome",
       "kind": "calls"
     },
@@ -3308,12 +3326,22 @@
     },
     {
       "from": "api:/api/tft/comps/duel",
+      "to": "fn:get_tft_comp_catalog_window",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
       "to": "fn:get_tft_comp_matchups",
       "kind": "calls"
     },
     {
       "from": "api:/api/tft/comps/duel",
       "to": "fn:get_tft_comp_matchups_all",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/duel",
+      "to": "fn:get_tft_comp_merges",
       "kind": "calls"
     },
     {
@@ -3379,6 +3407,11 @@
     {
       "from": "api:/api/tft/comps/families",
       "to": "fn:get_tft_comp_catalog_window",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:get_tft_comp_merges",
       "kind": "calls"
     },
     {
@@ -4764,6 +4797,11 @@
     {
       "from": "fn:get_tft_comp_matchups_all",
       "to": "db:tft_daily_comp_matchups_all",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_comp_merges",
+      "to": "db:tft_comp_merge",
       "kind": "reads"
     },
     {

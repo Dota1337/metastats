@@ -16,7 +16,7 @@
  * frontend doesn't have to download CD's full 24 MB blob.
  */
 
-import { writeFileSync, readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { resolve } from 'node:path';
 import { lookup as dnsLookup } from 'node:dns';
@@ -25,8 +25,17 @@ import { loadCurrentSet } from './lib/current-set.mjs';
 import { applyAugmentIconOverrides, fetchMissingAugmentIcons } from './lib/tft-augment-icons.mjs';
 import { fixItemName } from './lib/tft-item-name-fixes.mjs';
 import { applyLocalizedNames } from './lib/tft-localized-names.mjs';
+import { applyValueTable, binHash, changesFingerprint, correctFromNotes, livePatchOf, loadSetChanges, patchesUpTo } from './lib/tft-value-corrections.mjs';
+import { fetchNotes } from './detect-tft-bpatches.mjs';
+import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
+import { LISTING_URL, listingStamp, nextBundleStamp } from './lib/tft-data-freshness.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
+// Testserver: traegt Aenderungen des laufenden Patches, die in `latest` noch fehlen
+// (tft-value-corrections.mjs). Nur zusammen mit einer Zeile aus Riots Notes genutzt.
+const PBE_URL = 'https://raw.communitydragon.org/pbe/cdragon/tft/en_us.json';
+const VERSION_URL = 'https://raw.communitydragon.org/latest/content-metadata.json';
+const STRICT_LOCALES = process.argv.includes('--strict-locales');
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
 // Team-Planner-Codes ("Plan Ahead"). Riot vergibt pro Unit und Set eine Zahl,
 // die im in-game Import-Code als 3-stellige Hex-Ziffer steht. Es gibt keine
@@ -177,6 +186,9 @@ async function main() {
       localeSets[l.code] = json.setData || [];
       console.log(`       ${l.code}: ${localeItems[l.code].size} item entries`);
     } catch (e) {
+      // Der Daten-Lauf bricht hier ab: applyLocalizedNames rettet Namen aus dem
+      // Vorgaenger-Bundle, die Augment-Texte dieser Sprache gingen aber verloren.
+      if (STRICT_LOCALES) { console.error(`FATAL: Sprachdatei ${l.code} fehlt (${e.message}) — Bundle NICHT geschrieben.`); process.exit(1); }
       console.warn(`       ${l.code}: FAILED (${e.message}) — augments will fall back to en`);
       localeItems[l.code] = new Map();
       localeSets[l.code] = [];
@@ -187,6 +199,37 @@ async function main() {
   const active = pickActiveSet(cd.setData || []);
   if (!active) { console.error('No live set found'); process.exit(1); }
   console.log(`       active set: ${active.number} (${active.mutator})`);
+
+  // Zahlen nachziehen, bevor irgendein Text aufgeloest wird. Faellt eine Quelle
+  // aus, wird abgebrochen und das alte Bundle bleibt: sonst kaemen die falschen
+  // Zahlen still zurueck.
+  console.log('[3.1/4] Zahlen gegen Riots Notes und den Testserver pruefen');
+  const setMeta = JSON.parse(readFileSync('public/tft-set.json', 'utf8'));
+  const livePatch = livePatchOf(setMeta, new Date().toISOString().slice(0, 10));
+  const changes = await loadSetChanges(patchesUpTo(setMeta, livePatch), fetchNotes);
+  const pbe = await fetchJSON(PBE_URL);
+  const pbeSet = (pbe.setData || []).find(s => s.number === active.number && s.mutator === active.mutator) ?? null;
+  const cdragonVersion = (await fetchJSON(VERSION_URL)).version || null;
+  // Woran die naechste Runde erkennt, dass CDragon neu ist (tft-data-freshness.mjs).
+  const previousStamp = existsSync('public/tft-assets.json') ? JSON.parse(readFileSync('public/tft-assets.json', 'utf8')).sourceStamp : null;
+  const listing = await fetch(LISTING_URL, { signal: AbortSignal.timeout(30_000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
+  const sourceStamp = nextBundleStamp({ listing: listingStamp(listing), previous: previousStamp, nowMs: Date.now() });
+  const fromNotes = correctFromNotes({ activeSet: active, pbeSet, items: cd.items, pbeItems: pbe.items, localeItems, changes });
+  const fromTable = applyValueTable({ traits: active.traits, items: cd.items, version: cdragonVersion });
+  for (const map of Object.values(localeItems)) {
+    for (const c of fromTable.applied.filter(x => x.kind === 'item')) {
+      const loc = map.get(c.id);
+      if (loc?.effects && typeof loc.effects[c.key] === 'number') loc.effects[c.key] = c.to;
+    }
+  }
+  const round = v => Math.round(v * 1e6) / 1e6;
+  const corrections = [
+    ...fromNotes.applied.map(c => ({ kind: c.kind, id: c.id, key: c.key, tier: c.tier ?? null, from: round(c.from), to: round(c.to), via: 'notes', patch: c.patch, line: c.line })),
+    ...fromTable.applied.map(c => ({ kind: c.kind, id: c.id, key: c.key, tier: null, from: c.from, to: c.to, via: 'table', source: c.source })),
+  ];
+  const notesHash = changesFingerprint(changes);
+  console.log(`       Patch ${livePatch}, ${changes.length} Notes-Zeilen, CDragon ${cdragonVersion}: ${fromNotes.applied.length} aus Notes, ${fromTable.applied.length} aus Tabelle, ${fromNotes.unmatched.length} Unterschiede ohne Notes-Zeile`);
+  for (const n of fromTable.notes) console.warn(`       WARN Tabelle: ${n}`);
 
   // Items: keep all (cross-set items appear in matches), but keyed by apiName.
   // CD ships descs with @VAR@ placeholders and the values live in `effects` —
@@ -551,6 +594,11 @@ async function main() {
     mutator: active.mutator,
     fetchedAt: new Date().toISOString(),
     source: 'CommunityDragon (cdragon/tft/en_us.json + companions.json)',
+    cdragonVersion,
+    sourceStamp,
+    notesHash,
+    // Was gegenueber CDragon korrigiert wurde, der Melder liest das mit.
+    corrections,
     iconBase: 'https://raw.communitydragon.org/latest/game/',
     companionsIconBase: 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/',
     items,
@@ -567,9 +615,10 @@ async function main() {
   };
   // Single 'live' file the frontend always reads + a per-set archive so we
   // can roll back if CD breaks. Old archives stay for diff/history.
-  writeFileSync('public/tft-assets.json', JSON.stringify(payload));
-  writeFileSync(`public/tft-assets-${active.number}.json`, JSON.stringify(payload));
-  console.log(`       -> public/tft-assets.json (set ${active.number})`);
+  // Nur bei echter Aenderung, jeder Commit ist ein Deploy (write-if-changed.mjs).
+  const wroteLive = writeJsonIfChanged('public/tft-assets.json', payload);
+  const wroteSet = writeJsonIfChanged(`public/tft-assets-${active.number}.json`, payload);
+  console.log(`       -> public/tft-assets.json (set ${active.number}) ${wroteLive || wroteSet ? 'geschrieben' : 'unveraendert'}`);
 }
 
 // Untergrenze fuer die Plausibilitaet des Teamplanner-Blocks. Set 18 liefert 65
@@ -661,7 +710,7 @@ export function buildAugmentI18n(apiName, localeItems) {
 // Augments doppelt: unter der alten Kennung (TFT_Augment_*, TFT9_Augment_* …)
 // und unter der neuen mit Set-Praefix (DA_*), gleicher Name, gleiche Stufe.
 // Gemessen 2026-10-07: 435 aktive Eintraege, aber nur 253 Namen.
-// Regel: Gruppe = gleicher englischer Name. Gibt es darin GENAU EINEN Eintrag
+// Regel: Gruppe = gleicher englischer Name (ohne Gross/Klein). Gibt es darin GENAU EINEN Eintrag
 // mit dem Set-Praefix, bekommt jeder Eintrag OHNE Praefix und mit gleicher
 // Stufe `aliasOf: <Praefix-Kennung>`. Zwei Praefix-Eintraege mit gleichem Namen
 // (Beast Within Nidalee/Sivir, Nesting Dolls Plus/PlusPlus) sind verschiedene
@@ -673,7 +722,8 @@ export function markAugmentAliases(augments, setPrefix) {
   if (!setPrefix || !augments) return 0;
   const groups = new Map();
   for (const [id, a] of Object.entries(augments)) {
-    const name = String(a?.i18n?.en?.name || a?.name || '').trim();
+    // Schreibweise weicht ab: „Patience Is A Virtue“ (DA_*), „Patience is a Virtue“ (alt).
+    const name = String(a?.i18n?.en?.name || a?.name || '').trim().toLowerCase();
     if (!name) continue;
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name).push(id);
@@ -698,15 +748,6 @@ export function markAugmentAliases(augments, setPrefix) {
 // Schluessel ist FNV-1a-32 ueber den kleingeschriebenen Namen (geprueft:
 // fnv('GoldInstantBasic') = c2c01596). Ohne diesen Rueckweg verliert z. B.
 // DA_AdvancedLoan die Zahl ("Gain Gold." statt "Gain 20 Gold.").
-function binHash(name) {
-  let h = 0x811c9dc5;
-  for (const ch of String(name).toLowerCase()) {
-    h ^= ch.charCodeAt(0);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return `{${h.toString(16).padStart(8, '0')}}`;
-}
-
 // Replace CD-style @VAR@ / @VAR*100@ placeholders in a description with the
 // resolved numeric value from a trait/item/augment effects map. Lookup is
 // case-insensitive (CD ships mixed-case keys). Unresolved tokens are

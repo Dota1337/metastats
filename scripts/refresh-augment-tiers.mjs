@@ -12,7 +12,8 @@
  */
 import { request } from 'node:https';
 import { lookup } from 'node:dns';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
+import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
 
 function lookupIPv4(host) {
   return new Promise((res, rej) => lookup(host, { family: 4 }, (e, a) => e ? rej(e) : res(a)));
@@ -118,7 +119,7 @@ async function main() {
     counts: { silver: silver.length, gold: gold.length, prismatic: prismatic.length, pinned: Object.keys(override).length },
     tiers: override,
   };
-  writeFileSync(`public/tft-augment-tiers-${live.set}.json`, JSON.stringify(out, null, 2));
+  writeJsonIfChanged(`public/tft-augment-tiers-${live.set}.json`, out, d => JSON.stringify(d, null, 2));
   console.log('       done.');
 }
 

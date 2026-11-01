@@ -1069,6 +1069,30 @@
       "onPush": false
     },
     {
+      "file": "tft-data-refresh.yml",
+      "name": "TFT Data Refresh",
+      "schedule": [
+        "40 2,5,8,11,14,17,20,23 * * *"
+      ],
+      "scripts": [
+        "scripts/lib/tft-data-freshness.mjs",
+        "scripts/tft-data-refresh-check.mjs",
+        "scripts/refresh-augment-tiers.mjs",
+        "scripts/refresh-augment-stages.mjs",
+        "scripts/refresh-patch-notes.mjs",
+        "scripts/fetch-tft-assets.mjs",
+        "scripts/refresh-item-texts.mjs",
+        "scripts/refresh-unit-info.mjs",
+        "scripts/check-tft-bundle-shrink.mjs",
+        "scripts/check-drift.mjs",
+        "scripts/verify-classifications.mjs",
+        "scripts/check-tft-notes-values.mjs",
+        "scripts/tft-data-refresh-report.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "tft-icon-mirror.yml",
       "name": "TFT-Bilder-Kopie",
       "schedule": [
@@ -1150,13 +1174,6 @@
       ],
       "scripts": [
         "scripts/detect-tft-set.mjs",
-        "scripts/refresh-augment-tiers.mjs",
-        "scripts/refresh-augment-stages.mjs",
-        "scripts/refresh-patch-notes.mjs",
-        "scripts/lib/tft-augment-icons.mjs",
-        "scripts/fetch-tft-assets.mjs",
-        "scripts/refresh-item-texts.mjs",
-        "scripts/refresh-unit-info.mjs",
         "scripts/mirror-tft-icons.mjs",
         "scripts/collect-tft-allranks.mjs",
         "scripts/build-tft-knowledge-graph.mjs",

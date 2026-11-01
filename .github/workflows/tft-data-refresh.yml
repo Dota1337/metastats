@@ -1,0 +1,159 @@
+name: TFT Data Refresh
+
+# Spieldaten der Seite: Namen, Texte und Zahlen von Units, Items, Synergien und
+# Augments. Laeuft alle 3 Stunden, tut aber nur etwas, wenn CDragon neu ist, Riots
+# Notes sich geaendert haben, einmal am Tag (tactics.tools-Texte) oder nach einem
+# roten Lauf (scripts/lib/tft-data-freshness.mjs).
+# Vorher hingen diese Schritte am Samstags-Crawl, ein Patch vom Mittwoch stand dann
+# bis zu 3 Tage mit alten Zahlen auf der Seite.
+#
+# Ein Fehler laesst die alten Daten stehen: ohne gruene Pruefung kein Commit.
+# Zeiten meiden tft-bpatch-detect.yml (02:17 UTC), den Wochen-Crawl prueft das Skript.
+
+on:
+  schedule:
+    - cron: '40 2,5,8,11,14,17,20,23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  actions: read
+
+# Dieselbe Gruppe wie tft-weekly-crawl.yml und tft-daily-crawl.yml: alle drei
+# schreiben public/, gleichzeitig wuerden sie sich beim Push gegenseitig stoeren.
+concurrency:
+  group: tft-data-writers
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Letzten Lauf lesen
+        id: previous
+        run: |
+          conclusion=$(gh run list --workflow tft-data-refresh.yml --branch main --status completed --limit 1 \
+                         --json conclusion --jq '.[0].conclusion // ""' 2>/dev/null) || conclusion=""
+          echo "Letzter Lauf: ${conclusion:-unbekannt}"
+          echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+
+      - name: Braucht es einen Lauf?
+        id: check
+        env:
+          PREVIOUS_CONCLUSION: ${{ steps.previous.outputs.conclusion }}
+        run: node scripts/tft-data-refresh-check.mjs
+
+      - name: Abhaengigkeiten
+        id: install
+        if: steps.check.outputs.run == 'true'
+        run: npm ci
+
+      # Reihenfolge wie vorher im Wochen-Crawl: die Listen zuerst, das Bundle liest
+      # sie, Texte danach, weil sie das Bundle lesen.
+      - name: Augment-Stufen
+        id: tiers
+        if: steps.check.outputs.run == 'true'
+        continue-on-error: true
+        run: node scripts/refresh-augment-tiers.mjs
+
+      - name: Augment-Runden
+        id: stages
+        if: steps.check.outputs.run == 'true'
+        continue-on-error: true
+        run: node scripts/refresh-augment-stages.mjs
+
+      - name: Patch-Notes
+        id: notes
+        if: steps.check.outputs.run == 'true'
+        continue-on-error: true
+        run: node scripts/refresh-patch-notes.mjs --bootstrap
+
+      - name: Daten-Bundle
+        id: bundle
+        if: steps.check.outputs.run == 'true'
+        continue-on-error: true
+        run: node scripts/fetch-tft-assets.mjs --augment-icons --strict-locales
+
+      - name: Item-Texte
+        id: itemtexts
+        if: steps.bundle.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/refresh-item-texts.mjs
+
+      - name: Unit-Texte
+        id: unitinfo
+        if: steps.bundle.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/refresh-unit-info.mjs
+
+      # Der Commit ist ein Deploy, der gesichert ist nur durch diese Pruefung: Bot-Commits
+      # starten keine CI.
+      - name: Pruefung vor dem Commit
+        id: gate
+        if: steps.bundle.outcome == 'success'
+        run: |
+          node scripts/check-tft-bundle-shrink.mjs
+          node scripts/check-drift.mjs
+          node scripts/verify-classifications.mjs
+          npm test
+
+      - name: Commit
+        id: commit
+        if: steps.gate.outcome == 'success'
+        env:
+          NOTES_OUTCOME: ${{ steps.notes.outcome }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Das Notes-Skript schreibt schon vor seinem Fehler-Exit.
+          [ "$NOTES_OUTCOME" = "success" ] || git checkout -- public/tft-patch-notes-*.json 2>/dev/null || true
+          # Je Muster ein Aufruf: ein Muster ohne Treffer (frisches Set, Zahlen-Datei vor
+          # dem ersten passenden Stand) darf den Rest nicht mitreissen.
+          for pattern in 'public/tft-assets*.json' 'public/tft-item-texts-*.json' 'public/tft-unit-info-*.json' \
+                         'public/tft-unit-numbers-*.json' 'public/tft-augment-tiers-*.json' \
+                         'public/tft-augment-stages-*.json' 'public/tft-patch-notes-*.json' 'public/tft-extra/augments'; do
+            git add -- "$pattern" 2>/dev/null || true
+          done
+          if git diff --staged --quiet; then
+            echo "Keine Aenderung"
+            exit 0
+          fi
+          git commit -m "chore: TFT-Daten nachgezogen"
+          # Nichts Ungestaged darf den Rebase blockieren.
+          git checkout -- . 2>/dev/null || true
+          pushed=""
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin main; then pushed=1; break; fi
+            # Nie mergen: bei einem Konflikt rechnet die naechste Runde auf frischem Stand neu.
+            git rebase --abort 2>/dev/null || true
+            echo "Push-Versuch $attempt fehlgeschlagen, neuer Versuch ..."
+            sleep 10
+          done
+          [ -n "$pushed" ] || { echo "Push nach 3 Versuchen fehlgeschlagen"; exit 1; }
+
+      - name: Veraltete Zahlen suchen
+        id: melder
+        if: steps.check.outputs.run == 'true' && steps.bundle.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/check-tft-notes-values.mjs > "$RUNNER_TEMP/melder.log" 2>&1
+
+      - name: Auswertung
+        if: ${{ !cancelled() }}
+        env:
+          STEPS_JSON: ${{ toJSON(steps) }}
+          MELDER_LOG: ${{ runner.temp }}/melder.log
+          RAN: ${{ steps.check.outputs.run }}
+          ALARM: ${{ steps.check.outputs.alarm }}
+          PREVIOUS_CONCLUSION: ${{ steps.previous.outputs.conclusion }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node scripts/tft-data-refresh-report.mjs

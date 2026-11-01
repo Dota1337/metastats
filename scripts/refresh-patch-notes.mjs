@@ -40,7 +40,9 @@
  */
 import { request } from 'node:https';
 import { lookup } from 'node:dns';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
+import { livePatchOf } from './lib/tft-value-corrections.mjs';
+import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
 
 function lookupIPv4(host) {
   return new Promise((res, rej) => lookup(host, { family: 4 }, (e, a) => e ? rej(e) : res(a)));
@@ -215,7 +217,8 @@ async function main() {
     // Bootstrap-Mode: alle bekannten Set-17-Patches aus current set
     const setMeta = JSON.parse(readFileSync('public/tft-set.json', 'utf8'));
     // setMeta.latestPatch z.B. „17.5" → wir scrapen 17.1 bis latestPatch
-    const latest = setMeta.latestPatch || `${setNumber}.5`;
+    // Laufender Patch laut Terminplan: `latestPatch` kippt erst am Tag nach dem Patch.
+    const latest = livePatchOf(setMeta, new Date().toISOString().slice(0, 10)) || `${setNumber}.5`;
     const minor = parseInt(latest.split('.')[1] || '5', 10);
     patches = [];
     for (let p = 1; p <= minor; p++) patches.push(`${setNumber}.${p}`);
@@ -272,7 +275,7 @@ async function main() {
   console.log(`       unique apiNames: ${allApiNames.size}, in bundle: ${matchedApiNames.size}`);
 
   console.log(`[3/3] Write ${existingPath}`);
-  writeFileSync(existingPath, JSON.stringify(out, null, 2));
+  writeJsonIfChanged(existingPath, out, d => JSON.stringify(d, null, 2));
   console.log(`       done. Scraped ${succeeded}/${patches.length} patches.`);
   if (succeeded === 0) {
     console.error('FAIL: 0 patches scraped successfully');

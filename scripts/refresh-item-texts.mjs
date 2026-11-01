@@ -25,8 +25,10 @@
  * Eine fehlende Nebensprache wird nur gemeldet — der Builder faellt dort auf
  * Englisch zurueck. Erfundene Texte gibt es nie (feedback_no_fake_values).
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { loadCurrentSet } from './lib/current-set.mjs';
+import { ITEM_TEXT_CORRECTIONS, correctItemText, livePatchOf } from './lib/tft-value-corrections.mjs';
+import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
 
 const LANGS = ['en', 'de', 'ko', 'zh', 'es', 'fr'];
 const MIN_TEXTS = 100;
@@ -124,15 +126,25 @@ async function main() {
     throw new Error(`Nur ${counts.en} englische Texte (< ${MIN_TEXTS}). Format bei tactics.tools geaendert?`);
   }
 
+  // Werte aus Riots Notes, die tactics.tools nicht fuehrt (tft-value-corrections.mjs).
+  const meta = JSON.parse(readFileSync('public/tft-set.json', 'utf8'));
+  const livePatch = livePatchOf(meta, new Date().toISOString().slice(0, 10));
+  for (const entry of ITEM_TEXT_CORRECTIONS) {
+    if (!items[entry.id]) { console.warn(`       WARN Tabelle: ${entry.id} hat keinen Text`); continue; }
+    const r = correctItemText(items[entry.id].i18n, entry, livePatch);
+    items[entry.id].i18n = r.i18n;
+    if (r.status !== 'applied') console.warn(`       WARN Tabelle: ${entry.id} ${entry.field ?? 'desc'} ${entry.from} ⇒ ${entry.to}: ${r.status} — Eintrag pruefen`);
+  }
+
   const out = `public/tft-item-texts-${set}.json`;
   console.log(`[3/3] ${out} schreiben`);
-  writeFileSync(out, JSON.stringify({
+  writeJsonIfChanged(out, {
     set,
     source: `ap.tft.tools/static/s${set}`,
     fetchedAt: new Date().toISOString(),
     counts,
     items,
-  }) + '\n');
+  }, d => JSON.stringify(d) + '\n');
   console.log('       fertig.');
 }
 

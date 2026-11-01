@@ -23,10 +23,23 @@
  * mit Text zusammen, endet das Skript mit Exit 1 und die alte Datei bleibt
  * stehen. Eine fehlende Nebensprache wird nur gemeldet (Rueckfall Englisch).
  * Erfundene Werte gibt es nie: fehlt ein Wert, fehlt er in der Datei.
+ *
+ * Zahlen: tactics.tools hinkt hinterher (User 01.11.2026, „immer aktuell“). Darum
+ * zwei Schritte auf dem Text, in dieser Reihenfolge:
+ * 1. Zahlen aus MetaTFT, nur aus einer Datei des laufenden Patches. Sie werden in
+ *    public/tft-unit-numbers-{set}.json festgehalten, weil die Datei dem Spiel schon
+ *    wieder voraus ist, wenn der naechste Lauf kommt (tft-unit-numbers.mjs).
+ * 2. Riots Notes in zeitlicher Folge, damit auch Mid-Patch-Werte stimmen, die MetaTFT
+ *    nicht hat (tft-value-corrections.mjs).
+ * Riots Seite nicht erreichbar: Abbruch, die alte Datei bleibt.
  */
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { loadCurrentSet } from './lib/current-set.mjs';
 import { extractAssigned } from './refresh-item-texts.mjs';
+import { fetchNotes } from './detect-tft-bpatches.mjs';
+import { livePatchOf, loadSetChanges, patchesUpTo, replaySeries } from './lib/tft-value-corrections.mjs';
+import { overlayNumbers, releasePatch, unitSeries } from './lib/tft-unit-numbers.mjs';
+import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
 
 const LANGS = ['en', 'de', 'ko', 'zh', 'es', 'fr'];
 const CDRAGON_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
@@ -49,6 +62,38 @@ function statsOf(cd) {
     magicResist: round(s.magicResist), attackSpeed: round(s.attackSpeed), damage: round(s.damage),
     critChance: round(s.critChance), critMultiplier: round(s.critMultiplier), range: round(s.range),
   };
+}
+
+// Zahlen aus MetaTFT holen, wenn eine Datei zum laufenden Patch passt. Sonst bleibt
+// der festgehaltene Stand. Ausfall ist kein Abbruch: dann gelten die Riot-Notes allein.
+async function loadUnitNumbers(set, livePatch, champs) {
+  const path = `public/tft-unit-numbers-${set}.json`;
+  const known = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : null;
+  for (const channel of ['latest', 'pbe']) {
+    try {
+      const url = `https://data.metatft.com/lookups/TFTSet${set}_${channel}_en_us.json`;
+      const data = await (await get(url, 60_000)).json();
+      const patch = releasePatch(data?._metadata);
+      console.log(`       MetaTFT ${channel}: Release ${patch ?? '?'} (laufend ${livePatch})`);
+      if (patch !== livePatch) continue;
+      const byName = new Map((data.units || []).map(u => [u.name, u]));
+      const units = {};
+      for (const [id, c] of Object.entries(champs)) {
+        const series = byName.has(c.name) ? unitSeries(byName.get(c.name)) : [];
+        if (series.length) units[id] = series;
+      }
+      if (Object.keys(units).length < MIN_UNITS) {
+        console.warn(`       WARN MetaTFT ${channel}: nur ${Object.keys(units).length} Units mit Zahlen — verworfen`);
+        continue;
+      }
+      const out = { set, patch, release: data._metadata.release, source: url, fetchedAt: new Date().toISOString(), units };
+      writeJsonIfChanged(path, out, d => JSON.stringify(d) + '\n');
+      return out;
+    } catch (err) {
+      console.warn(`       WARN MetaTFT ${channel}: ${err.message}`);
+    }
+  }
+  return known?.set === set ? known : null;
 }
 
 /** "Lux (Coven)" → { base: "Lux", form: "Coven" }; ohne Klammer null. */
@@ -130,6 +175,25 @@ async function main() {
   }
   for (const u of Object.values(units)) u.forms?.sort((a, b) => units[a].form.en.localeCompare(units[b].form.en));
 
+  console.log('[3.5/4] Zahlen auf den Patch-Stand bringen');
+  const meta = JSON.parse(readFileSync('public/tft-set.json', 'utf8'));
+  const livePatch = livePatchOf(meta, new Date().toISOString().slice(0, 10));
+  const numbers = await loadUnitNumbers(set, livePatch, champs);
+  const changes = await loadSetChanges(patchesUpTo(meta, livePatch), fetchNotes);
+  let overlaid = 0, replayed = 0;
+  for (const [id, u] of Object.entries(units)) {
+    if (numbers?.units?.[id]) {
+      const r = overlayNumbers(u.ability.desc, numbers.units[id]);
+      u.ability.desc = r.text;
+      overlaid += r.replaced.length;
+    }
+    // Form „Lux (Coven)“ heisst in den Notes „Lux“.
+    const r = replaySeries(u.ability.desc, String(champs[id]?.name ?? '').replace(/\s*\(.*\)$/, ''), changes);
+    u.ability.desc = r.text;
+    replayed += r.applied.length;
+  }
+  console.log(`       Patch ${livePatch}: MetaTFT-Stand ${numbers?.patch ?? '-'}, ${overlaid} Reihen aus MetaTFT, ${replayed} aus Riots Notes`);
+
   const total = Object.keys(units).length;
   console.log(`       Units mit Text: ${total} (${LANGS.map(l => `${l} ${counts[l]}`).join(', ')})`);
   const withForms = Object.entries(units).filter(([, u]) => u.forms).map(([id, u]) => `${id} (${u.forms.length})`);
@@ -140,13 +204,13 @@ async function main() {
 
   const out = `public/tft-unit-info-${set}.json`;
   console.log(`[4/4] ${out} schreiben`);
-  writeFileSync(out, JSON.stringify({
+  writeJsonIfChanged(out, {
     set,
     source: `ap.tft.tools/static/s${set} + communitydragon`,
     fetchedAt: new Date().toISOString(),
     counts,
     units,
-  }) + '\n');
+  }, d => JSON.stringify(d) + '\n');
   console.log('       fertig.');
 }
 

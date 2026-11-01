@@ -344,13 +344,13 @@ export function sortUnitsByImportance<T extends RoleUnit>(
 // Units mehrerer Varianten zu einer Family-Sicht aufsummieren.
 export function sumUnits(lists: ReadonlyArray<readonly RoleUnit[] | null | undefined>): RoleUnit[] {
   const by = new Map<string, { count: number; gamesWithUnit: number; carryItemGames: number;
-    carryItemGamesAll: number; tankItemGames: number | null; items: Map<string, number> }>();
+    carryItemGamesAll: number; tankItemGames: number | null; star3Games: number; items: Map<string, number> }>();
   for (const list of lists) {
     for (const u of list || []) {
       if (!u?.characterId) continue;
       let e = by.get(u.characterId);
       if (!e) {
-        e = { count: 0, gamesWithUnit: 0, carryItemGames: 0, carryItemGamesAll: 0, tankItemGames: null, items: new Map() };
+        e = { count: 0, gamesWithUnit: 0, carryItemGames: 0, carryItemGamesAll: 0, tankItemGames: null, star3Games: 0, items: new Map() };
         by.set(u.characterId, e);
       }
       e.count += num(u.count);
@@ -358,6 +358,7 @@ export function sumUnits(lists: ReadonlyArray<readonly RoleUnit[] | null | undef
       e.carryItemGames += num(u.carryItemGames);
       e.carryItemGamesAll += num(u.carryItemGamesAll);
       if (u.tankItemGames != null) e.tankItemGames = (e.tankItemGames ?? 0) + num(u.tankItemGames);
+      e.star3Games += num((u as { star3Games?: unknown }).star3Games);
       for (const it of u.topItems || []) {
         if (!it?.apiName) continue;
         e.items.set(it.apiName, (e.items.get(it.apiName) || 0) + num(it.count));
@@ -371,6 +372,7 @@ export function sumUnits(lists: ReadonlyArray<readonly RoleUnit[] | null | undef
     carryItemGames: e.carryItemGames,
     ...(e.carryItemGamesAll > 0 ? { carryItemGamesAll: e.carryItemGamesAll } : {}),
     ...(e.tankItemGames != null ? { tankItemGames: e.tankItemGames } : {}),
+    ...(e.star3Games > 0 ? { star3Games: e.star3Games } : {}),
     topItems: [...e.items.entries()].sort((a, b) => b[1] - a[1]).map(([apiName, count]) => ({ apiName, count })),
   }));
 }

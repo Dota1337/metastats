@@ -794,7 +794,9 @@ export function mergeJsonbCountArrays<K extends string>(
     }
   }
   return [...merged.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
+    // Name bei Gleichstand: sonst faellt der Schnitt bei topN je Abfrage anders,
+    // und dieselbe Zeile haette in Liste und Knopf ein anderes Brett.
+    .sort((a, b) => b[1].count - a[1].count || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .slice(0, topN)
     .map(([key, v]) => {
       const out: any = {

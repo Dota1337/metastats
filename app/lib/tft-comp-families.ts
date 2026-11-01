@@ -7,6 +7,7 @@ import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
 import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, rerollPlan, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
 import { sumMinorRows, type MinorCompRow } from './tft-comp-minor-rows';
+import { boardGroups, boardJoinRule, sumBoardUnits, type BoardGroupOptions, type RestUnit } from './tft-comp-build-group';
 
 // 'velocity' = „Trending": nach dem Vorpatch-Vergleich der Familie
 // (attachPatchDeltas); die Familienbildung selbst rechnet dann wie bei 'avg'.
@@ -37,6 +38,9 @@ export interface CompApiRow extends FamilyComp {
   // darunter liegen, deren Summe aber nicht. Seiten, die einzelne Zeilen
   // zeigen, lassen sie weg (tft-detail-filters.ts).
   listFill?: boolean;
+  // Units ausserhalb des gezeigten Bretts (tft-comp-list-units.ts), nur fuer die
+  // Anteile eines zusammengelegten Bretts. Fehlt in Staenden von vor dem 01.11.2026.
+  restUnits?: RestUnit[];
 }
 
 // Gruppen-Schluessel einer Zeile: die Katalog-Comp, sonst die klassische
@@ -160,6 +164,21 @@ export function buildCompFamilies(
     minorByGroup.get(k)!.push(...c.minorRows);
   }
   const roleOpts = { set: assets?.set, isComponent: componentCheckFromItems(assets?.items) };
+  const boardOpts: BoardGroupOptions<CompApiRow> = {
+    keyOf: v => v.slug || v.clusterKey,
+    gamesOf: v => v.games || 0,
+    boardOf: v => ((v.typicalUnits || []) as Array<{ characterId: string }>).map(u => u.characterId),
+    // Ohne Asset-Bundle ist Reroll nicht erkennbar: dann nur gleiche Units.
+    canJoin: assets
+      ? boardJoinRule<CompApiRow>({
+        gamesOf: v => v.games || 0,
+        unitsOf: v => v.typicalUnits || [],
+        costOf: id => assets.champions[id]?.cost,
+        isComponent: roleOpts.isComponent,
+        partOf: v => v.compPart,
+      })
+      : () => false,
+  };
   // Katalog-Modus: die Comps des Katalogs sind schon die zusammengelegte
   // Einheit, kein Zwei-Carry-Zusammenlegen (gemessen 20.10.2026: kein Paar von
   // Katalog-Comps erfuellt gleichen Trait + Kern-Jaccard >= 0,7 + gegenseitig
@@ -205,32 +224,14 @@ export function buildCompFamilies(
       ? anchorVariants.map(v => parseClusterKey(v.slug || v.clusterKey)).find(x => x?.trait === named.trait)
       : parts;
     const level = levelRow?.level ?? 0;
-    // Build-Identity-Konsolidierung (User-Wortlaut 2026-06-21): „3x die
-    // gleiche Comp (gleiche Units)" → Sub-Cluster mit IDENTISCHEM
-    // typicalUnits-Set (Champion-IDs, Reihenfolge egal) werden zu EINER
-    // Sub-Variant gemerged. Andere Builds bleiben separate Drop-Down-Einträge.
-    // Hash über sortierte unique characterIds — Items werden NICHT in die
-    // Identität einbezogen (User-Erwartung „gleiche Units" = gleiche Champions).
-    const buildHash = (v: CompApiRow): string => {
-      const ids = ((v.typicalUnits || []) as Array<{ characterId: string }>)
-        .map(u => u.characterId)
-        .filter(Boolean);
-      if (ids.length === 0) return `~empty~${v.slug || v.clusterKey}`;
-      return [...new Set(ids)].sort().join('|');
-    };
-    const byBuild = new Map<string, CompApiRow[]>();
-    for (const v of rawVariants) {
-      const h = buildHash(v);
-      if (!byBuild.has(h)) byBuild.set(h, []);
-      byBuild.get(h)!.push(v);
-    }
-    // Pro Build-Group: weighted Stats + Anker = games-stärkster Sub-Cluster.
-    // Single-Build-Group bleibt unverändert (keine Re-Aggregation nötig).
+    // Bretter der Comp (User-Override C 21.06.2026 + User 01.11.2026): gleiche
+    // Units sind ein Brett, ein Brett, das ganz in einem groesseren steht, gehoert
+    // dazu. Regel in tft-comp-build-group.ts, die Knoepfe der Detailseite nutzen sie auch.
+    const groups = boardGroups(rawVariants, boardOpts);
+    // Pro Gruppe: weighted Stats, Anker = meistgespielte Zeile des volleren Bretts.
+    // Einzelne Zeile bleibt unverändert (keine Re-Aggregation nötig).
     const variants: CompApiRow[] = [];
-    for (const group of byBuild.values()) {
-      // Core/Flex je Variante: Zaehler und Nenner aus denselben Zeilen. Die
-      // zusammengelegte Variante traegt nur die Units des Ankers, aber die
-      // Spiele der ganzen Gruppe — deshalb ueber alle Gruppenzeilen summieren.
+    for (const { rows: group, boardRows } of groups) {
       const clusterKeys = group.flatMap(v => v._mergedFrom ?? [v.slug || v.clusterKey]);
       if (group.length === 1) {
         variants.push({ ...group[0], _clusterKeys: clusterKeys, coreFlex: coreFlexMap(group[0].typicalUnits, group[0].games || 0) });
@@ -240,7 +241,9 @@ export function buildCompFamilies(
       const w = (key: string) => gTotal > 0
         ? group.reduce((s, v) => s + ((v[key] ?? 0) as number) * (v.games || 0), 0) / gTotal
         : null;
-      const anchor = [...group].sort((a, b) => (b.games || 0) - (a.games || 0))[0];
+      const anchor = boardRows[0];
+      // Zaehler und Nenner aus denselben Zeilen: Units des Ankers, Zahlen der Gruppe.
+      const typicalUnits = sumBoardUnits(group, anchor.typicalUnits || [], gTotal);
       const merged = {
         ...anchor,
         games: gTotal,
@@ -249,9 +252,10 @@ export function buildCompFamilies(
         top1Rate: w('top1Rate'),
         avgLevel: w('avgLevel'),
         pickRate: group.reduce((s, v) => s + (v.pickRate ?? 0), 0),
+        typicalUnits,
         _mergedFromBuilds: group.map(v => v.slug || v.clusterKey),
         _clusterKeys: clusterKeys,
-        coreFlex: coreFlexMap(sumUnits(group.map(v => v.typicalUnits)), gTotal),
+        coreFlex: coreFlexMap(typicalUnits, gTotal),
       };
       variants.push(merged);
     }
@@ -341,10 +345,8 @@ export function buildCompFamilies(
     // Item-Traeger am gezeigten Board messen, nicht an der ganzen Familie:
     // Units, die nur in einer Level-Variante stehen, fielen sonst unter die
     // Praesenz-Schwelle, obwohl sie auf diesem Board die Items tragen.
-    const shownSlugs = new Set<string>(mainComp._mergedFromBuilds ?? [variantsBySort[0].slug || variantsBySort[0].clusterKey]);
-    const shownRows = rawVariants.filter(v => shownSlugs.has(v.slug || v.clusterKey));
-    const boardRoles = computeRoles(sumUnits(shownRows.map(v => v.typicalUnits)),
-      shownRows.reduce((s, v) => s + (v.games || 0), 0), roleOpts);
+    const boardRoles = computeRoles(sumUnits([variantsBySort[0].typicalUnits]),
+      variantsBySort[0].games || 0, roleOpts);
     out.push({
       familyKey,
       // Katalog-Modus: alle klassischen Familien der Comp-Zeilen (der Δ-Vergleich

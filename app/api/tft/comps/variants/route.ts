@@ -3,7 +3,9 @@ import { resolveFilters } from '../../../../lib/tft-supabase-reader';
 import { STATS_CACHE_CONTROL, cacheControlForPatches, maybeRedirectByPatchAlias, cacheHeaders } from '../../../../lib/api-cache';
 import { getAvailablePatches } from '../../../../lib/tft-supabase-reader';
 import { parseClusterKey } from '../../../../lib/tft-cluster';
-import { addUnitCounts, compBuildHash } from '../../../../lib/tft-comp-build-group';
+import { boardGroups } from '../../../../lib/tft-comp-build-group';
+import { serverBoardOptions } from '../../../../lib/tft-comp-list-units';
+import { COMP_ROW_FLOOR } from '../../../../lib/tft-comp-minor-rows';
 import { CURRENT_SET } from '../../../../lib/current-set';
 import { publicError } from '../../../../lib/public-error';
 
@@ -63,6 +65,8 @@ interface Variant {
   augmentSlug: string | null;
   secondary: string | null;
   belowThreshold: boolean;
+  // Alle Kennungen, die der Knopf zaehlt (alte Links auf eine davon).
+  members: string[];
 }
 
 // Slug = cluster_key direct, matching the existing /api/tft/comps response
@@ -167,7 +171,7 @@ export async function GET(request: NextRequest) {
     // und bilden danach den Hash über sortierte unique characterIds.
     type ClusterAgg = {
       games: number; sumPlacement: number; top4: number; top1: number;
-      unitCounts: Map<string, number>;
+      unitDays: unknown[];
     };
     const byKey = new Map<string, ClusterAgg>();
     for (const r of rows) {
@@ -175,7 +179,7 @@ export async function GET(request: NextRequest) {
       if (parts?.carry !== familyCarry) continue;
       const prev = byKey.get(r.cluster_key) || {
         games: 0, sumPlacement: 0, top4: 0, top1: 0,
-        unitCounts: new Map<string, number>(),
+        unitDays: [],
       };
       prev.games += Number(r.games || 0);
       prev.sumPlacement += Number(r.sum_placement || 0);
@@ -183,62 +187,45 @@ export async function GET(request: NextRequest) {
       prev.top1 += Number(r.top1 || 0);
       // typical_units ist pro Daily-Row ein FLACHES Array<{characterId,count,…}>.
       // Die Summierung ueber die Tage passiert durch die Schleife ueber `rows`.
-      addUnitCounts(prev.unitCounts, r.typical_units);
+      if (Array.isArray(r.typical_units)) prev.unitDays.push(r.typical_units);
       byKey.set(r.cluster_key, prev);
     }
 
-    // Build-Hash pro cluster_key: dieselbe Regel wie die genaue Ansicht der
-    // Detail-API (app/lib/tft-comp-build-group.ts), sonst zeigt der Knopf
-    // andere Zahlen als die Seite nach dem Klick.
-    const buildHashOf = (agg: ClusterAgg): string => compBuildHash(agg.unitCounts, agg.games);
-
-    // Build-Identity-Groups bilden: Sub-Cluster mit gleichem buildHash → eine
-    // Variante, weighted Stats. Anker = games-stärkster Sub-Cluster (für slug
-    // + carryStar/aug/secondary-Display).
-    type Group = {
-      members: string[]; games: number; sumPlacement: number;
-      top4: number; top1: number; anchor: string;
-    };
-    const byBuild = new Map<string, Group>();
-    for (const [clusterKey, agg] of byKey.entries()) {
-      const h = buildHashOf(agg);
-      const g = byBuild.get(h) || {
-        members: [], games: 0, sumPlacement: 0, top4: 0, top1: 0, anchor: clusterKey,
-      };
-      g.members.push(clusterKey);
-      g.games += agg.games;
-      g.sumPlacement += agg.sumPlacement;
-      g.top4 += agg.top4;
-      g.top1 += agg.top1;
-      // Anker = games-stärkster Sub-Cluster (für Display-Labels)
-      const anchorAgg = byKey.get(g.anchor);
-      if (!anchorAgg || agg.games > anchorAgg.games) g.anchor = clusterKey;
-      byBuild.set(h, g);
-    }
-
-    const familyTotal = [...byBuild.values()].reduce((s, g) => s + g.games, 0);
+    // Gruppen wie die Unterzeilen der Liste und die genaue Ansicht der Detail-API
+    // (tft-comp-build-group.ts), sonst zeigt der Knopf andere Zahlen als die Seite
+    // nach dem Klick. Zeilen unter COMP_ROW_FLOOR haben in der Liste kein Brett.
+    const clusters = [...byKey.entries()].map(([key, agg]) => ({ key, ...agg }));
+    const groups = boardGroups(
+      clusters.filter(c => c.games >= COMP_ROW_FLOOR),
+      serverBoardOptions({ keyOf: c => c.key, gamesOf: c => c.games, unitDaysOf: c => c.unitDays, set: setNumber }),
+    );
+    const familyTotal = clusters.reduce((s, c) => s + c.games, 0);
     // min-Sample-Threshold pro Build-Group (data-skeptic 2026-06-21):
     // 30g absolute UND 5% Family-Share.
     const MIN_ABS = 30;
     const MIN_SHARE = 0.05;
 
-    const variants: Variant[] = [...byBuild.values()]
+    const variants: Variant[] = groups
       .map((g): Variant | null => {
-        const parts = parseClusterKey(g.anchor);
+        const anchor = g.boardRows[0].key;
+        const parts = parseClusterKey(anchor);
         if (!parts) return null;
-        const share = familyTotal > 0 ? g.games / familyTotal : 0;
-        const belowThreshold = g.games < MIN_ABS || share < MIN_SHARE;
+        const sum = (k: 'games' | 'sumPlacement' | 'top4' | 'top1') => g.rows.reduce((s, c) => s + c[k], 0);
+        const games = sum('games');
+        const share = familyTotal > 0 ? games / familyTotal : 0;
+        const belowThreshold = games < MIN_ABS || share < MIN_SHARE;
         return {
-          clusterKey: g.anchor,
-          slug: g.anchor,
-          games: g.games,
-          avgPlacement: g.games > 0 ? g.sumPlacement / g.games : 0,
-          top4Rate: g.games > 0 ? g.top4 / g.games : 0,
-          top1Rate: g.games > 0 ? g.top1 / g.games : 0,
+          clusterKey: anchor,
+          slug: anchor,
+          games,
+          avgPlacement: games > 0 ? sum('sumPlacement') / games : 0,
+          top4Rate: games > 0 ? sum('top4') / games : 0,
+          top1Rate: games > 0 ? sum('top1') / games : 0,
           carryStar: parts.carryStar,
           augmentSlug: parts.augmentSlug,
           secondary: parts.secondary,
           belowThreshold,
+          members: g.rows.map(c => c.key),
         };
       })
       .filter((v): v is Variant => v !== null)

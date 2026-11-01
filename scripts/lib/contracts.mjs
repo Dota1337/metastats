@@ -23,6 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { connect as tlsConnect } from 'node:tls';
 import { isIP } from 'node:net';
 import { evaluateGuideCoverage } from './guide-coverage.mjs';
+import { compsToCheck, evaluateCompBoardButtons } from './comp-board-buttons.mjs';
 import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
 import { BOX_TLS_CERTS } from '../../app/lib/box-tls.mjs';
@@ -561,6 +562,7 @@ async function runCheck(c) {
     if (c.type === 'http-status') return await checkHttpStatus(c, r);
     if (c.type === 'coverage') return await checkCoverage(c, r);
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
+    if (c.type === 'comp-board-buttons') return await checkCompBoardButtons(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
     if (c.type === 'set-axis') return await checkSetAxis(c, r);
     if (c.type === 'trait-style-axis') return await checkTraitStyleAxis(c, r);
@@ -1829,6 +1831,39 @@ async function checkGuideCoverage(c, r) {
     minFamilies: c.minFamilies,
     maxAgeHours: c.maxAgeHours,
   });
+  return r(out.status, out.detail);
+}
+
+/**
+ * Knoepfe der Detailseite gegen die Unterzeilen der Liste (comp-board-buttons.mjs).
+ * Holt die Liste und die Detailseiten der meistgespielten Comps von der echten Seite.
+ */
+async function checkCompBoardButtons(c, r) {
+  if (!c.url) return r('error', 'Vertrag ohne url');
+  const getJson = async (url) => {
+    const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  };
+  let list;
+  try {
+    list = await getJson(c.url);
+  } catch (err) {
+    return r('broken', `Comp-Liste nicht erreichbar (${err.message}): ${c.url}`);
+  }
+  const comps = compsToCheck(list, c.comps ?? 8);
+  const details = new Map();
+  for (const comp of comps) {
+    try {
+      // Dieselbe Anfrage wie die Seite (DETAIL_MIN_GAMES), trifft den Vorrat.
+      const d = await getJson(`${c.url}&slug=${encodeURIComponent(comp.slug)}&minGames=${c.detailMinGames ?? 30}`);
+      // Liste und Detail aus verschiedenen Tagen sind kein Fehler, nur nicht vergleichbar.
+      if (d?.filters?.endDay === list?.filters?.endDay) details.set(comp.key, d?.comp ?? null);
+    } catch (err) {
+      console.warn(`[contracts] comp-board-buttons ${comp.key}: ${err.message}`);
+    }
+  }
+  const out = evaluateCompBoardButtons(comps, details, { minChecked: c.minChecked ?? 5 });
   return r(out.status, out.detail);
 }
 

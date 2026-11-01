@@ -11,7 +11,7 @@
     "tables": 46,
     "rpcs": 38,
     "files": 13,
-    "edges": 526,
+    "edges": 527,
     "unused": 7,
     "unresolved": 1
   },
@@ -771,6 +771,7 @@
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-comp-catalog-resolver.ts",
+        "app/lib/tft-comp-list-units.ts",
         "app/lib/tft-comp-matchups-server.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
@@ -937,6 +938,7 @@
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
+        "app/lib/tft-comp-list-units.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"
       ],
@@ -3503,6 +3505,11 @@
       "from": "api:/api/tft/comps/variants",
       "to": "ext:riot-web",
       "kind": "fetches"
+    },
+    {
+      "from": "api:/api/tft/comps/variants",
+      "to": "file:tft-assets-*.json",
+      "kind": "reads"
     },
     {
       "from": "api:/api/tft/comps/variants",

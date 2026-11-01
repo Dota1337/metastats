@@ -37,6 +37,9 @@ interface Variant {
   perfect?: CompPerfect | null;
   // Zusammengelegte Comp: der Knopf steht fuer diese Teil-Comp.
   partKey?: string;
+  // Alle Kennungen, die der Knopf zaehlt: ein alter Link auf eine davon zeigt
+  // diesen Knopf als aktiv. Fehlt in Staenden von vor dem 01.11.2026.
+  members?: string[];
 }
 
 interface VariantsResponse {
@@ -226,7 +229,8 @@ export default function VariantsSwitcher({
   // if the user navigated directly to a below-threshold variant, show it
   // alongside the threshold-passing ones with a sample-size flag.
   const activeParts = activeCluster ? parseClusterKey(activeCluster) : null;
-  const hasActive = !activeCluster || shown.variants.some(v => v.clusterKey === activeCluster);
+  const isActiveVariant = (v: Variant) => v.clusterKey === activeCluster || (!!activeCluster && !!v.members?.includes(activeCluster));
+  const hasActive = !activeCluster || shown.variants.some(isActiveVariant);
   const variants: Variant[] = (!hasActive && activeCluster && activeParts)
     ? [
         ...shown.variants,
@@ -284,7 +288,7 @@ export default function VariantsSwitcher({
           <span className="font-medium">{t('tft.comp.variant.all')}</span>
         </button>
         {variants.map(v => {
-          const isActive = v.clusterKey === activeCluster;
+          const isActive = isActiveVariant(v);
           const label = variantLabel(v, t, assets, multiFamily);
           const p = perfectMode && v.perfect !== undefined ? perfectStats(v.perfect) : null;
           const avgText = p ? (p.avgPlacement != null ? p.avgPlacement.toFixed(2) : '—') : v.avgPlacement.toFixed(2);

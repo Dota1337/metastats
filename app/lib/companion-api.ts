@@ -219,7 +219,8 @@ export function toCompanionComp(
   );
   const members = [family.familyKey];
   for (const v of family.variants || []) {
-    for (const s of [v.slug, v.clusterKey, ...((v._mergedFrom as string[] | undefined) ?? [])]) {
+    // Alle Zeilen der Variante: _clusterKeys kennt auch zusammengelegte Bretter.
+    for (const s of [v.slug, v.clusterKey, ...((v._clusterKeys as string[] | undefined) ?? (v._mergedFrom as string[] | undefined) ?? [])]) {
       const k = typeof s === 'string' ? memberKeyOf(s) : null;
       if (k && !members.includes(k)) members.push(k);
     }

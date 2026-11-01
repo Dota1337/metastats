@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CURRENT_SET } from '../../../lib/current-set';
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import {
   resolveFilters,
   callRpc,
@@ -29,7 +27,8 @@ import {
 } from '../../../lib/tft-comp-family-merge';
 import { buildLevelOutcome } from '../../../lib/tft-comp-level-outcome';
 import { sumPerfect, type CompPerfect, type CompPerfectSums } from '../../../lib/tft-comp-perfect';
-import { buildGroupMembers, buildGroups } from '../../../lib/tft-comp-build-group';
+import { boardGroupMembers, boardGroups } from '../../../lib/tft-comp-build-group';
+import { applyCooccurrenceFilter, listBoard, loadChampionCostLookup, loadComponentCheck, serverBoardOptions, UNIT_TOP_ITEMS } from '../../../lib/tft-comp-list-units';
 import { buildCompOutcome, outcomeHasData, type CompOutcomeRaw, type CompEmblemsRaw } from '../../../lib/tft-comp-outcome';
 import { opponentsOf, remapMatchupRows, splitOpponents, type MatchupEdge } from '../../../lib/tft-comp-matchups';
 import { compRepresentatives, fetchCompMatchups } from '../../../lib/tft-comp-matchups-server';
@@ -43,7 +42,6 @@ import {
   traitsOfFamilies,
   type CompCatalogView,
 } from '../../../lib/tft-comp-catalog-resolver';
-import { componentCheckFromItems, type IsComponent } from '../../../lib/tft-comp-roles';
 import {
   COMP_PRECOMPUTE_BUCKETS,
   listKey,
@@ -58,46 +56,6 @@ import { publicError } from '../../../lib/public-error';
 // snapshot gap. 60s covers it, paired with the publisher's own 60s AbortController.
 export const maxDuration = 60;
 
-// Lazy + memoized champion-cost lookup pro Set. Wird vom Tempo-Klassifikator
-// gebraucht, der Carry-Cost mit Peak-Level + 3-Star-Anteil in Beziehung setzt:
-// 1-Cost-Reroll lebt auf Lvl 5, 2-Cost auf Lvl 6, 3-Cost auf Lvl 7. Ohne den
-// Cost-Lookup würde jede Comp mit niedrigem Peak-Level fälschlich als Reroll
-// klassifiziert (z.B. eine Lulu-Push-Comp auf Lvl 7 ist KEIN Reroll).
-const costLookupCache = new Map<number, Map<string, number>>();
-function loadChampionCostLookup(setNumber: number): Map<string, number> {
-  const cached = costLookupCache.get(setNumber);
-  if (cached) return cached;
-  const fresh = new Map<string, number>();
-  try {
-    const file = path.join(process.cwd(), 'public', `tft-assets-${setNumber}.json`);
-    const bundle = JSON.parse(readFileSync(file, 'utf8')) as { champions?: Record<string, { cost?: number }> };
-    for (const [cid, c] of Object.entries(bundle.champions || {})) {
-      if (typeof c?.cost === 'number') fresh.set(cid, c.cost);
-    }
-  } catch {
-    // Bundle nicht vorhanden — Tempo-Klassifikator fällt auf reine
-    // Peak-Level-Heuristik zurück.
-  }
-  costLookupCache.set(setNumber, fresh);
-  return fresh;
-}
-// Komponenten-Pruefung fuer die Carry-Erkennung beim Familien-Zusammenlegen —
-// dieselbe Quelle (Asset-Bundle, tags 'component') wie die Listen-Seite.
-const componentCheckCache = new Map<number, IsComponent>();
-function loadComponentCheck(setNumber: number): IsComponent {
-  const cached = componentCheckCache.get(setNumber);
-  if (cached) return cached;
-  let check: IsComponent = () => false;
-  try {
-    const file = path.join(process.cwd(), 'public', `tft-assets-${setNumber}.json`);
-    const bundle = JSON.parse(readFileSync(file, 'utf8')) as { items?: Record<string, { tags?: string[] }> };
-    check = componentCheckFromItems(bundle.items);
-  } catch {
-    // Bundle fehlt — Komponenten zaehlen dann mit ins Item-Volumen.
-  }
-  componentCheckCache.set(setNumber, check);
-  return check;
-}
 // Set-Nummer aus dem Cluster-Key. Riot hat die Praefix-Konvention pro Set
 // gewechselt: TFT14_ / Set17_ / DA_18_ — der alte reine TFT<N>_-Match lieferte
 // fuer JEDE Set-18-Comp null, womit carryCost (und damit die Reroll-/Tempo-
@@ -252,6 +210,8 @@ interface CompVariant {
   perfect?: CompPerfect | null;
   // Zusammengelegte Comp: der Knopf steht fuer diese Teil-Comp.
   partKey?: string;
+  // Alle Kennungen, die der Knopf zaehlt (alte Links auf eine davon).
+  members?: string[];
 }
 
 // Zusammengelegte Comp (User 31.10.2026: „bei der Comp Detailansicht die Werte
@@ -285,29 +245,40 @@ function compPartVariants(rows: CompRow[], partOf: (key: string) => string | nul
       belowThreshold: false,
       perfect: sumPerfect(list),
       partKey,
+      members: list.map(r => r.cluster_key),
     });
   }
   return out.sort((a, b) => b.games - a.games);
 }
 
-// Varianten einer Katalog-Comp: Build-Gruppen ueber alle ihre Zeilen, dieselbe
-// Regel wie die genaue Ansicht (buildGroupMembers). Schwellen wie die
-// variants-Route: ab 30 Spielen und 5 % der Comp, hoechstens 6, meistgespielte
-// zuerst. Die Knopf-Zahlen summieren sich so zur Comp (bis auf die
-// weggelassenen kleinen Gruppen).
-function compVariants(rows: CompRow[]): CompVariant[] {
-  const groups = buildGroups(rows, r => Number(r.games) || 0, r => r.typical_units_merged || []);
+// Optionen fuer boardGroups: dieselben Bretter und Grenzen wie die Liste.
+function boardOptionsFor(set: number) {
+  return serverBoardOptions<CompRow>({
+    keyOf: r => r.cluster_key,
+    gamesOf: r => Number(r.games) || 0,
+    unitDaysOf: r => r.typical_units_merged,
+    set,
+  });
+}
+
+// Varianten einer Katalog-Comp: dieselben Gruppen wie die Unterzeilen der Liste
+// (boardGroups, nur Zeilen, die auch die Liste mit Brett zeigt). Sichtbar ab 30
+// Spielen und 5 % der Comp, hoechstens 6, meistgespielte zuerst. Die Knopf-Zahlen
+// summieren sich so zur Comp (bis auf die weggelassenen kleinen Gruppen).
+function compVariants(rows: CompRow[], set: number): CompVariant[] {
+  const groups = boardGroups(rows, boardOptionsFor(set));
   const total = rows.reduce((s, r) => s + (Number(r.games) || 0), 0);
   const out: CompVariant[] = [];
-  for (const g of groups) {
-    const parts = parseClusterKey(g[0].cluster_key);
+  for (const { rows: g, boardRows } of groups) {
+    const anchor = boardRows[0];
+    const parts = parseClusterKey(anchor.cluster_key);
     if (!parts) continue;
     const sum = (k: 'games' | 'sum_placement' | 'top4' | 'top1') => g.reduce((s, r) => s + (Number(r[k]) || 0), 0);
     const games = sum('games');
     if (games < 30 || games < 0.05 * total) continue;
     out.push({
-      clusterKey: g[0].cluster_key,
-      slug: g[0].cluster_key,
+      clusterKey: anchor.cluster_key,
+      slug: anchor.cluster_key,
       games,
       avgPlacement: sum('sum_placement') / games,
       top4Rate: sum('top4') / games,
@@ -317,6 +288,7 @@ function compVariants(rows: CompRow[]): CompVariant[] {
       secondary: parts.secondary,
       belowThreshold: false,
       perfect: sumPerfect(g),
+      members: g.map(r => r.cluster_key),
     });
   }
   return out.sort((a, b) => b.games - a.games).slice(0, 6);
@@ -347,9 +319,9 @@ export async function GET(request: NextRequest) {
   const adaptiveMin = minGamesParam == null;
   const ADAPTIVE_FLOOR = COMP_ROW_FLOOR;
   const ADAPTIVE_SHARE = 0.002;
-  const effectiveMinFor = (participants: number) => adaptiveMin
-    ? Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(ADAPTIVE_SHARE * participants)))
-    : minGames;
+  const adaptiveMinFor = (participants: number) =>
+    Math.max(ADAPTIVE_FLOOR, Math.min(defaultMinGames, Math.round(ADAPTIVE_SHARE * participants)));
+  const effectiveMinFor = (participants: number) => adaptiveMin ? adaptiveMinFor(participants) : minGames;
 
   const publisher = isSnapshotPublisher(request);
   // Letzter gespeicherter Stand derselben Anfrage, falls die Live-Abfrage
@@ -526,6 +498,12 @@ export async function GET(request: NextRequest) {
       // nur ueber Zeilen, die auch die Liste zeigt (Mindest-Spiele, keine
       // Fragment-Traits).
       const minForList = effectiveMinFor(Number(participants));
+      // Knoepfe und genaue Ansicht: die Zeilen, die die Liste einzeln zeigt. Die
+      // Detailseite fragt mit fester Schwelle (DETAIL_MIN_GAMES) — die gilt fuer
+      // die Summen, die auch die Liste ueber ihre kleinen Zeilen rechnet, aber
+      // nicht fuer die Bretter: sonst gaebe es Knoepfe, die die Liste nicht kennt
+      // (Lunar@2, Master+, 1 Tag, 67 Spiele bei Schwelle 70).
+      const shownRowMin = adaptiveMinFor(Number(participants));
       // Varianten-Knoepfe im Katalog-Modus (aus den Zeilen hier, ohne eigene Abfrage).
       let variants: CompVariant[] | null = null;
       // Familien fuer den Varianten-Umschalter — auch in der genauen Ansicht
@@ -546,9 +524,10 @@ export async function GET(request: NextRequest) {
           .sort((a, b) => (famGames.get(b) ?? 0) - (famGames.get(a) ?? 0) || (a < b ? -1 : a > b ? 1 : 0))];
         switchFamilies = [compCtx.key];
         const isMerged = compCtx.view.parts.has(compCtx.key);
+        const boardSet = filters.setNumber ?? setNumberFromClusterKey(row.cluster_key) ?? CURRENT_SET;
         variants = isMerged
           ? compPartVariants(compRows, k => compPartOf(compCtx.view, k))
-          : compVariants(compRows);
+          : compVariants(compRows.filter(r => Number(r.games) >= shownRowMin), boardSet);
         if (variantMode === 'family') {
           const members = [compAnchor, ...compRows.filter(r => r !== compAnchor && Number(r.games) >= minForList)];
           familySlugs = members.map(m => m.cluster_key);
@@ -565,13 +544,13 @@ export async function GET(request: NextRequest) {
             levelOutcome = buildLevelOutcome(members.filter(m => parseClusterKey(m.cluster_key)?.trait === keyTrait));
           }
         } else {
-          // Genaue Ansicht = Build-Gruppe innerhalb der Comp, dieselbe Regel
-          // wie die Knoepfe (compVariants).
+          // Genaue Ansicht = Gruppe innerhalb der Comp, dieselben Zeilen und
+          // dieselbe Regel wie die Knoepfe (compVariants).
           // Zusammengelegte Comp: die ganze Teil-Comp, wie der Knopf sie zaehlt.
           const part = isMerged ? compPartOf(compCtx.view, row.cluster_key) : null;
           const groupKeys = part
             ? compRows.filter(r => compPartOf(compCtx.view, r.cluster_key) === part).map(r => r.cluster_key)
-            : buildGroupMembers(compRows, row.cluster_key, r => r.cluster_key, r => Number(r.games), r => r.typical_units_merged || []);
+            : boardGroupMembers(compRows.filter(r => Number(r.games) >= shownRowMin), row.cluster_key, boardOptionsFor(boardSet));
           const members = compRows.filter(r => groupKeys.includes(r.cluster_key));
           mergedRow = members[0] ?? row;
           familySlugs = members.length > 0 ? members.map(m => m.cluster_key) : [row.cluster_key];
@@ -607,18 +586,15 @@ export async function GET(request: NextRequest) {
             levelOutcome = buildLevelOutcome(members);
           }
         } else {
-          // Genaue Ansicht = die Build-Gruppe der Kennung: Sub-Cluster derselben
-          // Familie mit denselben Units sind EINE Variante (User-Override C).
+          // Genaue Ansicht = die Gruppe der Kennung (tft-comp-build-group.ts).
           // Dieselbe Regel wie die Knopf-Zahlen (variants-Route), sonst springt
           // die Spielzahl nach dem Klick. Zeilen unter minGames fehlen hier
           // (RPC-Schwelle) — der Knopf zaehlt sie mit, Abstand klein.
           const own = familyKeyForMerge(row.cluster_key);
-          const groupKeys = buildGroupMembers(
+          const groupKeys = boardGroupMembers(
             rows.filter(r => familyKeyForMerge(r.cluster_key) === own && !isFragmentTraitClusterKey(r.cluster_key)),
             row.cluster_key,
-            r => r.cluster_key,
-            r => Number(r.games),
-            r => r.typical_units_merged || [],
+            boardOptionsFor(roleSet),
           );
           if (groupKeys.length > 1) {
             const members = rows
@@ -1102,63 +1078,10 @@ function carryStarFromClusterKey(key: string): number {
 function augmentSlugFromClusterKey(key: string): string | null {
   return parseClusterKey(key)?.augmentSlug ?? null;
 }
-function applyCooccurrenceFilter(
-  units: Array<{ characterId: string; count: number } & Record<string, unknown>>,
-  totalGames: number,
-  carry: string | null,
-  secondary: string | null = null,
-) {
-  // 30% (was 40%) — niche-clusters like TFT17_SpaceGroove@1_TFT17_Blitzcrank
-  // have 221 games spread across many sub-variants, where legitimate support
-  // units sit at 30-38% co-occurrence. 40% stripped all but the carry and
-  // gave a useless "solo carry" comp row.
-  const minCo = Math.max(1, Math.floor(totalGames * 0.30));
-  const filtered = units.filter(
-    u => (u.count || 0) >= minCo || u.characterId === carry || u.characterId === secondary,
-  );
-  // Floor 8 (von 5 erhöht 2026-06-20): wenn der Cooccurrence-Filter weniger
-  // als 8 Units übrig lässt, zeigen wir die top-8 by count. Begründung:
-  // User-Befund Meeple-Gnar vs Meeple-Corki — identische Comps sahen wegen
-  // 6 vs 7 angezeigter Units unterschiedlich aus. Mit konsistenten 8 Slots
-  // ist die Spielweise sofort erkennbar; Cooccurrence-Marker (s. baseComp)
-  // sagt dem User welche davon Core (≥75%), Flex (≥50%) oder Tech (<50%) sind.
-  if (filtered.length < 8) return units.slice(0, Math.min(8, units.length));
-  return filtered;
-}
-
-// Units einer Zeile in der Form der Listen-API. Eigene Funktion, weil das
-// Familien-Zusammenlegen der Detail-Route (selectMergedFamilyMembers) auf
-// exakt denselben Zahlen entscheiden muss wie die Listen-Seite.
+// Das gezeigte Brett einer Zeile, Regel in tft-comp-list-units.ts.
 function listUnits(r: CompRow) {
-  const games = Number(r.games) || 0;
-  return applyCooccurrenceFilter(
-    mergeJsonbCountArrays(r.typical_units_merged || [], 'characterId', 9, [
-      { field: 'topItems', innerKey: 'apiName', topN: UNIT_TOP_ITEMS },
-    ])
-      .filter(u => !isExcludedUnit((u as any).characterId))
-      .map(u => {
-        // Filter Thief's Gloves & Co. aus dem per-Unit Top-Items-Array.
-        const topItems = Array.isArray((u as any).topItems)
-          ? (u as any).topItems.filter((it: any) => !isExcludedItem(it?.apiName))
-          : (u as any).topItems;
-        // Cooccurrence-Rate für Liste-View. Frontend rendert daraus den
-        // Core/Flex/Tech-Marker (≥75% / ≥50% / <50%) — Detail-Page hatte
-        // das schon in enrichComp.boardComposition, jetzt auch in der Liste
-        // damit identische Comps sofort als solche erkennbar sind.
-        const cooccurrence = games > 0 ? ((u as any).count || 0) / games : 0;
-        return { ...u, topItems, cooccurrence };
-      }) as Array<{ characterId: string; count: number } & Record<string, unknown>>,
-    games,
-    carryFromClusterKey(r.cluster_key),
-    secondaryFromClusterKey(r.cluster_key),
-  );
+  return listBoard(r.typical_units_merged, Number(r.games) || 0, r.cluster_key).units;
 }
-
-// Items je Unit: 8 statt 3 (User 2026-09-27). Die Seite zeigt weiter hoechstens
-// drei, filtert aber vorher Komponenten und Items unter 15 % heraus
-// (tft-comp-roles.shownItems) — mit nur drei gespeicherten blieb danach oft
-// zu wenig uebrig, und die Carry-Erkennung sah nur einen Ausschnitt.
-const UNIT_TOP_ITEMS = 8;
 
 // Lean per-comp shape — base stats + the unit/augment/carry tiles that the
 // comp LIST (CompRow) and landing CompCard render. No derived metrics.
@@ -1166,6 +1089,7 @@ function baseComp(r: CompRow, participants: number) {
   const carry = carryFromClusterKey(r.cluster_key);
   const secondary = secondaryFromClusterKey(r.cluster_key);
   const games = Number(r.games) || 0;
+  const board = listBoard(r.typical_units_merged, games, r.cluster_key);
   // Win/Top4 Share — comps sum to ~100% across rows (each match has exactly
   // one winner). computeShares returns null when the sample is below the
   // 500-match gate or the per-comp 20/30 top1/top4 floor.
@@ -1187,7 +1111,8 @@ function baseComp(r: CompRow, participants: number) {
     top4Share: shares.top4Share,
     avgLevel: r.games > 0 && r.sum_level ? Number(r.sum_level) / Number(r.games) : null,
     avgLastRound: r.games > 0 && r.sum_last_round ? Number(r.sum_last_round) / Number(r.games) : null,
-    typicalUnits: listUnits(r),
+    typicalUnits: board.units,
+    restUnits: board.rest,
     typicalAugments: mergeJsonbCountArrays(r.typical_augments_merged || [], 'apiName', 6),
     carryItems: mergeCarryItems(r.carry_items_merged || []),
   };

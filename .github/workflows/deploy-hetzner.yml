@@ -25,6 +25,8 @@ on:
       - 'app/lib/snapshot-publisher.mjs'
       # Vorschlagsregel des Data Explorers (scripts/lib/explorer-unit-warm.mjs).
       - 'app/lib/tft-explorer-coplay.mjs'
+      # Standard-Stern von „What to build" (Vorwaermen im Explorer-Dienst).
+      - 'app/lib/tft-what-to-build-star.mjs'
       # Comp-Katalog-Regeln (Sammler, Tagestreiber, build-comp-catalog.mjs).
       - 'app/lib/tft-comp-catalog.mjs'
       # Gepinntes Zertifikat + boxFetch (refresh-api-server, Vertrag tls-cert, Skripte).

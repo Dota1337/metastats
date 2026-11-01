@@ -73,7 +73,8 @@ export function unitExplorerQueries(
 
 const cache = new Map<string, Promise<ExplorerResponse>>();
 
-function fetchExplorer(q: ExplorerQuery): Promise<ExplorerResponse> {
+// status/retryAfter: fuer die Wiederholung in useBuildExplorer (What to build).
+export function fetchExplorer(q: ExplorerQuery): Promise<ExplorerResponse> {
   const qs = serializeExplorerQuery(q, { forApi: true });
   let p = cache.get(qs);
   if (!p) {
@@ -84,7 +85,7 @@ function fetchExplorer(q: ExplorerQuery): Promise<ExplorerResponse> {
           : body?.error === 'busy' ? 'busy'
           : body?.error === 'not_ready' ? 'notReady'
           : r.status === 503 ? 'unavailable' : 'failed';
-        throw Object.assign(new Error(code), { code });
+        throw Object.assign(new Error(code), { code, status: r.status, retryAfter: Number(r.headers.get('retry-after')) || null });
       }
       return body as ExplorerResponse;
     });

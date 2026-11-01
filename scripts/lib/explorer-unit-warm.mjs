@@ -38,6 +38,17 @@ export function pickItemsWarmBody(unitId) {
   return { ...pickWarmBody(unitId), tab: 'items', focus: unitId };
 }
 
+// Standardansicht von „What to build" (Plan 01.11.2026): Master+, alle Regionen,
+// neuester Patch, genau 3 Items, Standard-Stern der Unit, Einzel/Duo/Trio. Gleiche
+// Form wie itemsQuery in app/lib/tft-what-to-build.ts (Test). Ohne Stern (zu wenig
+// Spiele ab 2★) ist Einzel schon der Items-Schritt aus unitWarmBodies.
+// star: targetStarOf aus der schon vorgewaermten Stern-Antwort.
+export function buildWarmBodies(unitId, star) {
+  const base = { region: 'all', ranks: RANKS, patches: ['latest'] };
+  const unit = { id: unitId, ...(star ? { s: star, sx: star } : {}), n: 3, nx: 3 };
+  return (star ? [1, 2, 3] : [2, 3]).map(combo => ({ ...base, units: [unit], tab: 'items', focus: unitId, combo }));
+}
+
 // Reiter der Startansichten (warmUp im Dienst): ohne Uebersicht, Spiele,
 // Builds (braucht einen Traeger) und Traeger je Item (Fokus Pflicht, liest nur
 // den Vorrat) — normalizeQuery wuerfe dort, und warmUnits liefe nie.

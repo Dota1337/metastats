@@ -73,7 +73,8 @@ import { LIMITS, TABS, neededCaps, normalizeQuery } from './lib/explorer-normali
 import { COUNT_COLS } from './lib/explorer-counts.mjs';
 import { LIVE_MIN_LEFT_MS, joinWaitMs, liveBudget, loadMask, runQueryWay, slotTimeout } from './lib/explorer-mask-query.mjs';
 import { makeLane } from './lib/explorer-lane.mjs';
-import { coplayPairBodies, pickItemsWarmBody, pickWarmBody, startViewTabs, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { buildWarmBodies, coplayPairBodies, pickItemsWarmBody, pickWarmBody, startViewTabs, unitWarmBodies, unitsToWarm } from './lib/explorer-unit-warm.mjs';
+import { targetStarOf } from '../app/lib/tft-what-to-build-star.mjs';
 import { carrierRows, isCarriersDefault } from './lib/explorer-carriers.mjs';
 
 const DB_PATH = process.env.EXPLORER_DB_PATH || '/mnt/HC_Volume_105869432/explorer/explorer.duckdb';
@@ -102,6 +103,8 @@ const UNIT_WARM_ON = process.env.EXPLORER_UNIT_WARM !== '0';
 const PICK_WARM_ON = process.env.EXPLORER_PICK_WARM !== '0';
 // Vorschlags-Paare nach einer echten Auswahl im Leerlauf vorrechnen (S6); 0 = aus.
 const COPLAY_WARM_ON = process.env.EXPLORER_COPLAY_WARM !== '0';
+// „What to build": Duo/Trio-Standardansicht (195 Abfragen, ~24 MB laut perf-critic 01.11.).
+const BUILD_WARM_ON = process.env.EXPLORER_BUILD_WARM !== '0';
 // Teurere Auswahl (z. B. alle Patches) hat ebenso teure Paare — dann keine.
 const COPLAY_MAX_ANCHOR_MS = 10_000;
 // Hoechstens so lange je Paar; laenger hielte es die einzige Spur fuer Besucher.
@@ -632,6 +635,34 @@ async function warmUnits(holder) {
     }
   }
   log(`Unit-Seiten vorgewaermt: ${n} Abfragen fuer ${ids.length} Units in ${Date.now() - t0} ms`);
+
+  // Zuletzt „What to build": braucht den Standard-Stern aus den Stern-Antworten oben,
+  // und niemand wartet auf diesen Teil (carriers haengt an den Schritten davor).
+  if (!BUILD_WARM_ON || !UNIT_WARM_ON) return;
+  const t1 = Date.now();
+  let built = 0;
+  fails = 0;
+  for (const id of ids) {
+    const starsQ = normalizeQuery(unitWarmBodies(id)[0]);
+    resolveLatest(holder, starsQ);
+    const star = targetStarOf(holder.pinned.get(cacheKey(holder, starsQ))?.rows, id);
+    for (const body of buildWarmBodies(id, star)) {
+      if (!(await warmIdle(holder))) return;
+      const q = normalizeQuery(body);
+      resolveLatest(holder, q);
+      if (neededCaps(q).some(c => !holder.caps.has(c))) continue;
+      try {
+        await warmOne(holder, q, cacheKey(holder, q));
+        built++;
+        fails = 0;
+      } catch (err) {
+        if (current !== holder) return;
+        log(`Vorwaermen What to build ${id} fehlgeschlagen: ${err.message}`);
+        if (++fails >= 3) { log(`What-to-build-Vorwaermen nach 3 Fehlern in Folge beendet (${built} Abfragen fertig)`); return; }
+      }
+    }
+  }
+  log(`What to build vorgewaermt: ${built} Abfragen fuer ${ids.length} Units in ${Date.now() - t1} ms`);
 }
 
 // Vorschlags-Paare (Plan 19.10.2026, S6): nach jeder Antwort im Units-Reiter,

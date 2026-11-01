@@ -100,7 +100,13 @@ async function main() {
       counts[lang]++;
     }
     if (!desc.en) continue;
-    units[id] = { stats: statsOf(cdById.get(id)), ability: { name, desc } };
+    // Name der Unit je Sprache: Suchleiste von „What to build".
+    const unitName = {};
+    for (const lang of LANGS) {
+      const n = byLang[lang]?.[id];
+      if (typeof n === 'string' && n.trim()) unitName[lang] = n.trim();
+    }
+    units[id] = { name: unitName, stats: statsOf(cdById.get(id)), ability: { name, desc } };
   }
   // Formen an die Basis haengen: gleicher Grundname, gleiche Kosten.
   const baseByName = new Map();

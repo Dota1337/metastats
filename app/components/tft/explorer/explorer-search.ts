@@ -32,6 +32,8 @@ const AND_BASE = ['und', 'and', '&', '+'];
 const OR_BASE = ['oder', 'or', '|'];
 const AND_LANG: Record<string, string[]> = { ko: ['그리고'], zh: ['且', '和'], es: ['y'], fr: ['et'] };
 const OR_LANG: Record<string, string[]> = { ko: ['또는'], zh: ['或'], es: ['o'], fr: ['ou'] };
+// Auch fuer die Suchleiste von „What to build" (app/lib/tft-what-to-build.ts).
+export { AND_BASE as AND_WORDS_BASE, OR_BASE as OR_WORDS_BASE, AND_LANG as AND_WORDS_LANG, OR_LANG as OR_WORDS_LANG };
 
 /** Kleinschreibung, ohne Akzente, Apostrophe und Punkte — „Kog'Maw" = „kogmaw". */
 export const normText = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()

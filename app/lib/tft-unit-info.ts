@@ -15,6 +15,8 @@ export interface UnitBaseStats {
 }
 
 export interface UnitInfoEntry {
+  /** Name der Unit je Sprache (Suchleiste von „What to build"). */
+  name?: Partial<Record<Lang, string>>;
   stats: UnitBaseStats | null;
   ability: { name: Partial<Record<Lang, string>>; desc: Partial<Record<Lang, string>> };
   /** Basis-Unit: IDs ihrer Formen (Lux). */

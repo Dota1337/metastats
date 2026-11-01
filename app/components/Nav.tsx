@@ -1,10 +1,11 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath, lolHome, TFT_HOME } from '../lib/games';
 import { stripLangPrefix } from '../lib/lang-path';
-import { TFT_COACH_ENABLED, TFT_PROS_ENABLED } from '../lib/feature-flags';
+import { TFT_COACH_ENABLED, TFT_PROS_ENABLED, TFT_WHAT_TO_BUILD_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
 import DdragonImg from './DdragonImg';
@@ -62,6 +63,80 @@ function activeMetaHref(pathname: string): string | null {
     }
   }
   return best?.href ?? null;
+}
+
+// Unterseiten von Meta Pulse. Keine eigene Zeile in TFT_META_LINKS, sonst stuenden
+// sie als gleichrangiger Reiter in der Leiste.
+const META_PULSE_CHILDREN = TFT_WHAT_TO_BUILD_ENABLED
+  ? [{ href: '/tft/meta-pulse/what-to-build', label: 'nav.whatToBuild' }] as const
+  : [];
+
+// Klappmenue an Meta Pulse. Liegt per Portal im body: die Leiste hat overflow-x-auto
+// und wuerde ein normal positioniertes Menue abschneiden. Der Name bleibt ein Link,
+// nur der Pfeil oeffnet. Scrollen schliesst, weil das Menue an der Leiste haengt.
+function MetaPulseMenu({ pathname }: { pathname: string }) {
+  const { t, withLang } = useI18n();
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const btn = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
+  const open = pos != null;
+
+  useEffect(() => {
+    if (!open) return;
+    const close = () => setPos(null);
+    const onDown = (e: MouseEvent) => {
+      const el = e.target as Node;
+      if (!menu.current?.contains(el) && !btn.current?.contains(el)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { close(); btn.current?.focus(); }
+    };
+    menu.current?.querySelector('a')?.focus();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btn}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t('nav.metaPulse')}
+        onClick={() => {
+          if (open) { setPos(null); return; }
+          const r = btn.current?.getBoundingClientRect();
+          if (r) setPos({ left: r.left, top: r.bottom + 6 });
+        }}
+        className="-ml-3 w-5 h-5 flex items-center justify-center rounded text-[#3ecf8e] hover:bg-surface-overlay"
+      >
+        <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && createPortal(
+        <div ref={menu} role="menu" style={{ left: pos.left, top: pos.top }}
+          className="fixed z-[70] min-w-40 rounded-lg border border-border-subtle bg-surface-raised p-1 shadow-xl">
+          {META_PULSE_CHILDREN.map(c => (
+            <a key={c.href} role="menuitem" href={withLang(c.href)}
+              className={`block px-2.5 py-1.5 rounded text-sm whitespace-nowrap hover:bg-surface-overlay ${pathname === c.href ? 'text-white' : 'text-fg-secondary hover:text-white'}`}>
+              {t(c.label)}
+            </a>
+          ))}
+        </div>,
+        document.body,
+      )}
+    </>
+  );
 }
 
 export default function Nav({ active }: NavProps) {
@@ -450,9 +525,12 @@ export default function Nav({ active }: NavProps) {
         <div className="hidden lg:block mt-3 pt-3 border-t border-border-subtle overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-4 w-max mx-auto whitespace-nowrap">
             {TFT_META_LINKS.map(l => (
-              <a key={l.href} href={withLang(l.href)} className={metaLinkClass(l)}>
-                {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
-              </a>
+              <span key={l.href} className="contents">
+                <a href={withLang(l.href)} className={metaLinkClass(l)}>
+                  {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
+                </a>
+                {'pulse' in l && META_PULSE_CHILDREN.length > 0 && <MetaPulseMenu pathname={stripLangPrefix(pathname)} />}
+              </span>
             ))}
           </div>
         </div>
@@ -517,9 +595,17 @@ export default function Nav({ active }: NavProps) {
             <>
               <div className="text-fg-muted text-[10px] uppercase tracking-widest">{t('nav.meta')}</div>
               {TFT_META_LINKS.map(l => (
-                <a key={l.href} href={withLang(l.href)} className={`pl-3 ${metaLinkClass(l)}`} onClick={() => setMenuOpen(false)}>
-                  {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
-                </a>
+                <span key={l.href} className="contents">
+                  <a href={withLang(l.href)} className={`pl-3 ${metaLinkClass(l)}`} onClick={() => setMenuOpen(false)}>
+                    {'pulse' in l ? `⚡ ${t(l.label)}` : t(l.label)}
+                  </a>
+                  {'pulse' in l && META_PULSE_CHILDREN.map(c => (
+                    <a key={c.href} href={withLang(c.href)} onClick={() => setMenuOpen(false)}
+                      className={`pl-9 text-sm ${stripLangPrefix(pathname) === c.href ? 'text-white' : 'text-fg-secondary hover:text-white'}`}>
+                      {t(c.label)}
+                    </a>
+                  ))}
+                </span>
               ))}
               <a href={withLang("/tft/leaderboard")} className={linkClass('leaderboard')} onClick={() => setMenuOpen(false)}>{t('nav.leaderboard')}</a>
               <a href={withLang("/tft/tournaments")} className={linkClass('tournaments')} onClick={() => setMenuOpen(false)}>{t('nav.leagues')}</a>

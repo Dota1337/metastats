@@ -17,6 +17,24 @@ test('Vorwaermen trifft dieselben Schluessel wie die Unit-Seite (Adresse → Rou
   assert.deepEqual(warm, [viaRoute(page.stars), viaRoute(page.items), viaRoute(page.builds)]);
 });
 
+test('What to build: Vorrechnen trifft die Standardansicht der Seite', async () => {
+  const { buildWarmBodies } = await import('./explorer-unit-warm.mjs');
+  const { DEFAULT_SCOPE, emptyBox, itemsQuery, normalizeBox, starsQuery } = await import('../../app/lib/tft-what-to-build.ts');
+  const id = 'TFTX_Foo';
+  const viaRoute = (q) => normalizeQuery(toServiceBody(parseExplorerParams(new URLSearchParams(serializeExplorerQuery(q, { forApi: true })))));
+  for (const star of [2, 3]) {
+    const warm = buildWarmBodies(id, star).map(b => normalizeQuery(b));
+    const page = [1, 2, 3].map(combo => viaRoute(itemsQuery(normalizeBox({ ...emptyBox(id), combo }), DEFAULT_SCOPE, star, null)));
+    assert.deepEqual(warm, page);
+  }
+  // Ohne Stern: Einzel ist schon der Items-Schritt der Unit-Seite, nur Duo und Trio kommen dazu.
+  const none = buildWarmBodies(id, null).map(b => normalizeQuery(b));
+  assert.deepEqual(none, [2, 3].map(combo => viaRoute(itemsQuery(normalizeBox({ ...emptyBox(id), combo }), DEFAULT_SCOPE, null, null))));
+  assert.deepEqual(viaRoute(itemsQuery(emptyBox(id), DEFAULT_SCOPE, null, null)), normalizeQuery(unitWarmBodies(id)[1]));
+  // Der Standard-Stern kommt aus der vorgewaermten Stern-Antwort.
+  assert.deepEqual(viaRoute(starsQuery(id, DEFAULT_SCOPE)), normalizeQuery(unitWarmBodies(id)[0]));
+});
+
 test('unitsToWarm: nur Units gesamt ab Schwelle, meistgespielte zuerst, gedeckelt', () => {
   const rows = [
     { key: 'A', sub: null, games: 1500 },

@@ -100,3 +100,10 @@ export const TFT_BUILDER_CELL_STATS_ENABLED = true;
  * Danach optional Timer abschalten, LOBBY_CAPTURE=0, Vertraege entfernen.
  */
 export const TFT_PLAYER_SCORING_ENABLED = true;
+
+/**
+ * „What to build" unter Meta Pulse (Plan 01.11.2026): Item-Vergleich je Unit,
+ * Zahlen aus dem Data Explorer. Aus: Nav-Eintrag weg, Seite 404. Das Vorrechnen auf
+ * der Box schaltet EXPLORER_BUILD_WARM=0 ab (Env der Unit metastats-explorer-api).
+ */
+export const TFT_WHAT_TO_BUILD_ENABLED = true;

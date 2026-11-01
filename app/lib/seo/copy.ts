@@ -351,6 +351,14 @@ export const PAGE_COPY = {
     ['Comparación de jugadores de TFT – hasta 4 jugadores', 'Compara hasta cuatro jugadores de Teamfight Tactics: rango, posiciones, forma, evolución del valor de mercado, lobbies compartidos, sinergias, unidades y estilo de juego.'],
     ['Comparaison de joueurs TFT – jusqu\'à 4 joueurs', 'Comparez jusqu\'à quatre joueurs Teamfight Tactics : rang, placements, forme, historique de la valeur marchande, lobbys communs, synergies, unités et style de jeu.'],
   ),
+  'tft.whatToBuild': six(
+    ['TFT What to build – welches Item auf welche Unit', 'Teamfight Tactics: Unit wählen, Items festsetzen und das nächste Item vergleichen, mit Ø-Platz, Top 4 und Spielen aus aktuellen Partien.'],
+    ['TFT What to Build – Best Next Item for Any Unit', 'Teamfight Tactics: pick a unit, lock in items and compare the next item with average placement, top 4 and games from current matches.'],
+    ['TFT 무엇을 만들까 – 유닛별 다음 아이템', '전략적 팀 전투: 유닛을 고르고 아이템을 고정한 뒤 다음 아이템을 평균 순위, 상위 4위, 경기 수로 비교합니다.'],
+    ['云顶之弈出什么装备 – 单位的下一件装备', '云顶之弈：选择单位、固定装备，并按平均名次、前四率和场次比较下一件装备。'],
+    ['TFT Qué construir – el mejor siguiente ítem por unidad', 'Teamfight Tactics: elige una unidad, fija ítems y compara el siguiente ítem por posición media, top 4 y partidas actuales.'],
+    ['TFT Que construire – le meilleur objet suivant par unité', 'Teamfight Tactics : choisis une unité, fixe des objets et compare l\'objet suivant par placement moyen, top 4 et parties récentes.'],
+  ),
   'tft.explorer': six(
     ['TFT Daten-Explorer – eigene Auswertungen', 'Teamfight-Tactics-Spiele selbst auswerten: Patch, Region und Rang wählen, Units, Items und Traits ein- oder ausschließen und Ø-Platzierung samt Verteilung sehen.'],
     ['TFT Data Explorer – Build Your Own Stats', 'Analyze Teamfight Tactics games yourself: pick patch, region and rank, include or exclude units, items and traits and see average placement and its distribution.'],

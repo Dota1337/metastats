@@ -3458,6 +3458,8 @@ const translations = {
   'tft.item.countOne': t6('1 Item', '1 item', '\uC544\uC774\uD15C 1\uAC1C', '1\u4EF6\u88C5\u5907', '1 objeto', '1 objet'),
   'tft.item.seeAll': t6('Alle ansehen', 'See all', '\uC804\uCCB4 \uBCF4\uAE30', '\u67E5\u770B\u5168\u90E8', 'Ver todo', 'Tout voir'),
   'tft.item.close': t6('Schlie\u00DFen', 'Close', '\uB2EB\uAE30', '\u5173\u95ED', 'Cerrar', 'Fermer'),
+  'tft.item.bestHolders': t6('Beste Tr\u00E4ger', 'Best item holders', '\uCD5C\uACE0\uC758 \uC0AC\uC6A9 \uCC54\uD53C\uC5B8', '\u6700\u4F73\u88C5\u5907\u82F1\u96C4', 'Mejores portadores', 'Meilleurs porteurs'),
+  'tft.item.holderDelta': t6('Vergleich mit den anderen Items dieser Unit', 'Compared to this unit\'s other items', '\uC774 \uC720\uB2DB\uC758 \uB2E4\uB978 \uC544\uC774\uD15C\uACFC \uBE44\uAD50', '\u4E0E\u8BE5\u5355\u4F4D\u5176\u4ED6\u88C5\u5907\u76F8\u6BD4', 'Comparado con los otros objetos de esta unidad', 'Compar\u00E9 aux autres objets de cette unit\u00E9'),
   'tft.item.place1': t6('Platz 1', '1st', '1\uC704', '\u7B2C1\u540D', 'Puesto 1', '1re place'),
   'tft.item.place24': t6('Platz 2\u20134', '2nd\u20134th', '2\u20134\uC704', '\u7B2C2\u20134\u540D', 'Puesto 2\u20134', 'Places 2\u20134'),
   'tft.item.place58': t6('Platz 5\u20138', '5th\u20138th', '5\u20138\uC704', '\u7B2C5\u20138\u540D', 'Puesto 5\u20138', 'Places 5\u20138'),

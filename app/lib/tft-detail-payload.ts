@@ -71,6 +71,26 @@ export function carrierAvgPlacement(games: number | undefined, sumPlacement: num
   return Math.round((sumPlacement / games) * 100) / 100;
 }
 
+/** Traeger im Fenster der Items-Seite: Unit, Ø-Platz, Delta (Migration 0112). Liste
+ *  statt Objekt, die Zeilen stehen 10-mal je Item in jeder Listenantwort. */
+export type ItemHolder = [characterId: string, avgPlacement: number | null, delta: number | null];
+
+/** Erst die Units mit Delta, das beste zuerst (niedriger Platz = besser), danach bis
+ *  `max` die meistgespielten ohne Delta. Stand von vor 0112 hat keines: dann Haeufigkeit. */
+export function itemHolders(
+  rows: readonly { characterId: string; games: number; sumPlacement?: number; delta?: number | null }[],
+  max = 10,
+): ItemHolder[] {
+  const byId = (a: { characterId: string }, b: { characterId: string }) => (a.characterId < b.characterId ? -1 : a.characterId > b.characterId ? 1 : 0);
+  const scored = rows.filter(r => r.delta != null).sort((a, b) => (a.delta as number) - (b.delta as number) || byId(a, b));
+  const rest = rows.filter(r => r.delta == null).sort((a, b) => b.games - a.games || byId(a, b));
+  return [...scored, ...rest].slice(0, max).map(r => [
+    r.characterId,
+    carrierAvgPlacement(r.games, r.sumPlacement),
+    r.delta == null ? null : Math.round(r.delta * 100) / 100,
+  ]);
+}
+
 const itemEntry = ([item, games, top4, sp]: BuildRow) =>
   ({ item, games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
 

@@ -271,6 +271,7 @@ export function unitsStart<Row extends UnitListRow>(sp: URLSearchParams): Promis
 export interface ItemListRow {
   apiName: string;
   topUsers?: string[];
+  holders?: [string, ...unknown[]][];
 }
 
 export function itemsStart<Row extends ItemListRow>(sp: URLSearchParams): Promise<StatsStart<Row>> {
@@ -281,7 +282,7 @@ export function itemsStart<Row extends ItemListRow>(sp: URLSearchParams): Promis
     assets: (bundle, rows) => subsetBundle(bundle, {
       items: rows.map(r => r.apiName),
       // Alle Traeger der Zeile: das Fenster bei ?item= zeigt sie im ersten HTML.
-      champions: rows.flatMap(r => r.topUsers || []),
+      champions: rows.flatMap(r => [...(r.topUsers || []), ...(r.holders || []).map(h => h[0])]),
       withAbility: false,
     }),
   }, sp);

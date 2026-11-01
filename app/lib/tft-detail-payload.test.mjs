@@ -3,9 +3,33 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carrierAvgPlacement, itemCarriers, itemDetailBody, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
+
+test('Beste Traeger: Delta zuerst, bestes oben, danach die meistgespielten ohne Delta', () => {
+  const rows = [
+    { characterId: 'Haeufig', games: 900, sumPlacement: 3600 },
+    { characterId: 'Rot', games: 500, sumPlacement: 2500, delta: 0.234 },
+    { characterId: 'Gruen', games: 200, sumPlacement: 700, delta: -0.276 },
+    { characterId: 'Selten', games: 20, sumPlacement: 60 },
+    { characterId: 'Null', games: 300, sumPlacement: 1200, delta: 0 },
+  ];
+  assert.deepEqual(itemHolders(rows), [
+    ['Gruen', 3.5, -0.28],
+    ['Null', 4, 0],
+    ['Rot', 5, 0.23],
+    ['Haeufig', 4, null],
+    ['Selten', null, null],
+  ]);
+  // Gleichstand fest, sonst springen Kacheln zwischen zwei Abrufen.
+  const tie = [{ characterId: 'B', games: 100, sumPlacement: 400, delta: -0.1 }, { characterId: 'A', games: 100, sumPlacement: 400, delta: -0.1 }];
+  assert.deepEqual(itemHolders(tie).map(h => h[0]), ['A', 'B']);
+  // Kappe, und eine Unit mit schlechtem Delta bleibt vor einer ohne Wert.
+  assert.equal(itemHolders(rows, 2).length, 2);
+  // Stand von vor 0112: kein Delta, also Haeufigkeit.
+  assert.deepEqual(itemHolders([{ characterId: 'X', games: 40 }, { characterId: 'Y', games: 90 }]).map(h => h[0]), ['Y', 'X']);
+});
 
 test('Ø je Unit in der Items-Liste: ab 30 Spielen, 2 Stellen, ohne Summe nie 0', () => {
   assert.equal(carrierAvgPlacement(30, 97), 3.23);

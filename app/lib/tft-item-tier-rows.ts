@@ -6,6 +6,7 @@ import { itemBucketOf } from './tft-item-bucket';
 import { itemTakesTier, tierLetterOf, TIER_LETTERS, TIER_MIN_GAMES, type TierLetter } from './tft-tier-letter';
 import { tftLabel, type TftAssetsBundle } from './tft-cdragon';
 import type { Lang } from './lang-path';
+import type { ItemHolder } from './tft-detail-payload';
 
 export interface ItemRow {
   apiName: string;
@@ -15,9 +16,16 @@ export interface ItemRow {
   top1Rate: number | null;
   pickRate: number | null;
   topUsers: string[];
-  /** Ø-Platz je Unit mit diesem Item, gleiche Reihenfolge wie topUsers. Fehlt in
-   *  Staenden von vor Migration 0111, null bei zu wenig Spielen. */
+  /** Traeger fuer das Fenster, beste nach Delta zuerst. Fehlt in Staenden von vor
+   *  Migration 0112. */
+  holders?: ItemHolder[];
+  /** Nur noch in Staenden von Migration 0111: Ø-Platz, gleiche Reihenfolge wie topUsers. */
   topUserAvgs?: (number | null)[];
+}
+
+/** Traeger einer Zeile, bei alten Staenden aus den Feldern davor. */
+export function holdersOf(it: Pick<ItemRow, 'holders' | 'topUsers' | 'topUserAvgs'>): ItemHolder[] {
+  return it.holders ?? it.topUsers.map((id, i): ItemHolder => [id, it.topUserAvgs?.[i] ?? null, null]);
 }
 
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;

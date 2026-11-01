@@ -8,7 +8,7 @@ import { withAlpha } from '../../lib/color';
 import { useI18n } from '../../lib/i18n';
 import { formatTftDesc, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
-import { placementBlocks, type ItemRow } from '../../lib/tft-item-tier-rows';
+import { holdersOf, placementBlocks, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
 import ItemStatLine from './ItemStatLine';
@@ -32,6 +32,7 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
   const name = tftLabel(meta, lang) || prettyId(it.apiName);
   const text = itemTextFor(texts, it.apiName, lang);
   const desc = text?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
+  const holders = holdersOf(it);
   const blocks = placementBlocks(it);
   const bars = blocks ? [
     { key: 'first', label: t('tft.item.place1'), value: blocks.first },
@@ -101,15 +102,14 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
 
       <div className="mt-4 pt-3 border-t border-border-subtle">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-xs font-semibold text-white">{t('tft.topUsers')}</h3>
+          <h3 className="text-xs font-semibold text-white">{t(holders.some(h => h[2] != null) ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
           <a href={detailHref} className="text-xs text-accent hover:text-white whitespace-nowrap">
             {t('tft.item.seeAll')} →
           </a>
         </div>
-        {it.topUsers.length > 0 && (
+        {holders.length > 0 && (
           <div className="grid grid-cols-5 gap-x-2 gap-y-2.5">
-            {it.topUsers.slice(0, 10).map((cid, i) => {
-              const avg = it.topUserAvgs?.[i];
+            {holders.slice(0, 10).map(([cid, avg, delta]) => {
               const ch = assets?.champions[cid];
               const tile = tftChampionTileUrl(assets, ch);
               const fallback = tftIconUrl(assets, ch?.icon);
@@ -134,10 +134,16 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
                     )}
                   </span>
                   <span className="block mt-1 text-[11px] leading-tight text-center text-fg-primary truncate">{unitName}</span>
-                  {/* Fehlt das Feld (Stand vor 0111), keine Zeile statt eines falschen Werts. */}
-                  {avg !== undefined && (
-                    <span className="block mt-0.5 text-[11px] leading-tight text-center text-fg-secondary tabular-nums" title={t('tft.avgPlacement')}>
-                      {avg != null ? `Ø ${avg.toFixed(2)}` : '—'}
+                  <span className="block mt-0.5 text-[11px] leading-tight text-center text-fg-secondary tabular-nums" title={t('tft.avgPlacement')}>
+                    {avg != null ? `Ø ${avg.toFixed(2)}` : '—'}
+                  </span>
+                  {delta != null && (
+                    <span
+                      className="block text-[11px] leading-tight text-center font-semibold tabular-nums"
+                      style={{ color: delta < 0 ? '#3ecf8e' : delta > 0 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)' }}
+                      title={t('tft.item.holderDelta')}
+                    >
+                      {delta < 0 ? `−${Math.abs(delta).toFixed(2)}` : delta > 0 ? `+${delta.toFixed(2)}` : '0.00'}
                     </span>
                   )}
                 </a>

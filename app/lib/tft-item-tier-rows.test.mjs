@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
+  filterItems, groupItemsByTier, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
   parseItemSort, parseItemTypes, placementBlocks, toggleItemKind,
 } from './tft-item-tier-rows.ts';
 
@@ -69,6 +69,12 @@ test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus
   const two = filterItems(rows, { type: ['emblem', 'artifact'], search: '', assets: a, lang: 'de' }).map(i => i.apiName);
   assert.deepEqual(two, ['DA_18_EmblemDefender', 'DA_Artifact_Dawncore']);
   assert.equal(filterItems(rows, { type: [], search: '', assets: a, lang: 'de' }).length, rows.length);
+});
+
+test('Traeger des Fensters: neues Feld gewinnt, alte Staende bleiben lesbar', () => {
+  assert.deepEqual(holdersOf({ holders: [['A', 3.5, -0.2]], topUsers: ['B'], topUserAvgs: [4] }), [['A', 3.5, -0.2]]);
+  assert.deepEqual(holdersOf({ topUsers: ['B', 'C'], topUserAvgs: [4, null] }), [['B', 4, null], ['C', null, null]]);
+  assert.deepEqual(holdersOf({ topUsers: ['B'] }), [['B', null, null]]);
 });
 
 test('Mehrere Arten: Adresse hat eine feste Schreibweise, alle fuenf heissen Alle', () => {

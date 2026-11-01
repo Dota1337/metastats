@@ -309,12 +309,16 @@ async function main() {
         style: e.style ?? 0,
         variables: e.variables || {},
       }));
+    // Synergie ohne Stufen (Eclipse): der Eintrag hat keine minUnits, seine Werte
+    // gehoeren trotzdem in den Text.
+    const stageless = tiers.length ? null : (t.effects || []).find(e => e?.variables && Object.keys(e.variables).length);
     traits[apiName] = {
       name: t.name || apiName,
       icon: normalizeIconPath(t.icon || ''),
       desc: stripHtml(t.desc || ''),
       innate: t.innate || '',
       tiers,
+      ...(stageless ? { variables: stageless.variables } : {}),
     };
   }
 

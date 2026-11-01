@@ -18,9 +18,7 @@
 //                                          random-item pool, resolved at
 //                                          match-time in-engine)
 //       @VarName@ where `VarName` is missing from variables but the tier has
-//       a `{hashKey}` slot -> position-matched fallback (Riot's content
-//       pipeline occasionally ships hashed variable names; the value lives
-//       in the same slot index as the unresolved name in `desc`)
+//       a `{hashKey}` slot -> Wert ueber den Hash des Namens (lookupVariable)
 
 import type { Lang } from './lang-path';
 
@@ -29,6 +27,8 @@ export interface RawTraitMeta {
   apiName?: string;
   desc?: string;
   tiers?: { minUnits: number; maxUnits?: number | null; style?: number; variables?: Record<string, unknown> }[];
+  /** Werte einer Synergie ohne Stufen (Eclipse). */
+  variables?: Record<string, unknown>;
 }
 
 export interface TierBreakpoint {
@@ -58,19 +58,22 @@ const ICON_LABELS: Record<string, string> = {
   scaleDodge:  'Dodge',
   scaleHeal:   'Heal',
   scaleShield: 'Shield',
+  scaleDR:     'Durability',
+  scaleManaRegen: 'Mana Regen',
   // Set 14 amplifier icon reused in Set 17 for the Meeple trait's "Meeps"
   set14AmpIcon: 'Meeps',
 };
 
-// Dieselben Zeichen in den uebersetzten Texten. Woerter wie in Riots eigenen
-// Bauteil-Texten (public/tft-item-texts-18.json, Bauteile wie DA_Component_BFSword).
+// Dieselben Zeichen in den uebersetzten Texten. Woerter wie in Riots eigenen Texten:
+// Bauteile wie DA_Component_BFSword (public/tft-item-texts-18.json), Haltbarkeit und
+// Mana-Regeneration aus den Synergien Thornmaiden und Invoker.
 // Fehlt ein Zeichen hier, gilt das englische Wort oben.
 const ICON_WORDS: Partial<Record<Lang, Record<string, string>>> = {
-  de: { scaleHealth: 'Leben', scaleAS: 'Angriffstempo', scaleAD: 'Angriffsschaden', scaleAP: 'Fähigkeitsstärke', scaleArmor: 'Rüstung', scaleMR: 'Magieresistenz' },
-  ko: { scaleHealth: '체력', scaleAS: '공격 속도', scaleAD: '공격력', scaleAP: '주문력', scaleArmor: '방어력', scaleMR: '마법 저항력' },
-  zh: { scaleHealth: '生命值', scaleAS: '攻击速度', scaleAD: '物理加成', scaleAP: '法术加成', scaleArmor: '护甲', scaleMR: '魔抗' },
-  es: { scaleHealth: 'vida', scaleAS: 'velocidad de ataque', scaleAD: 'daño de ataque', scaleAP: 'poder de habilidad', scaleArmor: 'armadura', scaleMR: 'resistencia mágica' },
-  fr: { scaleHealth: 'PV', scaleAS: "vitesse d'attaque", scaleAD: "dégâts d'attaque", scaleAP: 'puissance', scaleArmor: 'armure', scaleMR: 'résistance magique' },
+  de: { scaleHealth: 'Leben', scaleAS: 'Angriffstempo', scaleAD: 'Angriffsschaden', scaleAP: 'Fähigkeitsstärke', scaleArmor: 'Rüstung', scaleMR: 'Magieresistenz', scaleDR: 'Durchhaltevermögen', scaleManaRegen: 'Manaregeneration' },
+  ko: { scaleHealth: '체력', scaleAS: '공격 속도', scaleAD: '공격력', scaleAP: '주문력', scaleArmor: '방어력', scaleMR: '마법 저항력', scaleDR: '내구력', scaleManaRegen: '마나 재생' },
+  zh: { scaleHealth: '生命值', scaleAS: '攻击速度', scaleAD: '物理加成', scaleAP: '法术加成', scaleArmor: '护甲', scaleMR: '魔抗', scaleDR: '伤害减免', scaleManaRegen: '法力回复' },
+  es: { scaleHealth: 'vida', scaleAS: 'velocidad de ataque', scaleAD: 'daño de ataque', scaleAP: 'poder de habilidad', scaleArmor: 'armadura', scaleMR: 'resistencia mágica', scaleDR: 'durabilidad', scaleManaRegen: 'regeneración de maná' },
+  fr: { scaleHealth: 'PV', scaleAS: "vitesse d'attaque", scaleAD: "dégâts d'attaque", scaleAP: 'puissance', scaleArmor: 'armure', scaleMR: 'résistance magique', scaleDR: 'durabilité', scaleManaRegen: 'régénération de mana' },
 };
 
 function iconLabel(icon: string, lang: Lang): string | undefined {
@@ -79,43 +82,43 @@ function iconLabel(icon: string, lang: Lang): string | undefined {
   return ICON_WORDS[lang]?.[icon] ?? ICON_LABELS[icon];
 }
 
+// @Wert*100@: ganze Prozent, nur echte Kommawerte behalten eine Stelle (Rival 0,2 %).
+// Die Spieldaten tragen Rundungsreste wie 0,029999971 fuer 3 %.
+function formatPercent(v: number): string {
+  const percent = v * 100;
+  const whole = Math.round(percent);
+  return String(Math.abs(percent - whole) < 0.05 ? whole : Math.round(percent * 10) / 10);
+}
+
 function formatNumber(n: number): string {
   if (!isFinite(n)) return '';
   const rounded = Math.round(n * 100) / 100;
   return rounded % 1 === 0 ? String(rounded) : String(rounded);
 }
 
-// Build a fallback map for tiers whose `variables` contain hashed keys
-// (`{1b889d1c}`) instead of the cleartext names referenced in `desc`.
-//
-// Strategy: collect every @VarName@ that appears in the full description and
-// is NOT a cleartext key in this tier's variables. Map them positionally
-// against the hashed keys present in the variables object. This works for
-// the common case where the content pipeline failed to resolve N names and
-// the tier has N hashed slots.
-function buildHashFallback(tier: { variables?: Record<string, unknown> }, fullDesc: string): Map<string, unknown> | null {
-  const variables = tier.variables || {};
-  const hashedKeys = Object.keys(variables).filter(k => /^\{[0-9a-f]+\}$/.test(k));
-  if (hashedKeys.length === 0) return null;
-
-  const seen = new Set<string>();
-  const unresolved: string[] = [];
-  // First-appearance order matches Riot's own pipeline output order
-  for (const m of fullDesc.matchAll(/@([A-Za-z][\w]*)(?:\*100)?@/g)) {
-    const name = m[1];
-    if (seen.has(name)) continue;
-    seen.add(name);
-    if (name === 'MinUnits') continue;
-    if (name in variables) continue;
-    unresolved.push(name);
+// Riots Schluessel `{0f90e7a4}` sind der FNV-1a-Hash (32 Bit) des kleingeschriebenen
+// Variablennamens. Nie nach Reihenfolge zuordnen: die Schluessel stehen sortiert im
+// Bundle, nicht in Textfolge, das gab vertauschte Werte (Zyra 600 % statt 10 %).
+function riotNameHash(name: string): string {
+  let hash = 0x811c9dc5;
+  for (const ch of name.toLowerCase()) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
   }
-  if (unresolved.length === 0) return null;
+  return hash.toString(16).padStart(8, '0');
+}
 
-  const map = new Map<string, unknown>();
-  for (let i = 0; i < unresolved.length && i < hashedKeys.length; i++) {
-    map.set(unresolved[i], variables[hashedKeys[i]]);
-  }
-  return map;
+// Wert zu einem Namen im Text: exakt, dann ohne Gross/Klein (Rapidfire schreibt
+// ASPerAttack, die Daten ASperAttack), dann ueber den Hash. Sonst nichts.
+function lookupVariable(variables: Record<string, unknown> | undefined, name: string): number | null {
+  if (!variables) return null;
+  const direct = variables[name];
+  if (typeof direct === 'number') return direct;
+  const lower = name.toLowerCase();
+  const sameName = Object.keys(variables).find(k => k.toLowerCase() === lower);
+  if (sameName && typeof variables[sameName] === 'number') return variables[sameName] as number;
+  const hashed = variables[`{${riotNameHash(name)}}`];
+  return typeof hashed === 'number' ? hashed : null;
 }
 
 // Riot's inline-reference tokens `{{TFT17_SpaceGroove_TheGroove}}` reference
@@ -133,20 +136,11 @@ function replaceInlineRefs(text: string): string {
 function substituteVars(
   text: string,
   tier: { minUnits: number; variables?: Record<string, unknown> },
-  fullDesc: string,
   traitName?: string,
   lang: Lang = 'en',
 ): string {
   let out = replaceInlineRefs(text);
-  const hashFallback = buildHashFallback(tier, fullDesc);
-
-  const lookupVar = (name: string): number | null => {
-    const direct = tier.variables?.[name];
-    if (typeof direct === 'number') return direct;
-    const fromHash = hashFallback?.get(name);
-    if (typeof fromHash === 'number') return fromHash;
-    return null;
-  };
+  const lookupVar = (name: string) => lookupVariable(tier.variables, name);
 
   // 0a. Cross-trait random-item-pool reference. Riot's engine rolls a
   //     specific item from a trait pool at match start — we can't predict
@@ -165,8 +159,11 @@ function substituteVars(
   // 1. @VarName*100@ — explicit ×100 (used for percent values)
   out = out.replace(/@([A-Za-z][\w]*)\*100@/g, (_, name) => {
     const v = lookupVar(name);
-    return v !== null ? String(Math.round(v * 100)) : '';
+    return v !== null ? formatPercent(v) : '';
   });
+
+  // Zwei Symbole direkt hintereinander sind zwei Werte: „12 Armor / MR", nicht „ArmorMR".
+  out = out.replace(/%i:(\w+)%(?=%i:)/g, '%i:$1% / ');
 
   // 2. @MinUnits@ — universal, not in `variables`
   out = out.replace(/@MinUnits@/g, String(tier.minUnits));
@@ -209,14 +206,14 @@ export function renderTraitDesc(traitMeta: RawTraitMeta | null | undefined, lang
   const parts = raw.split(/\(@MinUnits@\)/);
   const generalRaw = parts[0]?.trim() ?? '';
   const generalDesc = generalRaw
-    ? substituteVars(generalRaw, tiers[0] || { minUnits: 0, variables: {} }, raw, traitName, lang)
+    ? substituteVars(generalRaw, tiers[0] || { minUnits: 0, variables: traitMeta.variables ?? {} }, traitName, lang)
     : null;
 
   const tierTexts: TierBreakpoint[] = [];
   for (let i = 0; i < parts.length - 1; i++) {
     const tier = tiers[i];
     if (!tier) continue;
-    const text = substituteVars(parts[i + 1] || '', tier, raw, traitName, lang);
+    const text = substituteVars(parts[i + 1] || '', tier, traitName, lang);
     if (!text) continue;
     tierTexts.push({ minUnits: tier.minUnits, style: tier.style, text });
   }
@@ -320,20 +317,19 @@ export function findArbiterOptions(
   // directly (e.g. @NumAttacks@ → 3), Effects use a placeholder we can't
   // resolve and gets left blank — we mark it with "[scales with tier]".
   const tier = traitMeta?.tiers?.[0] ?? { minUnits: 0, variables: {} };
-  const fullDesc = traitMeta?.desc ?? '';
 
   const causes: ArbiterOption[] = [];
   const effects: ArbiterOption[] = [];
   for (const [apiName, item] of Object.entries(itemsBundle)) {
     if (/_FavoredCause_/.test(apiName)) {
-      const desc = substituteVars(item.desc || '', tier, fullDesc, traitMeta?.name)
+      const desc = substituteVars(item.desc || '', tier, traitMeta?.name)
         .replace(/[,;]\s*$/, '');
       causes.push({ apiName, label: arbiterLabelFromApiName(apiName, apiName.replace(/_FavoredCause_.*$/, '_FavoredCause_')), desc });
     } else if (/_FavoredEffect_/.test(apiName)) {
       // Effects reference an unresolvable cross-property amount —
       // substituteVars will strip it. Add a "scales with tier" suffix so
       // users know the magnitude depends on Arbiter activation level.
-      let desc = substituteVars(item.desc || '', tier, fullDesc, traitMeta?.name)
+      let desc = substituteVars(item.desc || '', tier, traitMeta?.name)
         .replace(/\s+\./g, '.').trim();
       // Heuristic: if the desc lost a numeric placeholder (the cross-prop
       // ref was stripped to nothing), the sentence reads like "All Arbiters

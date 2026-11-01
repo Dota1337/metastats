@@ -106,6 +106,8 @@ export interface TftTrait {
   descs?: LocalizedNames;
   innate?: string;
   tiers?: TftTraitTier[];
+  /** Werte einer Synergie ohne Stufen (Eclipse). */
+  variables?: Record<string, number>;
 }
 export interface TftAugment {
   name: string;
@@ -383,6 +385,7 @@ export function tftTraitDescription(
     apiName,
     desc: stripped,
     tiers: trait.tiers as any,
+    variables: trait.variables,
   }, lang);
 
   // Tooltip-Format: General-Desc + Tier-Breakpoints zeilenweise. Falls keine

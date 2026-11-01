@@ -163,6 +163,49 @@ test('Synergie-Texte: Werte-Woerter in der Sprache, Englisch unveraendert, Schal
   }
 });
 
+test('Synergie-Werte kommen ueber den Namen, nie ueber die Reihenfolge', () => {
+  // Sortiert im Bundle: erst {7c65d9f5} (PlantNumThreshold), dann {8e1b920c} (IncreasedDurability).
+  const zyra = {
+    name: 'Thornmaiden',
+    desc: 'Gain @BaseDurability*100@%, increased to @IncreasedDurability*100@% if @PlantNumThreshold@ plants.',
+    tiers: [{ minUnits: 1, variables: { BaseDurability: 0.05, '{7c65d9f5}': 6, '{8e1b920c}': 0.1 } }],
+  };
+  assert.equal(renderTraitDesc(zyra).generalDesc, 'Gain 5%, increased to 10% if 6 plants.');
+  // Unbekannter Hash: lieber kein Wert als ein falscher.
+  const unknown = { name: 'X', desc: 'Gain @Other@ Health', tiers: [{ minUnits: 1, variables: { '{0f90e7a4}': 0.25 } }] };
+  assert.equal(renderTraitDesc(unknown).generalDesc, 'Gain Health');
+  // Gross/Klein weicht zwischen Text und Daten ab.
+  const rapid = { name: 'R', desc: '(@MinUnits@) +@ASPerAttack*100@%', tiers: [{ minUnits: 2, variables: { ASperAttack: 0.029999971 } }] };
+  assert.equal(renderTraitDesc(rapid).tiers[0].text, '+3%');
+});
+
+test('Synergie-Werte: Kommawerte, zwei Symbole, keine Stufen', () => {
+  const small = { name: 'R', desc: '(@MinUnits@) @A*100@% and @B*100@%', tiers: [{ minUnits: 1, variables: { A: 0.002, B: 0.1000000015 } }] };
+  assert.equal(renderTraitDesc(small).tiers[0].text, '0.2% and 10%');
+  const two = { name: 'B', desc: '(@MinUnits@) @V@%i:scaleArmor%%i:scaleMR%', tiers: [{ minUnits: 2, variables: { V: 12 } }] };
+  assert.equal(renderTraitDesc(two).tiers[0].text, '12 Armor / MR');
+  assert.equal(renderTraitDesc(two, 'de').tiers[0].text, '12 Rüstung / Magieresistenz');
+  const eclipse = { name: 'Eclipse', desc: 'After @DelaySeconds@ seconds', tiers: [], variables: { DelaySeconds: 8 } };
+  assert.equal(renderTraitDesc(eclipse).generalDesc, 'After 8 seconds');
+});
+
+test('Echtes Bundle: jeder Wert im Synergie-Text wird gefunden, Stichproben stimmen', () => {
+  const a = JSON.parse(readFileSync(new URL('../../public/tft-assets.json', import.meta.url), 'utf8'));
+  const byName = n => Object.values(a.traits).find(t => t.name === n);
+  const all = t => { const r = renderTraitDesc(t); return [r.generalDesc ?? '', ...r.tiers.map(x => x.text)].join(' | '); };
+  for (const t of Object.values(a.traits)) {
+    assert.ok(!all(t).includes('@'), `${t.name}: ${all(t)}`);
+    // Ein verlorener Wert laesst „gain  Health" oder „every  seconds" zurueck, nach dem
+    // Zusammenziehen also ein Prozentzeichen ohne Zahl.
+    assert.ok(!/(^|\s)%/.test(all(t)), `${t.name}: ${all(t)}`);
+  }
+  assert.match(all(byName('Thornmaiden')), /5% Durability, increased to 10% if 6 or more/);
+  assert.match(all(byName('Elderwood')), /gain 200 Health/);
+  assert.match(all(byName('Juggernaut')), /4% Durability or 20% Durability/);
+  assert.match(all(byName('Invoker')), /Mana Regen/);
+  assert.match(all(byName('Eclipse')), /After \d+ seconds of combat.*every [\d.]+ seconds/);
+});
+
 test('Echte Synergie-Texte: keine englischen Werte-Woerter in den Sprachen', () => {
   const a = JSON.parse(readFileSync(new URL('../../public/tft-assets.json', import.meta.url), 'utf8'));
   for (const lang of NAME_LANGS) {

@@ -27,7 +27,7 @@ export function parseItemSort(v: string | null | undefined): ItemSortBy {
 // Knoepfe der Items-Seite (User 01.11.2026). Wie tft-item-bucket, aber Traenke
 // bekommen einen eigenen Knopf (auch die Radiant-Traenke), und was dort „other"
 // heisst, zaehlt als normales Item, damit nichts nur unter „Alle" auftaucht.
-export const ITEM_KINDS = ['standard', 'radiant', 'emblem', 'artifact', 'potion'] as const;
+export const ITEM_KINDS = ['standard', 'radiant', 'artifact', 'emblem', 'potion'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
 
 export function itemKindOf(apiName: string, assets: TftAssetsBundle | null): ItemKind {

@@ -13,7 +13,7 @@ import { DayOptions, displayPatchOf, PatchOptions, patchHintOf, RankOptions, Reg
 
 const KIND_LABEL: Record<ItemKind, TranslationKey> = {
   standard: 'tft.item.kind.items',
-  radiant: 'tft.item.bucket.radiant',
+  radiant: 'tft.item.kind.radiants',
   emblem: 'tft.item.bucket.emblem',
   artifact: 'tft.item.bucket.artifact',
   potion: 'tft.item.kind.potions',

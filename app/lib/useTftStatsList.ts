@@ -52,13 +52,16 @@ function dataEndOf(filters: unknown): string | null {
   return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
-export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial }: {
+export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial, extraQuery = '' }: {
   /** z. B. '/api/tft/units' */
   endpoint: string;
   /** Feld der API-Antwort mit den Zeilen ('units' / 'items' / 'traits'). */
   field: string;
   initialFilters: Filters;
   initial: StatsInitial<Row> | null;
+  /** Weitere Adress-Parameter der Seite (Items: `&item=…`). Der Hook bleibt
+   *  einziger Schreiber der Adresse; Daten-Schluessel aendert das nicht. */
+  extraQuery?: string;
 }) {
   const pathname = usePathname();
 
@@ -102,6 +105,8 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Eigener Effekt: ein Klick, der nur extraQuery aendert, darf den Abruf unten
+  // nicht abbrechen und neu starten.
   useEffect(() => {
     if (!hydrated) return;
     const qs = filtersToQueryString(filters);
@@ -109,11 +114,15 @@ export function useTftStatsList<Row>({ endpoint, field, initialFilters, initial 
     // router.replace: Next haelt useSearchParams synchron, rechnet die
     // Server-Seite aber nicht neu (das waere je Filterwechsel ein
     // Snapshot-Abruf samt Startdaten, die niemand braucht).
-    const url = `${pathname}?${qs}`;
+    const url = `${pathname}?${qs}${extraQuery}`;
     if (window.location.pathname + window.location.search !== url) {
       window.history.replaceState(null, '', url);
     }
     persistFilters(filters);
+  }, [filters, hydrated, pathname, extraQuery]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     const key = filtersDataKey(filters);
     const known = key === shownKey.current ? null : loaded.current.get(key);
     if (known) {

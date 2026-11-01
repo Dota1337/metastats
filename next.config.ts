@@ -46,6 +46,8 @@ const nextConfig: NextConfig = {
     '/api/tft/positions/by-units': ['./public/tft-metatft-boards-*.json'],
     // Item-Infotext im ersten HTML (tft-item-texts-server.ts), Name am Set.
     '/tft/items/[id]': ['./public/tft-item-texts-*.json'],
+    // Dito fuer das Fenster der Liste bei ?item= (nur dieses eine Item).
+    '/tft/items': ['./public/tft-item-texts-*.json'],
     // Faehigkeit + Grundwerte im ersten HTML (tft-unit-info-server.ts), Name am Set.
     '/tft/units/[id]': ['./public/tft-unit-info-*.json'],
     // Startdaten der Uebersichtsseiten (app/lib/seo/page-start-*.ts).

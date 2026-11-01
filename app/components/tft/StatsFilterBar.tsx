@@ -77,14 +77,32 @@ interface Props {
   showDelta?: boolean;
 }
 
-export default function StatsFilterBar({ filters, patches, dataEnd = null, onChange, lead, showDelta = true }: Props) {
+// Patch-Hint: zeigt welcher Patch gerade aktiv ist + sein first_day. Bei
+// Default-Filter (current = patchübergreifende Aggregation) wird zusätzlich
+// "patchübergreifend aggregiert" angehängt, damit der User versteht warum
+// 1d/7d-Switches in den ersten Patch-Tagen kaum unterschiedliche Daten zeigen.
+export function displayPatchOf(filters: Filters, patches: PatchInfo[]): PatchInfo | null | undefined {
+  const newest = patches[0];
+  return filters.patch === 'current'
+    ? newest
+    : filters.patch === 'previous'
+      ? previousPatchOf(patches, newest?.patch)
+      : patches.find(p => p.patch === filters.patch);
+}
+
+export function patchHintOf(filters: Filters, patches: PatchInfo[], t: (k: TranslationKey) => string): string | null {
+  const displayPatch = displayPatchOf(filters, patches);
+  if (!displayPatch) return null;
+  const base = t('tft.filter.patchSince')
+    .replace('{patch}', tftPatchLabel(displayPatch.patch))
+    .replace('{date}', formatPatchDate(displayPatch.first_day));
+  return filters.patch === 'current' ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
+}
+
+// Inhalte der Auswahlfelder, gemeinsam mit ItemsFilterBar: die Listen und die
+// Patch-Regel gibt es so nur einmal.
+export function PatchOptions({ patches }: { patches: PatchInfo[] }) {
   const { t } = useI18n();
-
-  const dayLabel = (n: number) =>
-    n === 1
-      ? t('tft.filter.dayOne')
-      : t('tft.filter.dayN').replace('{n}', String(n));
-
   // Semantische Optionen: neuester Patch und Vorpatch nach previousPatchOf
   // (juengster frueherer Patch mit genug Datentagen — dieselbe Regel wie der
   // Server bei ?patch=previous). Ein dabei uebersprungener Kurz-Patch (18.3,
@@ -94,23 +112,66 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
   const previous = previousPatchOf(patches, newest?.patch);
   const previousIdx = previous ? patches.indexOf(previous) : patches.length;
   const skippedPatches = patches.slice(1, previousIdx);
+  return (
+    <>
+      <option value="current">
+        {t('tft.filter.current')}{newest ? ` · ${tftPatchLabel(newest.patch)}` : ''}
+      </option>
+      {skippedPatches.map(p => (
+        <option key={p.patch} value={p.patch}>{tftPatchLabel(p.patch)}</option>
+      ))}
+      {previous && (
+        <option value="previous">
+          {t('tft.filter.previous')} · {tftPatchLabel(previous.patch)}
+        </option>
+      )}
+    </>
+  );
+}
 
-  // Patch-Hint: zeigt welcher Patch gerade aktiv ist + sein first_day. Bei
-  // Default-Filter (current = patchübergreifende Aggregation) wird zusätzlich
-  // "patchübergreifend aggregiert" angehängt, damit der User versteht warum
-  // 1d/7d-Switches in den ersten Patch-Tagen kaum unterschiedliche Daten zeigen.
-  const displayPatch = filters.patch === 'current'
-    ? newest
-    : filters.patch === 'previous'
-      ? previous
-      : patches.find(p => p.patch === filters.patch);
-  const isAggregated = filters.patch === 'current';
-  const patchHint = displayPatch ? (() => {
-    const base = t('tft.filter.patchSince')
-      .replace('{patch}', tftPatchLabel(displayPatch.patch))
-      .replace('{date}', formatPatchDate(displayPatch.first_day));
-    return isAggregated ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
-  })() : null;
+export function RankOptions() {
+  const { t } = useI18n();
+  return (
+    <>
+      {BUCKET_OPTIONS.map(b => (
+        <option key={b.value} value={b.value}>
+          {b.labelKey ? t(b.labelKey as TranslationKey) : b.label}
+        </option>
+      ))}
+    </>
+  );
+}
+
+export function DayOptions() {
+  const { t } = useI18n();
+  return (
+    <>
+      {DAYS_OPTIONS.map(n => (
+        <option key={n} value={String(n)}>
+          {n === 1 ? t('tft.filter.dayOne') : t('tft.filter.dayN').replace('{n}', String(n))}
+        </option>
+      ))}
+    </>
+  );
+}
+
+export function RegionOptions() {
+  const { t } = useI18n();
+  return (
+    <>
+      {REGION_OPTIONS.map(r => (
+        <option key={r.value} value={r.value}>
+          {r.labelKey ? t(r.labelKey as TranslationKey) : r.label}
+        </option>
+      ))}
+    </>
+  );
+}
+
+export default function StatsFilterBar({ filters, patches, dataEnd = null, onChange, lead, showDelta = true }: Props) {
+  const { t } = useI18n();
+
+  const patchHint = patchHintOf(filters, patches, t);
 
   // Δ-Vergleich „vs Vorpatch" (User 18.10.2026): direkt neben dem Patch-Feld,
   // ganzer gewaehlter Patch gegen den ganzen Vorpatch. Ohne Vorpatch im selben
@@ -133,17 +194,7 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
           value={filters.patch}
           onChange={v => onChange({ ...filters, patch: v })}
         >
-          <option value="current">
-            {t('tft.filter.current')}{newest ? ` · ${tftPatchLabel(newest.patch)}` : ''}
-          </option>
-          {skippedPatches.map(p => (
-            <option key={p.patch} value={p.patch}>{tftPatchLabel(p.patch)}</option>
-          ))}
-          {previous && (
-            <option value="previous">
-              {t('tft.filter.previous')} · {tftPatchLabel(previous.patch)}
-            </option>
-          )}
+          <PatchOptions patches={patches} />
         </FilterSelect>
 
         {deltaPair && (
@@ -171,11 +222,7 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
           value={filters.bucket}
           onChange={v => onChange({ ...filters, bucket: v, bucketAuto: false })}
         >
-          {BUCKET_OPTIONS.map(b => (
-            <option key={b.value} value={b.value}>
-              {b.labelKey ? t(b.labelKey as TranslationKey) : b.label}
-            </option>
-          ))}
+          <RankOptions />
         </FilterSelect>
 
         <FilterSelect
@@ -183,9 +230,7 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
           value={String(filters.days)}
           onChange={v => onChange({ ...filters, days: Number(v) })}
         >
-          {DAYS_OPTIONS.map(n => (
-            <option key={n} value={String(n)}>{dayLabel(n)}</option>
-          ))}
+          <DayOptions />
         </FilterSelect>
 
         <FilterSelect
@@ -193,11 +238,7 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
           value={filters.region}
           onChange={v => onChange({ ...filters, region: v })}
         >
-          {REGION_OPTIONS.map(r => (
-            <option key={r.value} value={r.value}>
-              {r.labelKey ? t(r.labelKey as TranslationKey) : r.label}
-            </option>
-          ))}
+          <RegionOptions />
         </FilterSelect>
       </div>
       {patchHint && (

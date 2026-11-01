@@ -280,7 +280,8 @@ export function itemsStart<Row extends ItemListRow>(sp: URLSearchParams): Promis
     // /api/tft/items liefert gespeicherte Staende unveraendert aus.
     assets: (bundle, rows) => subsetBundle(bundle, {
       items: rows.map(r => r.apiName),
-      champions: rows.flatMap(r => (r.topUsers || []).slice(0, 8)),
+      // Alle Traeger der Zeile: das Fenster bei ?item= zeigt sie im ersten HTML.
+      champions: rows.flatMap(r => r.topUsers || []),
       withAbility: false,
     }),
   }, sp);

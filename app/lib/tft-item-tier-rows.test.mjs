@@ -1,0 +1,102 @@
+// Node-Test fuer die Reihen der Items-Seite. Lauf: npm test
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+import {
+  filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemTierLetter,
+  parseItemSort, parseItemType, placementBlocks,
+} from './tft-item-tier-rows.ts';
+
+const row = (apiName, avgPlacement, games = 1000, extra = {}) => ({
+  apiName, avgPlacement, games, top4Rate: 0.5, top1Rate: 0.1, pickRate: 0.01, topUsers: [], ...extra,
+});
+const assets = { items: {
+  DA_Item_A: { name: 'Alpha', tags: [] },
+  DA_Component_Sword: { name: 'Sword', tags: ['component'] },
+  DA_HealthPotion18: { name: 'Health Potion', tags: [] },
+} };
+
+test('Reihen laufen S+ bis C, die Reihe ohne Buchstaben steht zuletzt und nur, wenn belegt', () => {
+  const rows = groupItemsByTier([row('c', 4.6), row('sp', 3.9), row('b', 4.4)], { assets, sort: 'avg' });
+  assert.deepEqual(rows.map(r => r.tier), ['S+', 'B', 'C']);
+  const withNone = groupItemsByTier([row('sp', 3.9), row('wenig', 3.0, 149)], { assets, sort: 'avg' });
+  assert.deepEqual(withNone.map(r => r.tier), ['S+', null]);
+});
+
+test('Buchstabe = freigegebene Item-Grenzen am angezeigten Wert', () => {
+  assert.equal(itemTierLetter(row('x', 3.994), assets), 'S+');
+  assert.equal(itemTierLetter(row('x', 4.10), assets), 'S');
+  assert.equal(itemTierLetter(row('x', 4.24), assets), 'A');
+  assert.equal(itemTierLetter(row('x', 4.49), assets), 'B');
+  assert.equal(itemTierLetter(row('x', 4.50), assets), 'C');
+  assert.equal(itemTierLetter(row('DA_Component_Sword', 3.0), assets), null);
+  assert.equal(itemTierLetter(row('DA_HealthPotion18', 2.9), assets), null);
+});
+
+test('ohne Buchstaben: Komponenten, Traenke, zu wenig Spiele, je nach Spielen — nicht nach Ø', () => {
+  const [none] = groupItemsByTier([
+    row('wenig', 2.0, 100),
+    row('DA_HealthPotion18', 2.9, 900),
+    row('DA_Component_Sword', 5.0, 500),
+    row('DA_Component_Bow', 5.5, 800),
+  ], { assets, sort: 'avg' });
+  assert.deepEqual(none.items.map(i => i.apiName), ['DA_Component_Bow', 'DA_Component_Sword', 'DA_HealthPotion18', 'wenig']);
+});
+
+test('Sortierung innerhalb der Reihe, Gleichstand fest, ohne Wert zuletzt', () => {
+  const items = [row('a', 4.0, 10_000, { top4Rate: 0.5 }), row('b', 3.8, 200, { top4Rate: 0.6 }), row('c', 3.9, 500, { top4Rate: null })];
+  const ids = sort => groupItemsByTier(items, { assets, sort })[0].items.map(i => i.apiName);
+  assert.deepEqual(groupItemsByTier([row('b', 3.8), row('a', 3.8)], { assets, sort: 'avg' })[0].items.map(i => i.apiName), ['a', 'b']);
+  assert.deepEqual(groupItemsByTier([row('a', 3.8), row('b', 3.5)], { assets, sort: 'avg' })[0].items.map(i => i.apiName), ['b', 'a']);
+  assert.equal(ids('top4')[0], 'b');
+  assert.equal(ids('top4').at(-1), 'c');
+});
+
+test('Trending: staerkste Verbesserung zuerst, ohne Vergleich zuletzt', () => {
+  const delta = { a: 0.1, b: -0.2 };
+  const rows = groupItemsByTier([row('a', 3.5), row('b', 3.6), row('c', 3.7)], { assets, sort: 'velocity', deltaOf: id => delta[id] ?? null });
+  assert.deepEqual(rows[0].items.map(i => i.apiName), ['b', 'a', 'c']);
+});
+
+test('Augment-Embleme fliegen raus, das echte Emblem bleibt', () => {
+  assert.equal(isListedItem('DA_18_EmblemFloraFatalisAugment'), false);
+  assert.equal(isListedItem('DA_18_EmblemFloraFatalis'), true);
+  assert.equal(isListedItem('DA_Item_InfinityEdge'), true);
+});
+
+test('Suche findet Namen und Kennung, Art filtert', () => {
+  const items = [row('DA_Item_A', 4), row('DA_Artifact_B', 4)];
+  const f = (type, search) => filterItems(items, { type, search, assets, lang: 'en' }).map(i => i.apiName);
+  assert.deepEqual(f(null, ''), ['DA_Item_A', 'DA_Artifact_B']);
+  assert.deepEqual(f('artifact', ''), ['DA_Artifact_B']);
+  assert.deepEqual(f(null, 'alph'), ['DA_Item_A']);
+  assert.deepEqual(f(null, 'artifact_b'), ['DA_Artifact_B']);
+});
+
+test('Platzverteilung ergibt 100 % und zeigt ohne Wert nichts', () => {
+  const b = placementBlocks({ top1Rate: 0.1628, top4Rate: 0.6021 });
+  assert.ok(Math.abs(b.first + b.second + b.third - 1) < 1e-9);
+  assert.equal(b.first, 0.1628);
+  assert.ok(Math.abs(b.second - 0.4393) < 1e-9);
+  assert.ok(Math.abs(b.third - 0.3979) < 1e-9);
+  assert.equal(placementBlocks({ top1Rate: null, top4Rate: 0.6 }), null);
+  assert.equal(placementBlocks({ top1Rate: 0.1, top4Rate: null }), null);
+});
+
+test('Adress-Werte werden geprueft und nur bei Abweichung geschrieben', () => {
+  assert.equal(parseItemSort('win'), 'win');
+  assert.equal(parseItemSort('quatsch'), 'avg');
+  assert.equal(parseItemSort(null), 'avg');
+  assert.equal(parseItemType('radiant'), 'radiant');
+  assert.equal(parseItemType('other'), null);
+  assert.equal(itemExtraQuery({ item: null, sort: 'avg', type: null }), '');
+  assert.equal(itemExtraQuery({ item: 'A B&c', sort: 'win', type: 'emblem' }), '&item=A%20B%26c&sort=win&type=emblem');
+});
+
+test('Die Adress-Parameter bleiben ausserhalb der Filter-Schluessel', () => {
+  // Sonst schaltet ?item= gespeicherte Filter ab (tft-filters.ts, stats-pending.ts).
+  const src = readFileSync(new URL('./tft-filters.ts', import.meta.url), 'utf8');
+  const keys = src.match(/URL_FILTER_KEYS = \[(.*?)\]/)[1];
+  for (const k of ['item', 'sort', 'type']) assert.ok(!keys.includes(`'${k}'`), k);
+});

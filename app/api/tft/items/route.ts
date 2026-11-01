@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Lean RPC (migration 0028): merges top_users to the top-8 carriers in SQL
+    // Lean RPC (migration 0028, Kappe seit 0110: 12): merges top_users to the top carriers in SQL
     // instead of jsonb_agg-ing every per-day array. ~14x faster on the heavy
     // all-bucket/7d slice (76s→5.5s, no more 502) and ~126x on the diamond/3d
     // default (9s→72ms). Returns the same shape; the merged list is wrapped so
@@ -207,11 +207,13 @@ export async function GET(request: NextRequest) {
       .map(r => {
         // top_users_merged is jsonb[] (an outer array of per-row arrays). Flatten
         // and re-group so the most-common carrier wins across the merged window.
-        // Cap at 8 — the items-list column has room for that many cost-bordered
-        // tiles without overflowing on desktop.
-        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 8)
+        // 10 fuer das Fenster der Items-Seite: erst ausschliessen, dann kuerzen,
+        // sonst fehlten die Ersatz-Units aus der SQL-Kappe (12, Migration 0110).
+        // Staende von vor 0110 liefern hoechstens 8.
+        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 12)
           .map(u => u.characterId)
-          .filter(cid => !isExcludedUnit(cid));
+          .filter(cid => !isExcludedUnit(cid))
+          .slice(0, 10);
         const games = Number(r.games);
         const avgPlacement = games > 0 ? Number(r.sum_placement) / games : null;
         const top4Rate = games > 0 ? Number(r.top4) / games : null;

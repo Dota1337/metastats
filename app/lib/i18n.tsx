@@ -3450,6 +3450,16 @@ const translations = {
   'tft.item.bucket.emblem': t6('Embleme', 'Emblems', '\uBB38\uC7A5', '\u5FBD\u7AE0', 'Emblemas', 'Embl\u00E8mes'),
   'tft.item.bucket.radiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u706F\u706C', 'Radiantes', 'Radieux'),
 
+  // Items-Seite: Reihen + Fenster rechts
+  'tft.item.allItems': t6('Alle Items', 'All items', '\uBAA8\uB4E0 \uC544\uC774\uD15C', '\u5168\u90E8\u88C5\u5907', 'Todos los objetos', 'Tous les objets'),
+  'tft.item.count': t6('{n} Items', '{n} items', '\uC544\uC774\uD15C {n}\uAC1C', '{n}\u4EF6\u88C5\u5907', '{n} objetos', '{n} objets'),
+  'tft.item.countOne': t6('1 Item', '1 item', '\uC544\uC774\uD15C 1\uAC1C', '1\u4EF6\u88C5\u5907', '1 objeto', '1 objet'),
+  'tft.item.seeAll': t6('Alle ansehen', 'See all', '\uC804\uCCB4 \uBCF4\uAE30', '\u67E5\u770B\u5168\u90E8', 'Ver todo', 'Tout voir'),
+  'tft.item.close': t6('Schlie\u00DFen', 'Close', '\uB2EB\uAE30', '\u5173\u95ED', 'Cerrar', 'Fermer'),
+  'tft.item.place1': t6('Platz 1', '1st', '1\uC704', '\u7B2C1\u540D', 'Puesto 1', '1re place'),
+  'tft.item.place24': t6('Platz 2\u20134', '2nd\u20134th', '2\u20134\uC704', '\u7B2C2\u20134\u540D', 'Puesto 2\u20134', 'Places 2\u20134'),
+  'tft.item.place58': t6('Platz 5\u20138', '5th\u20138th', '5\u20138\uC704', '\u7B2C5\u20138\u540D', 'Puesto 5\u20138', 'Places 5\u20138'),
+
   // Item detail: per-carrier stats table (Avg-Place + Top4 + Games)
   'tft.item.topCarrier.title': t6(
     'Top-Tr\u00E4ger', 'Top Carriers',

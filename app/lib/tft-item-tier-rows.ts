@@ -30,10 +30,13 @@ export function parseItemType(v: string | null | undefined): ItemBucket | null {
 
 /** Augment-Embleme tragen Namen und Bild des echten Emblems, ihre Werte waeren
  *  eine Augment-Statistik (feedback_no_augment_stats). Gleiche Regel wie
- *  isCompEmblem in tft-comp-outcome.ts. Komponenten stehen nicht auf der Seite
- *  (User 01.11.2026), ihre Detailseite bleibt erreichbar. */
+ *  isCompEmblem in tft-comp-outcome.ts. Komponenten sowie Tactician's Crown und
+ *  Shield stehen nicht auf der Seite (User 01.11.2026), ihre Detailseiten bleiben
+ *  erreichbar. Die TFT_Item_-Namen sind dieselben Items unter alter Kennung. */
+const HIDDEN_ITEMS = new Set(['DA_TacticiansCrown', 'DA_TacticiansShield', 'TFT_Item_ForceOfNature', 'TFT_Item_TacticiansScepter']);
+
 export function isListedItem(apiName: string, assets?: TftAssetsBundle | null): boolean {
-  if (/Emblem.*Augment/i.test(apiName) || /_Component_/i.test(apiName)) return false;
+  if (/Emblem.*Augment/i.test(apiName) || /_Component_/i.test(apiName) || HIDDEN_ITEMS.has(apiName)) return false;
   return !assets?.items[apiName]?.tags?.includes('component');
 }
 

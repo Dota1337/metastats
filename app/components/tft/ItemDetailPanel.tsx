@@ -11,6 +11,7 @@ import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
 import { placementBlocks, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
+import ItemStatLine from './ItemStatLine';
 
 const pct = (v: number | null) => (v != null ? `${(v * 100).toFixed(1)}%` : '—');
 const prettyId = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
@@ -29,7 +30,8 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
   const meta = assets?.items[it.apiName];
   const url = tftIconUrl(assets, meta?.icon);
   const name = tftLabel(meta, lang) || prettyId(it.apiName);
-  const desc = itemTextFor(texts, it.apiName, lang)?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
+  const text = itemTextFor(texts, it.apiName, lang);
+  const desc = text?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
   const blocks = placementBlocks(it);
   const bars = blocks ? [
     { key: 'first', label: t('tft.item.place1'), value: blocks.first },
@@ -81,8 +83,9 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
         </div>
       </div>
 
+      {text && text.stats.length > 0 && <ItemStatLine stats={text.stats} className="text-xs mt-3" />}
       {desc ? (
-        <p className="text-fg-secondary text-xs mt-3 whitespace-pre-line">{desc}</p>
+        <p className={`text-fg-secondary text-xs whitespace-pre-line ${text && text.stats.length > 0 ? 'mt-1.5' : 'mt-3'}`}>{desc}</p>
       ) : textsPending ? (
         <div className="mt-3 space-y-1.5" aria-hidden="true">
           <div className="h-3 rounded bg-surface-raised" />

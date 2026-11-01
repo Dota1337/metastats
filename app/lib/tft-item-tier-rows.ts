@@ -2,7 +2,7 @@
 // app/tft/comps/atlas/AtlasClient.tsx): S+ bis C, darunter eine Reihe ohne
 // Buchstaben, nur wenn belegt. Reine Funktionen, damit die Regeln ohne Browser
 // testbar sind. Grenzen stehen in tft-tier-letter.ts, nicht hier.
-import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from './tft-item-bucket';
+import { itemBucketOf } from './tft-item-bucket';
 import { itemTakesTier, tierLetterOf, TIER_LETTERS, TIER_MIN_GAMES, type TierLetter } from './tft-tier-letter';
 import { tftLabel, type TftAssetsBundle } from './tft-cdragon';
 import type { Lang } from './lang-path';
@@ -24,8 +24,20 @@ export function parseItemSort(v: string | null | undefined): ItemSortBy {
   return ITEM_SORTS.includes(v as ItemSortBy) ? (v as ItemSortBy) : 'avg';
 }
 
-export function parseItemType(v: string | null | undefined): ItemBucket | null {
-  return ITEM_BUCKETS.includes(v as ItemBucket) ? (v as ItemBucket) : null;
+// Knoepfe der Items-Seite (User 01.11.2026). Wie tft-item-bucket, aber Traenke
+// bekommen einen eigenen Knopf (auch die Radiant-Traenke), und was dort „other"
+// heisst, zaehlt als normales Item, damit nichts nur unter „Alle" auftaucht.
+export const ITEM_KINDS = ['standard', 'radiant', 'emblem', 'artifact', 'potion'] as const;
+export type ItemKind = (typeof ITEM_KINDS)[number];
+
+export function itemKindOf(apiName: string, assets: TftAssetsBundle | null): ItemKind {
+  if (/Potion/i.test(apiName)) return 'potion';
+  const bucket = itemBucketOf(apiName, assets);
+  return bucket === 'other' ? 'standard' : bucket;
+}
+
+export function parseItemType(v: string | null | undefined): ItemKind | null {
+  return ITEM_KINDS.includes(v as ItemKind) ? (v as ItemKind) : null;
 }
 
 /** Augment-Embleme tragen Namen und Bild des echten Emblems, ihre Werte waeren
@@ -46,12 +58,12 @@ export function isListedItem(apiName: string, assets?: TftAssetsBundle | null): 
 /** Item-Art und Suche, wie vorher in der Tabelle. */
 export function filterItems(
   items: readonly ItemRow[],
-  { type, search, assets, lang }: { type: ItemBucket | null; search: string; assets: TftAssetsBundle | null; lang: Lang },
+  { type, search, assets, lang }: { type: ItemKind | null; search: string; assets: TftAssetsBundle | null; lang: Lang },
 ): ItemRow[] {
   const q = search.trim().toLowerCase();
   return items.filter(it => {
     if (!isListedItem(it.apiName, assets)) return false;
-    if (type && itemBucketOf(it.apiName, assets) !== type) return false;
+    if (type && itemKindOf(it.apiName, assets) !== type) return false;
     if (!q) return true;
     const meta = assets?.items[it.apiName];
     return (meta?.name || '').toLowerCase().includes(q)
@@ -131,6 +143,6 @@ export function placementBlocks(it: Pick<ItemRow, 'top4Rate' | 'top1Rate'>): { f
 }
 
 /** Weitere Adress-Parameter der Seite, nur bei Abweichung vom Standard. */
-export function itemExtraQuery({ item, sort, type }: { item: string | null; sort: ItemSortBy; type: ItemBucket | null }): string {
+export function itemExtraQuery({ item, sort, type }: { item: string | null; sort: ItemSortBy; type: ItemKind | null }): string {
   return `${item ? `&item=${encodeURIComponent(item)}` : ''}${sort !== 'avg' ? `&sort=${sort}` : ''}${type ? `&type=${type}` : ''}`;
 }

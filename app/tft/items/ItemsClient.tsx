@@ -23,10 +23,9 @@ import { usePatchDelta } from '../../lib/usePatchDelta';
 import { patchDeltaOf } from '../../lib/tft-patch-delta';
 import { useI18n } from '../../lib/i18n';
 import { loadItemTexts, type ItemTexts } from '../../lib/tft-item-texts';
-import type { ItemBucket } from '../../lib/tft-item-bucket';
 import {
   filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemTierLetter,
-  parseItemSort, parseItemType, type ItemRow, type ItemSortBy,
+  parseItemSort, parseItemType, type ItemKind, type ItemRow, type ItemSortBy,
 } from '../../lib/tft-item-tier-rows';
 
 export type { ItemRow };
@@ -45,7 +44,7 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
   initial: StatsInitial<ItemRow> | null;
   initialItem?: string | null;
   initialSort?: ItemSortBy;
-  initialType?: ItemBucket | null;
+  initialType?: ItemKind | null;
   // Text nur des Items aus ?item=, damit er im ersten HTML steht.
   initialTexts?: ItemTexts | null;
 }) {
@@ -53,7 +52,7 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
   const pathname = usePathname();
   const [selected, setSelected] = useState<string | null>(initialItem);
   const [sort, setSort] = useState<ItemSortBy>(initialSort);
-  const [type, setType] = useState<ItemBucket | null>(initialType);
+  const [type, setType] = useState<ItemKind | null>(initialType);
   const [search, setSearch] = useState('');
 
   const { filters, setFilters, rows: items, hasData, patches, dataEnd, loading, awaitingStored, assets } =

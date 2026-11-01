@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemTierLetter,
+  filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
   parseItemSort, parseItemType, placementBlocks,
 } from './tft-item-tier-rows.ts';
 
@@ -41,6 +41,34 @@ test('ohne Buchstaben: Traenke, zu wenig Spiele, je nach Spielen — nicht nach 
     row('DA_HealthPotion18', 2.9, 900),
   ], { assets, sort: 'avg' });
   assert.deepEqual(none.items.map(i => i.apiName), ['DA_HealthPotion18', 'DA_ManaPotion18', 'wenig']);
+});
+
+test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus', () => {
+  const a = { items: {
+    DA_Bloodthirster: { name: 'Bloodthirster', composition: ['x', 'y'], tags: [] },
+    DA_BloodthirsterRadiant: { name: 'Radiant Bloodthirster', tags: [] },
+    DA_18_EmblemDefender: { name: 'Defender Emblem', tags: [] },
+    DA_Artifact_Dawncore: { name: 'Dawncore', tags: [] },
+    DA_HealthPotion18: { name: 'Health Potion', tags: [] },
+    DA_HealthPotion18_Radiant: { name: 'Radiant Health Potion', tags: [] },
+    DA_Unbekannt: { name: 'Unbekannt', tags: [] },
+  } };
+  const kinds = Object.fromEntries(Object.keys(a.items).map(id => [id, itemKindOf(id, a)]));
+  assert.deepEqual(kinds, {
+    DA_Bloodthirster: 'standard',
+    DA_BloodthirsterRadiant: 'radiant',
+    DA_18_EmblemDefender: 'emblem',
+    DA_Artifact_Dawncore: 'artifact',
+    DA_HealthPotion18: 'potion',
+    DA_HealthPotion18_Radiant: 'potion',
+    DA_Unbekannt: 'standard',
+  });
+  const rows = Object.keys(a.items).map(id => row(id, 4));
+  const left = filterItems(rows, { type: 'potion', search: '', assets: a, lang: 'de' }).map(i => i.apiName);
+  assert.deepEqual(left, ['DA_HealthPotion18', 'DA_HealthPotion18_Radiant']);
+  assert.equal(parseItemType('potion'), 'potion');
+  assert.equal(parseItemType('other'), null);
+  assert.equal(parseItemType('Quatsch'), null);
 });
 
 test("Tactician's Crown, Shield und Cape stehen nicht auf der Seite", () => {

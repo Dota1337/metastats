@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_SCOPE, EXPLORER_ROW_CAP, VERDICT_MIN_GAMES, applyQuestion, boxRows, itemListRules, buildQuestionDict, canFix, emptyBox, itemsQuery, minRowGames, normalizeBox,
+  DEFAULT_SCOPE, EXPLORER_ROW_CAP, VERDICT_MIN_GAMES, applyQuestion, boxRows, itemListRules, buildQuestionDict, canFix, effectiveStar, emptyBox, itemsQuery, minRowGames, normalizeBox,
   parseBuildParams, parseBuildQuestion, restOf, serializeBuildParams, splitQueries, starsQuery, targetStarOf, traitFilterFor, verdictOf,
 } from './tft-what-to-build.ts';
 import { buildExplorerOptions, itemFitsUnit } from '../components/tft/explorer/explorer-options.ts';
@@ -142,6 +142,17 @@ test('Abfrage hat genau 3 Items an der Unit, Stern und Trait nur wenn gewaehlt',
   assert.match(qs(itemsQuery(emptyBox(D), DEFAULT_SCOPE, 2, traitFilterFor('DA_18_Elderwood', [3, 5, 7]))), /u=DA_Draven18:s2e:n3e&t=DA_18_Elderwood:l2/);
   assert.deepEqual(traitFilterFor('DA_18_LuxUniqueTrait', [1]), { id: 'DA_18_LuxUniqueTrait' });
   assert.match(qs(starsQuery(D, DEFAULT_SCOPE)), /tab=units&split=star/);
+});
+
+test('1★: Link haelt den Stern, Abfrage filtert genau 1★, Voreinstellung bleibt ab 2★', () => {
+  const box = { ...emptyBox(D), star: 1 };
+  const back = parseBuildParams(params(serializeBuildParams([box], DEFAULT_SCOPE)));
+  assert.equal(back.boxes[0].star, 1);
+  assert.equal(effectiveStar(box, 2), 1);
+  const qs = decodeURIComponent(serializeExplorerQuery(itemsQuery(box, DEFAULT_SCOPE, effectiveStar(box, 2), null), { forApi: true }));
+  assert.match(qs, new RegExp(`u=${D}:s1e:n3e&tab=items`));
+  assert.equal(targetStarOf([{ key: D, sub: 1, games: 900 }, { key: D, sub: 2, games: 300 }], D), 2);
+  assert.equal(parseBuildParams(params(`b1=${D}:s4`)).boxes[0].star, 'auto');
 });
 
 test('Getrennte Seiten: A ohne B gegen B ohne A', () => {

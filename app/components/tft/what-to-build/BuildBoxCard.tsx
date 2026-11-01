@@ -144,7 +144,7 @@ export default function BuildBoxCard({
 
       <div className="flex flex-wrap items-center gap-1.5">
         <div className="flex gap-1" role="group" aria-label={t('tft.explorer.starLevel')}>
-          {(['all', 2, 3] as const).map(s => (
+          {(['all', 1, 2, 3] as const).map(s => (
             <button key={s} type="button" aria-pressed={activeStar === s} className={pill(activeStar === s)}
               onClick={() => set({ star: s, compare: box.compare })}>
               {s === 'all' ? t('tft.build.allStars') : <span className="text-gold-earnings">{'★'.repeat(s)}</span>}

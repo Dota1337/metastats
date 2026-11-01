@@ -21,7 +21,7 @@ export const MAX_FIXED = 2;
 
 // ─── Boxen und Adresse ─────────────────────────────────────────────────────
 
-export type StarChoice = 'auto' | 'all' | 2 | 3;
+export type StarChoice = 'auto' | 'all' | 1 | 2 | 3;
 export type Combo = 1 | 2 | 3;
 /** Reiter einer Box. */
 export type BuildKind = Exclude<ItemBucket, 'other'>;
@@ -87,7 +87,7 @@ function parseBoxToken(tok: string): BuildBox | null {
     if (head === 'c' && (rest === '2' || rest === '3')) b.combo = Number(rest) as Combo;
     else if (head === 's') {
       if (rest === 'a') b.star = 'all';
-      else if (rest === '2' || rest === '3') b.star = Number(rest) as 2 | 3;
+      else if (rest === '1' || rest === '2' || rest === '3') b.star = Number(rest) as 1 | 2 | 3;
     } else if (head === 't' && isExplorerId(rest)) b.trait = rest;
     else if (head === 'i' && isExplorerId(rest)) b.fixed.push(rest);
     else if (head === 'v' && rest.split('|').every(isExplorerId)) b.compare.push(rest);

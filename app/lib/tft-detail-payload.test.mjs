@@ -3,9 +3,19 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { itemCarriers, itemDetailBody, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, itemCarriers, itemDetailBody, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
+
+test('Ø je Unit in der Items-Liste: ab 30 Spielen, 2 Stellen, ohne Summe nie 0', () => {
+  assert.equal(carrierAvgPlacement(30, 97), 3.23);
+  assert.equal(carrierAvgPlacement(12498, 40431), 3.23);
+  assert.equal(carrierAvgPlacement(29, 90), null);
+  // Stand von vor Migration 0111: Spiele da, Summe fehlt oder wurde beim Zusammenlegen 0.
+  assert.equal(carrierAvgPlacement(500, 0), null);
+  assert.equal(carrierAvgPlacement(500, undefined), null);
+  assert.equal(carrierAvgPlacement(undefined, undefined), null);
+});
 
 const raw = {
   stars: { 1: 120, 2: 900, 3: 40 },

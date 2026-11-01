@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
-import { coreFromListRow, itemDetailBody, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
+import { carrierAvgPlacement, coreFromListRow, itemDetailBody, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
 import { itemCarriersFor } from '../../../lib/tft-detail-builds';
 import {
   resolveFilters,
@@ -210,10 +210,13 @@ export async function GET(request: NextRequest) {
         // 10 fuer das Fenster der Items-Seite: erst ausschliessen, dann kuerzen,
         // sonst fehlten die Ersatz-Units aus der SQL-Kappe (12, Migration 0110).
         // Staende von vor 0110 liefern hoechstens 8.
-        const topUsers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 12)
-          .map(u => u.characterId)
-          .filter(cid => !isExcludedUnit(cid))
+        const carriers = mergeJsonbCountArrays(r.top_users_merged || [], 'characterId', 12)
+          .filter(u => !isExcludedUnit(u.characterId))
           .slice(0, 10);
+        // Eigene Liste statt Objekte: topUsers bleibt eine Namensliste, die Companion-
+        // Apps und das erste HTML lesen sie so. Migration 0111 liefert die Summe.
+        const topUsers = carriers.map(u => u.characterId);
+        const topUserAvgs = carriers.map(u => carrierAvgPlacement(u.games, u.sumPlacement));
         const games = Number(r.games);
         const avgPlacement = games > 0 ? Number(r.sum_placement) / games : null;
         const top4Rate = games > 0 ? Number(r.top4) / games : null;
@@ -233,6 +236,7 @@ export async function GET(request: NextRequest) {
           top1Rate,
           pickRate,
           topUsers,
+          topUserAvgs,
         };
       });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));

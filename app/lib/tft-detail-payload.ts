@@ -63,6 +63,14 @@ export const MIN_SHOWN_GAMES = 30;
 
 const rate = (n: number, games: number) => (games > 0 ? n / games : null);
 
+/** Ø-Platz einer Unit mit einem Item fuer die Items-Liste, auf 2 Stellen: die Werte
+ *  stehen in jeder Listenantwort und im ersten HTML. null unter der Mindestzahl.
+ *  Summe 0 heisst: Stand von vor Migration 0111 ohne Summe, nicht Platz 0. */
+export function carrierAvgPlacement(games: number | undefined, sumPlacement: number | undefined): number | null {
+  if (!games || games < MIN_SHOWN_GAMES || !sumPlacement) return null;
+  return Math.round((sumPlacement / games) * 100) / 100;
+}
+
 const itemEntry = ([item, games, top4, sp]: BuildRow) =>
   ({ item, games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
 

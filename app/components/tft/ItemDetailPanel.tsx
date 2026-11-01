@@ -108,7 +108,8 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
         </div>
         {it.topUsers.length > 0 && (
           <div className="grid grid-cols-5 gap-x-2 gap-y-2.5">
-            {it.topUsers.slice(0, 10).map(cid => {
+            {it.topUsers.slice(0, 10).map((cid, i) => {
+              const avg = it.topUserAvgs?.[i];
               const ch = assets?.champions[cid];
               const tile = tftChampionTileUrl(assets, ch);
               const fallback = tftIconUrl(assets, ch?.icon);
@@ -133,6 +134,12 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
                     )}
                   </span>
                   <span className="block mt-1 text-[11px] leading-tight text-center text-fg-primary truncate">{unitName}</span>
+                  {/* Fehlt das Feld (Stand vor 0111), keine Zeile statt eines falschen Werts. */}
+                  {avg !== undefined && (
+                    <span className="block mt-0.5 text-[11px] leading-tight text-center text-fg-secondary tabular-nums" title={t('tft.avgPlacement')}>
+                      {avg != null ? `Ø ${avg.toFixed(2)}` : '—'}
+                    </span>
+                  )}
                 </a>
               );
             })}

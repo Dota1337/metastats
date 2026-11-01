@@ -15,6 +15,9 @@ export interface ItemRow {
   top1Rate: number | null;
   pickRate: number | null;
   topUsers: string[];
+  /** Ø-Platz je Unit mit diesem Item, gleiche Reihenfolge wie topUsers. Fehlt in
+   *  Staenden von vor Migration 0111, null bei zu wenig Spielen. */
+  topUserAvgs?: (number | null)[];
 }
 
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;

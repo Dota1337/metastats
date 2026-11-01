@@ -34,7 +34,7 @@ export default function ItemTierRows({ rows, assets, selected, onSelect, hrefOf,
         return (
           <section
             key={row.tier ?? 'none'}
-            className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-lg border px-3 py-3 bg-surface-comp-row"
+            className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 rounded-lg border border-border-subtle px-3 py-3 bg-surface-comp-row"
             style={row.tier ? {
               borderColor: withAlpha(color, 0x40),
               backgroundImage: `linear-gradient(90deg, ${withAlpha(color, 0x1a)}, transparent 45%)`,
@@ -119,7 +119,7 @@ function ItemTile({ item: it, assets, rated, selected, onSelect, href, deltaInde
         e.preventDefault();
         onSelect(it.apiName, e.currentTarget);
       }}
-      className="group relative block w-12 h-12 sm:w-14 sm:h-14 rounded-md flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
+      className="group relative block w-10 h-10 sm:w-11 sm:h-11 rounded-md flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-a60"
     >
       {url ? (
         <img
@@ -135,7 +135,7 @@ function ItemTile({ item: it, assets, rated, selected, onSelect, href, deltaInde
         </div>
       )}
       {avg != null && (
-        <span className="absolute -top-1 -right-1.5 px-1 rounded bg-surface-base/90 border border-border-subtle text-[11px] leading-4 font-semibold text-white tabular-nums">
+        <span className="absolute -top-1.5 -right-1.5 px-0.5 rounded bg-surface-base/90 border border-border-subtle text-[10px] leading-[14px] font-semibold text-white tabular-nums">
           {avg.toFixed(2)}
         </span>
       )}

@@ -88,7 +88,7 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
 
   // Aus allen Items, nicht aus den gefilterten: Suche und Art schliessen das
   // Fenster nicht.
-  const selectedRow = selected && isListedItem(selected) ? items.find(i => i.apiName === selected) ?? null : null;
+  const selectedRow = selected && isListedItem(selected, assets) ? items.find(i => i.apiName === selected) ?? null : null;
 
   // Item im neuen Filter nicht vorhanden oder unbekannte Kennung: still zu.
   useEffect(() => {

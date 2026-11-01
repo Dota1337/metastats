@@ -30,9 +30,11 @@ export function parseItemType(v: string | null | undefined): ItemBucket | null {
 
 /** Augment-Embleme tragen Namen und Bild des echten Emblems, ihre Werte waeren
  *  eine Augment-Statistik (feedback_no_augment_stats). Gleiche Regel wie
- *  isCompEmblem in tft-comp-outcome.ts. */
-export function isListedItem(apiName: string): boolean {
-  return !/Emblem.*Augment/i.test(apiName);
+ *  isCompEmblem in tft-comp-outcome.ts. Komponenten stehen nicht auf der Seite
+ *  (User 01.11.2026), ihre Detailseite bleibt erreichbar. */
+export function isListedItem(apiName: string, assets?: TftAssetsBundle | null): boolean {
+  if (/Emblem.*Augment/i.test(apiName) || /_Component_/i.test(apiName)) return false;
+  return !assets?.items[apiName]?.tags?.includes('component');
 }
 
 /** Item-Art und Suche, wie vorher in der Tabelle. */
@@ -42,7 +44,7 @@ export function filterItems(
 ): ItemRow[] {
   const q = search.trim().toLowerCase();
   return items.filter(it => {
-    if (!isListedItem(it.apiName)) return false;
+    if (!isListedItem(it.apiName, assets)) return false;
     if (type && itemBucketOf(it.apiName, assets) !== type) return false;
     if (!q) return true;
     const meta = assets?.items[it.apiName];
@@ -79,13 +81,12 @@ function compare(a: ItemRow, b: ItemRow, sort: ItemSortBy, deltaOf?: (apiName: s
   return av - bv || a.apiName.localeCompare(b.apiName);
 }
 
-// Reihe ohne Buchstaben: Komponenten, Traenke, dann zu wenig Spiele, jeweils
-// nach Spielen. Nach Ø stuende die Health Potion vorn — genau der Fall, wegen
-// dem Traenke keinen Buchstaben haben.
-function unratedBlock(it: ItemRow, assets: TftAssetsBundle | null): number {
-  if (assets?.items[it.apiName]?.tags?.includes('component') || /_Component_/i.test(it.apiName)) return 0;
-  if (/Potion/i.test(it.apiName)) return 1;
-  return it.games >= TIER_MIN_GAMES.items ? 2 : 3;
+// Reihe ohne Buchstaben: Traenke, dann zu wenig Spiele, jeweils nach Spielen. Nach
+// Ø stuende die Health Potion vorn — genau der Fall, wegen dem Traenke keinen
+// Buchstaben haben.
+function unratedBlock(it: ItemRow): number {
+  if (/Potion/i.test(it.apiName)) return 0;
+  return it.games >= TIER_MIN_GAMES.items ? 1 : 2;
 }
 
 export interface ItemTierRow {
@@ -110,7 +111,7 @@ export function groupItemsByTier(
     if (!list?.length) continue;
     list.sort(tier
       ? (a, b) => compare(a, b, sort, deltaOf)
-      : (a, b) => unratedBlock(a, assets) - unratedBlock(b, assets) || b.games - a.games || a.apiName.localeCompare(b.apiName));
+      : (a, b) => unratedBlock(a) - unratedBlock(b) || b.games - a.games || a.apiName.localeCompare(b.apiName));
     rows.push({ tier, items: list });
   }
   return rows;

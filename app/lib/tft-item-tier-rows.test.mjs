@@ -34,14 +34,26 @@ test('Buchstabe = freigegebene Item-Grenzen am angezeigten Wert', () => {
   assert.equal(itemTierLetter(row('DA_HealthPotion18', 2.9), assets), null);
 });
 
-test('ohne Buchstaben: Komponenten, Traenke, zu wenig Spiele, je nach Spielen — nicht nach Ø', () => {
+test('ohne Buchstaben: Traenke, zu wenig Spiele, je nach Spielen — nicht nach Ø', () => {
   const [none] = groupItemsByTier([
     row('wenig', 2.0, 100),
+    row('DA_ManaPotion18', 4.4, 400),
     row('DA_HealthPotion18', 2.9, 900),
-    row('DA_Component_Sword', 5.0, 500),
-    row('DA_Component_Bow', 5.5, 800),
   ], { assets, sort: 'avg' });
-  assert.deepEqual(none.items.map(i => i.apiName), ['DA_Component_Bow', 'DA_Component_Sword', 'DA_HealthPotion18', 'wenig']);
+  assert.deepEqual(none.items.map(i => i.apiName), ['DA_HealthPotion18', 'DA_ManaPotion18', 'wenig']);
+});
+
+test('Komponenten stehen nicht auf der Seite, auch wenn nur das Merkmal sie verraet', () => {
+  const withOldName = { items: { ...assets.items, TFT_Item_BFSword: { name: 'B.F. Sword', tags: ['component'] } } };
+  const items = [row('DA_Item_A', 4), row('DA_Component_Sword', 5), row('TFT_Item_BFSword', 5), row('DA_HealthPotion18', 2.9)];
+  const left = filterItems(items, { type: null, search: '', assets: withOldName, lang: 'de' }).map(i => i.apiName);
+  assert.deepEqual(left, ['DA_Item_A', 'DA_HealthPotion18']);
+  // Noch ohne Bild- und Namensdaten greift wenigstens die Kennung.
+  assert.equal(isListedItem('DA_Component_Sword'), false);
+  assert.equal(isListedItem('DA_Component_Sword', null), false);
+  // Spatel und Bratpfanne sind Komponenten mit eigenem Weg, keine Sonderfaelle.
+  assert.equal(isListedItem('DA_Component_Spatula'), false);
+  assert.equal(isListedItem('DA_Component_FryingPan'), false);
 });
 
 test('Sortierung innerhalb der Reihe, Gleichstand fest, ohne Wert zuletzt', () => {

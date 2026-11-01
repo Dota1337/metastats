@@ -195,7 +195,7 @@ export default function BuildBoxCard({
       )}
 
       {verdictLine && (
-        <div className="px-2 py-1.5 rounded border border-accent-a40 bg-accent-a8 text-xs font-medium text-fg-bright">{verdictLine}</div>
+        <div className="px-2 py-1.5 rounded border border-accent-a40 bg-accent-a8 text-xs font-medium text-fg-bright">{star ? `${'★'.repeat(star)} · ` : ''}{verdictLine}</div>
       )}
 
       {err ? (

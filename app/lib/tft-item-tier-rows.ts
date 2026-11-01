@@ -19,6 +19,9 @@ export interface ItemRow {
   /** Traeger fuer das Fenster, beste nach Delta zuerst. Fehlt in Staenden von vor
    *  Migration 0112. */
   holders?: ItemHolder[];
+  /** Traeger fuer den Knopf „Ø Platzierung", eigene Auswahl (Migration 0113). Nur bei
+   *  Items mit Delta, sonst steht holders schon nach Ø. */
+  holdersAvg?: ItemHolder[];
   /** Nur noch in Staenden von Migration 0111: Ø-Platz, gleiche Reihenfolge wie topUsers. */
   topUserAvgs?: (number | null)[];
 }
@@ -30,12 +33,13 @@ export function holdersOf(it: Pick<ItemRow, 'holders' | 'topUsers' | 'topUserAvg
 
 export type HolderSort = 'delta' | 'avg';
 
-/** Reihenfolge der Kacheln im Fenster. Delta ist die Reihenfolge vom Server. Bei Ø
- *  eine Kopie (die Zeilen liegen im Cache der Liste), bester zuerst, ohne Ø ans Ende,
- *  Gleichstand bleibt in Server-Reihenfolge. */
-export function sortHolders(holders: readonly ItemHolder[], by: HolderSort): ItemHolder[] {
-  if (by === 'delta') return [...holders];
-  return [...holders].sort((a, b) => (a[1] == null ? (b[1] == null ? 0 : 1) : b[1] == null ? -1 : a[1] - b[1]));
+/** Kacheln im Fenster je Knopf. Delta und Ø haben eigene Auswahlen vom Server. Stand von
+ *  vor 0113 hat holdersAvg nicht: dann dieselben Units nach Ø, als Kopie (die Zeilen
+ *  liegen im Cache der Liste), ohne Ø ans Ende, Gleichstand in Server-Reihenfolge. */
+export function holdersFor(it: Pick<ItemRow, 'holders' | 'holdersAvg' | 'topUsers' | 'topUserAvgs'>, by: HolderSort): ItemHolder[] {
+  const all = holdersOf(it);
+  if (by === 'delta' || !all.some(h => h[2] != null)) return all;
+  return it.holdersAvg ?? [...all].sort((a, b) => (a[1] == null ? (b[1] == null ? 0 : 1) : b[1] == null ? -1 : a[1] - b[1]));
 }
 
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;

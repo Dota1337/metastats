@@ -3,9 +3,29 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, itemHoldersByAvg, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
+
+test('Knopf Ø: die bewerteten Units mit dem besten Ø, nicht die mit dem besten Delta', () => {
+  const rows = [
+    { characterId: 'BestesDelta', games: 500, sumPlacement: 2500, delta: -0.4 },
+    { characterId: 'BesterSchnitt', games: 500, sumPlacement: 1500, delta: 0.3 },
+    { characterId: 'Mitte', games: 500, sumPlacement: 2000, delta: 0.1 },
+    { characterId: 'Unbewertet', games: 900, sumPlacement: 2700 },
+    { characterId: 'Winzig', games: 40, sumPlacement: 40 },
+    { characterId: 'Ohne', games: 10, sumPlacement: 10 },
+  ];
+  // Kappe 2: nur bewertete, die beste Delta-Unit fliegt raus, beste Schnitte bleiben.
+  assert.deepEqual(itemHoldersByAvg(rows, 2), [['BesterSchnitt', 3, 0.3], ['Mitte', 4, 0.1]]);
+  // Freie Plaetze: meistgespielte Unbewertete; die ganze Reihe faellt nach Ø, ohne Ø hinten.
+  assert.deepEqual(itemHoldersByAvg(rows).map(h => h[0]), ['Winzig', 'Unbewertet', 'BesterSchnitt', 'Mitte', 'BestesDelta', 'Ohne']);
+  assert.deepEqual(itemHoldersByAvg(rows, 4).map(h => h[0]), ['Unbewertet', 'BesterSchnitt', 'Mitte', 'BestesDelta']);
+  // Eingabe bleibt unberuehrt, Gleichstand fest.
+  const tie = [{ characterId: 'B', games: 100, sumPlacement: 400, delta: -0.1 }, { characterId: 'A', games: 100, sumPlacement: 400, delta: 0.1 }];
+  assert.deepEqual(itemHoldersByAvg(tie).map(h => h[0]), ['A', 'B']);
+  assert.deepEqual(tie.map(r => r.characterId), ['B', 'A']);
+});
 
 test('Traeger ohne Delta: Auswahl nach Spielen, Reihenfolge nach sichtbarem Ø', () => {
   const rows = [

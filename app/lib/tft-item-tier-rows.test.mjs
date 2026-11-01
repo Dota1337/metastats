@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  filterItems, groupItemsByTier, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter, sortHolders,
+  filterItems, groupItemsByTier, holdersFor, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
   parseItemSort, parseItemTypes, placementBlocks, toggleItemKind,
 } from './tft-item-tier-rows.ts';
 
@@ -71,12 +71,19 @@ test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus
   assert.equal(filterItems(rows, { type: [], search: '', assets: a, lang: 'de' }).length, rows.length);
 });
 
-test('Umschalter im Fenster: Ø sortiert eine Kopie, Delta laesst die Server-Reihenfolge', () => {
+test('Umschalter im Fenster: eigene Auswahl je Knopf, alter Stand wird umsortiert', () => {
   const holders = [['A', 4.5, -0.3], ['B', null, null], ['C', 3.2, -0.1], ['D', 4.5, 0.1], ['E', 3.9, null]];
   const before = JSON.stringify(holders);
-  assert.deepEqual(sortHolders(holders, 'avg').map(h => h[0]), ['C', 'E', 'A', 'D', 'B']);
-  assert.deepEqual(sortHolders(holders, 'delta').map(h => h[0]), ['A', 'B', 'C', 'D', 'E']);
+  const topUsers = [];
+  // Neuer Stand: Ø zeigt andere Units als Delta.
+  assert.deepEqual(holdersFor({ holders, holdersAvg: [['X', 2, 0.5]], topUsers }, 'avg').map(h => h[0]), ['X']);
+  assert.deepEqual(holdersFor({ holders, holdersAvg: [['X', 2, 0.5]], topUsers }, 'delta').map(h => h[0]), ['A', 'B', 'C', 'D', 'E']);
+  // Stand von vor 0113: dieselben Units nach Ø, Eingabe bleibt unberuehrt.
+  assert.deepEqual(holdersFor({ holders, topUsers }, 'avg').map(h => h[0]), ['C', 'E', 'A', 'D', 'B']);
   assert.equal(JSON.stringify(holders), before);
+  // Ohne Delta kein Umsortieren: holders steht schon richtig.
+  const none = [['P', 4, null], ['Q', 3, null]];
+  assert.deepEqual(holdersFor({ holders: none, topUsers }, 'avg').map(h => h[0]), ['P', 'Q']);
 });
 
 test('Traeger des Fensters: neues Feld gewinnt, alte Staende bleiben lesbar', () => {

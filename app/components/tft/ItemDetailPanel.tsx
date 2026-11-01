@@ -8,7 +8,7 @@ import { withAlpha } from '../../lib/color';
 import { useI18n } from '../../lib/i18n';
 import { formatTftDesc, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
-import { holdersOf, placementBlocks, sortHolders, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
+import { holdersFor, holdersOf, placementBlocks, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
 import ItemStatLine from './ItemStatLine';
@@ -34,10 +34,9 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
   const name = tftLabel(meta, lang) || prettyId(it.apiName);
   const text = itemTextFor(texts, it.apiName, lang);
   const desc = text?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
-  const allHolders = holdersOf(it);
   // Ohne Delta gibt es nichts umzuschalten: die Reihe steht dann schon nach Ø.
-  const hasDelta = allHolders.some(h => h[2] != null);
-  const holders = hasDelta ? sortHolders(allHolders, holderSort) : allHolders;
+  const hasDelta = holdersOf(it).some(h => h[2] != null);
+  const holders = holdersFor(it, holderSort);
   const sortButtons: { key: HolderSort; label: string; title: string }[] = [
     { key: 'delta', label: t('tft.item.sortDelta'), title: t('tft.item.holderDelta') },
     { key: 'avg', label: t('tft.avgPlacement'), title: t('tft.avgPlacement') },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
-import { coreFromListRow, itemDetailBody, itemHolders, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
+import { coreFromListRow, itemDetailBody, itemHolders, itemHoldersByAvg, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
 import { itemCarriersFor } from '../../../lib/tft-detail-builds';
 import {
   resolveFilters,
@@ -217,7 +217,10 @@ export async function GET(request: NextRequest) {
         // topUsers bleibt die Namensliste nach Haeufigkeit (Companion-Apps). Das Fenster
         // liest holders. Direkt aus der Zeile: der Merge oben verwirft das Delta und
         // kappt vor den besten Units, die oft nicht zu den 12 haeufigsten gehoeren (0112).
-        const holders = itemHolders((r.top_users_merged || []).flat().filter(u => !isExcludedUnit(u.characterId)));
+        const holderRows = (r.top_users_merged || []).flat().filter(u => !isExcludedUnit(u.characterId));
+        const holders = itemHolders(holderRows);
+        // Ohne Delta gibt es keinen Knopf: holders steht dann schon nach Ø, die Antwort bleibt kleiner.
+        const holdersAvg = holderRows.some(u => u.delta != null) ? itemHoldersByAvg(holderRows) : undefined;
         const games = Number(r.games);
         const avgPlacement = games > 0 ? Number(r.sum_placement) / games : null;
         const top4Rate = games > 0 ? Number(r.top4) / games : null;
@@ -238,6 +241,7 @@ export async function GET(request: NextRequest) {
           pickRate,
           topUsers,
           holders,
+          ...(holdersAvg ? { holdersAvg } : {}),
         };
       });
     items.sort((a, b) => (a.avgPlacement ?? 9) - (b.avgPlacement ?? 9));

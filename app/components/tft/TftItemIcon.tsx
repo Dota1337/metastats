@@ -1,4 +1,6 @@
-import { tftIconUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+'use client';
+import { useI18n } from '../../lib/i18n';
+import { tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 // Reines Item-Bild ohne eigenen Link — fuer Stellen, die schon in einem Link
 // stecken (z. B. die Zeilen der Champion-Liste, die komplett auf die
@@ -15,9 +17,10 @@ export default function TftItemIcon({
   className?: string;
   title?: string;
 }) {
+  const { lang } = useI18n();
   const item = assets?.items[apiName];
   const url = tftIconUrl(assets, item?.icon);
-  const title = titleOverride || item?.name || apiName;
+  const title = titleOverride || tftLabel(item, lang) || apiName;
   if (!url) {
     return (
       <span

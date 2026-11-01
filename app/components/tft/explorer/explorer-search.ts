@@ -8,6 +8,7 @@ import {
   type ExplorerQuery, type FilterGroup, type ItemFilter, type TraitFilter, type UnitFilter,
 } from '../../../lib/tft-explorer-query';
 import type { ItemBucket } from '../../../lib/tft-item-bucket';
+import type { Lang } from '../../../lib/lang-path';
 import type { ExplorerOptions, ItemOption, TraitOption, UnitOption } from './explorer-options';
 
 export type PickKind = 'units' | 'items' | 'traits';
@@ -37,6 +38,7 @@ export { AND_BASE as AND_WORDS_BASE, OR_BASE as OR_WORDS_BASE, AND_LANG as AND_W
 
 /** Kleinschreibung, ohne Akzente, Apostrophe und Punkte — „Kog'Maw" = „kogmaw". */
 export const normText = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  .replace(/œ/g, 'oe').replace(/æ/g, 'ae') // Franzoesisch: „Cœur“ = „coeur“
   .replace(/['’`.\-]/g, '').replace(/\s+/g, ' ').trim();
 
 export interface PhraseTerm { op: Op | null; text: string }
@@ -108,13 +110,17 @@ export function matchScore(name: string, needle: string): number {
 
 export interface SearchResults { units: UnitOption[]; items: ItemOption[]; traits: TraitOption[] }
 
+/** Besserer Treffer aus gezeigtem und englischem Namen: auch auf Deutsch sagt man „Infinity Edge“. */
+const optionScore = (x: { name: string; label: string }, needle: string) =>
+  Math.max(matchScore(x.label, needle), matchScore(x.name, needle));
+
 /** Treffer je Art, beste zuerst, gleich gute nach Name. */
 export function searchOptions(raw: string, o: ExplorerOptions, max = { units: 8, items: 8, traits: 6 }): SearchResults {
   const { needle } = termParts(raw);
-  const rank = <T extends { name: string }>(list: T[], n: number) => list
-    .map(x => ({ x, s: matchScore(x.name, needle) }))
+  const rank = <T extends { name: string; label: string }>(list: T[], n: number) => list
+    .map(x => ({ x, s: optionScore(x, needle) }))
     .filter(e => e.s > 0)
-    .sort((a, b) => b.s - a.s || a.x.name.localeCompare(b.x.name))
+    .sort((a, b) => b.s - a.s || a.x.label.localeCompare(b.x.label, o.lang))
     .slice(0, n)
     .map(e => e.x);
   return { units: rank(o.units, max.units), items: rank(o.items, max.items), traits: rank(o.traits, max.traits) };
@@ -141,12 +147,12 @@ export function bestPick(raw: string, o: ExplorerOptions): Pick | null {
   if (!needle) return null;
   type C = { kind: PickKind; id: string; name: string; s: number; ord: number };
   const cands: C[] = [
-    ...o.units.map(x => ({ kind: 'units' as const, id: x.id, name: x.name, s: matchScore(x.name, needle), ord: 0 })),
-    ...o.traits.map(x => ({ kind: 'traits' as const, id: x.id, name: x.name, s: matchScore(x.name, needle), ord: 1 })),
-    ...o.items.map(x => ({ kind: 'items' as const, id: x.id, name: x.name, s: matchScore(x.name, needle), ord: 2 + ITEM_ORDER.indexOf(x.bucket === 'other' ? 'standard' : x.bucket) / 10 })),
+    ...o.units.map(x => ({ kind: 'units' as const, id: x.id, name: x.label, s: optionScore(x, needle), ord: 0 })),
+    ...o.traits.map(x => ({ kind: 'traits' as const, id: x.id, name: x.label, s: optionScore(x, needle), ord: 1 })),
+    ...o.items.map(x => ({ kind: 'items' as const, id: x.id, name: x.label, s: optionScore(x, needle), ord: 2 + ITEM_ORDER.indexOf(x.bucket === 'other' ? 'standard' : x.bucket) / 10 })),
   ].filter(c => c.s > 0);
   if (!cands.length) return null;
-  cands.sort((a, b) => b.s - a.s || a.ord - b.ord || a.name.localeCompare(b.name));
+  cands.sort((a, b) => b.s - a.s || a.ord - b.ord || a.name.localeCompare(b.name, o.lang));
   const c = cands[0];
   if (c.kind === 'units') return { kind: 'units', f: unitWithStars(c.id, stars) };
   if (c.kind === 'traits') {
@@ -273,7 +279,8 @@ export const canAdd = (q: ExplorerQuery, kind: PickKind, op: Op, last: LastRef |
   applyPick(q, { kind, f: { id: PROBE_ID } } as Pick, op, last).added;
 
 /** Units fuers Raster: je Kostenstufe eine Zeile. Formen „Lux (Coven)" fallen weg, wenn es die Basis „Lux" gibt. */
-export function browseUnits(units: UnitOption[]): UnitOption[][] {
+export function browseUnits(units: UnitOption[], lang: Lang = 'en'): UnitOption[][] {
+  // Formen am englischen Namen erkennen: die Klammern stimmen nicht in jeder Sprache.
   const names = new Set(units.map(u => u.name));
   const byCost = new Map<number, UnitOption[]>();
   for (const u of units) {
@@ -282,13 +289,13 @@ export function browseUnits(units: UnitOption[]): UnitOption[][] {
     byCost.set(u.cost, [...(byCost.get(u.cost) ?? []), u]);
   }
   return [...byCost.keys()].sort((a, b) => a - b)
-    .map(c => byCost.get(c)!.sort((a, b) => a.name.localeCompare(b.name)));
+    .map(c => byCost.get(c)!.sort((a, b) => a.label.localeCompare(b.label, lang)));
 }
 
 /** Synergien fuers Raster: alphabetisch, Einstufen-Synergien (hoechstens 1 Unit) abgesetzt dahinter. */
-export function browseTraits(traits: TraitOption[]): TraitOption[][] {
+export function browseTraits(traits: TraitOption[], lang: Lang = 'en'): TraitOption[][] {
   const single = (x: TraitOption) => Math.max(0, ...x.mins) <= 1;
-  const byName = (a: TraitOption, b: TraitOption) => a.name.localeCompare(b.name);
+  const byName = (a: TraitOption, b: TraitOption) => a.label.localeCompare(b.label, lang);
   return [traits.filter(x => !single(x)).sort(byName), traits.filter(single).sort(byName)].filter(r => r.length);
 }
 

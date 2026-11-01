@@ -1,10 +1,11 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { withAlpha } from '../../../lib/color';
-import { tftGameAssetUrl } from '../../../lib/tft-cdragon';
+import { tftGameAssetUrl, tftLabel } from '../../../lib/tft-cdragon';
+import type { LootTableNames } from '../../../lib/tft-loot-names';
 import type {
   LootTablesFile, LootTable, CovenTable, LootSub, LootRow, LootReward, LootCond, WispsFile, WispEntry, WispRound, WispBands, Wisp, WispCat,
 } from '../../../lib/tft-loot-tables';
@@ -27,10 +28,20 @@ type T = ReturnType<typeof useI18n>['t'];
 const fill = (s: string, vars: Record<string, string | number>) =>
   s.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? ''));
 
-export default function TablesView({ loot, wisps }: { loot: LootTablesFile | null; wisps: WispsFile | null }) {
-  const { t, withLang } = useI18n();
+// Item- und Unit-Namen in den Tabellendateien sind Englisch (Import). Uebersetzt
+// wird ueber die Kennung (page.tsx liefert die Namen); ohne Uebersetzung bleibt
+// der Name der Datei.
+type Namer = (api: string | undefined, fallback: string) => string;
+const NamerContext = createContext<Namer>((_, fallback) => fallback);
+
+export default function TablesView({ loot, wisps, names }: { loot: LootTablesFile | null; wisps: WispsFile | null; names: LootTableNames }) {
+  const { t, lang, withLang } = useI18n();
   const [view, setView] = useState<View>('loot');
   const source = view === 'wisps' ? wisps?.source : loot?.source;
+  const nameOf = useCallback<Namer>((api, fallback) => (
+    tftLabel({ name: fallback, names: api ? names.byApi[api] : undefined }, lang)
+  ), [names, lang]);
+  const covenLabel = tftLabel({ name: loot?.coven.name ?? 'Coven', names: names.coven }, lang);
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -42,17 +53,19 @@ export default function TablesView({ loot, wisps }: { loot: LootTablesFile | nul
           <ViewTabs
             value={view}
             onChange={setView}
-            options={[['loot', t('tft.tables.loot')], ['coven', 'Coven'], ['wisps', t('tft.tables.wisps')]]}
+            options={[['loot', t('tft.tables.loot')], ['coven', covenLabel], ['wisps', t('tft.tables.wisps')]]}
           />
         </div>
 
-        {view === 'loot' && loot && (
-          <div className="space-y-2">
-            {loot.tables.map(tb => <LootCard key={tb.key} table={tb} t={t} />)}
-          </div>
-        )}
-        {view === 'coven' && loot && <CovenCard coven={loot.coven} t={t} />}
-        {view === 'wisps' && wisps && <WispList entries={wisps.wisps} bands={wisps.bands} t={t} />}
+        <NamerContext.Provider value={nameOf}>
+          {view === 'loot' && loot && (
+            <div className="space-y-2">
+              {loot.tables.map(tb => <LootCard key={tb.key} table={tb} t={t} />)}
+            </div>
+          )}
+          {view === 'coven' && loot && <CovenCard coven={loot.coven} name={covenLabel} t={t} />}
+          {view === 'wisps' && wisps && <WispList entries={wisps.wisps} bands={wisps.bands} t={t} />}
+        </NamerContext.Provider>
 
         {source && (
           <div className="mt-5 text-fg-faint text-[11px]">
@@ -138,6 +151,7 @@ function CardHead({ name, icon, patch, stage, t }: { name: string; icon?: string
 
 // Jede Loot-Tabelle klappt einzeln auf; anfangs sind alle zu.
 function LootCard({ table, t }: { table: LootTable; t: T }) {
+  const nameOf = useContext(NamerContext);
   const [open, setOpen] = useState(false);
   return (
     <section className="bg-surface-base border border-border-subtle rounded-lg">
@@ -148,7 +162,7 @@ function LootCard({ table, t }: { table: LootTable; t: T }) {
         className="w-full flex items-center gap-2.5 p-4 text-left hover:bg-surface-raised/40 rounded-lg transition-colors"
       >
         {table.icon ? <Icon path={table.icon} size={32} /> : <span className="w-8 h-8 shrink-0" />}
-        <h2 className="text-white text-base font-medium flex-1 min-w-0">{table.name}</h2>
+        <h2 className="text-white text-base font-medium flex-1 min-w-0">{nameOf(table.api, table.name)}</h2>
         {table.stage && <Badge>{t('tft.tables.stage')} {table.stage}</Badge>}
         <Badge>{t('tft.tables.patch')} {table.patch}</Badge>
         <svg
@@ -205,10 +219,10 @@ function LootBody({ table, t }: { table: LootTable; t: T }) {
   );
 }
 
-function subLabel(sub: LootSub, t: T): string | null {
+function subLabel(sub: LootSub, t: T, nameOf: Namer): string | null {
   const l = sub.label;
   if (!l) return null;
-  if (l.t === 'booster') return `${l.name} · ${t('tft.tables.stage')} ${l.stage}`;
+  if (l.t === 'booster') return `${nameOf(l.api, l.name)} · ${t('tft.tables.stage')} ${l.stage}`;
   if (l.t === 'stage') return `${t('tft.tables.stage')} ${l.n}`;
   return `${l.essence} ${t('tft.tables.essence')}`;
 }
@@ -216,7 +230,8 @@ function subLabel(sub: LootSub, t: T): string | null {
 function SubTable({ sub, t, extra, labels = true, left: leftOverride, compact = false, aligned = false }: {
   sub: LootSub; t: T; extra?: React.ReactNode; labels?: boolean; left?: string | null; compact?: boolean; aligned?: boolean;
 }) {
-  const label = subLabel(sub, t);
+  const nameOf = useContext(NamerContext);
+  const label = subLabel(sub, t, nameOf);
   const left = leftOverride !== undefined ? leftOverride : leftWidth(sub.rows);
   const n = sub.rows.length;
   // aligned: Zeilen haengen per Subgrid am Raster der Karte, damit sie spaltenuebergreifend gleich hoch sind.
@@ -252,6 +267,7 @@ function condText(c: LootCond, t: T): string {
 // Symbole, bei Loot-Tabellen rechts daneben eine kurze Beschriftung.
 // compact (drei schmale Spalten ab lg): Beschriftung klein unter den Symbolen statt daneben.
 function Row({ row, left, labels, compact, t }: { row: LootRow; left: string | null; labels: boolean; compact: boolean; t: T }) {
+  const nameOf = useContext(NamerContext);
   return (
     <div className="flex items-center gap-3 px-2.5 py-2">
       {left && (
@@ -267,7 +283,7 @@ function Row({ row, left, labels, compact, t }: { row: LootRow; left: string | n
           </div>
         )}
         {labels && (
-          <div className={`text-fg-secondary leading-snug min-w-0 text-[12px] ${compact ? 'lg:text-[11px]' : ''}`}>{rowLabel(row.rewards, t)}</div>
+          <div className={`text-fg-secondary leading-snug min-w-0 text-[12px] ${compact ? 'lg:text-[11px]' : ''}`}>{rowLabel(row.rewards, t, nameOf)}</div>
         )}
       </div>
     </div>
@@ -279,7 +295,7 @@ const hasTile = (r: LootReward) => r.k === 'specialEgg' || r.k === 'unknown' || 
 
 // Kurze Beschriftung wie bei LBB: gleiche Belohnungen zusammengezaehlt,
 // zufaellige Einheiten nur mit Kosten („3× 1-Kosten").
-function rowLabel(rewards: LootReward[], t: T): string {
+function rowLabel(rewards: LootReward[], t: T, nameOf: Namer): string {
   const groups = new Map<string, LootReward>();
   rewards.forEach((r, i) => {
     const key = r.k === 'specialEgg' ? `egg${i}` : [r.k, r.cost, r.stars, r.api, r.v].join('|');
@@ -289,14 +305,14 @@ function rowLabel(rewards: LootReward[], t: T): string {
   });
   return [...groups.values()].map(r => r.k === 'randomUnit'
     ? withN(r.n, (r.stars && r.stars > 1 ? '★'.repeat(r.stars) + ' ' : '') + fill(t('tft.tables.costShort'), { c: r.cost ?? 1 }))
-    : r.k === 'specialEgg' ? `${rewardText(r, t)}: ${rowLabel(r.contents ?? [], t)}`
-    : rewardText(r, t)).join(' + ');
+    : r.k === 'specialEgg' ? `${rewardText(r, t, nameOf)}: ${rowLabel(r.contents ?? [], t, nameOf)}`
+    : rewardText(r, t, nameOf)).join(' + ');
 }
 
 const withN = (n: number | undefined, s: string) => (n && n > 1 ? `${n}× ${s}` : s);
 
 // Volltext einer Belohnung: Beschriftung neben den Symbolen und Tooltip am Symbol.
-function rewardText(r: LootReward, t: T): string {
+function rewardText(r: LootReward, t: T, nameOf: Namer): string {
   switch (r.k) {
     case 'gold': return `${r.n ?? 1} ${t('tft.tables.gold')}`;
     case 'goldRange': return `${r.v} ${t('tft.tables.gold')}`;
@@ -305,7 +321,7 @@ function rewardText(r: LootReward, t: T): string {
     case 'hp': return fill(t('tft.tables.hp'), { v: r.v ?? '' });
     case 'randomUnit': return withN(r.n, fill(t('tft.tables.randomUnit'), { c: r.cost ?? 1 }));
     case 'champion':
-    case 'item': return withN(r.n, r.name ?? '');
+    case 'item': return withN(r.n, nameOf(r.api, r.name ?? ''));
     case 'specialEgg': return fill(t('tft.tables.specialEgg'), { n: r.turns ?? 0 });
     case 'unknown': return withN(r.n, '?');
     default: return withN(r.n, t(`tft.tables.r.${r.k}` as Parameters<T>[0]));
@@ -321,14 +337,15 @@ const TINT: Partial<Record<LootReward['k'], string>> = {
 const OVERLAY_SHADOW = '0 0 3px rgb(0 0 0), 0 0 2px rgb(0 0 0)';
 
 function RewardTile({ r, t }: { r: LootReward; t: T }) {
+  const nameOf = useContext(NamerContext);
   if (r.k === 'specialEgg') {
     return (
-      <span className="inline-flex flex-wrap items-center gap-1 p-0.5 rounded border" style={{ borderColor: withAlpha(GOLD, 0x99) }} title={rewardText(r, t)}>
+      <span className="inline-flex flex-wrap items-center gap-1 p-0.5 rounded border" style={{ borderColor: withAlpha(GOLD, 0x99) }} title={rewardText(r, t, nameOf)}>
         {(r.contents ?? []).map((x, i) => <RewardTile key={i} r={x} t={t} />)}
       </span>
     );
   }
-  const text = rewardText(r, t);
+  const text = rewardText(r, t, nameOf);
   if (!hasTile(r)) return null;
   const border = r.k === 'champion' ? COST_COLORS[r.cost ?? 1] : r.k === 'item' && /Radiant/.test(r.api ?? '') ? GOLD : null;
   const count = r.k === 'goldRange' ? '×?' : r.n && r.n > 1 ? `×${r.n}` : null;
@@ -362,10 +379,10 @@ function RewardTile({ r, t }: { r: LootReward; t: T }) {
   );
 }
 
-function CovenCard({ coven, t }: { coven: CovenTable; t: T }) {
+function CovenCard({ coven, name, t }: { coven: CovenTable; name: string; t: T }) {
   return (
     <section className="bg-surface-base border border-border-subtle rounded-lg p-4">
-      <CardHead name={coven.name} icon={coven.icon} patch={coven.patch} t={t} />
+      <CardHead name={name} icon={coven.icon} patch={coven.patch} t={t} />
       <div className="overflow-x-auto mb-5">
         <table className="w-full max-w-md text-[12px] tabular-nums">
           <thead>

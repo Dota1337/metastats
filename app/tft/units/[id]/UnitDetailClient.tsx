@@ -8,7 +8,7 @@ import { detailFiltersFrom, detailKey } from '../../../lib/tft-detail-filters';
 import type { UnitDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftTraitDisplayName, tftTraitLabelByName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { dataEndOf, unitListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
 import { loadUnitInfo, type UnitInfoFile } from '../../../lib/tft-unit-info';
@@ -47,7 +47,7 @@ type CompsState = { rows: CompApiRow[]; dataEnd: string | null };
 // Adresse — Kernzahlen und Comp-Zeilen jeweils mit der Antwort, die die API
 // gaebe, oder null (dann fragt die Seite selbst). `info`: Faehigkeit + Werte.
 export default function TftUnitDetailPage({ initial, info: initialInfo }: { initial: UnitDetailInitial | null; info: UnitInfoFile | null }) {
-  const { t, withLang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const id = decodeURIComponent(String(params?.id || ''));
@@ -130,7 +130,7 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
   }, [bucket, id, region, days]);
 
   const champ = assets?.champions[id];
-  const unitName = champ?.name || prettyChar(id);
+  const unitName = tftLabel(champ, lang) || prettyChar(id);
   // Comps wie im Comps-Reiter: dieselben Familien, nur die mit dieser Unit im Brett.
   const families = useMemo(() => (comps ? unitListFamilies(comps.rows, assets, id) : []), [comps, assets, id]);
   const splash = tftIconUrl(assets, champ?.icon);
@@ -178,7 +178,7 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
                             className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-surface-raised/80 border border-border-subtle text-[12px] text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors"
                           >
                             {icon && <img src={icon} alt="" className="w-4 h-4" />}
-                            {tftTraitDisplayName(assets, tr) || prettyChar(tr)}
+                            {tftTraitLabelByName(assets, tftTraitDisplayName(assets, tr, lang) || prettyChar(tr), lang)}
                           </a>
                         );
                       })}

@@ -1,6 +1,6 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, findItem, formatTftDesc } from '../../lib/tft-cdragon';
+import { tftIconUrl, findItem, formatTftDesc, tftLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
@@ -205,7 +205,7 @@ export function GuideTraitAugments({
 /** Carousel-Picks der ersten Runde ohne eigene Box — welche Komponenten zu
     dieser Comp fuehren. Steht in der Bauteil-Box der Detailseite. */
 export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   if (guide.carousel.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-3">
@@ -217,10 +217,10 @@ export function GuideCarouselPicks({ guide, assets }: { guide: CompGuideData; as
             key={`${pick.item}-${i}`}
             href={withLang(`/tft/items/${encodeURIComponent(pick.item)}`)}
             className="flex flex-col items-center w-10 hover:scale-105 transition"
-            title={meta?.name || pick.item}
+            title={tftLabel(meta, lang) || pick.item}
           >
             <div className="w-8 h-8 rounded bg-surface-sunken border border-border-subtle overflow-hidden">
-              {iconUrl && <img src={iconUrl} alt={meta?.name || pick.item} className="w-full h-full object-cover" />}
+              {iconUrl && <img src={iconUrl} alt={tftLabel(meta, lang) || pick.item} className="w-full h-full object-cover" />}
             </div>
             {typeof pick.avg === 'number' && (
               <div className="text-fg-muted text-[11px] mt-0.5">{pick.avg.toFixed(2)}</div>

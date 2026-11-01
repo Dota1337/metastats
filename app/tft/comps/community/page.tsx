@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { costColor, starColor } from '../../../lib/tft-ui';
 import { toStarLevel, type BoardPlacement } from '../../../lib/tft-public-comps';
 import { boardTraitCounts } from '../../../lib/tft-builder-items';
@@ -111,10 +111,10 @@ export default function TftCommunityGalleryPage() {
                   {carryUrl && c.carryUnit && (
                     <a
                       href={withLang(`/tft/units/${encodeURIComponent(c.carryUnit)}`)}
-                      title={carry?.name || c.carryUnit}
+                      title={tftLabel(carry, lang) || c.carryUnit}
                       className="flex-shrink-0 hover:scale-105 transition-transform"
                     >
-                      <img src={carryUrl} alt={carry?.name || ''} className="w-10 h-10 rounded border border-[#c39bff]/60" />
+                      <img src={carryUrl} alt={tftLabel(carry, lang) || ''} className="w-10 h-10 rounded border border-[#c39bff]/60" />
                     </a>
                   )}
                   <div className="flex-1 min-w-0">
@@ -146,7 +146,7 @@ export default function TftCommunityGalleryPage() {
                     // Eintraege von vor dem 18.10.2026 haben kein Stern-Level (1★).
                     const isPlant = isElderwoodPlant(p.characterId);
                     const star = toStarLevel(isPlant ? plantStarLevel : p.star);
-                    const unitName = (isPlant && plantName(p.characterId, lang)) || ch?.name || p.characterId;
+                    const unitName = (isPlant && plantName(p.characterId, lang)) || tftLabel(ch, lang) || p.characterId;
                     // Same nested-<a> fix as CompRow/CompCard: outer was an <a>
                     // for the unit, inner <a>s for items — invalid HTML. Outer
                     // is now a div with link semantics; inner item anchors
@@ -196,7 +196,7 @@ export default function TftCommunityGalleryPage() {
                             {p.items.slice(0, 3).map((it, j) => {
                               const item = assets?.items[it];
                               const iurl = tftIconUrl(assets, item?.icon);
-                              const itemName = item?.name || it;
+                              const itemName = tftLabel(item, lang) || it;
                               return iurl ? (
                                 <a
                                   key={j}

@@ -1,17 +1,22 @@
 import {
-  tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitDisplayName, tftTraitIdPrefix,
+  tftChampionTileUrl, tftIconUrl, tftLabel, tftPlayableChampions, tftTraitDisplayName, tftTraitIdPrefix,
   type TftAssetsBundle,
 } from '../../../lib/tft-cdragon';
 import { itemBucketOf, type ItemBucket } from '../../../lib/tft-item-bucket';
+import type { Lang } from '../../../lib/lang-path';
 
 // Auswahllisten und Anzeigenamen des Data Explorers, aus dem Asset-Bundle
 // abgeleitet (dieselben Regeln wie die Unit-/Item-/Trait-Seiten).
+//
+// `name` ist immer Englisch und nur fuer Logik da (Emblem-Regel, Dubletten,
+// Lux-Formen, Item-Kuerzel). Angezeigt und sortiert wird `label`.
 
-export interface UnitOption { id: string; name: string; cost: number; img: string | null; traits: string[] }
-export interface ItemOption { id: string; name: string; bucket: ItemBucket; img: string | null }
-export interface TraitOption { id: string; name: string; img: string | null; mins: number[] }
+export interface UnitOption { id: string; name: string; label: string; cost: number; img: string | null; traits: string[] }
+export interface ItemOption { id: string; name: string; label: string; bucket: ItemBucket; img: string | null }
+export interface TraitOption { id: string; name: string; label: string; img: string | null; mins: number[] }
 
 export interface ExplorerOptions {
+  lang: Lang;
   units: UnitOption[];
   items: ItemOption[];
   traits: TraitOption[];
@@ -24,10 +29,11 @@ export interface ExplorerOptions {
 const JUNK_NAME = /^@|^tft_item_name_|@[A-Za-z]+@/i;
 const BUCKET_ORDER: ItemBucket[] = ['standard', 'emblem', 'artifact', 'radiant', 'other'];
 
-export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOptions {
+export function buildExplorerOptions(assets: TftAssetsBundle | null, lang: Lang = 'en'): ExplorerOptions {
+  // Sprache ausdruecklich: ohne sie sortieren Server und Browser verschieden.
   const units: UnitOption[] = tftPlayableChampions(assets).map(({ id, champion }) => ({
-    id, name: champion.name, cost: champion.cost, img: tftChampionTileUrl(assets, champion), traits: champion.traits ?? [],
-  }));
+    id, name: champion.name, label: tftLabel(champion, lang), cost: champion.cost, img: tftChampionTileUrl(assets, champion), traits: champion.traits ?? [],
+  })).sort((a, b) => a.cost - b.cost || a.label.localeCompare(b.label, lang));
 
   const items: ItemOption[] = [];
   if (assets) {
@@ -37,10 +43,14 @@ export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOp
       const bucket = itemBucketOf(id, assets);
       // Komponenten (keine Rezeptur) sind kein fertiges Item.
       if (bucket === 'other' && !(meta.composition?.length)) continue;
-      items.push({ id, name: meta.name, bucket, img: tftIconUrl(assets, meta.icon) });
+      items.push({ id, name: meta.name, label: tftLabel(meta, lang), bucket, img: tftIconUrl(assets, meta.icon) });
     }
-    items.sort((a, b) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket) || a.name.localeCompare(b.name));
+    // Erst nach dem englischen Namen, dann erst Dubletten raus: sonst bliebe je
+    // Sprache eine andere Kennung stehen und Teilen-Links liefen auseinander.
+    const byBucket = (a: ItemOption, b: ItemOption) => BUCKET_ORDER.indexOf(a.bucket) - BUCKET_ORDER.indexOf(b.bucket);
+    items.sort((a, b) => byBucket(a, b) || a.name.localeCompare(b.name, 'en'));
     dedupeItems(items, Number(assets.set) || 0);
+    items.sort((a, b) => byBucket(a, b) || a.label.localeCompare(b.label, lang));
   }
 
   const traits: TraitOption[] = [];
@@ -49,15 +59,15 @@ export function buildExplorerOptions(assets: TftAssetsBundle | null): ExplorerOp
     for (const [id, meta] of Object.entries(assets.traits)) {
       if (!meta?.name || (prefix && !id.startsWith(prefix))) continue;
       traits.push({
-        id, name: tftTraitDisplayName(assets, id), img: tftIconUrl(assets, meta.icon),
+        id, name: tftTraitDisplayName(assets, id), label: tftTraitDisplayName(assets, id, lang), img: tftIconUrl(assets, meta.icon),
         mins: (meta.tiers || []).map(x => Number(x.minUnits)).filter(Number.isFinite),
       });
     }
-    traits.sort((a, b) => a.name.localeCompare(b.name));
+    traits.sort((a, b) => a.label.localeCompare(b.label, lang));
   }
 
   return {
-    units, items, traits,
+    lang, units, items, traits,
     unitById: new Map(units.map(u => [u.id, u])),
     itemById: new Map(items.map(i => [i.id, i])),
     traitById: new Map(traits.map(t => [t.id, t])),
@@ -108,13 +118,13 @@ function dedupeItems(items: ItemOption[], set: number): void {
 // Namen auch fuer Kennungen, die nicht in den Auswahllisten stehen
 // (z. B. Items aus einem aelteren Patch).
 export function unitName(o: ExplorerOptions, assets: TftAssetsBundle | null, id: string): string {
-  return o.unitById.get(id)?.name || assets?.champions[id]?.name || id;
+  return o.unitById.get(id)?.label || tftLabel(assets?.champions[id], o.lang) || id;
 }
 export function itemName(o: ExplorerOptions, assets: TftAssetsBundle | null, id: string): string {
-  return o.itemById.get(id)?.name || assets?.items[id]?.name || id;
+  return o.itemById.get(id)?.label || tftLabel(assets?.items[id], o.lang) || id;
 }
 export function traitName(o: ExplorerOptions, assets: TftAssetsBundle | null, id: string): string {
-  return o.traitById.get(id)?.name || (assets ? tftTraitDisplayName(assets, id) : id);
+  return o.traitById.get(id)?.label || (assets ? tftTraitDisplayName(assets, id, o.lang) : id);
 }
 export function unitImg(o: ExplorerOptions, assets: TftAssetsBundle | null, id: string): string | null {
   return o.unitById.get(id)?.img ?? (assets ? tftChampionTileUrl(assets, assets.champions[id]) : null);

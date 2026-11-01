@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { findChampion, traitTierLabel } from '../../lib/tft-cdragon';
+import { findChampion, tftLabel, traitTierLabel } from '../../lib/tft-cdragon';
+import type { Lang } from '../../lib/lang-path';
 import { useI18n } from '../../lib/i18n';
 import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from '../../lib/tft-cluster';
 import { compPath } from '../../lib/tft-comp-path';
@@ -63,23 +64,24 @@ function variantLabel(
   v: { clusterKey: string; carryStar: number; augmentSlug: string | null; secondary: string | null; partKey?: string },
   t: (key: any) => string,
   assets: TftAssetsBundle | null,
+  lang: Lang,
   withCarry = false,
 ): string {
   // Teil-Comp einer zusammengelegten Comp: ihr Carry reicht als Name.
   const partCarry = v.partKey ? parseFamilyKey(v.partKey)?.carry : null;
-  if (partCarry) return findChampion(assets, partCarry)?.name || prettyChar(partCarry);
+  if (partCarry) return tftLabel(findChampion(assets, partCarry), lang) || prettyChar(partCarry);
   const parts: string[] = [];
   const cluster = parseClusterKey(v.clusterKey);
   // Zusammengelegte Zwei-Carry-Familien (Soraka + Zyra): ohne den Carry
   // staende zweimal „Lvl 7" nebeneinander.
   if (withCarry && cluster?.carry) {
-    parts.push(findChampion(assets, cluster.carry)?.name || prettyChar(cluster.carry));
+    parts.push(tftLabel(findChampion(assets, cluster.carry), lang) || prettyChar(cluster.carry));
   }
   // Level-Suffix damit Buttons in der C-Konsolidierungs-Sicht differenzierbar
   // sind (architect F7 2026-06-21: ohne Level wären alle 4 Buttons „Base").
   // Seit 18.10.2026 als Unit-Zahl („7 Riftbeast“), die Stufe nur als Rueckfall.
   if (cluster && cluster.level > 0) {
-    parts.push(traitTierLabel(t('tft.trait.breakpoint') as string, assets, cluster.trait, cluster.level)
+    parts.push(traitTierLabel(t('tft.trait.breakpoint') as string, assets, cluster.trait, cluster.level, lang)
       ?? (t('tft.comp.variant.level') as string).replace('{n}', String(cluster.level)));
   }
   if (v.carryStar === 3) parts.push(t('tft.comp.variant.reroll3'));
@@ -88,7 +90,7 @@ function variantLabel(
   if (v.augmentSlug && v.augmentSlug !== 'TwoTanky') parts.push(`~${v.augmentSlug}`);
   if (v.secondary) {
     const ch = findChampion(assets, v.secondary);
-    const name = ch?.name || prettyChar(v.secondary);
+    const name = tftLabel(ch, lang) || prettyChar(v.secondary);
     parts.push((t('tft.comp.variant.with') as string).replace('{name}', name));
   }
   if (parts.length === 0) return t('tft.comp.variant.base') as string;
@@ -134,7 +136,7 @@ export default function VariantsSwitcher({
   // Perfekt-Werte (variants-Route, klassische Sicht) bleiben bei allen Spielen.
   perfectMode?: boolean;
 }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const router = useRouter();
   const [data, setData] = useState<VariantsResponse | null>(null);
   // C-Konsolidierung (User-Entscheid 2026-06-21): compTraitFamilyKey statt
@@ -289,7 +291,7 @@ export default function VariantsSwitcher({
         </button>
         {variants.map(v => {
           const isActive = isActiveVariant(v);
-          const label = variantLabel(v, t, assets, multiFamily);
+          const label = variantLabel(v, t, assets, lang, multiFamily);
           const p = perfectMode && v.perfect !== undefined ? perfectStats(v.perfect) : null;
           const avgText = p ? (p.avgPlacement != null ? p.avgPlacement.toFixed(2) : '—') : v.avgPlacement.toFixed(2);
           const gamesShown = p ? p.games : v.games;

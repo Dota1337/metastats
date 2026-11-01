@@ -28,7 +28,7 @@ import { findArbiterOptions, findTraitItemPool } from '../tft-trait-desc';
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
-import { subsetBundle } from './initial-data';
+import { assetsForVisitor, subsetBundle } from './initial-data';
 import { dataEndOf, familyRowsFor, leanCompRow, unitListFamilies, type CompApiRow } from '../tft-comp-families';
 
 const BUDGET_MS = 1500;
@@ -159,12 +159,12 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
     key: detailKey(id, f),
     detail,
     comps,
-    assets: subsetBundle(bundle, {
+    assets: await assetsForVisitor(subsetBundle(bundle, {
       champions, items, traitIds,
       // Die Kopfzeile nennt die Traits ueber den Anzeigenamen (champion.traits).
       traitNames: bundle.champions?.[id]?.traits || [],
       withAbility: false,
-    }),
+    })),
   };
 }
 
@@ -236,7 +236,7 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
     key: detailKey(id, f),
     detail,
     comps,
-    assets: subsetBundle(bundle, { champions, items, traitIds, withAbility: false, activeItems: true }),
+    assets: await assetsForVisitor(subsetBundle(bundle, { champions, items, traitIds, withAbility: false, activeItems: true })),
   };
 }
 
@@ -301,6 +301,6 @@ export async function traitDetailStart(param: string, sp: URLSearchParams): Prom
     key: detailKey(param, f),
     traits, units, comps,
     // Alle Kennungen des Anzeigenamens (Kopfzeile, Varianten, Stufen).
-    assets: subsetBundle(bundle, { champions, traitNames: [display], traitIds: ids, items, withAbility: false }),
+    assets: await assetsForVisitor(subsetBundle(bundle, { champions, traitNames: [display], traitIds: ids, items, withAbility: false })),
   };
 }

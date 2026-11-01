@@ -18,7 +18,7 @@ import { compDefiningAugmentApiNameFromSlug } from '../tft-comp-defining-augment
 import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
-import { subsetBundle } from './initial-data';
+import { assetsForVisitor, subsetBundle } from './initial-data';
 import { deadline, resolveFor } from './detail-data';
 
 // Groessere Staende nicht ins HTML: gemessen 15.10.2026 78–112 KB je Stand,
@@ -109,5 +109,5 @@ export async function compDetailStart(routeKey: string, sp: URLSearchParams): Pr
   if (!hit || !(hit.blobBytes <= MAX_BLOB_BYTES)) return null;
   const detail = hit.payload as CompDetailInitial['detail'] | null;
   if (!detail?.hasData || !detail.comp) return null;
-  return { key: compDetailKey(slug, f, 'family'), detail, assets: compAssets(bundle, detail) };
+  return { key: compDetailKey(slug, f, 'family'), detail, assets: await assetsForVisitor(compAssets(bundle, detail)) };
 }

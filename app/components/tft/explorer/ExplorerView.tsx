@@ -10,14 +10,14 @@ import ExplorerSummary, { ExplorerSummarySkeleton } from './ExplorerSummary';
 import ExplorerResults from './ExplorerResults';
 
 export default function ExplorerView() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
   useEffect(() => {
     let alive = true;
     loadTftAssets().then(a => { if (alive) setAssets(a); });
     return () => { alive = false; };
   }, []);
-  const options = useMemo(() => buildExplorerOptions(assets), [assets]);
+  const options = useMemo(() => buildExplorerOptions(assets, lang), [assets, lang]);
   const { query, setQuery, backToUnits, data, dataQuery, loading, stale, error, reload } = useTftExplorer();
 
   // Aus den geladenen Daten: sonst taucht die Δ-Zelle beim ersten Filter ueber

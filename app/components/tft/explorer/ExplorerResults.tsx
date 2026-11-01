@@ -315,7 +315,7 @@ export default function ExplorerResults({
             <select value={query.focus ?? ''} onChange={e => setQuery({ ...query, focus: e.target.value || null, combo: 1 })}
               className="bg-surface-page border border-border-subtle rounded text-sm text-fg-primary px-2 py-1 max-w-[12rem]">
               <option value="">{'—'}</option>
-              {options.units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+              {options.units.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
             </select>
           </label>
         )}

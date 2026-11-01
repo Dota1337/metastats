@@ -4,7 +4,7 @@ import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftLabel, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import CoreFlexGroups from './CoreFlexGroups';
 import { CURRENT_SET } from '../../lib/current-set';
@@ -166,8 +166,8 @@ export default function CompRow({
   // Display-Name aus dem zentralen Helper (matched In-Game-Variant aus desc).
   // Plus tooltip-Text damit Mouse-over über den Comp-Header die Trait-
   // Beschreibung dieser Constellation zeigt.
-  const traitDisplay = shownTrait ? tftTraitDisplayName(assets, shownTrait) : traitName;
-  const traitTooltip = shownTrait ? tftTraitDescription(assets, shownTrait) : '';
+  const traitDisplay = shownTrait ? tftTraitDisplayName(assets, shownTrait, lang) : traitName;
+  const traitTooltip = shownTrait ? tftTraitDescription(assets, shownTrait, lang) : '';
 
   // Carries und Tank-Traeger an den Items erkannt (tft-comp-roles), nicht am
   // Cluster-Key — der traegt nur eine Unit und lag bei Zwei-Carry-Comps oft
@@ -205,11 +205,11 @@ export default function CompRow({
   // „(mit X)" nur, wenn X nicht schon im Namen steht.
   const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
-  const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
+  const secondaryName = tftLabel(secondaryChamp, lang) || (secondaryCid ? prettyChar(secondaryCid) : null);
   const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
   const carryCid = named[0] || null;
   const carry = carryCid && assets ? assets.champions[carryCid] : null;
-  const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);
+  const carryNameOf = (cid: string) => tftLabel(assets?.champions[cid], lang) || prettyChar(cid);
   const carryUrl = tftChampionTileUrl(assets, carry);
 
   // Tier nach Ø (tft-tier-letter.ts). Hauptzeile: comp traegt die Familienwerte
@@ -541,9 +541,9 @@ export default function CompRow({
                   onClick={e => e.stopPropagation()}
                   className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform relative shadow-sm focus-visible:ring-2 focus-visible:ring-accent-a60"
                   style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
-                  title={ch?.name || u.characterId}
+                  title={tftLabel(ch, lang) || u.characterId}
                 >
-                  {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                  {url && <img src={url} alt={tftLabel(ch, lang) || ''} className="w-full h-full object-cover" />}
                   {showThreeStar && (
                     <div className="absolute -top-1 -left-1 bg-star3-badge text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
                       3★
@@ -566,9 +566,9 @@ export default function CompRow({
                           href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                           onClick={e => e.stopPropagation()}
                           className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
-                          title={meta?.name || it.apiName}
+                          title={tftLabel(meta, lang) || it.apiName}
                         >
-                          {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                          {iconUrl && <img src={iconUrl} alt={tftLabel(meta, lang) || it.apiName} className="w-full h-full object-cover" />}
                         </a>
                       );
                     })}

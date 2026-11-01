@@ -5,7 +5,8 @@
 // Items schon) — das API-Feld `sets` bleibt. Rechnung in app/lib/tft-comp-outcome.ts — hier nur Anzeige.
 // Wirkung = Ø Platz mit − Ø Platz ohne; negativ ist gut.
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { tftChampionTileUrl, findChampion, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, findChampion, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import type { Lang } from '../../lib/lang-path';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { costColor } from '../../lib/tft-ui';
 import TftItemIcon from './TftItemIcon';
@@ -164,8 +165,8 @@ function MoreToggle({ hidden, open, onToggle, t }: { hidden: number; open: boole
   );
 }
 
-function unitName(assets: TftAssetsBundle | null, cid: string) {
-  return findChampion(assets, cid)?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+function unitName(assets: TftAssetsBundle | null, cid: string, lang: Lang) {
+  return tftLabel(findChampion(assets, cid), lang) || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
 // 10 px wie alle Abzeichen der Detailseite (User 2026-10-18: kleine Schrift groesser).
@@ -209,15 +210,16 @@ function GradeChip({ grade, t }: { grade: ItemGrade; t: T }) {
 }
 
 function UnitTile({ cid, assets, size = 'w-10 h-10' }: { cid: string; assets: TftAssetsBundle | null; size?: string }) {
+  const { lang } = useI18n();
   const ch = findChampion(assets, cid);
   const url = tftChampionTileUrl(assets, ch);
   return (
     <span
       className={`${size} rounded-md border-2 overflow-hidden block flex-shrink-0 bg-surface-overlay`}
       style={{ borderColor: costColor(ch?.cost ?? 1) }}
-      title={ch?.name || cid}
+      title={tftLabel(ch, lang) || cid}
     >
-      {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+      {url && <img src={url} alt={tftLabel(ch, lang) || ''} className="w-full h-full object-cover" />}
     </span>
   );
 }
@@ -254,8 +256,8 @@ export function OutcomePlacement({ outcome, t }: { outcome: CompOutcome; t: T })
 }
 
 function ItemRow({ it, assets, bucket, t, extra = false }: { it: ItemOutcome; assets: TftAssetsBundle | null; bucket: string; t: T; extra?: boolean }) {
-  const { withLang } = useI18n();
-  const name = assets?.items[it.item]?.name || it.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
+  const { withLang, lang } = useI18n();
+  const name = tftLabel(assets?.items[it.item], lang) || it.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
   return (
     <tr className="border-t border-border-subtle" data-fill-row="" data-fill-extra={extra ? '' : undefined}>
       <td className="py-1.5 pr-1 sm:pr-2">
@@ -282,8 +284,8 @@ function ItemRow({ it, assets, bucket, t, extra = false }: { it: ItemOutcome; as
 function EmblemRow({ e, basis, assets, bucket, t }: {
   e: CompEmblem; basis: CompEmblems['basis']; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
-  const { withLang } = useI18n();
-  const name = assets?.items[e.item]?.name || e.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
+  const { withLang, lang } = useI18n();
+  const name = tftLabel(assets?.items[e.item], lang) || e.item.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
   return (
     <tr className="border-t border-border-subtle">
       <td className="py-1.5 pr-1 sm:pr-2">
@@ -296,7 +298,7 @@ function EmblemRow({ e, basis, assets, bucket, t }: {
           </a>
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
             {e.holders.map(h => (
-              <span key={h.characterId} className="flex items-center gap-0.5" title={`${unitName(assets, h.characterId)} ${pct(h.share)}`}>
+              <span key={h.characterId} className="flex items-center gap-0.5" title={`${unitName(assets, h.characterId, lang)} ${pct(h.share)}`}>
                 <UnitTile cid={h.characterId} assets={assets} size="w-5 h-5" />
                 <span className="text-fg-muted text-[11px] tabular-nums">{pct(h.share)}</span>
               </span>
@@ -342,6 +344,7 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
   /** Ganz oben in der Box (Detailseite: der Varianten-Umschalter). */
   header?: ReactNode;
 }) {
+  const { lang } = useI18n();
   // Reihenfolge nach Wichtigkeit in der Comp (User 2026-10-10), innerhalb
   // einer Stufe nach Item-Kopien.
   const rank = (cid: string) => {
@@ -389,14 +392,14 @@ export function OutcomeItems({ outcome, assets, bucket, t, leadUnits = [], itemC
               className={`flex items-center gap-1.5 pl-1 pr-2 py-1 rounded border text-xs transition-colors ${active ? 'border-accent bg-surface-raised text-white' : 'border-border-subtle text-fg-secondary hover:text-white'}`}
             >
               <UnitTile cid={u.characterId} assets={assets} size="w-7 h-7" />
-              <span className="hidden sm:inline">{unitName(assets, u.characterId)}</span>
+              <span className="hidden sm:inline">{unitName(assets, u.characterId, lang)}</span>
             </button>
           );
         })}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2 text-xs tabular-nums">
-        <span className="text-white font-medium">{unitName(assets, unit.characterId)}</span>
+        <span className="text-white font-medium">{unitName(assets, unit.characterId, lang)}</span>
         <span className="text-fg-muted">{unit.games} {t('tft.gamesShort')}</span>
         <span><span className="text-fg-muted">{t('tft.avgPlacement')} </span><span className="text-white">{unit.avgPlacement.toFixed(2)}</span></span>
         {unit.lowData && <LowData t={t} />}
@@ -462,7 +465,7 @@ export function hasUnitEffect(outcome: CompOutcome | null | undefined): boolean 
 export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
   outcome: CompOutcome; assets: TftAssetsBundle | null; bucket: string; t: T;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const [showAll, setShowAll] = useState(false);
   const has = hasUnitEffect(outcome);
   const all = outcome.units
@@ -503,7 +506,7 @@ export function OutcomeUnitEffect({ outcome, assets, bucket, t }: {
                 <td className="py-1.5 pr-2">
                   <a href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)} className="flex items-center gap-2 hover:text-accent">
                     <UnitTile cid={u.characterId} assets={assets} size="w-7 h-7" />
-                    <span className="text-white truncate max-w-[9rem] sm:max-w-none">{unitName(assets, u.characterId)}</span>
+                    <span className="text-white truncate max-w-[9rem] sm:max-w-none">{unitName(assets, u.characterId, lang)}</span>
                     {u.lowData && <LowData t={t} />}
                   </a>
                 </td>
@@ -541,6 +544,7 @@ export interface CompUnitOutcome {
 export function CompEndUnits({ units, assets, bare, t }: {
   units: CompUnitOutcome[] | null | undefined; assets: TftAssetsBundle | null; bare: boolean; t: T;
 }) {
+  const { lang } = useI18n();
   const rows = (units ?? [])
     .filter(u => assets?.champions[u.characterId]?.cost === END_UNIT_COST)
     .sort((a, b) => b.share - a.share)
@@ -555,7 +559,7 @@ export function CompEndUnits({ units, assets, bare, t }: {
           const solid = u.games >= END_UNIT_MIN_GAMES;
           return (
             <div key={u.characterId} className="px-3 py-1.5 rounded border text-xs bg-surface-sunken border-border-subtle text-fg-secondary">
-              <span className="font-medium">{(t('tft.comp.variant.with') as string).replace('{name}', unitName(assets, u.characterId))}</span>
+              <span className="font-medium">{(t('tft.comp.variant.with') as string).replace('{name}', unitName(assets, u.characterId, lang))}</span>
               <span className="ml-2 text-fg-muted tabular-nums">
                 {pct(u.share)} · {solid && u.avgPlacement != null ? u.avgPlacement.toFixed(2) : '—'} · {u.games}
                 {solid && u.top4Rate != null && <> · {t('tft.top4')} {pct(u.top4Rate)}</>}

@@ -7,20 +7,21 @@ import {
 import { EMPTY_QUERY } from '../../../lib/tft-explorer-query.ts';
 
 // Erfundene Kennungen (keine echten Set-Nummern in Tests).
-const units = [
+const labeled = (list) => list.map(x => ({ ...x, label: x.name }));
+const units = labeled([
   { id: 'TFTX_Lux', name: 'Lux', cost: 5, img: null },
   { id: 'TFTX_Jinx', name: 'Jinx', cost: 4, img: null },
   { id: 'TFTX_Vex', name: 'Vex', cost: 3, img: null },
   { id: 'TFTX_MasterYi', name: 'Master Yi', cost: 4, img: null },
   { id: 'TFTX_KogMaw', name: "Kog'Maw", cost: 1, img: null },
-];
-const items = [
+]);
+const items = labeled([
   { id: 'TFTX_Rabadon', name: "Rabadon's Deathcap", bucket: 'standard', img: null },
   { id: 'TFTX_LuxEmblem', name: 'Lux Emblem', bucket: 'emblem', img: null },
-];
-const traits = [{ id: 'TFTX_Juggernaut', name: 'Juggernaut', img: null, mins: [2, 4, 6] }];
+]);
+const traits = labeled([{ id: 'TFTX_Juggernaut', name: 'Juggernaut', img: null, mins: [2, 4, 6] }]);
 const o = {
-  units, items, traits,
+  lang: 'en', units, items, traits,
   unitById: new Map(units.map(u => [u.id, u])),
   itemById: new Map(items.map(i => [i.id, i])),
   traitById: new Map(traits.map(t => [t.id, t])),
@@ -158,19 +159,33 @@ test('canAdd = echter Klick: Hauptliste, Kasten, neuer Kasten, Gesamtgrenze', ()
 });
 
 test('browseUnits: Kosten-Zeilen aus den Daten, Formen mit vorhandener Basis fallen weg', () => {
-  const us = [
+  const us = labeled([
     { id: 'TFTX_Lux', name: 'Lux', cost: 5 }, { id: 'TFTX_LuxCoven', name: 'Lux (Coven)', cost: 5 },
     { id: 'TFTX_Odd', name: 'Odd (Form)', cost: 2 }, { id: 'TFTX_Vex', name: 'Vex', cost: 3 },
     { id: 'TFTX_Ahri', name: 'Ahri', cost: 3 },
-  ];
+  ]);
   assert.deepEqual(browseUnits(us).map(r => r.map(u => u.id)), [['TFTX_Odd'], ['TFTX_Ahri', 'TFTX_Vex'], ['TFTX_Lux']]);
 });
 
+test('Uebersetzte Namen: Suche findet beide, sortiert wird nach dem gezeigten', () => {
+  const loc = { ...o, lang: 'de', items: [{ ...items[0], label: 'Rabadons Todeshaube' }, items[1]] };
+  assert.equal(searchOptions('todeshaube', loc).items[0].id, 'TFTX_Rabadon');
+  assert.equal(searchOptions('deathcap', loc).items[0].id, 'TFTX_Rabadon');
+  assert.equal(bestPick('todeshaube', loc).f.id, 'TFTX_Rabadon');
+  assert.equal(bestPick('deathcap', loc).f.id, 'TFTX_Rabadon');
+  const us = [
+    { id: 'a', name: 'Zed', label: 'Alpha', cost: 1 }, { id: 'b', name: 'Ahri', label: 'Zeta', cost: 1 },
+    { id: 'c', name: 'Lux', label: '럭스', cost: 1 }, { id: 'd', name: 'Lux (Coven)', label: '럭스 (마녀단)', cost: 1 },
+  ];
+  // Reihenfolge nach Anzeige, Lux-Form faellt am englischen Namen weg.
+  assert.deepEqual(browseUnits(us, 'de').map(r => r.map(u => u.id)), [['a', 'b', 'c']]);
+});
+
 test('browseTraits: alphabetisch, Einstufen-Synergien dahinter', () => {
-  const ts = [
+  const ts = labeled([
     { id: 'a', name: 'Zeta', mins: [2, 4] }, { id: 'b', name: 'Alpha', mins: [1] },
     { id: 'c', name: 'Beta', mins: [3, 5] }, { id: 'd', name: 'Eclipse', mins: [] },
-  ];
+  ]);
   assert.deepEqual(browseTraits(ts).map(r => r.map(x => x.name)), [['Beta', 'Zeta'], ['Alpha', 'Eclipse']]);
 });
 

@@ -15,7 +15,8 @@ import { detailCatalogFor } from '../tft-comp-catalog-resolver';
 import { DETAIL_MIN_GAMES } from '../snapshot-matrix';
 import { compTraitCarry } from '../tft-cluster';
 import { computeRoles, componentCheckFromItems, namedCarries, type RoleUnit } from '../tft-comp-roles';
-import { tftTraitDisplayName, type TftAssetsBundle } from '../tft-cdragon';
+import { tftLabel, tftTraitDisplayName, type TftAssetsBundle } from '../tft-cdragon';
+import type { Lang } from '../lang-path';
 import { lolPlayersLookup, tftDirectoryLookup } from '../player-lookup-server';
 import { supabaseAdmin as supabase } from '../supabase';
 import { withTimeout } from './frame';
@@ -44,8 +45,8 @@ function prettyId(id: string): string {
   return id.replace(/^(?:DA_)?(?:TFT\d*_|\d+_)?/i, '').replace(/^DA_?\d*_?/i, '').replace(/_/g, ' ');
 }
 
-function championName(bundle: TftAssetsBundle | null, id: string): string {
-  return bundle?.champions?.[id]?.name || prettyId(id);
+function championName(bundle: TftAssetsBundle | null, id: string, lang: Lang = 'en'): string {
+  return tftLabel(bundle?.champions?.[id], lang) || prettyId(id);
 }
 
 // ---------- Comp ----------
@@ -58,12 +59,12 @@ export interface CompOg {
 }
 
 /** Name ohne Netz: Trait aus dem Slug + Carry aus dem Slug (Cluster- oder
- *  Familien-Kennung). Fuer den Seitentitel. */
-export function compNameFromSlug(slug: string): string | null {
+ *  Familien-Kennung). Fuer den Seitentitel (mit Sprache) und die Vorschaubilder. */
+export function compNameFromSlug(slug: string, lang: Lang = 'en'): string | null {
   const parts = compTraitCarry(slug);
   if (!parts) return null;
   const bundle = tftAssets();
-  return `${tftTraitDisplayName(bundle, parts.trait)} · ${championName(bundle, parts.carry)}`;
+  return `${tftTraitDisplayName(bundle, parts.trait, lang)} · ${championName(bundle, parts.carry, lang)}`;
 }
 
 type SnapUnit = RoleUnit & { characterId: string; gamesWithUnit?: number; star3Games?: number };

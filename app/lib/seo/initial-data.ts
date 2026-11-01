@@ -33,7 +33,8 @@ import { sortUnitsRareLast } from '../tft-list-sort';
 import { parseClusterKey } from '../tft-cluster';
 import { dataEndOf, leanCompRow, shownFamilyRows, type CompApiRow } from '../tft-comp-families';
 import { listPayloadWithCatalog } from '../tft-comp-catalog-resolver';
-import type { TftAssetsBundle } from '../tft-cdragon';
+import { tftAssetsForLang, type TftAssetsBundle } from '../tft-cdragon';
+import { getServerLang } from '../server-lang';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
 
@@ -109,6 +110,8 @@ export function subsetBundle(
     traitNames?: Iterable<string>;
     // Traits nach Kennung (Comps: Familien-Trait aus dem Cluster-Schluessel).
     traitIds?: Iterable<string>;
+    /** Nur Name und Symbol der Synergien mit diesem englischen Namen (Filterlisten). */
+    traitLabels?: Iterable<string>;
     withAbility?: boolean;
     /** active.items mitgeben (auf die enthaltenen Items gekuerzt). */
     activeItems?: boolean;
@@ -138,12 +141,27 @@ export function subsetBundle(
   if (names.size) {
     for (const [id, tr] of Object.entries(bundle.traits || {})) if (names.has(tr.name)) traits[id] = tr;
   }
+  const labels = new Set(pick.traitLabels ?? []);
+  if (labels.size) {
+    for (const [id, tr] of Object.entries(bundle.traits || {})) {
+      if (labels.has(tr.name) && !traits[id]) traits[id] = { name: tr.name, names: tr.names, icon: tr.icon };
+    }
+  }
   return {
     set: bundle.set, setName: bundle.setName, mutator: bundle.mutator, fetchedAt: bundle.fetchedAt,
     iconBase: bundle.iconBase, companionsIconBase: bundle.companionsIconBase,
     champions, traits, items, augments: {},
     ...(pick.activeItems && bundle.active ? { active: { items: (bundle.active.items || []).filter(id => !!items[id]) } } : {}),
   };
+}
+
+/**
+ * Startdaten stehen im HTML, das volle Bundle laedt der Browser danach sowieso:
+ * Namen und Synergie-Texte nur in der Sprache dieser Anfrage. Muss NACH den
+ * Zwischenspeichern laufen, deren Schluessel keine Sprache kennen.
+ */
+export async function assetsForVisitor(bundle: TftAssetsBundle): Promise<TftAssetsBundle> {
+  return tftAssetsForLang(bundle, await getServerLang());
 }
 
 interface EndpointSpec<Row> {
@@ -181,7 +199,7 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
   // Daten-Patch und angezeigter Patch: in der Uebergangszeit weichen sie ab.
   const key = `${spec.endpoint}|${resolved.patch}|${resolved.displayPatch}|${resolved.setNumber}|${filtersDataKey(filters)}`;
   const cached = cacheGet<Row>(key);
-  if (cached) return { filters, data: cached };
+  if (cached) return { filters, data: { ...cached, assets: await assetsForVisitor(cached.assets) } };
 
   const bundle = tftAssets();
   if (!bundle) return { filters, data: null };
@@ -216,7 +234,7 @@ async function loadStart<Row>(spec: EndpointSpec<Row>, sp: URLSearchParams): Pro
     ...(hit?.builtAt ? { version: hit.builtAt } : {}),
   };
   cacheSet(key, value as StatsInitial<unknown>);
-  return { filters, data: value };
+  return { filters, data: { ...value, assets: await assetsForVisitor(value.assets) } };
 }
 
 // ---------- Units ----------
@@ -241,6 +259,8 @@ export function unitsStart<Row extends UnitListRow>(sp: URLSearchParams): Promis
     assets: (bundle, rows) => subsetBundle(bundle, {
       champions: rows.map(r => r.characterId),
       items: rows.flatMap(r => [...(r.topItems || []), ...(r.artifacts || []), ...(r.emblems || [])].map(i => i.item)),
+      // Synergie-Filter der Liste: champion.traits sind englische Namen, keine Kennungen.
+      traitLabels: rows.flatMap(r => bundle.champions?.[r.characterId]?.traits ?? []),
       withAbility: false,
     }),
   }, sp);

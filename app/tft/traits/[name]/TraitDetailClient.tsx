@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, findTrait, traitTierMinUnits, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftLocalTrait, tftTraitDisplayName, tftTraitLabelByName, findTrait, traitTierMinUnits, type TftAssetsBundle, type TftTrait, type TftTraitTier } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { compsOfTrait, detailKey, traitFiltersFrom, traitIdsForParam } from '../../../lib/tft-detail-filters';
 import type { TraitDetailInitial } from '../../../lib/seo/detail-data';
@@ -61,7 +61,7 @@ const TIER_LABEL_KEY = {
 // `initial`: Startdaten der Server-Huelle (page.tsx) — die Zeilen der drei
 // Listen-Abrufe, schon auf diesen Trait gekuerzt, oder null je Block.
 export default function TftTraitDetailPage({ initial }: { initial: TraitDetailInitial | null }) {
-  const { t, withLang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const search = useSearchParams();
   const apiName = decodeURIComponent(String(params?.name || ''));
@@ -167,6 +167,9 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
     ?? rootVariant?.meta as TftTrait | undefined;
   const iconUrl = tftIconUrl(assets, traitMeta?.icon);
   const isArbiter = displayName === 'Arbiter';
+  // Der Pfad kann der englische Name sein („Elderwood“), dann trifft die
+  // Kennungs-Suche nichts: Anzeige zusaetzlich ueber den Namen aufloesen.
+  const shownTraitName = tftTraitLabelByName(assets, tftTraitDisplayName(assets, apiName, lang), lang);
 
   // Join: which units have this trait? CD champions store `traits[]` as an
   // array of display names (not apiNames) — but our traits dict is keyed by
@@ -193,12 +196,12 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5 mt-2">
           <div className="flex items-start gap-4 flex-wrap">
             {iconUrl ? (
-              <img src={iconUrl} alt={tftTraitDisplayName(assets, apiName) || apiName} className="w-16 h-16 rounded-lg border-2 border-accent" />
+              <img src={iconUrl} alt={shownTraitName || apiName} className="w-16 h-16 rounded-lg border-2 border-accent" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
             <div className="flex-1 min-w-0">
-              <h1 className="text-white text-2xl font-medium">{tftTraitDisplayName(assets, apiName) || prettyTrait(apiName)}</h1>
+              <h1 className="text-white text-2xl font-medium">{shownTraitName || prettyTrait(apiName)}</h1>
               {traitMeta?.innate && (
                 <p className="text-[#a892ff] text-xs mt-1">{traitMeta.innate}</p>
               )}
@@ -229,10 +232,13 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
             // (the one without the per-mechanic suffix) which carries the
             // generic blurb without the variant-specific body.
             const headerTrait = isGroup && rootVariant ? rootVariant.meta : traitMeta;
-            const rendered = renderTraitDesc(headerTrait as any);
+            const rendered = renderTraitDesc(headerTrait && tftLocalTrait(headerTrait as any, lang), lang);
             const effectiveApiName = directMeta ? apiName : (rootVariant?.apiName || apiName);
-            const itemPool = findTraitItemPool(effectiveApiName, assets?.items);
-            const referencesRandomItem = rendered.tiers.some(t => /random .* item/i.test(t.text));
+            const itemPool = findTraitItemPool(effectiveApiName, assets?.items)
+              .map(item => ({ ...item, label: tftLabel(assets?.items[item.apiName], lang) || item.name }))
+              .sort((a, b) => a.label.localeCompare(b.label, lang));
+            // Logik am englischen Text; gezeigt wird die Sprache des Besuchers.
+            const referencesRandomItem = renderTraitDesc(headerTrait as any).tiers.some(t => /random .* item/i.test(t.text));
             if (!rendered.generalDesc && rendered.tiers.length === 0) return null;
             return (
               <div className="mt-4 text-sm text-fg-secondary leading-relaxed space-y-2">
@@ -258,7 +264,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                           key={item.apiName}
                           className="inline-block px-2 py-0.5 rounded bg-surface-overlay text-fg-secondary text-xs"
                         >
-                          {item.name}
+                          {item.label}
                         </span>
                       ))}
                     </div>
@@ -281,9 +287,10 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
               {allVariants
                 .filter(v => v.apiName !== rootVariant?.apiName)
                 .map(v => {
-                  const constellation = extractConstellationLabel(v.meta.desc) || v.meta.name;
-                  const cleanedMeta = { ...v.meta, desc: stripStargazerPreamble(v.meta.desc) };
-                  const r = renderTraitDesc(cleanedMeta as any);
+                  const localMeta = tftLocalTrait(v.meta, lang);
+                  const constellation = extractConstellationLabel(v.meta.desc) || localMeta.name;
+                  const cleanedMeta = { ...localMeta, desc: stripStargazerPreamble(localMeta.desc) };
+                  const r = renderTraitDesc(cleanedMeta as any, lang);
                   return (
                     <div key={v.apiName} className="bg-surface-sunken border border-border-subtle rounded p-3">
                       <div className="text-accent text-sm font-semibold mb-2">{constellation}</div>
@@ -483,11 +490,11 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                     className="flex flex-col items-center bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50 transition"
                   >
                     {champUrl ? (
-                      <img src={champUrl} alt={champion!.name} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
+                      <img src={champUrl} alt={tftLabel(champion, lang)} className="w-12 h-12 rounded object-cover border-2" style={{ borderColor: costColor(cost) }} />
                     ) : (
                       <div className="w-12 h-12 rounded bg-surface-overlay" />
                     )}
-                    <div className="text-white text-[11px] mt-1 text-center truncate w-full">{champion?.name || prettyChar(u.characterId)}</div>
+                    <div className="text-white text-[11px] mt-1 text-center truncate w-full">{tftLabel(champion, lang) || prettyChar(u.characterId)}</div>
                     <div className="text-fg-secondary text-[10px]">
                       {u.avgPlacement?.toFixed(2) ?? '—'} {t('tft.avgPlacementShort')}
                     </div>
@@ -515,7 +522,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                 })();
                 const carry = assets ? assets.champions[carryId] : null;
                 const carryUrl = tftChampionTileUrl(assets, carry);
-                const traitName = traitMeta?.name || prettyTrait(traitApi);
+                const traitName = tftLabel(traitMeta, lang) || prettyTrait(traitApi);
                 // „7 Riftbeast“ statt „Riftbeast 3“ (Stufe), Rueckfall wie bisher.
                 const units = traitTierMinUnits(assets, traitApi, Number(levelStr));
                 return (
@@ -533,7 +540,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                           ? (t('tft.trait.breakpoint') as string).replace('{n}', String(units)).replace('{trait}', traitName)
                           : traitName}
                         {variant && <span className="text-[#a892ff]"> · {variant}</span>}
-                        {units == null && <>{' '}{levelStr}</>} · {carry?.name || prettyChar(carryId)}
+                        {units == null && <>{' '}{levelStr}</>} · {tftLabel(carry, lang) || prettyChar(carryId)}
                       </div>
                     </div>
                     <div className="text-right text-xs tabular-nums">

@@ -11,7 +11,7 @@ import StatsFilterBar from '../../../components/tft/StatsFilterBar';
 import TftHero from '../../../components/tft/TftHero';
 import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { tftChampionTileUrl, tftLabel, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
 import { dedupeByCarry, familyCost, visibleFamilies, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
 import type { PatchDeltaPair, PatchDeltaStart } from '../../../lib/tft-patch-delta';
@@ -212,8 +212,8 @@ function AtlasTile({
   const champ = lead ? assets.champions[lead] : null;
   const url = tftChampionTileUrl(assets, champ);
   const ring = costColor(champ?.cost ?? 1);
-  const carryName = (cid: string) => assets.champions[cid]?.name || prettyId(cid);
-  const name = `${tftTraitDisplayName(assets, f.trait)} · ${named.map(carryName).join(' & ')}`;
+  const carryName = (cid: string) => tftLabel(assets.champions[cid], lang) || prettyId(cid);
+  const name = `${tftTraitDisplayName(assets, f.trait, lang)} · ${named.map(carryName).join(' & ')}`;
   const avg = f.weightedAvgPlacement;
   // Pfeil nur mit belastbarem Vergleich (je Patch ≥ PATCH_DELTA_MIN_GAMES Spiele).
   const trend = pair ? f.delta?.deltaAvgPlace ?? null : null;

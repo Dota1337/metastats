@@ -22,6 +22,8 @@
 //       pipeline occasionally ships hashed variable names; the value lives
 //       in the same slot index as the unresolved name in `desc`)
 
+import type { Lang } from './lang-path';
+
 export interface RawTraitMeta {
   name: string;
   apiName?: string;
@@ -59,6 +61,23 @@ const ICON_LABELS: Record<string, string> = {
   // Set 14 amplifier icon reused in Set 17 for the Meeple trait's "Meeps"
   set14AmpIcon: 'Meeps',
 };
+
+// Dieselben Zeichen in den uebersetzten Texten. Woerter wie in Riots eigenen
+// Bauteil-Texten (public/tft-item-texts-18.json, Bauteile wie DA_Component_BFSword).
+// Fehlt ein Zeichen hier, gilt das englische Wort oben.
+const ICON_WORDS: Partial<Record<Lang, Record<string, string>>> = {
+  de: { scaleHealth: 'Leben', scaleAS: 'Angriffstempo', scaleAD: 'Angriffsschaden', scaleAP: 'Fähigkeitsstärke', scaleArmor: 'Rüstung', scaleMR: 'Magieresistenz' },
+  ko: { scaleHealth: '체력', scaleAS: '공격 속도', scaleAD: '공격력', scaleAP: '주문력', scaleArmor: '방어력', scaleMR: '마법 저항력' },
+  zh: { scaleHealth: '生命值', scaleAS: '攻击速度', scaleAD: '物理加成', scaleAP: '法术加成', scaleArmor: '护甲', scaleMR: '魔抗' },
+  es: { scaleHealth: 'vida', scaleAS: 'velocidad de ataque', scaleAD: 'daño de ataque', scaleAP: 'poder de habilidad', scaleArmor: 'armadura', scaleMR: 'resistencia mágica' },
+  fr: { scaleHealth: 'PV', scaleAS: "vitesse d'attaque", scaleAD: "dégâts d'attaque", scaleAP: 'puissance', scaleArmor: 'armure', scaleMR: 'résistance magique' },
+};
+
+function iconLabel(icon: string, lang: Lang): string | undefined {
+  // Schalter aus: der Text ist Englisch, dann auch das Wort.
+  if (process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES === '0') return ICON_LABELS[icon];
+  return ICON_WORDS[lang]?.[icon] ?? ICON_LABELS[icon];
+}
 
 function formatNumber(n: number): string {
   if (!isFinite(n)) return '';
@@ -116,6 +135,7 @@ function substituteVars(
   tier: { minUnits: number; variables?: Record<string, unknown> },
   fullDesc: string,
   traitName?: string,
+  lang: Lang = 'en',
 ): string {
   let out = replaceInlineRefs(text);
   const hashFallback = buildHashFallback(tier, fullDesc);
@@ -155,7 +175,7 @@ function substituteVars(
   out = out.replace(/@([A-Za-z][\w]*)@(\s*)%i:([\w]+)%/g, (_, name, _ws, icon) => {
     const v = lookupVar(name);
     if (v === null) return '';
-    const label = ICON_LABELS[icon];
+    const label = iconLabel(icon, lang);
     return formatNumber(v) + (label ? ` ${label}` : '');
   });
 
@@ -166,7 +186,7 @@ function substituteVars(
   });
 
   // 5. Standalone %i:icon% — try the mapping, else strip
-  out = out.replace(/%i:([\w]+)%/g, (_, icon) => ICON_LABELS[icon] || '');
+  out = out.replace(/%i:([\w]+)%/g, (_, icon) => iconLabel(icon, lang) || '');
 
   // 6. Any leftover @token@ we didn't recognise
   out = out.replace(/@[\w.:]+@/g, '');
@@ -180,7 +200,7 @@ function substituteVars(
   return out;
 }
 
-export function renderTraitDesc(traitMeta: RawTraitMeta | null | undefined): RenderedTraitDesc {
+export function renderTraitDesc(traitMeta: RawTraitMeta | null | undefined, lang: Lang = 'en'): RenderedTraitDesc {
   if (!traitMeta?.desc) return { generalDesc: null, tiers: [] };
   const tiers = traitMeta.tiers || [];
   const raw = traitMeta.desc;
@@ -189,14 +209,14 @@ export function renderTraitDesc(traitMeta: RawTraitMeta | null | undefined): Ren
   const parts = raw.split(/\(@MinUnits@\)/);
   const generalRaw = parts[0]?.trim() ?? '';
   const generalDesc = generalRaw
-    ? substituteVars(generalRaw, tiers[0] || { minUnits: 0, variables: {} }, raw, traitName)
+    ? substituteVars(generalRaw, tiers[0] || { minUnits: 0, variables: {} }, raw, traitName, lang)
     : null;
 
   const tierTexts: TierBreakpoint[] = [];
   for (let i = 0; i < parts.length - 1; i++) {
     const tier = tiers[i];
     if (!tier) continue;
-    const text = substituteVars(parts[i + 1] || '', tier, raw, traitName);
+    const text = substituteVars(parts[i + 1] || '', tier, raw, traitName, lang);
     if (!text) continue;
     tierTexts.push({ minUnits: tier.minUnits, style: tier.style, text });
   }

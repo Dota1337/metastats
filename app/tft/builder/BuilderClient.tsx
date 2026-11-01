@@ -8,7 +8,7 @@ import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftPlayableChampions, tftTraitIdPrefix, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftLabel, tftPlayableChampions, tftTraitIdPrefix, tftTraitLabelByName, formatTftDesc, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { buildPlanAheadCode } from '../../lib/tft-plan-ahead-code';
 import { HEX_CLIP, costColor, starColor as starColorOf } from '../../lib/tft-ui';
 import { isElderwoodPlant, plantAllowance, plantName, plantRules, plantStar, trimPlants, type PlantRules } from '../../lib/tft-elderwood-plants';
@@ -130,6 +130,7 @@ const SNAP_ITEM = 0.8;
 interface ItemEntry {
   id: string;
   name: string;
+  label: string;
   icon: string | null;
   category: ItemTab;
 }
@@ -352,18 +353,18 @@ export default function BuilderClient({ initialAssets }: {
   }, [ownPlacements, oppPlacements, pathname, router]);
 
   const champions = useMemo(() => {
-    if (!assets) return [] as { characterId: string; name: string; cost: number }[];
+    if (!assets) return [] as { characterId: string; name: string; label: string; cost: number }[];
     // Nur spielbare Einheiten des aktuellen Sets. Erkannt an der Form (Kosten
     // 1-5 + mindestens ein Merkmal), nicht am Namensanfang: Set 18 heisst
     // `DA_Amumu18`, ein Filter auf `TFT18_` liess den Picker leer.
     return tftPlayableChampions(assets)
-      .map(({ id, champion }) => ({ characterId: id, name: champion.name, cost: champion.cost ?? 1 }));
-  }, [assets]);
+      .map(({ id, champion }) => ({ characterId: id, name: champion.name, label: tftLabel(champion, lang), cost: champion.cost ?? 1 }));
+  }, [assets, lang]);
 
   const filteredChampions = useMemo(() => {
     return champions.filter(c => {
       if (costFilter != null && c.cost !== costFilter) return false;
-      if (champQuery && !c.name.toLowerCase().includes(champQuery.toLowerCase())) return false;
+      if (champQuery && !c.name.toLowerCase().includes(champQuery.toLowerCase()) && !c.label.toLowerCase().includes(champQuery.toLowerCase())) return false;
       return true;
     });
   }, [champions, costFilter, champQuery]);
@@ -391,7 +392,7 @@ export default function BuilderClient({ initialAssets }: {
       const hasComp = !!(item.composition && item.composition.length === 2);
       const cat = categorizeItem(id, item.name, hasComp, emblemTraitOf(assets, id), itemTeamSize(itemTexts, id) > 0);
       if (!cat) return;
-      out.push({ id, name: item.name, icon: item.icon, category: cat });
+      out.push({ id, name: item.name, label: tftLabel(item, lang), icon: item.icon, category: cat });
     };
     const activeIds = assets.active?.items;
     if (activeIds && activeIds.length > 0) {
@@ -428,13 +429,13 @@ export default function BuilderClient({ initialAssets }: {
     }
     // Tactician-Items hinter die Embleme, sonst nach Name.
     const tail = (e: ItemEntry) => (itemTeamSize(itemTexts, e.id) > 0 ? 1 : 0);
-    return [...byName.values()].sort((a, b) => tail(a) - tail(b) || a.name.localeCompare(b.name));
-  }, [assets, itemTexts]);
+    return [...byName.values()].sort((a, b) => tail(a) - tail(b) || a.label.localeCompare(b.label, lang));
+  }, [assets, itemTexts, lang]);
 
   const filteredItems = useMemo(() => {
     return items.filter(i => {
       if (i.category !== itemTab) return false;
-      if (itemQuery && !i.name.toLowerCase().includes(itemQuery.toLowerCase())) return false;
+      if (itemQuery && !i.name.toLowerCase().includes(itemQuery.toLowerCase()) && !i.label.toLowerCase().includes(itemQuery.toLowerCase())) return false;
       return true;
     });
   }, [items, itemTab, itemQuery]);
@@ -1023,7 +1024,7 @@ export default function BuilderClient({ initialAssets }: {
             const isPlant = !!p && isElderwoodPlant(p.characterId);
             // Feld-Zahlen nur auf leeren Feldern, wie bei MetaTFT.
             const stat = !p && unitStats ? unitStats.cells.get(cell) : undefined;
-            const unitName = p ? (isPlant && plantName(p.characterId, lang)) || champ?.name || p.characterId : '';
+            const unitName = p ? (isPlant && plantName(p.characterId, lang)) || tftLabel(champ, lang) || p.characterId : '';
             // Pflanzen-Stern folgt der Stufe, nicht der Auswahl.
             const star = isPlant ? plantStarLevel : (p?.star ?? 1);
             const borderColor = isSelected || isDropTarget
@@ -1158,7 +1159,7 @@ export default function BuilderClient({ initialAssets }: {
                           <div className="w-6 h-6 rounded bg-surface-overlay" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <div className="text-white text-xs truncate">{tr.name}</div>
+                          <div className="text-white text-xs truncate">{tftTraitLabelByName(assets, tr.name, lang)}</div>
                           <div className="flex items-center gap-0.5 mt-0.5">
                             {tr.tiers.map((tierDef: any, i: number) => (
                               <span
@@ -1316,10 +1317,10 @@ export default function BuilderClient({ initialAssets }: {
                   const url = tftChampionTileUrl(assets, champ);
                   const onBoard = ownPlacements.some(p => p.characterId === c.characterId) || oppPlacements.some(p => p.characterId === c.characterId);
                   const isPicker = pickerChar === c.characterId;
-                  const traits = (champ?.traits || []).join(' · ');
+                  const traits = (champ?.traits || []).map((n: string) => tftTraitLabelByName(assets, n, lang)).join(' · ');
                   const ability = champ?.ability;
                   const tooltip = [
-                    `${c.name} (${c.cost})`,
+                    `${c.label} (${c.cost})`,
                     traits || null,
                     ability?.name ? `\n${ability.name}` : null,
                     formatTftDesc(ability?.desc) || null,
@@ -1338,9 +1339,9 @@ export default function BuilderClient({ initialAssets }: {
                       }}
                       title={tooltip}
                     >
-                      {url && <img src={url} alt={c.name} loading={idx < TILES_EAGER ? undefined : 'lazy'} className="w-full h-full object-cover" />}
+                      {url && <img src={url} alt={c.label} loading={idx < TILES_EAGER ? undefined : 'lazy'} className="w-full h-full object-cover" />}
                       <span className="absolute bottom-0 left-0 right-0 text-[9px] text-center text-white bg-black/60 truncate px-0.5">
-                        {c.name}
+                        {c.label}
                       </span>
                     </button>
                   );
@@ -1366,8 +1367,8 @@ export default function BuilderClient({ initialAssets }: {
                     const url = tftChampionTileUrl(assets, champ);
                     return (
                       <>
-                        {url && <img src={url} alt={champ?.name || ''} className="w-10 h-10 rounded object-cover" style={{ border: `2px solid ${costColor(champ?.cost ?? 1)}` }} />}
-                        <div className="text-white text-sm font-medium">{plantName(selectedPlacement.characterId, lang) || champ?.name || selectedPlacement.characterId}</div>
+                        {url && <img src={url} alt={plantName(selectedPlacement.characterId, lang) || tftLabel(champ, lang) || ''} className="w-10 h-10 rounded object-cover" style={{ border: `2px solid ${costColor(champ?.cost ?? 1)}` }} />}
+                        <div className="text-white text-sm font-medium">{plantName(selectedPlacement.characterId, lang) || tftLabel(champ, lang) || selectedPlacement.characterId}</div>
                       </>
                     );
                   })()}
@@ -1410,10 +1411,10 @@ export default function BuilderClient({ initialAssets }: {
                         key={slotIdx}
                         onClick={() => { if (iid) { removeItemFromSelected(slotIdx); setInfoItem(null); } }}
                         {...(iid ? infoHandlers(iid) : {})}
-                        aria-label={item?.name || undefined}
+                        aria-label={tftLabel(item, lang) || undefined}
                         className={`flex-1 aspect-square rounded border border-border-subtle overflow-hidden bg-surface-sunken hover:border-[#e44040]/60 transition ${lockedEmpty ? 'opacity-40' : ''}`}
                       >
-                        {url && <img src={url} alt={item?.name || ''} className="w-full h-full object-cover" />}
+                        {url && <img src={url} alt={tftLabel(item, lang) || ''} className="w-full h-full object-cover" />}
                       </button>
                     );
                   })}
@@ -1441,7 +1442,7 @@ export default function BuilderClient({ initialAssets }: {
                       const raw = assets?.items[iid];
                       return {
                         id: iid,
-                        name: text?.name || raw?.name || iid,
+                        name: tftLabel(raw, lang) || text?.name || iid,
                         desc: text?.desc || formatTftDesc(raw?.desc),
                         stats: text?.stats || [],
                       };
@@ -1477,16 +1478,16 @@ export default function BuilderClient({ initialAssets }: {
                             onClick={() => setStanceFor(selectedTeam, selectedPlacement.cell, isActive ? null : s)}
                             className="flex-1 aspect-square rounded overflow-hidden transition"
                             style={{ border: `2px solid ${isActive ? '#a892ff' : 'var(--border-subtle)'}` }}
-                            title={stanceItem?.name || s}
+                            title={tftLabel(stanceItem, lang) || s}
                           >
-                            {iurl && <img src={iurl} alt={stanceItem?.name || ''} className="w-full h-full object-cover" />}
+                            {iurl && <img src={iurl} alt={tftLabel(stanceItem, lang) || ''} className="w-full h-full object-cover" />}
                           </button>
                         );
                       })}
                     </div>
                     {selectedPlacement.stance && (
                       <div className="text-[10px] text-[#a892ff] mt-1.5 text-center">
-                        {assets?.items[MF_STANCE_ITEMS[selectedPlacement.stance]]?.name}
+                        {tftLabel(assets?.items[MF_STANCE_ITEMS[selectedPlacement.stance]], lang)}
                       </div>
                     )}
                   </div>
@@ -1529,11 +1530,11 @@ export default function BuilderClient({ initialAssets }: {
                       onClick={e => { addItemToSelected(item.id); showInfoAfterTap(e, item.id); }}
                       {...infoHandlers(item.id)}
                       aria-disabled={blocked ? true : undefined}
-                      aria-label={item.name}
+                      aria-label={item.label}
                       className={`aspect-square rounded overflow-hidden border border-border-subtle hover:border-[#a892ff] transition cursor-grab active:cursor-grabbing ${blocked ? 'opacity-30' : ''}`}
                       style={{ boxShadow: onSelectedUnit ? '0 0 0 2px #a892ff inset' : 'none' }}
                     >
-                      {url && <img src={url} alt={item.name} className="w-full h-full object-cover pointer-events-none" />}
+                      {url && <img src={url} alt={item.label} className="w-full h-full object-cover pointer-events-none" />}
                     </button>
                   );
                 })}
@@ -1564,6 +1565,7 @@ function ItemInfoCard({ id, anchor, assets, text }: {
   assets: TftAssetsBundle | null;
   text: ItemTextView | null;
 }) {
+  const { lang } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   useLayoutEffect(() => {
@@ -1594,7 +1596,7 @@ function ItemInfoCard({ id, anchor, assets, text }: {
     >
       <div className="flex items-center gap-2">
         {icon && <img src={icon} alt="" className="w-7 h-7 rounded" />}
-        <div className="text-white text-xs font-medium">{text?.name || item?.name || id}</div>
+        <div className="text-white text-xs font-medium">{tftLabel(item, lang) || text?.name || id}</div>
       </div>
       {text && text.stats.length > 0 && <ItemStatLine stats={text.stats} className="mt-2 text-[11px]" />}
       {text?.desc && <div className="mt-2 text-[11px] leading-relaxed text-[#cbd5e1] whitespace-pre-line">{text.desc}</div>}

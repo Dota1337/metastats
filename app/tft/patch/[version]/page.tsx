@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { legacyTftBucket } from '../../../lib/rank-groups';
 import { loadPatchNotes, patchNotesFor, patchEntityHref, riotPatchNotesUrl, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
 import {
@@ -212,13 +212,13 @@ export default function TftPatchDetailPage() {
               // comp listing (e.g. "Cyber City 3 · Yi").
               const m = /^(.+)@(\d+)_(.+)$/.exec(key);
               if (!m) return key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
-              const traitName = assets?.traits[m[1]]?.name || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
-              const carryName = assets?.champions[m[3]]?.name || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const traitName = tftLabel(assets?.traits[m[1]], lang) || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const carryName = tftLabel(assets?.champions[m[3]], lang) || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               return `${traitName} · ${carryName}`;
             }
             const base = key.split('@')[0];
             const meta = entity === 'unit' ? assets?.champions[base] : entity === 'item' ? assets?.items[base] : assets?.traits[base];
-            return meta?.name || base.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+            return tftLabel(meta, lang) || base.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
           };
           const top = [...(diff.winners || []).slice(0, 8), ...(diff.losers || []).slice(0, 8)];
           const rows = top
@@ -300,7 +300,7 @@ function DiffColumn({
 }
 
 function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   // Each entity has its own key shape, image source, and target page. The
   // old version routed all non-unit/item entries to /tft/traits/<key>, which
   // broke comp- and trait-rows (comp keys = "trait@level_carry", trait keys
@@ -313,17 +313,17 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const champ = assets?.champions[entry.key];
     const churl = tftChampionTileUrl(assets, champ);
     imageEl = churl
-      ? <img src={churl} alt={champ?.name || ''} className="w-9 h-9 rounded object-cover" />
+      ? <img src={churl} alt={tftLabel(champ, lang) || ''} className="w-9 h-9 rounded object-cover" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = champ?.name || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+    displayName = tftLabel(champ, lang) || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
     href = `/tft/units/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'item') {
     const item = assets?.items[entry.key];
     const iurl = tftIconUrl(assets, item?.icon);
     imageEl = iurl
-      ? <img src={iurl} alt={item?.name || ''} className="w-9 h-9 rounded" />
+      ? <img src={iurl} alt={tftLabel(item, lang) || ''} className="w-9 h-9 rounded" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = item?.name || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
+    displayName = tftLabel(item, lang) || entry.key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
     href = `/tft/items/${encodeURIComponent(entry.key)}`;
   } else if (entity === 'comp') {
     const m = /^(.+)@(\d+)_(.+)$/.exec(entry.key);
@@ -331,10 +331,10 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const carry = m && assets ? assets.champions[m[3]] : null;
     const churl = tftChampionTileUrl(assets, carry);
     imageEl = churl
-      ? <img src={churl} alt={carry?.name || ''} className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover" />
+      ? <img src={churl} alt={tftLabel(carry, lang) || ''} className="w-9 h-9 rounded border border-[#c39bff]/60 object-cover" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = m
-      ? `${trait?.name || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} · ${carry?.name || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}`
+      ? `${tftLabel(trait, lang) || m[1].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')} · ${tftLabel(carry, lang) || m[3].replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}`
       : entry.key;
     href = compPath(entry.key);
   } else {
@@ -342,9 +342,9 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
     const trait = assets?.traits[traitId];
     const turl = tftIconUrl(assets, trait?.icon);
     imageEl = turl
-      ? <img src={turl} alt={trait?.name || ''} className="w-9 h-9 rounded" />
+      ? <img src={turl} alt={tftLabel(trait, lang) || ''} className="w-9 h-9 rounded" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
-    displayName = `${trait?.name || traitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}${activation ? ` (${activation})` : ''}`;
+    displayName = `${tftLabel(trait, lang) || traitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}${activation ? ` (${activation})` : ''}`;
     href = `/tft/traits/${encodeURIComponent(traitId)}`;
   }
 

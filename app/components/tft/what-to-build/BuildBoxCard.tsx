@@ -14,7 +14,7 @@ import {
 } from '../../../lib/tft-what-to-build';
 import { OptIcon } from '../explorer/ExplorerSearchBox';
 import { browseTraits, PICK_KINDS } from '../explorer/explorer-search';
-import { fmtAvg, itemFitsUnit, type ExplorerOptions } from '../explorer/explorer-options';
+import { fmtAvg, itemFitsUnit, itemName, type ExplorerOptions } from '../explorer/explorer-options';
 import type { QueryResult } from './useBuildExplorer';
 
 const KIND_LABEL: Record<BuildKind, TranslationKey> = {
@@ -56,7 +56,7 @@ export default function BuildBoxCard({
   const { t, lang } = useI18n();
   const num = (v: number) => v.toLocaleString(lang === 'de' ? 'de-DE' : lang);
   const unit = options.unitById.get(box.unit);
-  const itemLabel = (id: string) => options.itemById.get(id)?.name ?? assets?.items[id]?.name ?? id;
+  const itemLabel = (id: string) => itemName(options, assets, id);
   const itemImg = (id: string) => options.itemById.get(id)?.img ?? null;
 
   // Beim Filterwechsel bleiben die alten Zahlen gedimmt stehen.
@@ -71,6 +71,7 @@ export default function BuildBoxCard({
     known: id => options.itemById.has(id),
     fits: (id, carried) => itemFitsUnit(options, box.unit, id, carried),
     allItems: options.items,
+    lang: options.lang,
     rules,
   }), [shown, box, kindOf, options, rules]);
   const rows = allRows.filter(r => r.kind === box.kind);
@@ -79,9 +80,9 @@ export default function BuildBoxCard({
   const traits = useMemo(() => {
     const own = new Set(unit?.traits ?? []);
     // Stufe 2 muss mehr als eine Unit bedeuten (Rival: 1/1/2), sonst filtert sie nichts Sinnvolles.
-    const list = (browseTraits(options.traits)[0] ?? []).filter(x => x.mins.length < 2 || x.mins[1] > 1);
+    const list = (browseTraits(options.traits, options.lang)[0] ?? []).filter(x => x.mins.length < 2 || x.mins[1] > 1);
     return [...list.filter(x => own.has(x.name)), ...list.filter(x => !own.has(x.name))];
-  }, [options.traits, unit]);
+  }, [options.traits, options.lang, unit]);
 
   const set = (patch: Partial<BuildBox>) => onChange(b => normalizeBox({ ...b, ...patch }));
   const fix = (r: BoxRow) => {
@@ -127,7 +128,7 @@ export default function BuildBoxCard({
     const [win, lose] = v.winner === 0 ? [ka, kb] : [kb, ka];
     return t('tft.build.better').replace('{a}', name(win)).replace('{b}', name(lose)).replace('{d}', v.diff.toFixed(2));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [box, allRows, split, shown, t]);
+  }, [box, allRows, split, shown, t, options]);
 
   const activeStar: 'all' | number = star ?? 'all';
   const err = items?.error;
@@ -135,8 +136,8 @@ export default function BuildBoxCard({
   return (
     <section className="@container rounded-xl border border-border-subtle bg-surface-base p-3 flex flex-col gap-2 min-w-0">
       <div className="flex items-center gap-2">
-        <OptIcon src={unit?.img ?? null} alt={unit?.name ?? box.unit} className="w-9 h-9" border={costColor(unit?.cost ?? 1)} />
-        <h2 className="text-sm font-medium text-fg-bright truncate min-w-0">{unit?.name ?? box.unit}</h2>
+        <OptIcon src={unit?.img ?? null} alt={unit?.label ?? box.unit} className="w-9 h-9" border={costColor(unit?.cost ?? 1)} />
+        <h2 className="text-sm font-medium text-fg-bright truncate min-w-0">{unit?.label ?? box.unit}</h2>
         <button type="button" onClick={onRemove} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
           className="w-6 h-6 shrink-0 rounded text-fg-muted hover:text-fg-primary hover:bg-surface-overlay">×</button>
         {shown && <span className="ml-auto text-[11px] text-fg-muted tabular-nums shrink-0">{num(shown.summary.games)} {t('tft.games')}</span>}
@@ -155,7 +156,7 @@ export default function BuildBoxCard({
           onChange={e => set({ trait: e.target.value || null })}
           className="min-w-0 max-w-[10rem] bg-surface-raised rounded px-1.5 py-0.5 text-[11px] text-fg-primary border border-border-subtle focus:outline-none focus:border-accent-a60">
           <option value="">{t('tft.build.allTraits')}</option>
-          {traits.map(x => <option key={x.id} value={x.id}>{x.mins.length >= 2 ? `${x.mins[1]} ` : ''}{x.name}</option>)}
+          {traits.map(x => <option key={x.id} value={x.id}>{x.mins.length >= 2 ? `${x.mins[1]} ` : ''}{x.label}</option>)}
         </select>
       </div>
 

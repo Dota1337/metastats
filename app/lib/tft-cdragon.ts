@@ -13,11 +13,68 @@
 import { renderTraitDesc } from './tft-trait-desc';
 import { CDRAGON_GAME_BASE } from './cdragon-base';
 import { formatTftDesc } from './tft-desc-format';
+import type { Lang } from './lang-path';
 
 export { formatTftDesc };
 
+// Name je Sprache (scripts/lib/tft-localized-names.mjs). Fehlt, wo er dem
+// englischen gleicht oder nicht ausgeliefert wird: `tftLabel` faellt auf `name`.
+export type LocalizedNames = Partial<Record<Lang, string>>;
+
+/**
+ * Anzeigename eines Items, einer Unit oder einer Synergie in der Sprache des
+ * Besuchers. `name` bleibt Englisch und ist nur fuer Logik da (Emblem-Regel,
+ * Synergien einer Unit, Adressen) — jede ANZEIGE geht hier durch. Verhaelt sich
+ * bei fehlendem Eintrag wie `eintrag?.name`.
+ */
+export function tftLabel(entry: { name: string; names?: LocalizedNames }, lang: Lang): string;
+export function tftLabel(entry: { name: string; names?: LocalizedNames } | null | undefined, lang: Lang): string | undefined;
+export function tftLabel(entry: { name: string; names?: LocalizedNames } | null | undefined, lang: Lang): string | undefined {
+  if (!entry) return undefined;
+  if (lang === 'en' || process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES === '0') return entry.name;
+  return entry.names?.[lang] || entry.name;
+}
+
+/** Synergie-Text in der Sprache des Besuchers, sonst der englische. */
+export function tftTraitDescText(trait: { desc?: string; descs?: LocalizedNames } | null | undefined, lang: Lang): string | undefined {
+  if (!trait) return undefined;
+  if (lang === 'en' || process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES === '0') return trait.desc;
+  return trait.descs?.[lang] || trait.desc;
+}
+
+const traitByNameCache = new WeakMap<object, Map<string, { name: string; names?: LocalizedNames }>>();
+
+/**
+ * Anzeigename einer Synergie, von der nur der englische Name bekannt ist
+ * (`champion.traits` fuehrt Namen, keine Kennungen). Unbekannt: der Name selbst.
+ */
+export function tftTraitLabelByName(
+  bundle: { traits?: Record<string, { name: string; names?: LocalizedNames }> } | null | undefined,
+  name: string,
+  lang: Lang,
+): string {
+  if (!bundle?.traits) return name;
+  let byName = traitByNameCache.get(bundle);
+  if (!byName) {
+    byName = new Map();
+    for (const t of Object.values(bundle.traits)) if (t?.name && !byName.has(t.name)) byName.set(t.name, t);
+    traitByNameCache.set(bundle, byName);
+  }
+  return tftLabel(byName.get(name), lang) || name;
+}
+
+/**
+ * Synergie fuer die ANZEIGE ueber renderTraitDesc: Name und Text in der Sprache
+ * des Besuchers, Stufen und Werte unveraendert. Nie fuer Vergleiche benutzen,
+ * dort zaehlt `name` auf Englisch.
+ */
+export function tftLocalTrait<T extends { name: string; names?: LocalizedNames; desc?: string; descs?: LocalizedNames }>(trait: T, lang: Lang): T {
+  return { ...trait, name: tftLabel(trait, lang), desc: tftTraitDescText(trait, lang) };
+}
+
 export interface TftItem {
   name: string;
+  names?: LocalizedNames;
   icon: string | null;
   desc?: string;
   composition?: string[];
@@ -25,6 +82,7 @@ export interface TftItem {
 }
 export interface TftChampion {
   name: string;
+  names?: LocalizedNames;
   icon: string | null;
   tile?: string | null;   // Riot's square HUD tile (CD `tileIcon`); icon is the wide splash
   cost: number;
@@ -42,8 +100,10 @@ export interface TftTraitTier {
 }
 export interface TftTrait {
   name: string;
+  names?: LocalizedNames;
   icon: string | null;
   desc?: string;
+  descs?: LocalizedNames;
   innate?: string;
   tiers?: TftTraitTier[];
 }
@@ -113,6 +173,25 @@ export interface TftAssetsBundle {
   // scripts/fetch-tft-assets.mjs. Optional, weil aeltere committete Bundles
   // (Set 17 und davor) den Key noch nicht fuehren.
   plannerCodes?: Record<string, string>;
+}
+
+/**
+ * Namen und Synergie-Texte nur noch in einer Sprache. Das Original bleibt
+ * unberuehrt. Auf Englisch bleibt nichts uebrig, `tftLabel` nimmt dort `name`.
+ */
+export function tftAssetsForLang(bundle: TftAssetsBundle, lang: Lang): TftAssetsBundle {
+  const trim = <T extends { names?: LocalizedNames; descs?: LocalizedNames }>(map: Record<string, T> | undefined) => {
+    const out: Record<string, T> = {};
+    for (const [id, entry] of Object.entries(map ?? {})) {
+      if (!entry.names && !entry.descs) { out[id] = entry; continue; }
+      const { names, descs, ...rest } = entry;
+      const name = names?.[lang];
+      const desc = descs?.[lang];
+      out[id] = { ...rest, ...(name ? { names: { [lang]: name } } : {}), ...(desc ? { descs: { [lang]: desc } } : {}) } as T;
+    }
+    return out;
+  };
+  return { ...bundle, items: trim(bundle.items), champions: trim(bundle.champions), traits: trim(bundle.traits) };
 }
 
 let cached: Promise<TftAssetsBundle | null> | null = null;
@@ -197,9 +276,9 @@ export function traitTierMinUnits(bundle: TftAssetsBundle | null, traitId: strin
 /** „7 Riftbeast“ aus der Vorlage `{n} {trait}` (i18n `tft.trait.breakpoint`),
  *  null wenn `traitTierMinUnits` keine Zahl kennt — dann bleibt die alte
  *  Stufen-Beschriftung. */
-export function traitTierLabel(pattern: string, bundle: TftAssetsBundle | null, traitId: string | null | undefined, tier: number): string | null {
+export function traitTierLabel(pattern: string, bundle: TftAssetsBundle | null, traitId: string | null | undefined, tier: number, lang: Lang = 'en'): string | null {
   const n = traitTierMinUnits(bundle, traitId, tier);
-  const name = findTrait(bundle, traitId)?.name;
+  const name = tftLabel(findTrait(bundle, traitId), lang);
   if (n == null || !name) return null;
   return pattern.replace('{n}', String(n)).replace('{trait}', name);
 }
@@ -251,18 +330,22 @@ function variantFromApiName(apiName: string, base: string): string | null {
 export function tftTraitDisplayName(
   bundle: TftAssetsBundle | null,
   apiName: string | null | undefined,
+  lang: Lang = 'en',
 ): string {
   if (!apiName) return '';
   const trait = findTrait(bundle, apiName);
+  // Varianten-Vergleich am englischen Namen: die Texte, aus denen sie kommen,
+  // sind Englisch. Angezeigt wird der Name in der Sprache des Besuchers.
   const base = trait?.name || apiName.replace(TRAIT_API_PREFIX_RE, '');
+  const shown = tftLabel(trait, lang) || base;
   // 1) Variante aus desc (authoritativ — matched In-Game-Anzeige)
   const descVariant = variantFromDesc(trait?.desc);
   if (descVariant && descVariant.toLowerCase() !== base.toLowerCase()) {
-    return `${base} · ${descVariant}`;
+    return `${shown} · ${descVariant}`;
   }
   // 2) Fallback: apiName-Suffix
   const variant = variantFromApiName(apiName, base);
-  return variant ? `${base} · ${variant}` : base;
+  return variant ? `${shown} · ${variant}` : shown;
 }
 
 // Returnt den Tooltip-Text für einen Trait — nimmt die variant-spezifische
@@ -274,6 +357,7 @@ export function tftTraitDisplayName(
 export function tftTraitDescription(
   bundle: TftAssetsBundle | null,
   apiName: string | null | undefined,
+  lang: Lang = 'en',
 ): string {
   if (!apiName) return '';
   const trait = findTrait(bundle, apiName);
@@ -282,7 +366,7 @@ export function tftTraitDescription(
   // Stargazer-Preamble + "This game: The X." raus, BEVOR HTML strippt — damit
   // die Regex auf dem Original-Format matcht. Setzt einen variant-spezifischen
   // Body, sonst den vollen desc.
-  let raw = trait.desc;
+  let raw = tftTraitDescText(trait, lang) || trait.desc;
   const m = /This game:\s*The\s+[A-Za-z][A-Za-z\s]*?[.!]\s*([\s\S]+)$/i.exec(raw);
   if (m) raw = m[1].trim();
 
@@ -295,11 +379,11 @@ export function tftTraitDescription(
   // aber den ORIGINAL-Tier-Variablen aus dem Bundle, damit @VarName@-Lookups
   // funktionieren.
   const rendered = renderTraitDesc({
-    name: trait.name || '',
+    name: tftLabel(trait, lang) || '',
     apiName,
     desc: stripped,
     tiers: trait.tiers as any,
-  });
+  }, lang);
 
   // Tooltip-Format: General-Desc + Tier-Breakpoints zeilenweise. Falls keine
   // Tier-Texte (rare, z.B. Innate-only Traits), fällt auf General zurück.

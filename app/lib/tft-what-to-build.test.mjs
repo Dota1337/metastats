@@ -14,8 +14,9 @@ const read = (p) => JSON.parse(readFileSync(new URL(p, import.meta.url), 'utf8')
 const assets = read('../../public/tft-assets-18.json');
 const texts = read('../../public/tft-item-texts-18.json');
 const options = buildExplorerOptions(assets);
-const itemNames = (id) => Object.fromEntries(Object.entries(texts.items[id]?.i18n ?? {}).map(([l, v]) => [l, v?.name]).filter(([, n]) => n));
-const dict = buildQuestionDict(options, { itemNames });
+const itemNames = (id) => assets.items[id]?.names;
+const unitNames = (id) => assets.champions[id]?.names;
+const dict = buildQuestionDict(options, { itemNames, unitNames });
 const kindOf = (id) => itemBucketOf(id, assets);
 const ask = (s, lang = 'de', choices) => parseBuildQuestion(s, dict, lang, choices);
 
@@ -31,6 +32,44 @@ test('Satz des Users: Unit, zwei feste Items, zwei Kandidaten', () => {
     want,
   );
   assert.deepEqual(ask('draven guinsoo + kraken, IE vs DB', 'en'), want);
+});
+
+// Reviewer-Befund 01.11.: Franzoesisch verlor 21 Strahlende an der Grenze von 5
+// Woertern, Chinesisch zerlegte lange Namen an kuerzeren („洛“ in 莫雷洛秘典).
+test('Jeder Item-Name jeder Sprache trifft sein Item, auch im Satz', () => {
+  const langs = ['de', 'ko', 'zh', 'es', 'fr'];
+  const wrong = [];
+  for (const lang of langs) {
+    const local = buildExplorerOptions(assets, lang);
+    const d = buildQuestionDict(local, { itemNames, unitNames });
+    for (const it of local.items) {
+      if (/Tactician|Augment|Phantom/i.test(it.id)) continue;
+      const hit = parseBuildQuestion(`${it.label} `, d, lang);
+      const found = hit.fixed.includes(it.id) || hit.ambiguous.some(a => a.ids.includes(it.id));
+      if (!found) wrong.push(`${lang}: ${it.label} -> ${JSON.stringify(hit)}`);
+    }
+  }
+  assert.deepEqual(wrong.slice(0, 10), []);
+});
+
+test('Satz auf Koreanisch und Chinesisch', () => {
+  const name = (id, l) => assets.items[id].names[l];
+  const ko = parseBuildQuestion(`드레이븐 ${name(G, 'ko')} ${name(K, 'ko')} ${name(IE, 'ko')} 또는 ${name(DB, 'ko')}`, dict, 'ko');
+  assert.deepEqual(ko, { units: [D], fixed: [G, K], compare: [IE, DB], ambiguous: [] });
+  const zh = parseBuildQuestion(`${assets.champions[D].names.zh}${name(G, 'zh')}和${name(K, 'zh')}，${name(IE, 'zh')}或${name(DB, 'zh')}`, dict, 'zh');
+  assert.deepEqual(zh, { units: [D], fixed: [G, K], compare: [IE, DB], ambiguous: [] });
+});
+
+test('Teilen-Links und Listen sind in jeder Sprache dieselben Items', () => {
+  const ids = (l) => buildExplorerOptions(assets, l).items.map(i => i.id).sort();
+  for (const lang of ['de', 'ko', 'zh', 'es', 'fr']) assert.deepEqual(ids(lang), ids('en'), lang);
+  // Emblem-Regel haengt am englischen Namen und gilt auf jeder Sprache.
+  const emblem = Object.keys(assets.items).find(id => assets.items[id].name === 'Elderwood Emblem');
+  const elder = options.units.find(u => u.traits.includes('Elderwood'));
+  for (const lang of ['en', 'ko', 'zh']) {
+    const o = buildExplorerOptions(assets, lang);
+    if (o.itemById.has(emblem)) assert.equal(itemFitsUnit(o, elder.id, emblem, []), false, lang);
+  }
 });
 
 test('Satz ohne Unit: nichts wird geraten', () => {

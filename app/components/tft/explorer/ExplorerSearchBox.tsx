@@ -135,18 +135,18 @@ export default function ExplorerSearchBox({
   const hiIdx = hi != null ? Math.min(hi, Math.max(0, flat.length - 1)) : (best ? Math.max(0, idxOf(best.kind, best.f.id)) : 0);
 
   // Raster: Reiter (leere Item-Sorten/Synergien fallen weg) und Kacheln je Abschnitt.
-  const unitRows = useMemo(() => browseUnits(options.units), [options.units]);
-  const traitRows = useMemo(() => browseTraits(options.traits), [options.traits]);
+  const unitRows = useMemo(() => browseUnits(options.units, options.lang), [options.units, options.lang]);
+  const traitRows = useMemo(() => browseTraits(options.traits, options.lang), [options.traits, options.lang]);
   const tabs = useMemo(() => (['units', ...PICK_KINDS, 'traits'] as BrowseTab[]).filter(b => b === 'units'
     || (b === 'traits' ? options.traits.length > 0 : options.items.some(i => itemGroupOf(i) === b))), [options]);
   const curTab = tabs.includes(tab) ? tab : 'units';
   const sections: Cell[][] = useMemo(() => {
     if (curTab === 'units') {
-      return unitRows.map(r => r.map(u => ({ pick: { kind: 'units' as const, f: { id: u.id } }, name: u.name, img: u.img, border: costColor(u.cost) })));
+      return unitRows.map(r => r.map(u => ({ pick: { kind: 'units' as const, f: { id: u.id } }, name: u.label, img: u.img, border: costColor(u.cost) })));
     }
-    if (curTab === 'traits') return traitRows.map(r => r.map(x => ({ pick: { kind: 'traits' as const, f: { id: x.id } }, name: x.name, img: x.img })));
+    if (curTab === 'traits') return traitRows.map(r => r.map(x => ({ pick: { kind: 'traits' as const, f: { id: x.id } }, name: x.label, img: x.img })));
     const list = options.items.filter(i => itemGroupOf(i) === curTab);
-    return list.length ? [list.map(i => ({ pick: { kind: 'items' as const, f: { id: i.id } }, name: i.name, img: i.img }))] : [];
+    return list.length ? [list.map(i => ({ pick: { kind: 'items' as const, f: { id: i.id } }, name: i.label, img: i.img }))] : [];
   }, [curTab, unitRows, traitRows, options.items]);
   const cells = sections.flat();
   const browse = text.trim() === '';
@@ -369,8 +369,8 @@ export default function ExplorerSearchBox({
                 return (
                   <div key={u.id} className={rowCls(i)} onMouseEnter={() => setHi(i)}>
                     <button type="button" onClick={() => pickResult({ kind: 'units', f: { id: u.id } })} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                      <OptIcon src={u.img} alt={u.name} className="w-7 h-7" border={costColor(u.cost)} />
-                      <span className="text-sm text-fg-primary truncate">{u.name}</span>
+                      <OptIcon src={u.img} alt={u.label} className="w-7 h-7" border={costColor(u.cost)} />
+                      <span className="text-sm text-fg-primary truncate">{u.label}</span>
                     </button>
                     {[2, 3].map(s => (
                       <button key={s} type="button" className={quick} onClick={() => pickResult({ kind: 'units', f: unitWithStars(u.id, s) })}>
@@ -393,8 +393,8 @@ export default function ExplorerSearchBox({
                 return (
                   <div key={x.id} className={rowCls(i)} onMouseEnter={() => setHi(i)}>
                     <button type="button" onClick={() => pickResult({ kind: 'traits', f: { id: x.id } })} className="flex items-center gap-2 flex-1 min-w-0 text-left">
-                      <OptIcon src={x.img} alt={x.name} className="w-6 h-6" />
-                      <span className="text-sm text-fg-primary truncate">{x.name}</span>
+                      <OptIcon src={x.img} alt={x.label} className="w-6 h-6" />
+                      <span className="text-sm text-fg-primary truncate">{x.label}</span>
                     </button>
                     {x.mins.length > 1 && x.mins.map((m, li) => (
                       <button key={li} type="button" className={quick} onClick={() => pickResult({ kind: 'traits', f: { id: x.id, l: li + 1 } })}>{m}</button>
@@ -412,8 +412,8 @@ export default function ExplorerSearchBox({
                 return (
                   <button key={it.id} type="button" className={`${rowCls(i)} w-full text-left`} onMouseEnter={() => setHi(i)}
                     onClick={() => pickResult({ kind: 'items', f: { id: it.id } })}>
-                    <OptIcon src={it.img} alt={it.name} className="w-6 h-6" />
-                    <span className="text-sm text-fg-primary truncate">{it.name}</span>
+                    <OptIcon src={it.img} alt={it.label} className="w-6 h-6" />
+                    <span className="text-sm text-fg-primary truncate">{it.label}</span>
                   </button>
                 );
               })}
@@ -439,20 +439,20 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 export function pickName(p: Pick, o: ExplorerOptions): string {
-  if (p.kind === 'units') return o.unitById.get(p.f.id)?.name ?? p.f.id;
+  if (p.kind === 'units') return o.unitById.get(p.f.id)?.label ?? p.f.id;
   if (p.kind === 'traits') {
     const tr = o.traitById.get(p.f.id);
     const lvl = p.f.l ? tr?.mins[p.f.l - 1] : null;
-    return `${lvl ? `${lvl} ` : ''}${tr?.name ?? p.f.id}`;
+    return `${lvl ? `${lvl} ` : ''}${tr?.label ?? p.f.id}`;
   }
-  return o.itemById.get(p.f.id)?.name ?? p.f.id;
+  return o.itemById.get(p.f.id)?.label ?? p.f.id;
 }
 
 function PickIcon({ p, options }: { p: Pick; options: ExplorerOptions }) {
   if (p.kind === 'units') {
     const u = options.unitById.get(p.f.id);
-    return <OptIcon src={u?.img ?? null} alt={u?.name ?? p.f.id} className="w-5 h-5" border={costColor(u?.cost ?? 1)} />;
+    return <OptIcon src={u?.img ?? null} alt={u?.label ?? p.f.id} className="w-5 h-5" border={costColor(u?.cost ?? 1)} />;
   }
   const x = p.kind === 'traits' ? options.traitById.get(p.f.id) : options.itemById.get(p.f.id);
-  return <OptIcon src={x?.img ?? null} alt={x?.name ?? p.f.id} className="w-5 h-5" />;
+  return <OptIcon src={x?.img ?? null} alt={x?.label ?? p.f.id} className="w-5 h-5" />;
 }

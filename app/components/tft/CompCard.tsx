@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { withAlpha } from '../../lib/color';
 import { useRouter } from 'next/navigation';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftLabel, tftTraitDisplayName, tftTraitDescription, tftChampionTooltip, formatTftDesc } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { tierLetterOf, TIER_COLORS } from '../../lib/tft-tier-letter';
 import { CURRENT_SET } from '../../lib/current-set';
@@ -76,7 +76,7 @@ export default function CompCard({
   // Zahlen. Rollen, Core/Flex, Pick und Tier-Farbe bleiben bei `comp`.
   stats?: { games: number; avgPlacement: number | null; top4Rate: number | null; top1Rate: number | null } | null;
 }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const router = useRouter();
   const parts = parseClusterKey(comp.clusterKey);
   // Carries an den Items erkannt (tft-comp-roles), wie in der Liste — der
@@ -85,7 +85,7 @@ export default function CompCard({
   const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
   const named = namedCarries(roles, parts?.carry);
   const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
-  const carryNameOf = (cid: string) => assets?.champions[cid]?.name || prettyChar(cid);
+  const carryNameOf = (cid: string) => tftLabel(assets?.champions[cid], lang) || prettyChar(cid);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   // Curated guide indicator: tiny difficulty badge in the header when this
   // comp has an editorial slug-map entry pointing at a tftacademy guide.
@@ -106,8 +106,8 @@ export default function CompCard({
   const traitVariant = parts ? extractTraitVariant(parts.trait, traitName) : null;
   // Authoritativer Trait-Display + Tooltip-Text aus desc (matched In-Game-
   // Display für Stargazer-Constellations: Wolf→Boar, Shield→Altar).
-  const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait) : traitName;
-  const traitTooltip = parts ? tftTraitDescription(assets, parts.trait) : '';
+  const traitDisplay = parts ? tftTraitDisplayName(assets, parts.trait, lang) : traitName;
+  const traitTooltip = parts ? tftTraitDescription(assets, parts.trait, lang) : '';
   const tier = tierBadge(comp.avgPlacement, comp.games);
   const shown = stats ?? comp;
 
@@ -142,7 +142,7 @@ export default function CompCard({
   // ausser er steht schon im Namen.
   const secondaryCid = parts?.secondary && !named.includes(parts.secondary) ? parts.secondary : null;
   const secondaryChamp = secondaryCid && assets ? assets.champions[secondaryCid] : null;
-  const secondaryName = secondaryChamp?.name || (secondaryCid ? prettyChar(secondaryCid) : null);
+  const secondaryName = tftLabel(secondaryChamp, lang) || (secondaryCid ? prettyChar(secondaryCid) : null);
 
   // Wrapper used to be an <a href> which nested ~40 inner <a> tags (carry,
   // trait, name, 9 unit tiles, up to 27 item tiles) — invalid HTML. When href
@@ -300,13 +300,13 @@ export default function CompCard({
                     href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}`)}
                     onClick={e => e.stopPropagation()}
                     className="block"
-                    title={ch?.name || u.characterId}
+                    title={tftLabel(ch, lang) || u.characterId}
                   >
                     <div
                       className="w-11 h-11 rounded border-2 overflow-hidden relative"
                       style={{ borderColor: isCarry ? '#c39bff' : (ch ? costColorOf(ch.cost) : 'var(--border-subtle)') }}
                     >
-                      {url && <img src={url} alt={ch?.name || u.characterId} className="w-full h-full object-cover rounded-sm" />}
+                      {url && <img src={url} alt={tftLabel(ch, lang) || u.characterId} className="w-full h-full object-cover rounded-sm" />}
                       {showThreeStar && (
                         <div className="absolute -top-1 -left-1 bg-star3-badge text-black text-[11px] font-bold rounded-full px-[4px] h-[18px] min-w-[18px] flex items-center justify-center shadow leading-none">
                           3★
@@ -333,9 +333,9 @@ export default function CompCard({
                             href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                             onClick={e => e.stopPropagation()}
                             className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
-                            title={meta?.name || it.apiName}
+                            title={tftLabel(meta, lang) || it.apiName}
                           >
-                            {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                            {iconUrl && <img src={iconUrl} alt={tftLabel(meta, lang) || it.apiName} className="w-full h-full object-cover" />}
                           </a>
                         );
                       })}

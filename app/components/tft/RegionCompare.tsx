@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../lib/i18n';
 import { ACTIVE_REGIONS } from '../../lib/active-regions';
 import { costColor } from '../../lib/tft-ui';
-import { findChampion, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { findChampion, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { regionShortLabel } from './StatsFilterBar';
 
 // Regionsvergleich auf /tft/meta-pulse: dieselben Units in 2-3 Regionen
@@ -56,7 +56,7 @@ export default function RegionCompare({
   patch: string | null;
   assets: TftAssetsBundle | null;
 }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const [byRegion, setByRegion] = useState<Record<string, UnitRow[] | null>>({});
   const [query, setQuery] = useState('');
   const [sortPick, setSortPick] = useState<string | null>(null);
@@ -103,8 +103,8 @@ export default function RegionCompare({
     const out = [];
     for (const id of ids) {
       const champ = findChampion(assets, id);
-      const name = champ?.name || prettyCharId(id);
-      if (q && !name.toLowerCase().includes(q)) continue;
+      const name = tftLabel(champ, lang) || prettyCharId(id);
+      if (q && !name.toLowerCase().includes(q) && !champ?.name?.toLowerCase().includes(q)) continue;
       const perRegion = regions.map(r => cells[r].get(id) || null);
       const present = regions
         .map((r, i) => ({ r, c: perRegion[i] }))
@@ -130,7 +130,7 @@ export default function RegionCompare({
       out.sort((a, b) => b.secured - a.secured);
     }
     return out;
-  }, [loading, regions, byRegion, reqKey, query, assets, sortRegion]);
+  }, [loading, regions, byRegion, reqKey, query, assets, sortRegion, lang]);
 
   const chip = (active: boolean) => `px-2.5 py-1 text-[11px] uppercase tracking-widest rounded border transition-colors ${
     active

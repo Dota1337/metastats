@@ -13,7 +13,7 @@ import { usePatchDelta } from '../../lib/usePatchDelta';
 import { patchDeltaOf } from '../../lib/tft-patch-delta';
 import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
-import { tftChampionTileUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, tftLabel, tftTraitDisplayName, tftTraitLabelByName, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { tierLetterOf, TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import type { TranslationKey } from '../../lib/i18n';
 import TftHero from '../../components/tft/TftHero';
@@ -64,7 +64,7 @@ export default function UnitsClient({ initialFilters, initial }: {
   initial: StatsInitial<UnitRow> | null;
 }) {
   const { withLang } = useI18n();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Items/Traits.
   const { filters, setFilters, rows: units, hasData, patches, dataEnd, loading, awaitingStored, assets } =
     useTftStatsList<UnitRow>({ endpoint: '/api/tft/units', field: 'units', initialFilters, initial });
@@ -92,9 +92,10 @@ export default function UnitsClient({ initialFilters, initial }: {
       }
     }
     return [...set]
-      .map(id => ({ id, name: tftTraitDisplayName(assets, id) || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [units, assets]);
+      // `id` ist der englische Name (champion.traits), Filterwert bleibt er.
+      .map(id => ({ id, name: tftTraitLabelByName(assets, tftTraitDisplayName(assets, id, lang) || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''), lang) }))
+      .sort((a, b) => a.name.localeCompare(b.name, lang));
+  }, [units, assets, lang]);
 
   // Riot lists shapeshift forms as separate units (Set 18: Lux has ten, one per
   // trait) — in the shop they are one champion and all share the same icon.
@@ -122,7 +123,8 @@ export default function UnitsClient({ initialFilters, initial }: {
       if (traitFilter && !ch?.traits?.includes(traitFilter)) return false;
       if (q) {
         const name = (ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
-        if (!name.includes(q) && !u.characterId.toLowerCase().includes(q)) return false;
+        const label = (tftLabel(ch, lang) || '').toLowerCase();
+        if (!name.includes(q) && !label.includes(q) && !u.characterId.toLowerCase().includes(q)) return false;
       }
       return true;
     }).filter(u => keep.has(u.characterId));
@@ -140,7 +142,7 @@ export default function UnitsClient({ initialFilters, initial }: {
       }
     }
     return [...tiered, ...untiered];
-  }, [units, assets, costFilter, traitFilter, search, shownIds]);
+  }, [units, assets, costFilter, traitFilter, search, shownIds, lang]);
 
   // Over all loaded units, not `filtered`, so the item column doesn't shift
   // while searching or filtering by cost/trait. Character count doesn't
@@ -152,7 +154,7 @@ export default function UnitsClient({ initialFilters, initial }: {
   // (useSyncExternalStore: false auf dem Server und beim Hydrieren, danach true.)
   const measure = useSyncExternalStore(noopSubscribe, () => true, () => false);
   const longestNames = useMemo(() => {
-    const names = [...new Set(units.filter(u => shownIds.has(u.characterId)).map(u => assets?.champions[u.characterId]?.name || prettyCharId(u.characterId)))];
+    const names = [...new Set(units.filter(u => shownIds.has(u.characterId)).map(u => tftLabel(assets?.champions[u.characterId], lang) || prettyCharId(u.characterId)))];
     if (names.length === 0) return [];
     const byChars = names.reduce((a, b) => (b.length > a.length ? b : a));
     const ctx = measure ? document.createElement('canvas').getContext('2d') : null;
@@ -160,7 +162,7 @@ export default function UnitsClient({ initialFilters, initial }: {
     ctx.font = `500 14px ${getComputedStyle(document.body).fontFamily}`;
     const byPixels = names.reduce((a, b) => (ctx.measureText(b).width > ctx.measureText(a).width ? b : a));
     return byPixels === byChars ? [byChars] : [byPixels, byChars];
-  }, [units, assets, shownIds, measure]);
+  }, [units, assets, shownIds, measure, lang]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -262,13 +264,13 @@ export default function UnitsClient({ initialFilters, initial }: {
                       <TierBadge letter={letter} t={t} />
                     </div>
                     <div className="w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 shadow-sm" style={{ borderColor: costColor }}>
-                      {url && <img src={url} alt={ch!.name} className="w-full h-full object-cover" />}
+                      {url && <img src={url} alt={tftLabel(ch, lang)} className="w-full h-full object-cover" />}
                     </div>
                     <div className="min-w-0 flex-1 md:flex-initial flex flex-col md:flex-row md:items-center gap-1 md:gap-3">
                       {/* From lg up an invisible copy of the longest name shares the
                           grid cell, so every item row starts at the same x. */}
                       <div className="grid min-w-0">
-                        <div className="[grid-area:1/1] text-white font-medium truncate">{ch?.name || prettyCharId(u.characterId)}</div>
+                        <div className="[grid-area:1/1] text-white font-medium truncate">{tftLabel(ch, lang) || prettyCharId(u.characterId)}</div>
                         {longestNames.map(n => (
                           <div key={n} aria-hidden className="[grid-area:1/1] hidden lg:block invisible font-medium whitespace-nowrap">{n}</div>
                         ))}
@@ -359,8 +361,9 @@ function UnitItemRow({ u, assets, t }: { u: UnitRow; assets: TftAssetsBundle | n
 function ItemWithValue({ it, unitGames, color, assets, t }: {
   it: UnitItem; unitGames: number; color?: string; assets: TftAssetsBundle | null; t: (k: any) => string;
 }) {
+  const { lang } = useI18n();
   const showValue = it.avgPlacement != null && it.games >= ITEM_VALUE_MIN;
-  const name = assets?.items[it.item]?.name || it.item;
+  const name = tftLabel(assets?.items[it.item], lang) || it.item;
   const parts = [name];
   if (showValue) {
     parts.push(`${t('tft.avgPlacement')}: ${it.avgPlacement!.toFixed(2)}`);

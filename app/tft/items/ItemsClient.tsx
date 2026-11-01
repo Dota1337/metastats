@@ -13,7 +13,7 @@ import { usePatchDelta } from '../../lib/usePatchDelta';
 import { patchDeltaOf, type PatchDelta, type PatchDeltaPair } from '../../lib/tft-patch-delta';
 import { deltaHeader, deltaTooltip } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
-import { tftIconUrl, tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, tftLabel } from '../../lib/tft-cdragon';
 import { itemBucketOf, ITEM_BUCKETS, type ItemBucket } from '../../lib/tft-item-bucket';
 import { itemTakesTier, tierLetterOf, TIER_COLORS, TIER_MIN_GAMES, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import type { TranslationKey } from '../../lib/i18n';
@@ -35,7 +35,7 @@ export default function ItemsClient({ initialFilters, initial }: {
   initial: StatsInitial<ItemRow> | null;
 }) {
   const { withLang } = useI18n();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Traits.
   const { filters, setFilters, rows: items, hasData, patches, dataEnd, loading, awaitingStored, assets } =
     useTftStatsList<ItemRow>({ endpoint: '/api/tft/items', field: 'items', initialFilters, initial });
@@ -56,8 +56,10 @@ export default function ItemsClient({ initialFilters, initial }: {
     const inBucket = items.filter(it => {
       if (bucket && itemBucketOf(it.apiName, assets) !== bucket) return false;
       if (q) {
-        const name = (assets?.items[it.apiName]?.name || it.apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '')).toLowerCase();
-        if (!name.includes(q) && !it.apiName.toLowerCase().includes(q)) return false;
+        const meta = assets?.items[it.apiName];
+        const name = (meta?.name || it.apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '')).toLowerCase();
+        const label = (tftLabel(meta, lang) || '').toLowerCase();
+        if (!name.includes(q) && !label.includes(q) && !it.apiName.toLowerCase().includes(q)) return false;
       }
       return true;
     });
@@ -76,7 +78,7 @@ export default function ItemsClient({ initialFilters, initial }: {
       }
     }
     return [...tiered, ...untiered];
-  }, [items, bucket, search, assets]);
+  }, [items, bucket, search, assets, lang]);
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -165,14 +167,14 @@ export default function ItemsClient({ initialFilters, initial }: {
                       <TierBadge letter={letter} t={t} noData={takesTier} />
                     </div>
                     {url ? (
-                      <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
+                      <img src={url} alt={tftLabel(meta, lang)} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
                       <div className="w-10 h-10 rounded-md bg-surface-overlay flex items-center justify-center text-[9px] text-fg-muted px-0.5 text-center flex-shrink-0">{prettyApi(it.apiName)}</div>
                     )}
                     <a
                       href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
                       className="block text-white font-medium truncate flex-1 md:flex-initial after:absolute after:inset-0"
-                    >{meta?.name || prettyApi(it.apiName)}</a>
+                    >{tftLabel(meta, lang) || prettyApi(it.apiName)}</a>
                   </div>
                   {/* Top users — 8 cost-bordered champion tiles. On mobile
                       the row still scrolls horizontally (overflow-x-auto)
@@ -195,12 +197,12 @@ export default function ItemsClient({ initialFilters, initial }: {
                           href={withLang(`/tft/units/${encodeURIComponent(cid)}?bucket=${filters.bucket}&region=${filters.region}&days=${filters.days}`)}
                           className="relative z-10 w-10 h-10 rounded-md border-2 overflow-hidden flex-shrink-0 hover:scale-110 transition shadow-sm"
                           style={{ borderColor }}
-                          title={ch?.name}
+                          title={tftLabel(ch, lang)}
                         >
                           {tileUrl ? (
                             <img
                               src={tileUrl}
-                              alt={ch?.name || ''}
+                              alt={tftLabel(ch, lang) || ''}
                               className="w-full h-full object-cover"
                               onError={e => {
                                 const img = e.currentTarget;

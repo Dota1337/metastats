@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useI18n, LOCALE_MAP } from '../../../lib/i18n';
 import { NO_DIVISION_TIERS, RANK_TIER_COLOR } from '../../../lib/rank-format';
 import {
-  findChampion, findTrait, tftChampionTileUrl, tftIconUrl, tftGameAssetUrl, type TftAssetsBundle,
+  findChampion, findTrait, tftChampionTileUrl, tftIconUrl, tftGameAssetUrl, tftLabel, type TftAssetsBundle,
 } from '../../../lib/tft-cdragon';
 import { formatStage } from '../../../lib/tft-stage';
 import { withAlpha } from '../../../lib/color';
@@ -302,7 +302,7 @@ function stripPrefix(id: string) {
 }
 
 export function TraitsBlock({ players, assets }: { players: Loaded[]; assets: TftAssetsBundle | null }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const withData = players.filter(({ p }) => p.stats?.extras?.traits.length);
   if (withData.length === 0) return null;
   const sets = withData.map(({ p }) => new Set(p.stats!.extras!.traits.map(x => x.name)));
@@ -325,7 +325,7 @@ export function TraitsBlock({ players, assets }: { players: Loaded[]; assets: Tf
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-white text-xs truncate">{trait?.name || stripPrefix(tr.name)}</span>
+                        <span className="text-white text-xs truncate">{tftLabel(trait, lang) || stripPrefix(tr.name)}</span>
                         <span className="text-[11px] text-fg-secondary tabular-nums shrink-0">
                           {Math.round(tr.share * 100)}%{tr.avgPlacement != null ? ` · Ø ${tr.avgPlacement.toFixed(2)}` : ''}
                         </span>
@@ -359,7 +359,7 @@ function unitIcon(characterId: string, assets: TftAssetsBundle | null, setNumber
 }
 
 export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; assets: TftAssetsBundle | null; setNumber: number }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const withData = players.filter(({ p }) => p.stats?.extras?.units.length);
   if (withData.length === 0) return null;
   return (
@@ -370,7 +370,7 @@ export function UnitsBlock({ players, assets, setNumber }: { players: Loaded[]; 
             <div className="text-xs font-medium mb-2 truncate" style={{ color: PLAYER_COLORS[i] }}>{shortName(p.name)}</div>
             <div className="grid grid-cols-4 gap-x-1.5 gap-y-2">
               {p.stats!.extras!.units.map(u => {
-                const name = findChampion(assets, u.characterId)?.name || stripPrefix(u.characterId);
+                const name = tftLabel(findChampion(assets, u.characterId), lang) || stripPrefix(u.characterId);
                 return (
                   <a key={u.characterId} href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}`)} className="flex flex-col items-center min-w-0 group" title={name}>
                     <div className="relative">

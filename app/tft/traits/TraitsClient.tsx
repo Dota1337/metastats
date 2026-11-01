@@ -14,7 +14,7 @@ import { usePatchDelta } from '../../lib/usePatchDelta';
 import { patchDeltaOf, traitDeltaKey } from '../../lib/tft-patch-delta';
 import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
-import { tftIconUrl, traitTierMinUnits, type TftTraitTier } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftLabel, tftTraitLabelByName, traitTierMinUnits, type TftTraitTier } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 
 export interface TraitRow {
@@ -48,7 +48,7 @@ export default function TraitsClient({ initialFilters, initial }: {
   initial: StatsInitial<TraitRow> | null;
 }) {
   const { withLang } = useI18n();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   // Laden, Startdaten, gespeicherte Filter: gemeinsam mit Units/Items. Die
   // Liste zeigt keine Tier-Buchstaben → keine Grenzen laden.
   const { filters, setFilters, rows, hasData, patches, dataEnd, loading, awaitingStored, assets } =
@@ -103,8 +103,8 @@ export default function TraitsClient({ initialFilters, initial }: {
   const visibleGrouped = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return grouped;
-    return grouped.filter(g => g.name.toLowerCase().includes(q));
-  }, [grouped, search]);
+    return grouped.filter(g => g.name.toLowerCase().includes(q) || tftTraitLabelByName(assets, g.name, lang).toLowerCase().includes(q));
+  }, [grouped, search, assets, lang]);
 
   const currentPatchLabel = patches[0]?.patch;
 
@@ -172,12 +172,12 @@ export default function TraitsClient({ initialFilters, initial }: {
                 >
                   <div className="flex items-center gap-3 md:contents">
                     {url ? (
-                      <img src={url} alt={meta!.name} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
+                      <img src={url} alt={tftLabel(meta, lang)} className="w-10 h-10 rounded-md flex-shrink-0 shadow-sm" />
                     ) : (
                       <div className="w-10 h-10 rounded-md bg-surface-overlay flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0 md:flex-initial">
-                      <div className="text-white font-medium truncate">{meta?.name || prettyTrait(g.name)}</div>
+                      <div className="text-white font-medium truncate">{tftLabel(meta, lang) || prettyTrait(g.name)}</div>
                       {/* Mobile-only: best-activation hint as small subtitle */}
                       <div className="md:hidden text-accent text-[10px]">
                         {t('tft.trait.bestAt')} {bestUnits ?? '—'}

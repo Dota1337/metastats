@@ -1576,7 +1576,25 @@ async function checkEndpoint(c, r) {
  * und <style> enthaelt mindestens so viele VERSCHIEDENE Treffer des Musters
  * (meist Detail-Links, sonst Bilder). Gleicher Grund wie bei den Comp-Seiten:
  * ohne Startdaten laedt die Seite im Browser nach, nur Google sieht ein Geruest.
+ *
+ * `expectLocalNames` (Pfad → [Sprache, erlaubte Zahl], Plan 01.11.2026): im
+ * gezeichneten HTML stehen hoechstens so viele englische Item-, Unit- und
+ * Synergie-Namen, die in dieser Sprache laut Bundle anders heissen.
  */
+export function englishNamesIn(html, lang, bundle = JSON.parse(readFileSync(resolve(REPO_ROOT, 'public', 'tft-assets.json'), 'utf8'))) {
+  const seen = new Set();
+  for (const map of [bundle.items, bundle.champions, bundle.traits]) {
+    for (const e of Object.values(map ?? {})) {
+      const local = e?.names?.[lang];
+      if (!local || seen.has(e.name)) continue;
+      // React schreibt Apostrophe und & im HTML als Entitaet.
+      const text = e.name.replace(/&/g, '&amp;').replace(/'/g, '&#x27;');
+      if (html.includes(`>${text}<`) || html.includes(`alt="${text}"`) || html.includes(`title="${text}"`)) seen.add(e.name);
+    }
+  }
+  return [...seen];
+}
+
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
   if (!base) return r('error', `keine Basis-URL (weder baseUrl noch ${c.baseUrlEnv})`);
@@ -1616,6 +1634,12 @@ async function checkHttpStatus(c, r) {
   const langLinks = Object.entries(c.expectLangLinks || {});
   const startLinks = Object.entries(c.expectStartLinks || {});
   const startText = Object.entries(c.expectStartText || {});
+  const localNames = Object.entries(c.expectLocalNames || {});
+  for (const [path, spec] of localNames) {
+    if (!Array.isArray(spec) || typeof spec[0] !== 'string' || !(spec[1] >= 0)) {
+      return r('error', `expectLocalNames ${path}: erwartet [Sprache, erlaubte Zahl]`);
+    }
+  }
   for (const [path, spec] of startText) {
     if (!Array.isArray(spec) || typeof spec[0] !== 'string' || !(spec[1] > 0)) {
       return r('error', `expectStartText ${path}: erwartet [Muster, Mindestzahl]`);
@@ -1699,6 +1723,15 @@ async function checkHttpStatus(c, r) {
     ).size);
     if (best < min) wrong.push(`${path}: ${best} Treffer im ersten HTML (soll ≥${min}${httpNote})`);
   }
+  // Uebersetzte Namen: gezeichnete englische Namen zaehlen, die in dieser Sprache
+  // anders heissen. Faengt die Stelle, die `name` statt `tftLabel` anzeigt.
+  for (const [path, [lang, max]] of localNames) {
+    const res = await fetch(base + path, { signal: AbortSignal.timeout(20_000) });
+    if (!res.ok) { wrong.push(`${path} → ${res.status} (soll 200)`); continue; }
+    const html = (await res.text()).replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<style[\s\S]*?<\/style>/g, ' ');
+    const left = englishNamesIn(html, lang);
+    if (left.length > max) wrong.push(`${path}: ${left.length} englische Namen (erlaubt ${max}, z.B. ${left.slice(0, 5).join(', ')})`);
+  }
   for (const p of probes) {
     const got = await status(p.path);
     if (p.want === 'redirect') {
@@ -1719,7 +1752,7 @@ async function checkHttpStatus(c, r) {
     }
   }
   const count = want => probes.filter(p => p.want === want).length;
-  const total = probes.length + langLinks.length + startLinks.length + startText.length;
+  const total = probes.length + langLinks.length + startLinks.length + startText.length + localNames.length;
   return wrong.length
     ? r('broken', `${wrong.length}/${total} falsch: ${wrong.slice(0, 4).join('; ')}`)
     : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length + startText.length}× Startdaten)`);

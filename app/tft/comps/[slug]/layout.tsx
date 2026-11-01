@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const key = compRouteKey(decodeSlug((await params).slug));
   const comp = await compKeyForDefaultView(key, CURRENT_SET);
   const shown = comp ?? key;
-  return pageMetadata('tft.comp', compPath(shown), compNameFromSlug(shown) || shown, {
+  return pageMetadata('tft.comp', compPath(shown), lang => compNameFromSlug(shown, lang) || shown, {
     noindex: tftKnownInBundle('comp', key) === false || comp === null,
   });
 }

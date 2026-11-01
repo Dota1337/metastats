@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadItemTexts, type ItemTexts } from '../../../lib/tft-item-texts';
-import { loadUnitInfo, type UnitInfoFile } from '../../../lib/tft-unit-info';
 import { itemBucketOf } from '../../../lib/tft-item-bucket';
 import { costColor } from '../../../lib/tft-ui';
 import {
@@ -49,7 +48,7 @@ export default function WhatToBuildView() {
     loadTftAssets().then(a => { if (alive) setAssets(a); });
     return () => { alive = false; };
   }, []);
-  const options = useMemo(() => buildExplorerOptions(assets), [assets]);
+  const options = useMemo(() => buildExplorerOptions(assets, lang), [assets, lang]);
   const kindOf = useMemo(() => (id: string) => itemBucketOf(id, assets), [assets]);
 
   // Unbekannte Unit in der Adresse (alter Link, anderes Set): keine leere Box.
@@ -112,23 +111,11 @@ export default function WhatToBuildView() {
   const [text, setText] = useState('');
   const [choices, setChoices] = useState<Record<string, string>>({});
   const [pending, setPending] = useState<ParsedQuestion | null>(null);
-  const [names, setNames] = useState<{ texts: ItemTexts | null; info: UnitInfoFile | null } | null>(null);
-  // Namen je Sprache erst beim ersten Fokus laden (~80 KB).
-  const loadNames = () => {
-    if (names) return;
-    Promise.all([loadItemTexts(), loadUnitInfo()]).then(([texts, info]) => setNames({ texts, info }));
-  };
+  // Namen je Sprache aus dem Bundle: dieselben, die die Seite zeigt.
   const dict = useMemo(() => buildQuestionDict(options, {
-    itemNames: id => {
-      const out: Record<string, string> = {};
-      for (const [l, v] of Object.entries(names?.texts?.items[id]?.i18n ?? {})) {
-        const n = (v as { name?: string } | undefined)?.name;
-        if (n) out[l] = n;
-      }
-      return out;
-    },
-    unitNames: id => names?.info?.units[id]?.name,
-  }), [options, names]);
+    itemNames: id => assets?.items[id]?.names,
+    unitNames: id => assets?.champions[id]?.names,
+  }), [options, assets]);
   const parsed = useMemo(() => (text.trim() ? parseBuildQuestion(text, dict, lang, choices) : null), [text, dict, lang, choices]);
   const hasAny = !!parsed && (parsed.units.length + parsed.fixed.length + parsed.compare.length + parsed.ambiguous.length > 0);
   const submit = () => {
@@ -160,10 +147,10 @@ export default function WhatToBuildView() {
     if (top !== undefined && top < 0) window.scrollBy(0, top - 12);
   }, [boxes.length]);
 
-  const itemIcon = (id: string, cls = 'w-5 h-5') => <OptIcon src={options.itemById.get(id)?.img ?? null} alt={options.itemById.get(id)?.name ?? id} className={cls} />;
-  const itemLabel = (id: string) => options.itemById.get(id)?.name ?? id;
+  const itemIcon = (id: string, cls = 'w-5 h-5') => <OptIcon src={options.itemById.get(id)?.img ?? null} alt={options.itemById.get(id)?.label ?? id} className={cls} />;
+  const itemLabel = (id: string) => options.itemById.get(id)?.label ?? id;
 
-  const unitRows = useMemo(() => browseUnits(options.units), [options.units]);
+  const unitRows = useMemo(() => browseUnits(options.units, options.lang), [options.units, options.lang]);
   const taken = useMemo(() => new Set(boxes.map(b => b.unit)), [boxes]);
   const stage = rankStageOf(scope.ranks);
   const patches = meta ? barPatches(meta.patches.map(p => p.patch)) : [];
@@ -182,7 +169,6 @@ export default function WhatToBuildView() {
           <input
             value={text}
             onChange={e => { setText(e.target.value); setPending(null); }}
-            onFocus={loadNames}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit(); } }}
             placeholder={t('tft.build.placeholder')}
             aria-label={t('tft.build.placeholder')}
@@ -204,8 +190,8 @@ export default function WhatToBuildView() {
           <div className="flex flex-wrap items-center gap-1.5 text-xs">
             {parsed.units.map(id => (
               <span key={id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-border-subtle text-fg-primary">
-                <OptIcon src={options.unitById.get(id)?.img ?? null} alt={options.unitById.get(id)?.name ?? id} className="w-5 h-5" border={costColor(options.unitById.get(id)?.cost ?? 1)} />
-                {options.unitById.get(id)?.name ?? id}
+                <OptIcon src={options.unitById.get(id)?.img ?? null} alt={options.unitById.get(id)?.label ?? id} className="w-5 h-5" border={costColor(options.unitById.get(id)?.cost ?? 1)} />
+                {options.unitById.get(id)?.label ?? id}
               </span>
             ))}
             {parsed.fixed.map((id, i) => (
@@ -319,11 +305,11 @@ function PlusBox({ unitRows, taken, highlight, onPick }: {
                   {row.map(u => {
                     const off = taken.has(u.id);
                     return (
-                      <button key={u.id} type="button" disabled={off} aria-label={u.name} title={u.name}
+                      <button key={u.id} type="button" disabled={off} aria-label={u.label} title={u.label}
                         autoFocus={ri === 0 && u === row[0]}
                         onClick={() => { setOpen(false); onPick(u.id); }}
                         className={`w-11 h-11 rounded ${off ? 'opacity-30 cursor-not-allowed' : 'hover:ring-2 hover:ring-accent-a60'}`}>
-                        <OptIcon src={u.img} alt={u.name} className="w-11 h-11" border={costColor(u.cost)} />
+                        <OptIcon src={u.img} alt={u.label} className="w-11 h-11" border={costColor(u.cost)} />
                       </button>
                     );
                   })}

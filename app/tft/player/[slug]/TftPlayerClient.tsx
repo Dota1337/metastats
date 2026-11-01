@@ -39,7 +39,7 @@ interface TftProRecord {
   tournament_results?: TftTournamentResult[] | null;
 }
 import { loadTftSetMeta } from '../../../lib/tft-dd-assets';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { formatTier } from '../../../lib/rank-format';
 import { setEndRank, setMaxLp } from '../../../lib/tft-rank-kind';
 import { CURRENT_SET } from '../../../lib/current-set';
@@ -648,12 +648,12 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 function UnitChip({ rank, characterId, games, avg, assets, lobbyAvg, className = 'flex' }: { rank: number; characterId: string; games: number; avg: number; assets: TftAssetsBundle | null; lobbyAvg?: number; className?: string }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const info = assets?.champions[characterId];
   const url = tftChampionTileUrl(assets, info);
   const cost = info?.cost ?? 1;
   const costColor = costToColor(cost);
-  const name = info?.name || characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+  const name = tftLabel(info, lang) || characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
   // Diff vs. lobby Master+ average. Negative = player places *better* than
   // the average lobby (lower placement number is better in TFT).
   const diff = typeof lobbyAvg === 'number' ? avg - lobbyAvg : null;
@@ -960,7 +960,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
   assets: TftAssetsBundle | null;
   t: (k: any) => string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const [data, setData] = useState<{ comps: SpecialtyComp[]; unitBuilds: SpecialtyUnit[]; classifiedGames: number } | null>(null);
   // Cluster keys that actually resolve to a comp page. The detail page only
   // shows data for euw1/master_plus clusters, so we mirror that exact query and
@@ -997,7 +997,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
               const m = /^(.+)@(\d+)_(.+)$/.exec(c.clusterKey);
               const trait = m ? m[1] : '';
               const carry = m ? m[3] : c.carryUnit;
-              const traitName = assets?.traits[trait]?.name || trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const traitName = tftLabel(assets?.traits[trait], lang) || trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryAsset = assets?.champions[carry];
               // Comp page if this cluster resolves there, else the carry's unit page.
               const href = compKeys?.has(c.clusterKey)
@@ -1014,7 +1014,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-[11px] font-medium truncate">
-                      {traitName} · {carryAsset?.name || carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
+                      {traitName} · {tftLabel(carryAsset, lang) || carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                     </div>
                     <div className="text-fg-muted text-[10px] tabular-nums">
                       {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'} · {c.games} {t('tft.gamesShort')}
@@ -1043,9 +1043,9 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                     className="flex items-center gap-2 mb-2 hover:opacity-90 transition-opacity group"
                   >
                     {tftChampionTileUrl(assets, unitAsset) && (
-                      <img src={tftChampionTileUrl(assets, unitAsset)!} alt={unitAsset?.name || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
+                      <img src={tftChampionTileUrl(assets, unitAsset)!} alt={tftLabel(unitAsset, lang) || u.unitId} className="w-8 h-8 rounded border border-[#c39bff]/60 group-hover:border-[#c39bff]" />
                     )}
-                    <span className="text-white text-[11px] group-hover:text-accent transition-colors">{unitAsset?.name || u.unitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}</span>
+                    <span className="text-white text-[11px] group-hover:text-accent transition-colors">{tftLabel(unitAsset, lang) || u.unitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}</span>
                     <span className="text-fg-muted text-[10px] tabular-nums ml-auto">{u.games} {t('tft.gamesShort')}</span>
                   </a>
                   <div className="space-y-1">
@@ -1055,7 +1055,7 @@ function ProSpecialty({ puuid, setNumber, assets, t }: {
                         <div className="flex gap-0.5">
                           {build.items.map((it, j) => {
                             const iconUrl = tftIconUrl(assets, assets?.items[it]?.icon);
-                            const itemName = assets?.items[it]?.name || it;
+                            const itemName = tftLabel(assets?.items[it], lang) || it;
                             return iconUrl ? (
                               <a
                                 key={j}

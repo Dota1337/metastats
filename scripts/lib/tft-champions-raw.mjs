@@ -26,6 +26,8 @@ const CHAR_URL   = id => `https://raw.communitydragon.org/latest/game/characters
 const MAP22_URL  = 'https://raw.communitydragon.org/latest/game/data/maps/shipping/map22/map22.bin.json';
 const STRING_URL = 'https://raw.communitydragon.org/latest/game/en_us/data/menu/en_us/tft.stringtable.json';
 
+const NAME_LOCALES = { de: 'de_de', ko: 'ko_kr', zh: 'zh_cn', es: 'es_es', fr: 'fr_fr' };
+
 const CONCURRENCY = 12;
 
 // `_splash_tile_N` ist die Shop-Kachel, `_splash_centered_N` das breite Splash.
@@ -113,6 +115,26 @@ export async function buildChampionsFromRaw(setNumber, deps) {
   const traitNames = new Map(traits.map(t => [String(t.apiName || '').toLowerCase(), t.name]));
   const str = key => (key ? strings.get(String(key).toLowerCase()) : undefined);
 
+  // Namen je Sprache: dieselben Schluessel, Stringtable der jeweiligen Sprache.
+  // Fehlt eine Tabelle, bleibt die Sprache leer (Anzeige dann Englisch).
+  const localeStrings = {};
+  await Promise.all(Object.entries(NAME_LOCALES).map(async ([lang, dir]) => {
+    try {
+      const t = await fetchJSON(`https://raw.communitydragon.org/latest/game/${dir}/data/menu/${dir}/tft.stringtable.json`);
+      localeStrings[lang] = new Map(Object.entries(t.entries || t).map(([k, v]) => [k.toLowerCase(), v]));
+    } catch (e) {
+      log(`       Stringtable ${lang} fehlt: ${e.message}`);
+    }
+  }));
+  const namesOf = (key, en) => {
+    const names = {};
+    for (const [lang, table] of Object.entries(localeStrings)) {
+      const v = key ? table.get(String(key).toLowerCase()) : undefined;
+      if (typeof v === 'string' && v.trim() && v.trim() !== en) names[lang] = v.trim();
+    }
+    return Object.keys(names).length ? names : undefined;
+  };
+
   const champions = {};
   const stats = { units: units.length, withShop: 0, noShop: [], noName: [], noIcon: [], unknownTraits: new Set() };
   for (const u of units) {
@@ -129,8 +151,10 @@ export async function buildChampionsFromRaw(setNumber, deps) {
     const abilityName = str(s.mAbilityNameTra);
     const abilityDesc = str(s.mDescriptionTra);
 
+    const names = namesOf(s.mDisplayNameTra, name);
     champions[u.id] = {
       name: name || u.id,
+      ...(names ? { names } : {}),
       icon,
       tile,
       cost: s.BaseCost ?? u.cost ?? 0,

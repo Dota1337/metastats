@@ -472,10 +472,10 @@ function CarrierRow({
       {rows.map(r => {
         const u = options.unitById.get(r.key)!;
         return (
-          <button key={r.key} type="button" onClick={() => onAdd(r.key, item)} title={u.name}
+          <button key={r.key} type="button" onClick={() => onAdd(r.key, item)} title={u.label}
             className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-sm text-fg-primary hover:border-accent-a50">
-            <OptIcon src={u.img} alt={u.name} className="w-8 h-8" border={costColor(u.cost)} />
-            <span className="truncate max-w-[7rem]">{u.name}</span>
+            <OptIcon src={u.img} alt={u.label} className="w-8 h-8" border={costColor(u.cost)} />
+            <span className="truncate max-w-[7rem]">{u.label}</span>
             <span className="text-fg-muted tabular-nums">{fmtAvg(r.avg)}</span>
           </button>
         );
@@ -740,7 +740,7 @@ function ItemIconPicker({
   const needle = normText(q);
   const groups = ITEM_GROUPS
     .filter(g => needle || g.b === kind)
-    .map(g => ({ ...g, list: options.items.filter(i => itemGroupOf(i) === g.b && (!needle || normText(i.name).includes(needle))) }))
+    .map(g => ({ ...g, list: options.items.filter(i => itemGroupOf(i) === g.b && (!needle || normText(i.name).includes(needle) || normText(i.label).includes(needle))) }))
     .filter(g => g.list.length);
   const full = chosen.length >= max;
   const open = kind != null;
@@ -774,10 +774,10 @@ function ItemIconPicker({
                   {g.list.map(i => {
                     const ok = !fits || fits(i.id, chosen);
                     return (
-                      <button key={i.id} type="button" title={i.name} aria-label={i.name} disabled={!ok}
+                      <button key={i.id} type="button" title={i.label} aria-label={i.label} disabled={!ok}
                         onClick={() => { onChange([...chosen, i.id]); if (chosen.length + 1 >= max) setKind(null); }}
                         className={`rounded p-0.5 ${ok ? 'hover:bg-surface-overlay' : 'opacity-40 cursor-not-allowed'}`}>
-                        <OptIcon src={i.img} alt={i.name} className="w-8 h-8" />
+                        <OptIcon src={i.img} alt={i.label} className="w-8 h-8" />
                       </button>
                     );
                   })}
@@ -878,10 +878,10 @@ function CoplayRow({
       {rows.map(r => {
         const u = options.unitById.get(r.key)!;
         return (
-          <button key={r.key} type="button" onClick={() => onAdd(r.key)} title={u.name}
+          <button key={r.key} type="button" onClick={() => onAdd(r.key)} title={u.label}
             className="flex items-center gap-1.5 pl-1 pr-2.5 py-0.5 rounded-md border border-border-subtle bg-surface-base text-sm text-fg-primary hover:border-accent-a50">
-            <OptIcon src={u.img} alt={u.name} className="w-8 h-8" border={costColor(u.cost)} />
-            <span className="truncate max-w-[7rem]">{u.name}</span>
+            <OptIcon src={u.img} alt={u.label} className="w-8 h-8" border={costColor(u.cost)} />
+            <span className="truncate max-w-[7rem]">{u.label}</span>
             <span className="text-fg-muted tabular-nums">{Math.round((r.games / src.summary.games) * 100)}%</span>
           </button>
         );

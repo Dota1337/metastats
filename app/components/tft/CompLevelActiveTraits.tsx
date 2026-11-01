@@ -2,7 +2,8 @@
 import { useMemo } from 'react';
 import { withAlpha } from '../../lib/color';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftTraitDisplayName } from '../../lib/tft-cdragon';
+import { useI18n } from '../../lib/i18n';
 import { computeActiveTraits, activeTraitStyleColor } from '../../lib/tft-active-traits';
 
 // Active-Traits-Mini-Strip pro Boards-by-Activation-Card. Berechnet die
@@ -19,6 +20,7 @@ export default function CompLevelActiveTraits({
   clusterKey: string;
   assets: TftAssetsBundle | null;
 }) {
+  const { lang } = useI18n();
   const traits = useMemo(
     () => computeActiveTraits(typicalUnits, clusterKey, assets),
     [typicalUnits, clusterKey, assets],
@@ -34,7 +36,7 @@ export default function CompLevelActiveTraits({
             key={tr.apiName}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-sunken border"
             style={{ borderColor: `${withAlpha(color, 0x55)}` }}
-            title={`${tr.count} ${tr.displayName}`}
+            title={`${tr.count} ${tftTraitDisplayName(assets, tr.apiName, lang)}`}
           >
             {iconUrl ? (
               <img

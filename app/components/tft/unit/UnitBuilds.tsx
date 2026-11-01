@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import TftItemIcon from '../TftItemIcon';
-import { type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { itemBucketOf, type ItemBucket } from '../../../lib/tft-item-bucket';
 import { type ExplorerRow } from '../../../lib/tft-explorer-query';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
@@ -42,7 +42,7 @@ export default function UnitBuilds({
   filters: UnitExplorerFilters;
   setFilters: (f: UnitExplorerFilters) => void;
 }) {
-  const { t, withLang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const [view, setView] = useState<View>('builds');
   const [kind, setKind] = useState<Kind>('all');
   const [withItem, setWithItem] = useState<string | null>(null);
@@ -204,7 +204,7 @@ export default function UnitBuilds({
               title={t('tft.explorer.x.remove')}
             >
               <TftItemIcon apiName={withItem} assets={assets} className="w-5 h-5" />
-              <span className="max-w-[10rem] truncate">{assets?.items[withItem]?.name ?? withItem}</span>
+              <span className="max-w-[10rem] truncate">{tftLabel(assets?.items[withItem], lang) ?? withItem}</span>
               <span aria-hidden="true" className="text-fg-muted">✕</span>
             </button>
           )}
@@ -264,7 +264,7 @@ export default function UnitBuilds({
                             </button>
                           ))}
                           {view === 'items' && (
-                            <span className="ml-2 text-white text-[12px] truncate max-w-[12rem] hidden md:inline">{assets?.items[ids[0]]?.name ?? ''}</span>
+                            <span className="ml-2 text-white text-[12px] truncate max-w-[12rem] hidden md:inline">{tftLabel(assets?.items[ids[0]], lang) ?? ''}</span>
                           )}
                         </div>
                       </td>
@@ -330,6 +330,7 @@ function HighlightRow({ icons, assets, s, t, onItem, showName = false }: {
   onItem: (id: string) => void;
   showName?: boolean;
 }) {
+  const { lang } = useI18n();
   return (
     <div className="flex items-center gap-2 py-0.5">
       <div className="flex items-center gap-1 shrink-0">
@@ -339,7 +340,7 @@ function HighlightRow({ icons, assets, s, t, onItem, showName = false }: {
           </button>
         ))}
       </div>
-      {showName && <span className="text-[12px] text-fg-secondary truncate min-w-0 flex-1">{assets?.items[icons[0]]?.name ?? ''}</span>}
+      {showName && <span className="text-[12px] text-fg-secondary truncate min-w-0 flex-1">{tftLabel(assets?.items[icons[0]], lang) ?? ''}</span>}
       <div className={`grid grid-cols-3 gap-2 text-center ${showName ? '' : 'flex-1'} min-w-[11rem]`}>
         <Metric value={s.row.avg.toFixed(2)} label={t('tft.avgPlacement')} />
         <Metric value={fmtPc(s.pc)} label={t('tft.explorer.x.delta')} title={t('tft.unit.placeChange')} className={pcClass(s.pc)} />

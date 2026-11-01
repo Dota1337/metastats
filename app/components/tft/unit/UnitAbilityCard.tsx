@@ -5,7 +5,7 @@
 // verstecken. Fehlt die Unit in der Datei, zeigt die Karte nichts.
 import { useState } from 'react';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { tftIconUrl, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { tftIconUrl, tftTraitDisplayName, tftTraitLabelByName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import {
   parseAbilityDesc, pickLang, statByStar, STAR_AD, STAR_HP,
   type AbilitySeg, type AbilityStyle, type UnitInfoFile,
@@ -109,7 +109,7 @@ export default function UnitAbilityCard({ unitId, info, assets }: {
                       type="button"
                       aria-pressed={active}
                       onClick={() => setForm(id)}
-                      title={trait ? (tftTraitDisplayName(assets, trait) || label) : label}
+                      title={trait ? (tftTraitLabelByName(assets, tftTraitDisplayName(assets, trait, lang), lang) || label) : label}
                       className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[11px] font-medium transition-colors ${
                         active ? 'border-accent-fill bg-accent-fill text-white' : 'border-border-subtle text-fg-secondary hover:border-accent-a40 hover:text-white'
                       }`}

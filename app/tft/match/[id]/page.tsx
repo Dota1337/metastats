@@ -7,7 +7,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
 import { formatStage } from '../../../lib/tft-stage';
 
@@ -200,7 +200,7 @@ function PlacementBadge({ placement }: { placement: number }) {
 function ActivatedTraits({
   participant, assets,
 }: { participant: TftParticipantSummary; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const active = participant.traits.filter(t => t.tierCurrent > 0);
   return (
     <div className="flex gap-1 flex-wrap">
@@ -215,8 +215,8 @@ function ActivatedTraits({
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
             style={{ backgroundColor: `${withAlpha(styleColor, 0x25)}`, color: styleColor }}
           >
-            {url && <img src={url} alt={info!.name} className="w-3 h-3" />}
-            <span>{tr.numUnits} {info?.name || prettyTraitName(tr.name)}</span>
+            {url && <img src={url} alt={tftLabel(info!, lang)} className="w-3 h-3" />}
+            <span>{tr.numUnits} {tftLabel(info, lang) || prettyTraitName(tr.name)}</span>
           </a>
         );
       })}
@@ -225,15 +225,15 @@ function ActivatedTraits({
 }
 
 function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const info = assets?.champions[unit.characterId];
   const cost = (info?.cost ?? unit.rarity + 1) || 1;
   const costColor = costToColor(cost);
   const url = tftChampionTileUrl(assets, info);
-  const name = info?.name || prettyCharId(unit.characterId);
+  const name = tftLabel(info, lang) || prettyCharId(unit.characterId);
   const stars = unit.tier > 1 ? ` ${'★'.repeat(unit.tier)}` : '';
   const itemNames = (unit.items || [])
-    .map((it: string) => assets?.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
+    .map((it: string) => tftLabel(assets?.items[it], lang) || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
     .join(', ');
   const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
   const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
@@ -262,7 +262,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
           {unit.items.slice(0, 3).map((it: string, i: number) => {
             const itemInfo = assets?.items[it];
             const iurl = tftIconUrl(assets, itemInfo?.icon);
-            const itemName = itemInfo?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
+            const itemName = tftLabel(itemInfo, lang) || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, '');
             return iurl ? (
               <a
                 key={i}

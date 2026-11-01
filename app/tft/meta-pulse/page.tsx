@@ -12,7 +12,7 @@ import StatsFilterBar, {
   type PatchInfo,
 } from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../lib/tft-cluster';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import RegionCompare, { REGION_COMPARE_DEFAULT, parseCompareRegions } from '../../components/tft/RegionCompare';
@@ -238,13 +238,13 @@ function PulseRow({
   meta: string;
   bucket: string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const parts = parseClusterKey(clusterKey);
   const traitName = parts && assets
-    ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
+    ? (tftLabel(assets.traits[parts.trait], lang) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
     : '';
   const carry = parts && assets ? assets.champions[parts.carry] : null;
-  const carryName = carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
+  const carryName = tftLabel(carry, lang) || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
   const carryUrl = tftChampionTileUrl(assets, carry);
   const augSlug = shownAugmentSlug(parts?.augmentSlug);
   const augApiName = augSlug ? compDefiningAugmentApiNameFromSlug(augSlug) : null;

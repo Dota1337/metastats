@@ -8,7 +8,7 @@ import { compsWithItem as selectCompsWithItem, detailFiltersFrom, detailKey, sha
 import type { ItemDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, tftLabel, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
@@ -187,12 +187,12 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
           <a href={withLang("/tft/items")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
             {url ? (
-              <img src={url} alt={itemMeta!.name} className="w-16 h-16 rounded-lg border-2 border-accent" />
+              <img src={url} alt={tftLabel(itemMeta, lang)} className="w-16 h-16 rounded-lg border-2 border-accent" />
             ) : (
               <div className="w-16 h-16 rounded-lg bg-surface-overlay" />
             )}
             <div className="flex-1">
-              <h1 className="text-white text-2xl font-medium">{itemMeta?.name || prettyApi(id)}</h1>
+              <h1 className="text-white text-2xl font-medium">{tftLabel(itemMeta, lang) || prettyApi(id)}</h1>
               {/* Werte + Wirkung aus den Item-Texten (Set 18: das Bundle hat
                   keine Beschreibung), sonst der Bundle-Text wie vorher. */}
               {itemText ? (
@@ -220,15 +220,15 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                     <div key={i} className="flex items-center gap-3">
                       <a
                         href={withLang(`/tft/items/${encodeURIComponent(compId)}?bucket=${bucket}`)}
-                        title={compMeta?.name || compId}
+                        title={tftLabel(compMeta, lang) || compId}
                         className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded px-2 py-1 hover:border-accent-a50"
                       >
                         {compUrl ? (
-                          <img src={compUrl} alt={compMeta!.name} className="w-8 h-8 rounded" />
+                          <img src={compUrl} alt={tftLabel(compMeta, lang)} className="w-8 h-8 rounded" />
                         ) : (
                           <div className="w-8 h-8 rounded bg-surface-overlay" />
                         )}
-                        <span className="text-white text-xs">{compMeta?.name || prettyApi(compId)}</span>
+                        <span className="text-white text-xs">{tftLabel(compMeta, lang) || prettyApi(compId)}</span>
                       </a>
                       {i === 0 && <span className="text-accent text-lg font-medium">+</span>}
                     </div>
@@ -236,8 +236,8 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                 })}
                 <span className="text-accent text-lg font-medium">=</span>
                 <div className="flex items-center gap-2 bg-accent-a10 border border-accent-a30 rounded px-2 py-1">
-                  {url && <img src={url} alt={itemMeta!.name} className="w-8 h-8 rounded" />}
-                  <span className="text-white text-xs font-medium">{itemMeta?.name || prettyApi(id)}</span>
+                  {url && <img src={url} alt={tftLabel(itemMeta, lang)} className="w-8 h-8 rounded" />}
+                  <span className="text-white text-xs font-medium">{tftLabel(itemMeta, lang) || prettyApi(id)}</span>
                 </div>
               </div>
             </div>
@@ -298,11 +298,11 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             {churl ? (
-                              <img src={churl} alt={ch!.name} className="w-7 h-7 rounded border-2 object-cover flex-shrink-0" style={{ borderColor: costColorOf(cost) }} />
+                              <img src={churl} alt={tftLabel(ch, lang)} className="w-7 h-7 rounded border-2 object-cover flex-shrink-0" style={{ borderColor: costColorOf(cost) }} />
                             ) : (
                               <div className="w-7 h-7 rounded bg-surface-overlay flex-shrink-0" />
                             )}
-                            <span className="text-white truncate">{ch?.name || prettyChar(u.characterId)}</span>
+                            <span className="text-white truncate">{tftLabel(ch, lang) || prettyChar(u.characterId)}</span>
                           </div>
                           <div className="text-right text-white tabular-nums">{u.avgPlacement?.toFixed(2) ?? '—'}</div>
                           <div className="text-right text-[#3ecf8e] tabular-nums">{u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(0)}%` : '—'}</div>
@@ -320,7 +320,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                   <div className="space-y-1.5">
                     {compsTop6.map(c => {
                       const parts = parseClusterKey(c.clusterKey);
-                      const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || prettyTrait(parts.trait)) : '';
+                      const traitName = parts ? (tftTraitDisplayName(assets, parts.trait, lang) || prettyTrait(parts.trait)) : '';
                       const carry = parts && assets ? assets.champions[parts.carry] : null;
                       const carryUrl = tftChampionTileUrl(assets, carry);
                       return (
@@ -334,7 +334,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                           )}
                           <div className="flex-1 min-w-0">
                             <div className="text-white text-[11px] font-medium truncate leading-tight">
-                              {traitName} · {carry?.name || (parts ? prettyChar(parts.carry) : '')}
+                              {traitName} · {tftLabel(carry, lang) || (parts ? prettyChar(parts.carry) : '')}
                             </div>
                           </div>
                           <div className="text-right text-[11px] tabular-nums leading-tight">
@@ -373,10 +373,10 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                           key={j}
                           href={withLang(`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`)}
                           onClick={e => e.stopPropagation()}
-                          title={im?.name || it}
+                          title={tftLabel(im, lang) || it}
                           className="hover:scale-110 transition-transform"
                         >
-                          <img src={iurl} alt={im?.name || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-accent' : ''}`} />
+                          <img src={iurl} alt={tftLabel(im, lang) || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-accent' : ''}`} />
                         </a>
                       ) : (
                         <div key={j} className="w-7 h-7 rounded bg-surface-overlay" />
@@ -408,11 +408,11 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                     className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a50"
                   >
                     {sUrl ? (
-                      <img src={sUrl} alt={v.name} className="w-8 h-8 rounded" />
+                      <img src={sUrl} alt={tftLabel(v, lang)} className="w-8 h-8 rounded" />
                     ) : (
                       <div className="w-8 h-8 rounded bg-surface-overlay" />
                     )}
-                    <span className="text-white text-[11px] truncate">{v.name}</span>
+                    <span className="text-white text-[11px] truncate">{tftLabel(v, lang)}</span>
                   </a>
                 );
               })}

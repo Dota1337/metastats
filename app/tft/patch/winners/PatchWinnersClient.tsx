@@ -2,8 +2,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
-import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, tftIconUrl, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { useI18n, type Lang, type TranslationKey } from '../../../lib/i18n';
+import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import {
@@ -57,7 +57,7 @@ interface DiffEntry {
 }
 
 export default function PatchWinnersClient({ initial }: { initial: PatchWinnersStart | null }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [entity, setEntity] = useState<Entity>('unit');
   const [region, setRegion] = useState<string>('');
   const [tier, setTier] = useState<Tier>('master_plus');
@@ -149,7 +149,7 @@ export default function PatchWinnersClient({ initial }: { initial: PatchWinnersS
   );
 
   const renderRow = (e: DiffEntry, idx: number, isWinner: boolean) => {
-    const display = renderEntity(e.key, entity, assets);
+    const display = renderEntity(e.key, entity, assets, lang);
     const sign = e.deltaAvgPlacement < 0 ? '−' : '+';
     const barColor = isWinner ? '#3ecf8e' : '#e44040';
           const textColor = isWinner ? '#3ecf8e' : 'var(--pos-loss-text)';
@@ -248,7 +248,7 @@ export default function PatchWinnersClient({ initial }: { initial: PatchWinnersS
           // and regression points left/red — the at-a-glance "what shifted".
           const top = [...winners.slice(0, 8), ...losers.slice(0, 8)];
           const rows = top
-            .map(e => ({ key: e.key, name: renderEntity(e.key, entity, assets).name, swing: Number((-e.deltaAvgPlacement).toFixed(3)) }))
+            .map(e => ({ key: e.key, name: renderEntity(e.key, entity, assets, lang).name, swing: Number((-e.deltaAvgPlacement).toFixed(3)) }))
             .sort((a, b) => b.swing - a.swing);
           if (rows.length === 0) return null;
           const max = Math.max(0.05, ...rows.map(r => Math.abs(r.swing)));
@@ -304,7 +304,7 @@ export default function PatchWinnersClient({ initial }: { initial: PatchWinnersS
   );
 }
 
-function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | null) {
+function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | null, lang: Lang) {
   if (entity === 'unit') {
     // Case-insensitive lookup: the cache occasionally stores
     // `tft17_xxx` lowercase where assets keys are `TFT17_Xxx`. Try the
@@ -319,7 +319,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     }
     const url = tftChampionTileUrl(assets, champ);
     return {
-      name: champ?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
+      name: tftLabel(champ, lang) || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
       icon: url ? <img src={url} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60" /> : <div className="w-8 h-8 rounded bg-surface-overlay" />,
       href: `/tft/units/${encodeURIComponent(canonicalId)}`,
     };
@@ -328,7 +328,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     const item = assets?.items[key];
     const url = tftIconUrl(assets, item?.icon);
     return {
-      name: item?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''),
+      name: tftLabel(item, lang) || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''),
       icon: url ? <img src={url} alt="" className="w-7 h-7 rounded" /> : <div className="w-7 h-7 rounded bg-surface-overlay" />,
       href: `/tft/items/${encodeURIComponent(key)}`,
     };
@@ -364,8 +364,8 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     })();
     const url = !carryIsTanky ? tftChampionTileUrl(assets, carry) : null;
     const traitIcon = tftIconUrl(assets, trait?.icon);
-    const traitDisplay = trait?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
-    const carryDisplay = carry?.name || parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+    const traitDisplay = tftLabel(trait, lang) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+    const carryDisplay = tftLabel(carry, lang) || parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
     // Star/Augment-Suffix dem Display-Namen anhängen, damit Sub-Cluster
     // visuell unterscheidbar bleiben (Reroll-Variante etc.).
     const suffix = parts.carryStar === 3
@@ -389,7 +389,7 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
   const trait = assets?.traits[key];
   const traitIcon = tftIconUrl(assets, trait?.icon);
   return {
-    name: trait?.name || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
+    name: tftLabel(trait, lang) || key.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''),
     icon: traitIcon
       ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
       : <div className="w-7 h-7 rounded bg-surface-overlay" />,

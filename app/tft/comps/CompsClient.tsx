@@ -10,7 +10,7 @@ import CompFamilyRow, { type CompFamily } from '../../components/tft/CompFamilyR
 import CompsTabs from '../../components/tft/CompsTabs';
 import StatsFilterBar from '../../components/tft/StatsFilterBar';
 import { useI18n } from '../../lib/i18n';
-import { tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import TftHero from '../../components/tft/TftHero';
 import AdvancedCompFilters from '../../components/tft/AdvancedCompFilters';
 import { visibleFamilies as pickVisibleFamilies, type CompApiRow, type CompSortBy } from '../../lib/tft-comp-families';
@@ -30,7 +30,7 @@ export default function CompsClient({ initialFilters, initial }: {
   initialFilters: Filters;
   initial: StatsInitial<CompApiRow> | null;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const searchParams = useSearchParams();
   const initialCompareA = searchParams.get('compareA');
 
@@ -68,8 +68,8 @@ export default function CompsClient({ initialFilters, initial }: {
   };
 
   const visibleFamilies = useMemo(
-    () => pickVisibleFamilies(currentSetFamilies, topFamilyKeys, search, assets),
-    [currentSetFamilies, topFamilyKeys, search, assets],
+    () => pickVisibleFamilies(currentSetFamilies, topFamilyKeys, search, assets, lang),
+    [currentSetFamilies, topFamilyKeys, search, assets, lang],
   );
 
   return (
@@ -180,7 +180,7 @@ function CompareBanner({
   t: (k: any) => string;
   onReset: () => void;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const selectedFamilies = selection
     .map(slug => families.find(f => f.mainComp.slug === slug))
     .filter(Boolean) as CompFamily[];
@@ -209,7 +209,7 @@ function CompareBanner({
                     <div className="w-6 h-6 rounded bg-surface-overlay flex-shrink-0" />
                   )}
                   <span className="text-white text-[11px] truncate hidden sm:inline">
-                    {carry?.name || lead.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
+                    {tftLabel(carry, lang) || lead.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
                   </span>
                 </div>
               );

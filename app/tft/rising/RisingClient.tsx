@@ -7,7 +7,7 @@ import { ACTIVE_REGIONS } from '../../lib/active-regions';
 import RankEmblem from '../../components/tft/RankEmblem';
 import { NO_DIVISION_TIERS, RANK_TIER_COLOR } from '../../lib/rank-format';
 import {
-  loadTftAssets, tftChampionTileUrl, tftIconUrl, findChampion, findTrait, findItem,
+  loadTftAssets, tftChampionTileUrl, tftIconUrl, tftLabel, findChampion, findTrait, findItem,
   type TftAssetsBundle,
 } from '../../lib/tft-cdragon';
 import type { RisingPlayer, RisingRank } from '../../lib/tft-hetzner-matches';
@@ -64,8 +64,8 @@ function Placements({ counts }: { counts: number[] }) {
 }
 
 export default function RisingClient({ initial }: { initial: RisingStart | null }) {
-  const { t, withLang } = useI18n();
-  const tierName = (tier: string) => t(`tier.${tier.toLowerCase()}` as Parameters<typeof t>[0]);
+  const { t, lang, withLang } = useI18n();
+  const tierName =(tier: string) => t(`tier.${tier.toLowerCase()}` as Parameters<typeof t>[0]);
   const [days, setDays] = useState<Days>(1);
   const [region, setRegion] = useState<string>('all');
   const [fetchedPlayers, setPlayers] = useState<RisingPlayer[]>([]);
@@ -129,7 +129,7 @@ export default function RisingClient({ initial }: { initial: RisingStart | null 
           {players.map((p, idx) => {
             const display = p.gameName || '—';
             const comp = p.topComp;
-            const traitNames = (comp?.traits || []).map(tr => findTrait(assets, tr.name)?.name || stripPrefix(tr.name));
+            const traitNames = (comp?.traits || []).map(tr => tftLabel(findTrait(assets, tr.name), lang) || stripPrefix(tr.name));
             const title = traitNames.slice(0, 2).join(' ');
             const subtitle = traitNames.slice(2, 4).join(' · ');
             const units = (comp?.units || [])
@@ -197,13 +197,13 @@ export default function RisingClient({ initial }: { initial: RisingStart | null 
                               {u.star >= 2 ? '★'.repeat(Math.min(u.star, 4)) : ''}
                             </span>
                             {tile
-                              ? <img src={tile} alt={champ?.name || ''} title={champ?.name || ''} className="w-9 h-9 rounded border border-border-subtle" />
+                              ? <img src={tile} alt={tftLabel(champ, lang) || ''} title={tftLabel(champ, lang) || ''} className="w-9 h-9 rounded border border-border-subtle" />
                               : <div className="w-9 h-9 rounded border border-border-subtle bg-surface-overlay" />}
                             <div className="flex gap-px mt-0.5 h-3">
                               {u.items.slice(0, 3).map((it, j) => {
                                 const item = findItem(assets, it);
                                 const icon = item ? tftIconUrl(assets, item.icon) : null;
-                                return icon ? <img key={j} src={icon} alt={item?.name || ''} title={item?.name || ''} className="w-3 h-3 rounded-sm" /> : null;
+                                return icon ? <img key={j} src={icon} alt={tftLabel(item, lang) || ''} title={tftLabel(item, lang) || ''} className="w-3 h-3 rounded-sm" /> : null;
                               })}
                             </div>
                           </div>

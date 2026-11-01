@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, compsShowingAugment, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
@@ -37,7 +37,7 @@ interface CompMatch {
 }
 
 export default function TftAugmentReferenceDetailPage() {
-  const { t, withLang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const params = useParams();
   const apiName = decodeURIComponent(String(params?.name || ''));
   const [assets, setAssets] = useState<TftAssetsBundle | null>(null);
@@ -176,9 +176,9 @@ export default function TftAugmentReferenceDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {matchingComps.map(m => {
                 const traitMeta = assets?.traits[m.trait];
-                const traitName = traitMeta?.name || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+                const traitName = tftLabel(traitMeta, lang) || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
                 const carryChamp = findChampion(assets, m.carry);
-                const carryName = carryChamp?.name || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+                const carryName = tftLabel(carryChamp, lang) || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
                 const carryUrl = tftChampionTileUrl(assets, carryChamp);
                 // Cluster-Key heuristisch konstruieren — Comp-Detail nimmt
                 // jeden Slug an und auflöst zum besten Match.

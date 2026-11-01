@@ -7,7 +7,8 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket, tierBucketFromParam } from '../../../components/tft/TierFilter';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, tftLabel, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import type { Lang } from '../../../lib/lang-path';
 import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
 import { computeActiveTraits, activeTraitStyleColor, type ActiveTrait } from '../../../lib/tft-active-traits';
@@ -239,8 +240,8 @@ export default function TftCompsComparePage() {
   const traitsA = useMemo(() => compA ? computeActiveTraits(compA.typicalUnits, compA.clusterKey, assets) : [], [compA, assets]);
   const traitsB = useMemo(() => compB ? computeActiveTraits(compB.typicalUnits, compB.clusterKey, assets) : [], [compB, assets]);
 
-  const nameA = compName(compA, compB, assets);
-  const nameB = compName(compB, compA, assets);
+  const nameA = compName(compA, compB, assets, lang);
+  const nameB = compName(compB, compA, assets, lang);
   const sharedIds = useMemo(() => {
     if (!compA || !compB) return new Set<string>();
     const b = new Set(boardIds(compB));
@@ -356,14 +357,14 @@ export default function TftCompsComparePage() {
 
 // Anzeigename fuer Saetze und Spaltenkoepfe: der Carry, bei gleichem Carry
 // beider Comps die Synergie.
-function compName(comp: CompData | null | undefined, other: CompData | null | undefined, assets: TftAssetsBundle | null): string {
+function compName(comp: CompData | null | undefined, other: CompData | null | undefined, assets: TftAssetsBundle | null, lang: Lang): string {
   if (!comp) return '';
   const parts = parseClusterKey(comp.clusterKey);
   if (!parts) return '';
-  const carry = assets?.champions[parts.carry]?.name || '';
+  const carry = tftLabel(assets?.champions[parts.carry], lang) || '';
   const otherCarry = other ? parseClusterKey(other.clusterKey)?.carry : null;
   if (carry && otherCarry !== parts.carry) return carry;
-  return tftTraitDisplayName(assets, parts.trait) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+  return tftTraitDisplayName(assets, parts.trait, lang) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
 }
 
 function fill(template: string, vars: Record<string, string>): string {
@@ -520,7 +521,7 @@ function OpponentList({
   title: string; tone: string; edges: DuelEdge[]; assets: TftAssetsBundle | null; bucket: string;
   also?: Set<string>; alsoLabel?: string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   return (
     <div className="mb-3 last:mb-0">
       <div className="text-[10px] uppercase tracking-widest mb-1.5" style={{ color: tone }}>{title}</div>
@@ -532,8 +533,8 @@ function OpponentList({
             const parts = familyParts(e.fam);
             const strip = (s: string) => s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
             const champ = parts && assets ? assets.champions[parts.carry] : null;
-            const carryName = champ?.name || (parts ? strip(parts.carry) : e.fam);
-            const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || strip(parts.trait)) : '';
+            const carryName = tftLabel(champ, lang) || (parts ? strip(parts.carry) : e.fam);
+            const traitName = parts ? (tftTraitDisplayName(assets, parts.trait, lang) || strip(parts.trait)) : '';
             const tile = tftChampionTileUrl(assets, champ);
             const body = (
               <>
@@ -586,6 +587,7 @@ function CompPanel({
   side: 'a' | 'b';
   sharedIds: Set<string>;
 }) {
+  const { lang } = useI18n();
   if (!comp) {
     return (
       <div className="bg-surface-base border border-border-subtle rounded p-4 text-center">
@@ -594,7 +596,7 @@ function CompPanel({
     );
   }
   const parts = parseClusterKey(comp.clusterKey);
-  const traitName = parts ? (tftTraitDisplayName(assets, parts.trait) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')) : '';
+  const traitName = parts ? (tftTraitDisplayName(assets, parts.trait, lang) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')) : '';
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
   const accentColor = side === 'a' ? COLOR_A : COLOR_B;
@@ -621,7 +623,7 @@ function CompPanel({
         )}
         <div className="min-w-0 flex-1">
           <div className="text-fg-bright text-xs truncate">{traitName}</div>
-          <div className="text-white text-base font-medium truncate">{carry?.name || ''}</div>
+          <div className="text-white text-base font-medium truncate">{tftLabel(carry, lang) || ''}</div>
         </div>
       </div>
       {comp.typicalUnits && comp.typicalUnits.length > 0 && (
@@ -636,9 +638,9 @@ function CompPanel({
                 <div
                   className={`w-9 h-9 rounded-md border-2 overflow-hidden ${shared ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-surface-base' : ''}`}
                   style={{ borderColor: costColorOf(cost) }}
-                  title={ch?.name || u.characterId}
+                  title={tftLabel(ch, lang) || u.characterId}
                 >
-                  {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                  {url && <img src={url} alt={tftLabel(ch, lang) || ''} className="w-full h-full object-cover" />}
                 </div>
               </div>
             );
@@ -656,6 +658,7 @@ function ComponentsCompare({
 }: {
   compA: CompData; compB: CompData; nameA: string; nameB: string; assets: TftAssetsBundle | null; t: TFn;
 }) {
+  const { lang } = useI18n();
   const rowsA = aggregateComponents((compA.carryItems || []) as CarryItemSet[], assets, 6);
   const rowsB = aggregateComponents((compB.carryItems || []) as CarryItemSet[], assets, 6);
   if (!assets || (rowsA.length === 0 && rowsB.length === 0)) return null;
@@ -668,9 +671,9 @@ function ComponentsCompare({
         const url = item?.icon ? tftIconUrl(assets, item.icon) : null;
         const inBoth = both.has(r.component);
         return (
-          <div key={r.component} className="flex flex-col items-center gap-0.5" title={item?.name || r.component}>
+          <div key={r.component} className="flex flex-col items-center gap-0.5" title={tftLabel(item, lang) || r.component}>
             <div className={`w-8 h-8 rounded overflow-hidden bg-surface-raised ${inBoth ? 'ring-2 ring-white/80 ring-offset-1 ring-offset-surface-base' : ''}`}>
-              {url && <img src={url} alt={item?.name || ''} className="w-full h-full object-cover" />}
+              {url && <img src={url} alt={tftLabel(item, lang) || ''} className="w-full h-full object-cover" />}
             </div>
             <span className="text-[10px] tabular-nums text-fg-muted">{Math.round(r.weight * 100)}%</span>
           </div>
@@ -912,6 +915,7 @@ function TraitColumn({
   assets: TftAssetsBundle | null;
   accent: string;
 }) {
+  const { lang } = useI18n();
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3">
       <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: accent }}>{title}</div>
@@ -922,16 +926,17 @@ function TraitColumn({
           {traits.map(tr => {
             const color = activeTraitStyleColor(tr.tier);
             const iconUrl = tr.icon ? tftIconUrl(assets, tr.icon) : null;
+            const shownName = tftTraitDisplayName(assets, tr.apiName, lang);
             return (
               <div
                 key={tr.apiName}
                 className="flex items-center gap-1 px-1.5 py-1 rounded border bg-surface-sunken"
                 style={{ borderColor: `${withAlpha(color, 0x55)}` }}
-                title={tr.displayName}
+                title={shownName}
               >
                 {iconUrl && <img src={iconUrl} alt="" className="w-4 h-4" style={{ filter: `drop-shadow(0 0 2px ${color})` }} />}
                 <span className="text-[10px] font-bold tabular-nums" style={{ color }}>{tr.count}</span>
-                <span className="text-white text-[11px]">{tr.displayName}</span>
+                <span className="text-white text-[11px]">{shownName}</span>
               </div>
             );
           })}

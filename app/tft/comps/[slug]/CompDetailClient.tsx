@@ -15,7 +15,7 @@ import EmptyData from '../../../components/tft/EmptyData';
 import ApiUnavailable from '../../../components/ApiUnavailable';
 import CompCard from '../../../components/tft/CompCard';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, traitTierLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, findItem, tftLabel, traitTierLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import CompBoardPanel, { type CompBoardParams } from '../../../components/tft/CompBoardPanel';
 import VariantsSwitcher from '../../../components/tft/VariantsSwitcher';
 import CompActiveTraits from '../../../components/tft/CompActiveTraits';
@@ -94,7 +94,7 @@ const REGIONS = [
 // Seite wie bisher selbst). `routeKey`: interne Kennung der Adresse (page.tsx,
 // lesbarer Name schon aufgeloest — Familien-Kennung oder Cluster-Kennung).
 export default function TftCompDetailPage({ initial, routeKey }: { initial: CompDetailInitial | null; routeKey: string }) {
-  const { t, withLang } = useI18n();
+  const { t, withLang, lang } = useI18n();
   const search = useSearchParams();
   const pathname = usePathname();
   // Region, Rang und Zeitraum aus der Adresse — dieselbe Funktion wie die
@@ -454,18 +454,18 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                 const pct = (c.weight * 100).toFixed(0);
                 const fromItemsTitle = c.fromItems
                   .slice(0, 4)
-                  .map(it => assets.items[it]?.name || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
+                  .map(it => tftLabel(assets.items[it], lang) || it.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''))
                   .join(' · ');
                 return (
                   <a
                     key={c.component}
                     href={withLang(`/tft/items/${encodeURIComponent(c.component)}?bucket=${bucket}`)}
-                    title={`${meta?.name || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
+                    title={`${tftLabel(meta, lang) || c.component} — ${t('tft.comp.componentInItems')}: ${fromItemsTitle}`}
                     className="flex flex-col items-center w-12 hover:scale-105 transition-transform"
                   >
                     <div className="relative">
                       {url ? (
-                        <img src={url} alt={meta?.name || ''} className="w-8 h-8 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
+                        <img src={url} alt={tftLabel(meta, lang) || ''} className="w-8 h-8 rounded border-2" style={{ borderColor: i === 0 ? '#e0c75a' : 'var(--border-subtle)' }} />
                       ) : (
                         <div className="w-8 h-8 rounded bg-surface-overlay" />
                       )}
@@ -474,7 +474,8 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                       )}
                     </div>
                     <div className="text-white text-[11px] mt-1 truncate max-w-full">
-                      {meta?.name?.split(' ').pop() || c.component.split('_').pop()}
+                      {/* Kurzname (letztes Wort) nur auf Englisch, sonst der volle Name. */}
+                      {(lang === 'en' ? meta?.name?.split(' ').pop() : tftLabel(meta, lang)) || c.component.split('_').pop()}
                     </div>
                     <div className="w-full h-1 bg-surface-overlay rounded mt-1 overflow-hidden">
                       <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
@@ -750,11 +751,11 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                                       <a
                                         key={j}
                                         href={withLang(`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`)}
-                                        title={meta?.name || it}
+                                        title={tftLabel(meta, lang) || it}
                                         className="hover:scale-110 transition"
                                       >
                                         {url ? (
-                                          <img src={url} alt={meta!.name} className="w-8 h-8 rounded border border-surface-base" />
+                                          <img src={url} alt={tftLabel(meta!, lang)} className="w-8 h-8 rounded border border-surface-base" />
                                         ) : (
                                           <div className="w-8 h-8 rounded bg-surface-overlay" />
                                         )}
@@ -837,7 +838,7 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                             >
                               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-2">
                                 <span className="text-base font-semibold" style={{ color: labelColor }}>
-                                  {traitTierLabel(t('tft.trait.breakpoint') as string, assets, levelTrait, row.level)
+                                  {traitTierLabel(t('tft.trait.breakpoint') as string, assets, levelTrait, row.level, lang)
                                     ?? (t('tft.comp.levelOutcome.activation') as string).replace('{n}', String(row.level))}
                                 </span>
                                 <span className="text-fg-secondary text-xs tabular-nums">
@@ -873,9 +874,9 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                                           href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
                                           className="w-10 h-10 rounded-md border-2 overflow-hidden block hover:scale-110 transition-transform shadow-sm"
                                           style={{ borderColor: isCarry ? '#c39bff' : costColor(cost) }}
-                                          title={ch?.name || u.characterId}
+                                          title={tftLabel(ch, lang) || u.characterId}
                                         >
-                                          {url && <img src={url} alt={ch?.name || ''} className="w-full h-full object-cover" />}
+                                          {url && <img src={url} alt={tftLabel(ch, lang) || ''} className="w-full h-full object-cover" />}
                                         </a>
                                         {items.length > 0 && (
                                           <div className="flex items-center gap-[2px]">
@@ -887,9 +888,9 @@ export default function TftCompDetailPage({ initial, routeKey }: { initial: Comp
                                                   key={it.apiName}
                                                   href={withLang(`/tft/items/${encodeURIComponent(it.apiName)}`)}
                                                   className="w-[14px] h-[14px] rounded-sm bg-surface-sunken border border-border-subtle overflow-hidden block hover:border-[#c39bff]/60"
-                                                  title={meta?.name || it.apiName}
+                                                  title={tftLabel(meta, lang) || it.apiName}
                                                 >
-                                                  {iconUrl && <img src={iconUrl} alt={meta?.name || it.apiName} className="w-full h-full object-cover" />}
+                                                  {iconUrl && <img src={iconUrl} alt={tftLabel(meta, lang) || it.apiName} className="w-full h-full object-cover" />}
                                                 </a>
                                               );
                                             })}
@@ -1175,7 +1176,7 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
   bucket: string;
   t: (k: any) => string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const merged = dedupeMatchupEdges(edges);
   return (
     <div className="bg-surface-raised border border-border-subtle rounded p-3">
@@ -1187,13 +1188,13 @@ function MatchupColumn({ title, color, edges, assets, bucket, t }: {
           {merged.map(e => {
             const parts = parseClusterKey(e.opponent);
             const traitName = parts && assets
-              ? (assets.traits[parts.trait]?.name || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
+              ? (tftLabel(assets.traits[parts.trait], lang) || parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''))
               : '';
             const carry = parts && assets ? assets.champions[parts.carry] : null;
-            const carryName = carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : e.opponent);
+            const carryName = tftLabel(carry, lang) || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : e.opponent);
             const url = tftChampionTileUrl(assets, carry);
             const secondaryCh = parts?.secondary && assets ? assets.champions[parts.secondary] : null;
-            const secondaryName = secondaryCh?.name || (parts?.secondary ? parts.secondary.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : null);
+            const secondaryName = tftLabel(secondaryCh, lang) || (parts?.secondary ? parts.secondary.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : null);
             const augSlug = shownAugmentSlug(parts?.augmentSlug);
             const augApiName = augSlug ? compDefiningAugmentApiNameFromSlug(augSlug) : null;
             const augName = (augApiName && assets ? assets.items[augApiName]?.name : null) || augSlug;

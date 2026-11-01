@@ -5,7 +5,7 @@ import type { Lang } from '../i18n';
 import { tftAssets, DATA_TIMEOUT_MS } from '../og/data';
 import { withTimeout } from '../og/frame';
 import { getLatestDdragonVersion } from '../ddragon-version-server';
-import { tftTraitDisplayName } from '../tft-cdragon';
+import { tftLabel, tftTraitDisplayName } from '../tft-cdragon';
 import { compSlugIds } from '../tft-cluster';
 import { DDRAGON_LOCALE } from '../lol-champion-detail';
 
@@ -19,19 +19,22 @@ export function prettyId(id: string): string {
   return id.replace(/^(?:DA_)?(?:TFT\d*_|\d+_)?/i, '').replace(/^DA_?\d*_?/i, '').replace(/_/g, ' ') || id;
 }
 
-export function tftUnitName(id: string): string {
-  return tftAssets()?.champions?.[id]?.name || prettyId(id);
+// `lang` ohne Vorgabe waere bequemer, liesse aber englische Titel still durch.
+export function tftUnitName(id: string, lang: Lang): string {
+  return tftLabel(tftAssets()?.champions?.[id], lang) || prettyId(id);
 }
 
-export function tftItemName(id: string): string {
-  return tftAssets()?.items?.[id]?.name || prettyId(id);
+export function tftItemName(id: string, lang: Lang): string {
+  return tftLabel(tftAssets()?.items?.[id], lang) || prettyId(id);
 }
 
 /** Trait-Liste und Unit-Seiten verlinken den Anzeigenamen, Comp-Seiten die Kennung. */
-export function tftTraitName(param: string): string {
+export function tftTraitName(param: string, lang: Lang): string {
   const bundle = tftAssets();
-  if (bundle?.traits?.[param]) return tftTraitDisplayName(bundle, param);
-  return param;
+  if (bundle?.traits?.[param]) return tftTraitDisplayName(bundle, param, lang);
+  // Adresse mit englischem Anzeigenamen (/tft/traits/Elderwood): Titel uebersetzen.
+  const byName = Object.values(bundle?.traits ?? {}).find(t => t?.name === param);
+  return tftLabel(byName, lang) || param;
 }
 
 /**

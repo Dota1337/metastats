@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { loadCurrentSet } from './lib/current-set.mjs';
 import { applyAugmentIconOverrides, fetchMissingAugmentIcons } from './lib/tft-augment-icons.mjs';
 import { fixItemName } from './lib/tft-item-name-fixes.mjs';
+import { applyLocalizedNames } from './lib/tft-localized-names.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
 const COMPANIONS_URL = 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/v1/companions.json';
@@ -167,14 +168,18 @@ async function main() {
   // Parallel fetch all locales except en_us (already loaded as `cd`).
   // Each ~24MB; we only retain the items[].apiName → {name, desc} pairs.
   const localeItems = { en: new Map((cd.items || []).map(it => [it.apiName, it])) };
+  // setData je Sprache: Unit- und Synergie-Namen (applyLocalizedNames).
+  const localeSets = {};
   await Promise.all(LOCALES.filter(l => l.code !== 'en').map(async (l) => {
     try {
       const json = await fetchJSON(`https://raw.communitydragon.org/latest/cdragon/tft/${l.file}`);
       localeItems[l.code] = new Map((json.items || []).map(it => [it.apiName, it]));
+      localeSets[l.code] = json.setData || [];
       console.log(`       ${l.code}: ${localeItems[l.code].size} item entries`);
     } catch (e) {
       console.warn(`       ${l.code}: FAILED (${e.message}) — augments will fall back to en`);
       localeItems[l.code] = new Map();
+      localeSets[l.code] = [];
     }
   }));
 
@@ -448,6 +453,21 @@ async function main() {
     if (items[alias] && !activeItems.includes(alias)) activeItems.push(alias);
   }
   activeItems.sort();
+
+  // Namen je Sprache (scripts/lib/tft-localized-names.mjs). Vorheriges Bundle nur
+  // bei gleichem Set: faellt eine Sprachdatei aus, bleiben seine Namen stehen.
+  let previousBundle = null;
+  try {
+    const prev = JSON.parse(readFileSync(`public/tft-assets-${active.number}.json`, 'utf8'));
+    if (prev?.set === active.number) previousBundle = prev;
+  } catch { /* Erstlauf eines Sets: kein Vorgaenger */ }
+  const nameStats = applyLocalizedNames({
+    items, activeItems, champions, traits, itemAliases: ITEM_ALIASES,
+    localeItems, localeSets, mutator: active.mutator, previous: previousBundle, stripHtml,
+  });
+  for (const [lang, n] of Object.entries(nameStats)) {
+    console.log(`       namen ${lang}: items ${n.items}, units ${n.champions}, synergien ${n.traits}, texte ${n.descs}${n.fromPrevious ? ' (Sprachdatei fehlt, vorheriges Bundle)' : ''}`);
+  }
 
   // Augments-Whitelist: `setData[N].augments` is Riot's authoritative pool of
   // augments that can drop in this set — incl. carry-overs from older sets

@@ -7,7 +7,7 @@ import { decodeSlug } from '../../../lib/og/slugs';
 // Client-Komponente).
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const id = decodeSlug((await params).id);
-  return pageMetadata('tft.item', `/tft/items/${encodeURIComponent(id)}`, tftItemName(id), {
+  return pageMetadata('tft.item', `/tft/items/${encodeURIComponent(id)}`, lang => tftItemName(id, lang), {
     noindex: tftKnownInBundle('item', id) === false,
   });
 }

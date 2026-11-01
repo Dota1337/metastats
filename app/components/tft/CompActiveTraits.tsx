@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { withAlpha } from '../../lib/color';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, tftChampionTileUrl, findChampion, tftTraitDescription } from '../../lib/tft-cdragon';
+import { tftIconUrl, tftChampionTileUrl, findChampion, tftLabel, tftTraitDescription, tftTraitDisplayName } from '../../lib/tft-cdragon';
 import { costColor as costColorOf } from '../../lib/tft-ui';
 import { useI18n } from '../../lib/i18n';
 import {
@@ -98,9 +98,11 @@ function TraitPill({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
+  const { lang } = useI18n();
   const color = activeTraitStyleColor(trait.tier);
   const iconUrl = trait.icon ? tftIconUrl(assets, trait.icon) : null;
-  const tooltip = tftTraitDescription(assets, trait.apiName) || trait.displayName;
+  const shownName = tftTraitDisplayName(assets, trait.apiName, lang);
+  const tooltip = tftTraitDescription(assets, trait.apiName, lang) || shownName;
   const nextHint = trait.nextStyleMinUnits != null
     ? (t('tft.comp.activeTraits.nextHint') as string)
         .replace('{n}', String(trait.nextStyleMinUnits - trait.count))
@@ -120,7 +122,7 @@ function TraitPill({
       {iconUrl ? (
         <img
           src={iconUrl}
-          alt={trait.displayName}
+          alt={shownName}
           className="w-5 h-5"
           style={{ filter: `drop-shadow(0 0 2px ${color})` }}
         />
@@ -133,7 +135,7 @@ function TraitPill({
       >
         {trait.count}
       </span>
-      <span className={`text-white text-xs font-medium${row ? ' truncate min-w-0' : ''}`}>{trait.displayName}</span>
+      <span className={`text-white text-xs font-medium${row ? ' truncate min-w-0' : ''}`}>{shownName}</span>
       {nextHint && (
         <span className={`text-fg-muted text-[11px] tabular-nums${row ? ' ml-auto shrink-0 whitespace-nowrap' : ''}`}>{nextHint}</span>
       )}
@@ -152,7 +154,7 @@ function TraitDrillDown({
   t: (k: any) => string;
   bucket?: string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const color = activeTraitStyleColor(trait.tier);
   return (
     <div
@@ -177,13 +179,13 @@ function TraitDrillDown({
               key={`${u.characterId}-${idx}`}
               href={withLang(href)}
               className="flex flex-col items-center gap-1 hover:scale-105 transition-transform"
-              title={ch?.name || u.characterId}
+              title={tftLabel(ch, lang) || u.characterId}
             >
               <div className="relative">
                 {url ? (
                   <img
                     src={url}
-                    alt={ch?.name || u.characterId}
+                    alt={tftLabel(ch, lang) || u.characterId}
                     className="w-10 h-10 rounded-md border-2 object-cover"
                     style={{ borderColor: costColorOf(cost) }}
                   />
@@ -200,7 +202,7 @@ function TraitDrillDown({
                 )}
               </div>
               <div className="text-white text-[11px] text-center max-w-[55px] truncate">
-                {ch?.name || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
+                {tftLabel(ch, lang) || u.characterId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}
               </div>
             </a>
           );

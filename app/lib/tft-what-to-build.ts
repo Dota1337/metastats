@@ -8,6 +8,7 @@
 
 import { browseUnits, matchScore, normText, OR_WORDS_BASE, OR_WORDS_LANG, AND_WORDS_BASE, AND_WORDS_LANG } from '../components/tft/explorer/explorer-search';
 import type { ExplorerOptions } from '../components/tft/explorer/explorer-options';
+import type { Lang } from './lang-path';
 import {
   EMPTY_QUERY, LATEST_PATCH, isExplorerId, parseExplorerParams, stageRanks,
   type ExplorerQuery, type ExplorerRank, type ExplorerRow, type TraitFilter,
@@ -259,7 +260,8 @@ export function boxRows(
     known: (id: string) => boolean;
     fits: (id: string, carried: readonly string[]) => boolean;
     /** Alle waehlbaren Items: ist genau ein Platz frei, steht jedes davon in der Liste. */
-    allItems?: readonly { id: string; name: string }[];
+    allItems?: readonly { id: string; label: string }[];
+    lang?: Lang;
     rules?: ItemListRules | null;
   },
 ): BoxRow[] {
@@ -309,12 +311,12 @@ export function boxRows(
 
   // Erst was aussagekraeftig ist, nach Schnitt. Seltene nach Spielen, damit kein Item
   // mit 5 Spielen und Glueckswert oben steht. Ohne Daten nach Name.
-  const names = new Map((opts.allItems ?? []).map(i => [i.id, i.name]));
+  const names = new Map((opts.allItems ?? []).map(i => [i.id, i.label]));
   const rank = (r: BoxRow) => (r.noData ? 2 : r.thin ? 1 : 0);
   return out.sort((x, y) => rank(x) - rank(y)
     || (rank(x) === 0 ? (x.avg ?? 0) - (y.avg ?? 0) : 0)
     || y.games - x.games
-    || (names.get(x.restKey) ?? x.restKey).localeCompare(names.get(y.restKey) ?? y.restKey));
+    || (names.get(x.restKey) ?? x.restKey).localeCompare(names.get(y.restKey) ?? y.restKey, opts.lang ?? 'en'));
 }
 
 /** Kann die Zeile (noch) festgesetzt werden? Nur wenn danach etwas zu vergleichen bleibt. */
@@ -385,6 +387,8 @@ export interface QuestionDict {
   prefix: { unit: boolean; id: string; name: string; lang: string }[];
   /** Namen ohne Leerzeichen-Trennung im Satz (zh, ko), laengste zuerst. */
   cjk: string[];
+  /** Laengster Name in Woertern: Franzoesisch braucht mehr als Englisch. */
+  maxWords: number;
 }
 
 const CJK = /[぀-ヿ㐀-鿿가-힯]/;
@@ -402,11 +406,13 @@ export function buildQuestionDict(o: ExplorerOptions, src: NameSources = {}): Qu
   const itemsByName = new Map<string, string[]>();
   const prefix: QuestionDict['prefix'] = [];
   const cjk = new Set<string>();
+  let maxWords = 1;
   const add = (unit: boolean, id: string, name: string | undefined, lang: string) => {
     if (!name) return;
     addName(unit ? unitsByName : itemsByName, name, id);
     prefix.push({ unit, id, name, lang });
     if (CJK.test(name)) cjk.add(name);
+    maxWords = Math.max(maxWords, normText(name).split(' ').length);
   };
   for (const u of browseUnits(o.units).flat()) {
     add(true, u.id, u.name, 'en');
@@ -422,7 +428,7 @@ export function buildQuestionDict(o: ExplorerOptions, src: NameSources = {}): Qu
     const ids = names.map(n => idOf.get(normText(n))).filter((x): x is string => !!x);
     for (const id of ids) addName(itemsByName, alias, id);
   }
-  return { unitsByName, itemsByName, prefix, cjk: [...cjk].sort((a, b) => b.length - a.length) };
+  return { unitsByName, itemsByName, prefix, cjk: [...cjk].sort((a, b) => b.length - a.length), maxWords };
 }
 
 export interface ParsedQuestion {
@@ -435,13 +441,25 @@ export interface ParsedQuestion {
 
 const TOKEN_SPLIT = /[\s;:!?()[\]/"„“”«»¿¡；：？！（）。]+/;
 const OR_EXTRA = ['vs', 'versus', 'gegen'];
-const MAX_NAME_WORDS = 5;
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const cjkPatterns = new WeakMap<string[], RegExp | null>();
+function cjkPattern(names: string[]): RegExp | null {
+  let re = cjkPatterns.get(names);
+  if (re === undefined) {
+    re = names.length ? new RegExp(names.map(escapeRe).join('|'), 'g') : null;
+    cjkPatterns.set(names, re);
+  }
+  return re;
+}
 
 function tokenize(text: string, dict: QuestionDict, lang: string): string[] {
   // Namen ohne Leerzeichen im Satz freistellen, bevor 和/或 trennen: ein solches
-  // Zeichen darf auch in einem Namen stehen.
-  let s = text;
-  for (const n of dict.cjk) s = s.split(n).join(` ${n} `);
+  // Zeichen darf auch in einem Namen stehen. In EINEM Durchgang, laengster Name
+  // zuerst: nacheinander zerlegte ein kurzer Name den langen (Rakan heisst auf
+  // Chinesisch „洛“, und das steckt in 莫雷洛秘典).
+  const re = cjkPattern(dict.cjk);
+  const s = re ? text.replace(re, ' $& ') : text;
   const known = new Set(dict.cjk);
   return s.split(TOKEN_SPLIT).filter(Boolean).flatMap(t => {
     if (known.has(t)) return [t];
@@ -519,7 +537,7 @@ export function parseBuildQuestion(text: string, dict: QuestionDict, lang = 'de'
     hit = false;
     let matched = false;
     // Laengster Name zuerst: „Infinity Edge" schlaegt „Edge".
-    for (let n = Math.min(MAX_NAME_WORDS, tokens.length - i); n >= 1 && !matched; n--) {
+    for (let n = Math.min(dict.maxWords, tokens.length - i); n >= 1 && !matched; n--) {
       let spansOp = false;
       for (let j = i; j < i + n; j++) if (isOp(j)) spansOp = true;
       if (spansOp) continue;

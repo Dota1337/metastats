@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, compsShowingAugment, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
 import { loadAugmentStages, type AugmentStagesOverride } from '../../../lib/tft-augment-stages';
 import { compPath } from '../../../lib/tft-comp-path';
@@ -98,7 +98,7 @@ function AugmentPanel({
   t: (k: any) => string;
   side: 'a' | 'b';
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const meta = assets?.augments[apiName];
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
@@ -171,9 +171,9 @@ function AugmentPanel({
           <div className="space-y-1.5">
             {matchingComps.slice(0, 6).map(m => {
               const traitMeta = assets?.traits[m.trait];
-              const traitName = traitMeta?.name || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const traitName = tftLabel(traitMeta, lang) || m.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryChamp = findChampion(assets, m.carry);
-              const carryName = carryChamp?.name || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
+              const carryName = tftLabel(carryChamp, lang) || m.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '');
               const carryUrl = tftChampionTileUrl(assets, carryChamp);
               const compSlug = `${m.trait}@6_${m.carry}`;
               return (

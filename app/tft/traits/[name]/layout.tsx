@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
   const name = decodeSlug((await params).name);
   // Wie die Trait-Liste: der Name aus dem Bundle, ohne Varianten-Zusatz.
   const { display } = traitIdsForParam(tftAssets()?.traits, name);
-  return pageMetadata('tft.trait', `/tft/traits/${encodeURIComponent(display)}`, tftTraitName(name), {
+  return pageMetadata('tft.trait', `/tft/traits/${encodeURIComponent(display)}`, lang => tftTraitName(name, lang), {
     noindex: tftKnownInBundle('trait', name) === false,
   });
 }

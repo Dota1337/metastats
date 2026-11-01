@@ -4,7 +4,7 @@ import { withAlpha } from '../../lib/color';
 import Nav from '../../components/Nav';
 import Footer from '../../components/Footer';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, findChampion, findTrait, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftLabel, findChampion, findTrait, type TftAssetsBundle } from '../../lib/tft-cdragon';
 
 import { ONETRICK_REGIONS } from '../../lib/tft-onetrick-regions.mjs';
 import { tftProfileHref } from '../../lib/tft-player-search';
@@ -40,7 +40,7 @@ function parseCluster(key: string) {
 }
 
 export default function TftOneTricksPage() {
-  const { t, withLang } = useI18n();
+  const { t, lang, withLang } = useI18n();
   const [region, setRegion] = useState<Region>('euw1');
   const [data, setData] = useState<OneTrick[]>([]);
   const [loading, setLoading] = useState(false);
@@ -143,7 +143,7 @@ export default function TftOneTricksPage() {
                   {p.signatureComps.map(c => {
                     const parts = parseCluster(c.clusterKey);
                     const trait = parts ? findTrait(assets, parts.trait) : null;
-                    const traitName = trait?.name || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
+                    const traitName = tftLabel(trait, lang) || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
                     const carry = parts ? findChampion(assets, parts.carry) : null;
                     return (
                       <a
@@ -156,7 +156,7 @@ export default function TftOneTricksPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <div className="text-white text-[11px] truncate">
-                            {traitName} · {carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
+                            {traitName} · {tftLabel(carry, lang) || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
                           </div>
                           <div className="text-[10px] text-fg-muted tabular-nums">
                             {(c.share * 100).toFixed(0)}% · Ø {c.avgPlacement?.toFixed(2) ?? '—'}

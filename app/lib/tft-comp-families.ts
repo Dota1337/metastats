@@ -3,7 +3,8 @@
 // Zahlen — 1:1 aus app/tft/comps/page.tsx herausgezogen (2026-09-27).
 import type { CompFamily, FamilyComp } from '../components/tft/CompFamilyRow';
 import { compTraitFamilyKey, parseClusterKey, parseFamilyKey } from './tft-cluster';
-import { tftIsEmblem, type TftAssetsBundle } from './tft-cdragon';
+import { tftIsEmblem, tftLabel, type LocalizedNames, type TftAssetsBundle } from './tft-cdragon';
+import type { Lang } from './lang-path';
 import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarries, rerollPlan, resolveFamilies, sumUnits, type CoreFlexKind } from './tft-comp-roles';
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
 import { sumMinorRows, type MinorCompRow } from './tft-comp-minor-rows';
@@ -510,23 +511,22 @@ export function visibleFamilies(
   topKeys: Set<string> | null,
   search: string,
   assets: TftAssetsBundle | null,
+  lang: Lang = 'en',
 ): CompFamily[] {
   const q = search.trim().toLowerCase();
   if (!q || !assets) {
     return topKeys ? families.filter(f => topKeys.has(f.familyKey)) : families;
   }
+  // Gezeigter und englischer Name zaehlen beide, auch auf Deutsch sagt man „Elderwood“.
+  const hit = (meta: { name: string; names?: LocalizedNames } | undefined, id: string) => {
+    const en = (meta?.name || id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
+    return en.includes(q) || !!tftLabel(meta, lang)?.toLowerCase().includes(q) || id.toLowerCase().includes(q);
+  };
   return families.filter(f => {
-    const traitMeta = assets.traits[f.trait];
-    const traitName = (traitMeta?.name || f.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
     // Alle Carries der Familie durchsuchen — nach dem Zusammenlegen steht
     // z. B. Soraka nicht mehr im Familien-Key, ist aber zweiter Carry.
     const carryIds = [...new Set([f.carry, ...f.carries].filter(Boolean))];
-    return traitName.includes(q)
-      || f.trait.toLowerCase().includes(q)
-      || carryIds.some(cid => {
-        const name = (assets.champions[cid]?.name || cid.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')).toLowerCase();
-        return name.includes(q) || cid.toLowerCase().includes(q);
-      });
+    return hit(assets.traits[f.trait], f.trait) || carryIds.some(cid => hit(assets.champions[cid], cid));
   });
 }
 

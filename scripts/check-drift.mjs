@@ -524,6 +524,31 @@ function read(path) {
   }
 }
 
+// 8b) Namen je Sprache im Asset-Bundle. Gleiche Klasse wie plannerCodes: fehlen
+// sie, sieht nichts kaputt aus, die Seite zeigt still Englisch. Nur die Eintraege,
+// die eine Sprachdatei haben kann: aktive Items und die Synergien; Units nicht,
+// weil Deutsch und Spanisch sie meist gleich schreiben und nichts gespeichert wird.
+// Ohne die Schwelle (Anteil statt fester Zahl) wuerde ein neues Set rot.
+{
+  const MIN_ITEM_SHARE = 0.8;
+  let bundle = null;
+  try { bundle = JSON.parse(read('public/tft-assets.json')); } catch { /* unten */ }
+  const active = bundle?.active?.items ?? [];
+  const short = ['de', 'ko', 'zh', 'es', 'fr'].filter(lang => {
+    const n = active.filter(id => bundle?.items?.[id]?.names?.[lang]).length;
+    return active.length === 0 || n / active.length < MIN_ITEM_SHARE;
+  });
+  const traits = Object.values(bundle?.traits ?? {});
+  const noTraits = ['de', 'ko', 'zh', 'es', 'fr'].filter(lang => traits.filter(t => t?.names?.[lang]).length < traits.length * 0.5);
+  if (short.length || noTraits.length) {
+    console.error(`✗ DRIFT: Namen je Sprache fehlen im Bundle (Items: ${short.join(',') || '-'}, Synergien: ${noTraits.join(',') || '-'})`);
+    console.error('    → scripts/fetch-tft-assets.mjs (applyLocalizedNames) und Riots Sprachdateien pruefen.');
+    failures++;
+  } else {
+    console.log(`✓ Namen je Sprache im Bundle (${active.length} aktive Items, ${traits.length} Synergien)`);
+  }
+}
+
 // 9) Unit-Feldliste der Comps-Listen-Funktion. `get_tft_comp_stats_list_v2`
 // baut jede Einheit aus einer geschlossenen Allowlist neu zusammen: einmal in
 // der `jsonb_to_recordset`-Deklaration (Lesen) und einmal im

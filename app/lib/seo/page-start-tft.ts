@@ -10,7 +10,7 @@ import { CURRENT_SET } from '../current-set';
 import { tftAssets } from '../og/data';
 import { tftPlayableChampions, type TftAssetsBundle, type TftAugment } from '../tft-cdragon';
 import type { AugmentStagesOverride } from '../tft-augment-stages';
-import { subsetBundle } from './initial-data';
+import { assetsForVisitor, subsetBundle } from './initial-data';
 import { getAvailablePatches, expandBuckets, ALL_REGIONS, type PatchInfo } from '../tft-supabase-reader';
 import { previousPatchOf, sumPatchDiffLevels } from '../snapshot-matrix';
 import { loadPatchDiff } from '../meta-pulse-diff-snapshot';
@@ -55,12 +55,12 @@ export async function risingStart(): Promise<RisingStart | null> {
   const hit = await mirrorStart<RisingBody>('rising', RISING_START);
   if (!hit) return null;
   const units = hit.body.players.flatMap(p => p.topComp?.units || []);
-  const assets = subsetBundle(bundle, {
+  const assets = await assetsForVisitor(subsetBundle(bundle, {
     champions: bundleKeys(bundle.champions, units.map(u => u.characterId)),
     items: bundleKeys(bundle.items, units.flatMap(u => u.items)),
     traitIds: bundleKeys(bundle.traits, hit.body.players.flatMap(p => (p.topComp?.traits || []).map(t => t.name))),
     withAbility: false,
-  });
+  }));
   return { body: hit.body, assets };
 }
 
@@ -113,7 +113,7 @@ export function augmentsStart(lang: Lang): Promise<AugmentsStart | null> {
 
 // ---------- Builder: Champion-Pool ----------
 
-export function builderStart(): TftAssetsBundle | null {
+export async function builderStart(): Promise<TftAssetsBundle | null> {
   if (!pageStartOn()) return null;
   const bundle = tftAssets();
   if (!bundle) return null;
@@ -121,10 +121,10 @@ export function builderStart(): TftAssetsBundle | null {
   // Traits fuer die Trait-Leiste geteilter Bretter (?b=). Items laedt der
   // Browser wie bisher mit dem vollen Bundle.
   const pool = tftPlayableChampions(bundle);
-  return subsetBundle(bundle, {
+  return assetsForVisitor(subsetBundle(bundle, {
     champions: pool.map(c => c.id),
     traitNames: pool.flatMap(c => c.champion.traits ?? []),
-  });
+  }));
 }
 
 // ---------- Patch-Liste ----------
@@ -166,7 +166,7 @@ export async function patchWinnersStart(): Promise<PatchWinnersStart | null> {
   const bundle = tftAssets();
   if (!bundle) return null;
   const bucketLabel = PATCH_WINNERS_START.bucket;
-  return rememberStart(`winners:${bucketLabel}`, () => withTimeout((async (): Promise<PatchWinnersStart | null> => {
+  const start = await rememberStart(`winners:${bucketLabel}`, () => withTimeout((async (): Promise<PatchWinnersStart | null> => {
     const patches = await getAvailablePatches(180);
     if (patches.length === 0) return null;
     const currentPatch = patches[0].patch;
@@ -194,4 +194,6 @@ export async function patchWinnersStart(): Promise<PatchWinnersStart | null> {
       assets: subsetBundle(bundle, { champions: bundleKeys(bundle.champions, keys), withAbility: false }),
     };
   })(), PAGE_START_BUDGET_MS));
+  // Der Zwischenspeicher kennt keine Sprache: erst danach kuerzen.
+  return start ? { ...start, assets: await assetsForVisitor(start.assets) } : null;
 }

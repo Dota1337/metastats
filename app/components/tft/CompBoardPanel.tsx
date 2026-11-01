@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { findChampion, tftChampionTileUrl } from '../../lib/tft-cdragon';
+import { findChampion, tftChampionTileUrl, tftLabel } from '../../lib/tft-cdragon';
 import { costColor, HEX_CLIP } from '../../lib/tft-ui';
 import { boardLayout, defaultLevel } from '../../lib/tft-comp-board';
 import { plantName } from '../../lib/tft-elderwood-plants';
@@ -165,7 +165,7 @@ function HexBoard({
         const unit = cells.get(cell);
         const champ = unit ? findChampion(assets, unit) : null;
         // Elderwood-Pflanzen in der Sprache der Seite (Kosten 0 → neutraler Rand).
-        const name = (unit && plantName(unit, lang)) || champ?.name || (unit ? prettyChar(unit) : '');
+        const name = (unit && plantName(unit, lang)) || tftLabel(champ, lang) || (unit ? prettyChar(unit) : '');
         const url = unit ? tftChampionTileUrl(assets, champ) : null;
         const style = {
           left: `${((col + (row.shift ? 0.5 : 0) + (1 - HEX_W) / 2) / COLS) * 100}%`,
@@ -223,7 +223,7 @@ function EarlyUnitTile({ apiName, assets }: { apiName: string; assets: TftAssets
   const { withLang, lang } = useI18n();
   const champ = findChampion(assets, apiName);
   const url = tftChampionTileUrl(assets, champ);
-  const name = plantName(apiName, lang) || champ?.name || prettyChar(apiName);
+  const name = plantName(apiName, lang) || tftLabel(champ, lang) || prettyChar(apiName);
   const cost = champ?.cost ?? 1;
   // Kosten 0 = keine Shop-Einheit (z. B. Pflanzen) → kein Kostenrahmen.
   return (

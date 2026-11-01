@@ -7,7 +7,7 @@ import Footer from '../../components/Footer';
 import TftHero from '../../components/tft/TftHero';
 import EmptyData from '../../components/tft/EmptyData';
 import { useI18n } from '../../lib/i18n';
-import { loadTftAssets, tftChampionTileUrl, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { parseClusterKey } from '../../lib/tft-cluster';
 import {
   classifyRegionPattern,
@@ -195,10 +195,10 @@ function RegionRowCard({
   assets: TftAssetsBundle | null;
   t: (k: any) => string;
 }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   const parts = parseClusterKey(row.cluster_key);
   const trait = parts && assets ? assets.traits[parts.trait] : null;
-  const traitName = trait?.name || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
+  const traitName = tftLabel(trait, lang) || (parts ? parts.trait.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '');
   const carry = parts && assets ? assets.champions[parts.carry] : null;
   const carryUrl = tftChampionTileUrl(assets, carry);
   const narrative = buildRegionNarrative(row, pattern, t);
@@ -224,7 +224,7 @@ function RegionRowCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-white text-sm font-medium truncate">
-              {traitName} · {carry?.name || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
+              {traitName} · {tftLabel(carry, lang) || (parts ? parts.carry.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '') : '')}
             </span>
             <span
               className="inline-flex items-center gap-1 px-1.5 py-[1px] rounded text-[9px] font-semibold tabular-nums flex-shrink-0 cursor-help"

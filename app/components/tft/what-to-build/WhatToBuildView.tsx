@@ -14,7 +14,7 @@ import {
   type ExplorerMeta, type ExplorerRankStage,
 } from '../../../lib/tft-explorer-query';
 import {
-  MAX_BOXES, applyQuestion, boxFromQuestion, buildQuestionDict, effectiveStar, emptyBox, itemsQuery, parseBuildParams,
+  MAX_BOXES, applyQuestion, boxFromQuestion, buildQuestionDict, effectiveStar, emptyBox, itemListRules, itemsQuery, parseBuildParams,
   parseBuildQuestion, rowsAreDisjoint, serializeBuildParams, splitQueries, starsQuery, targetStarOf, traitFilterFor,
   type BuildBox, type BuildScope, type ParsedQuestion,
 } from '../../../lib/tft-what-to-build';
@@ -96,6 +96,17 @@ export default function WhatToBuildView() {
     for (const r of Object.values(results)) if (r.data?.meta) m = r.data.meta;
     return m as ExplorerMeta | null;
   }, [results]);
+
+  // Unique und Einweg-Items stehen nur in den Item-Texten; ohne Box nicht laden (230 KB).
+  const [itemTexts, setItemTexts] = useState<ItemTexts | null>(null);
+  const hasBoxes = rawBoxes.length > 0;
+  useEffect(() => {
+    if (!hasBoxes) return;
+    let alive = true;
+    loadItemTexts().then(x => { if (alive) setItemTexts(x); });
+    return () => { alive = false; };
+  }, [hasBoxes]);
+  const rules = useMemo(() => itemListRules(itemTexts), [itemTexts]);
 
   // ── Suchleiste ──
   const [text, setText] = useState('');
@@ -241,6 +252,7 @@ export default function WhatToBuildView() {
             options={options}
             assets={assets}
             kindOf={kindOf}
+            rules={rules}
             star={p.star}
             starReady={p.known}
             items={get(p.items)}

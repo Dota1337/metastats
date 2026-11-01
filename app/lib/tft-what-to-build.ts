@@ -52,8 +52,12 @@ const KINDS: BuildKind[] = ['standard', 'artifact', 'emblem', 'radiant'];
 /** Eine Zeile braucht mindestens ein Item mehr, als fest stehen. */
 export const minCombo = (fixedCount: number): Combo => (Math.min(3, fixedCount + 1) as Combo);
 
+// Diebeshandschuhe belegen alle drei Plaetze, die Items daneben wuerfelt das Spiel:
+// nie fest (auch nicht aus einem alten Link), sonst bliebe die Box leer.
+const GLOVES = /ThiefsGloves/i;
+
 export function normalizeBox(b: BuildBox): BuildBox {
-  const fixed = [...b.fixed].slice(0, MAX_FIXED).sort();
+  const fixed = b.fixed.filter(id => !GLOVES.test(id)).slice(0, MAX_FIXED).sort();
   const combo = Math.max(b.combo, minCombo(fixed.length)) as Combo;
   const restSize = combo - fixed.length;
   const compare = [...new Set(b.compare)].filter(k => k.split('|').length === restSize).slice(0, 2);
@@ -192,8 +196,12 @@ export interface BoxRow {
   rest: string[];
   /** Item doppelt an der Kopie (feste mitgezaehlt) — „2×". */
   doubled: string[];
-  games: number; matches: number; avg: number; half: number; top4: number; top1: number;
+  games: number; matches: number; avg: number | null; half: number | null; top4: number | null; top1: number | null;
   kind: BuildKind;
+  /** Unter der Mindestmenge der Box: bleibt waehlbar, zaehlt aber nicht als Aussage. */
+  thin: boolean;
+  /** Keine Zeile vom Dienst (unter 5 Spielen oder ausserhalb der 500 Zeilen). */
+  noData: boolean;
 }
 
 /** Items der Zeile ohne die festen; null = die Zeile enthaelt ein festes Item nicht. */
@@ -210,8 +218,28 @@ export function restOf(key: string, fixed: readonly string[]): string[] | null {
 // Kein wählbares Item der Liste: Taktiker-Items wirken aufs ganze Brett, Augment-
 // und Phantom-Items waeren eine Augment-Statistik (feedback_no_augment_stats).
 const NEVER_LISTED = /Tactician|Augment|Phantom/i;
-// Diebeshandschuhe belegen alle drei Plaetze, die Items daneben wuerfelt das Spiel.
-const GLOVES = /ThiefsGloves/i;
+
+/** Hoechstzahl Zeilen je Antwort (ROW_LIMIT im Dienst, Test haelt beide gleich). */
+export const EXPLORER_ROW_CAP = 500;
+/** Darunter ist die Spanne um den Schnitt keine brauchbare Angabe. */
+export const MIN_GAMES_FOR_RANGE = 30;
+
+export interface ItemListRules {
+  /** „Unique - only 1 per champion": nie zweimal an einer Unit. */
+  unique: ReadonlySet<string>;
+  /** „Single Use": Traenke, die Grundform steht ebenfalls in keiner Liste. */
+  hidden: ReadonlySet<string>;
+}
+
+/** Regeln aus den Item-Texten; null, solange sie fehlen. */
+export function itemListRules(texts: { items: Record<string, { unique?: boolean; i18n: { en?: { desc?: string } } }> } | null): ItemListRules | null {
+  if (!texts) return null;
+  const entries = Object.entries(texts.items);
+  return {
+    unique: new Set(entries.filter(([, e]) => e.unique).map(([id]) => id)),
+    hidden: new Set(entries.filter(([, e]) => /Single Use/i.test(e.i18n.en?.desc ?? '')).map(([id]) => id)),
+  };
+}
 
 const kindOfRest = (rest: string[], kindOf: (id: string) => ItemBucket): BuildKind | null => {
   const kinds = rest.map(kindOf);
@@ -225,35 +253,73 @@ export const minRowGames = (boxGames: number) => Math.max(30, Math.ceil(boxGames
 export function boxRows(
   rows: readonly ExplorerRow[] | null | undefined,
   raw: BuildBox,
-  opts: { boxGames: number; kindOf: (id: string) => ItemBucket; known: (id: string) => boolean; fits: (id: string, carried: readonly string[]) => boolean },
+  opts: {
+    boxGames: number;
+    kindOf: (id: string) => ItemBucket;
+    known: (id: string) => boolean;
+    fits: (id: string, carried: readonly string[]) => boolean;
+    /** Alle waehlbaren Items: ist genau ein Platz frei, steht jedes davon in der Liste. */
+    allItems?: readonly { id: string; name: string }[];
+    rules?: ItemListRules | null;
+  },
 ): BoxRow[] {
   const b = normalizeBox(raw);
   const restSize = b.combo - b.fixed.length;
   const min = minRowGames(opts.boxGames);
   const gloves = b.fixed.length > 0 || b.combo > 1;
+  const hidden = (id: string) => NEVER_LISTED.test(id) || !opts.known(id) || !!opts.rules?.hidden.has(id);
+  const fits = (id: string, carried: readonly string[]) =>
+    opts.fits(id, carried) && !(opts.rules?.unique.has(id) && carried.includes(id));
   const out: BoxRow[] = [];
   for (const r of rows ?? []) {
     const rest = restOf(r.key, b.fixed);
     if (!rest || rest.length !== restSize) continue;
     const ids = [...b.fixed, ...rest];
-    if (ids.some(id => NEVER_LISTED.test(id) || !opts.known(id))) continue;
+    if (ids.some(hidden)) continue;
     if (gloves && ids.some(id => GLOVES.test(id))) continue;
-    if (!rest.every((id, i) => opts.fits(id, [...b.fixed, ...rest.slice(0, i)]))) continue;
-    const restKey = [...rest].sort().join('|');
-    if (r.games < min && !b.compare.includes(restKey)) continue;
+    if (!rest.every((id, i) => fits(id, [...b.fixed, ...rest.slice(0, i)]))) continue;
     const kind = kindOfRest(rest, opts.kindOf);
     if (!kind) continue;
     out.push({
-      restKey, rest,
+      restKey: [...rest].sort().join('|'), rest,
       doubled: [...new Set(ids.filter((id, i) => ids.indexOf(id) !== i))],
       games: r.games, matches: r.matches, avg: r.avg, half: r.half, top4: r.top4, top1: r.top1, kind,
+      thin: r.games < min, noData: false,
     });
   }
-  return out.sort((x, y) => x.avg - y.avg || y.games - x.games || x.restKey.localeCompare(y.restKey));
+
+  // Ein Platz frei: auch Items ohne Zeile sind waehlbar, sonst koennte man sie nie
+  // festsetzen. Bei zwei freien Plaetzen waeren es 666 Paare, fast alle ohne Daten.
+  if (restSize === 1 && opts.allItems) {
+    const seen = new Set(out.map(r => r.restKey));
+    for (const { id } of opts.allItems) {
+      if (seen.has(id) || hidden(id) || (gloves && GLOVES.test(id))) continue;
+      const again = b.fixed.includes(id);
+      // Ohne Texte ist „unique" unbekannt: keine erfundene Doppelzeile.
+      if ((again && !opts.rules) || !fits(id, b.fixed)) continue;
+      const kind = kindOfRest([id], opts.kindOf);
+      if (!kind) continue;
+      out.push({
+        restKey: id, rest: [id], doubled: again ? [id] : [],
+        games: 0, matches: 0, avg: null, half: null, top4: null, top1: null, kind,
+        thin: true, noData: true,
+      });
+    }
+  }
+
+  // Erst was aussagekraeftig ist, nach Schnitt. Seltene nach Spielen, damit kein Item
+  // mit 5 Spielen und Glueckswert oben steht. Ohne Daten nach Name.
+  const names = new Map((opts.allItems ?? []).map(i => [i.id, i.name]));
+  const rank = (r: BoxRow) => (r.noData ? 2 : r.thin ? 1 : 0);
+  return out.sort((x, y) => rank(x) - rank(y)
+    || (rank(x) === 0 ? (x.avg ?? 0) - (y.avg ?? 0) : 0)
+    || y.games - x.games
+    || (names.get(x.restKey) ?? x.restKey).localeCompare(names.get(y.restKey) ?? y.restKey));
 }
 
 /** Kann die Zeile (noch) festgesetzt werden? Nur wenn danach etwas zu vergleichen bleibt. */
-export const canFix = (fixedCount: number, rest: readonly string[]) => fixedCount + rest.length <= MAX_FIXED;
+export const canFix = (fixedCount: number, rest: readonly string[]) =>
+  fixedCount + rest.length <= MAX_FIXED && !rest.some(id => GLOVES.test(id));
 
 // ─── Urteil ────────────────────────────────────────────────────────────────
 

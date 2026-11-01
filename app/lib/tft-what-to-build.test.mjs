@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  DEFAULT_SCOPE, VERDICT_MIN_GAMES, applyQuestion, boxRows, buildQuestionDict, canFix, emptyBox, itemsQuery, minRowGames, normalizeBox,
+  DEFAULT_SCOPE, EXPLORER_ROW_CAP, VERDICT_MIN_GAMES, applyQuestion, boxRows, itemListRules, buildQuestionDict, canFix, emptyBox, itemsQuery, minRowGames, normalizeBox,
   parseBuildParams, parseBuildQuestion, restOf, serializeBuildParams, splitQueries, starsQuery, targetStarOf, traitFilterFor, verdictOf,
 } from './tft-what-to-build.ts';
-import { buildExplorerOptions } from '../components/tft/explorer/explorer-options.ts';
+import { buildExplorerOptions, itemFitsUnit } from '../components/tft/explorer/explorer-options.ts';
+import { ROW_LIMIT } from '../../scripts/lib/explorer-query.mjs';
 import { itemBucketOf } from './tft-item-bucket.ts';
 import { serializeExplorerQuery } from './tft-explorer-query.ts';
 
@@ -199,12 +200,76 @@ test('Ein festes Item, Duo: nur Paare mit dem festen Item', () => {
   assert.deepEqual(rows.map(r => r.restKey), [DB]);
 });
 
-test('Mindestspiele: 30, in grossen Boxen 1 %; verglichene Zeile bleibt', () => {
+test('Mindestspiele: 30, in grossen Boxen 1 %; seltene Zeilen bleiben, stehen aber unten', () => {
   assert.equal(minRowGames(1000), 30);
   assert.equal(minRowGames(25169), 252);
-  const b = { ...emptyBox(D), compare: ['DA_LastWhisper'] };
-  const rows = boxRows([row(DB, 200, 3.0), row('DA_LastWhisper', 200, 3.1), row(IE, 300, 3.5)], b, rowOpts(25169));
-  assert.deepEqual(rows.map(r => r.restKey), ['DA_LastWhisper', IE]);
+  const rows = boxRows([row(DB, 200, 1.0), row('DA_LastWhisper', 240, 3.1), row(IE, 300, 3.5)], emptyBox(D), rowOpts(25169));
+  assert.deepEqual(rows.map(r => r.restKey), [IE, 'DA_LastWhisper', DB]);
+  assert.deepEqual(rows.map(r => r.thin), [false, true, true]);
+});
+
+const fullOpts = (games, rules = { unique: new Set(), hidden: new Set() }) => ({ ...rowOpts(games), allItems: options.items, rules });
+const artifacts = options.items.filter(i => i.bucket === 'artifact').map(i => i.id);
+
+test('Ein Platz frei: jedes Artefakt steht in der Liste, auch ohne Spiele', () => {
+  const b = { ...emptyBox(D), fixed: [G, K], combo: 3 };
+  const rows = boxRows([row(`${DB}|${G}|${K}`, 6200, 3.67), row(`${artifacts[0]}|${G}|${K}`, 141, 3.0)], b, fullOpts(17678));
+  const listed = rows.filter(r => r.kind === 'artifact');
+  assert.deepEqual(listed.map(r => r.restKey).sort(), [...artifacts].sort());
+  assert.equal(listed[0].restKey, artifacts[0]);
+  assert.equal(listed[0].noData, false);
+  assert.equal(listed[1].noData, true);
+  assert.equal(listed[1].avg, null);
+  assert.equal(rows[0].restKey, DB);
+});
+
+test('Zwei freie Plaetze: nur gemessene Paare, keine erfundenen', () => {
+  const rows = boxRows([row(`${DB}|${IE}`, 10, 3.0)], { ...emptyBox(D), combo: 2 }, fullOpts(17678));
+  assert.deepEqual(rows.map(r => r.restKey), [`${DB}|${IE}`]);
+});
+
+test('Doppelauswahl: jedes feste Item, ausser Unique und Emblem; ohne Texte keine', () => {
+  const unique = 'DA_Artifact_ZhonyasParadox';
+  const rules = { unique: new Set([unique]), hidden: new Set() };
+  const opts = { ...fullOpts(12287, rules), fits: (id, carried) => itemFitsUnit(options, D, id, carried) };
+  const double = (id) => boxRows([], normalizeBox({ ...emptyBox(D), fixed: [id] }), opts).find(r => r.restKey === id);
+  assert.deepEqual(double(IE).doubled, [IE]);
+  assert.equal(double(IE).noData, true);
+  assert.equal(canFix(1, double(IE).rest), true);
+  assert.equal(double(unique), undefined);
+  const emblem = options.items.find(i => i.bucket === 'emblem').id;
+  assert.equal(double(emblem), undefined);
+  const noTexts = { ...opts, rules: null };
+  assert.equal(boxRows([], normalizeBox({ ...emptyBox(D), fixed: [IE] }), noTexts).some(r => r.restKey === IE), false);
+  // Gemessene Doppelzeile eines Unique-Items faellt ebenfalls raus.
+  assert.equal(boxRows([row(`${unique}|${unique}`, 50, 3.0)], normalizeBox({ ...emptyBox(D), fixed: [unique] }), opts).some(r => r.restKey === unique), false);
+});
+
+test('Drei gleiche Items an einer Unit sind moeglich', () => {
+  const rows = boxRows([row(`${K}|${K}|${K}`, 200, 3.0)], normalizeBox({ ...emptyBox(D), fixed: [K, K], combo: 3 }), fullOpts(3000));
+  assert.equal(rows.find(r => r.restKey === K).noData, false);
+});
+
+test('Diebeshandschuhe: nicht festsetzbar, aus alten Links raus, sobald etwas fest ist nicht in der Liste', () => {
+  const glove = 'DA_ThiefsGloves';
+  assert.equal(canFix(0, [glove]), false);
+  assert.deepEqual(normalizeBox({ ...emptyBox(D), fixed: [glove, DB] }).fixed, [DB]);
+  assert.equal(boxRows([], normalizeBox({ ...emptyBox(D), fixed: [DB] }), fullOpts(100)).some(r => /ThiefsGloves/.test(r.restKey)), false);
+  assert.equal(boxRows([], emptyBox(D), fullOpts(100)).some(r => r.restKey === glove), true);
+});
+
+test('Item-Texte: Unique und Einweg-Traenke aus der echten Datei', () => {
+  const rules = itemListRules(texts);
+  assert.deepEqual([...rules.unique].sort(), ['DA_Artifact_GamblersBlade', 'DA_Artifact_GoldCollector', 'DA_Artifact_MogulsMail', 'DA_Artifact_VoidGauntlet', 'DA_Artifact_ZhonyasParadox']);
+  assert.equal(rules.hidden.has('DA_HealthPotion18_Radiant'), true);
+  assert.equal(rules.hidden.has(DB), false);
+  assert.equal(itemListRules(null), null);
+  const rows = boxRows([], emptyBox(D), fullOpts(100, rules));
+  assert.equal(rows.some(r => r.restKey === 'DA_HealthPotion18_Radiant'), false);
+});
+
+test('Zeilengrenze gleich dem Dienst', () => {
+  assert.equal(EXPLORER_ROW_CAP, ROW_LIMIT);
 });
 
 test('Taktiker, Augment-Items und Diebeshandschuhe', () => {

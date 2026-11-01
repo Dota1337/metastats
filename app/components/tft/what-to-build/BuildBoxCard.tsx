@@ -9,8 +9,8 @@ import type { ItemBucket } from '../../../lib/tft-item-bucket';
 import { costColor } from '../../../lib/tft-ui';
 import { isWeakRow, type ExplorerResponse } from '../../../lib/tft-explorer-query';
 import {
-  boxRows, canFix, minCombo, normalizeBox, rowsAreDisjoint, verdictOf,
-  type BoxRow, type BuildBox, type BuildKind, type Combo, type VerdictSide,
+  EXPLORER_ROW_CAP, MIN_GAMES_FOR_RANGE, boxRows, canFix, minCombo, normalizeBox, rowsAreDisjoint, verdictOf,
+  type BoxRow, type BuildBox, type BuildKind, type Combo, type ItemListRules, type VerdictSide,
 } from '../../../lib/tft-what-to-build';
 import { OptIcon } from '../explorer/ExplorerSearchBox';
 import { browseTraits, PICK_KINDS } from '../explorer/explorer-search';
@@ -28,19 +28,22 @@ const COMBOS: { c: Combo; label: TranslationKey }[] = [
 ];
 const SKELETON_ROWS = 8;
 // Nachkommastellen und Breiten der Zahlen-Spalten, an einer Stelle.
-const fmtPct0 = (v: number) => `${Math.round(v * 100)}%`;
+const fmtPct0 = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+const sideOf = (r: BoxRow | undefined): VerdictSide | null =>
+  (r && r.avg != null ? { games: r.games, avg: r.avg, half: r.half ?? 0 } : null);
 const COLS = 'grid grid-cols-[minmax(0,1fr)_4.75rem_2.5rem_3.25rem_1.75rem] @[30rem]:grid-cols-[minmax(0,1fr)_4.75rem_2.5rem_2.5rem_3.25rem_1.75rem] items-center gap-x-1.5';
 const pill = (on: boolean, off = false) => `px-2 py-0.5 rounded text-[11px] border ${
   off ? 'border-border-subtle text-fg-faint cursor-not-allowed'
     : on ? 'bg-accent-a20 border-accent-a50 text-fg-bright' : 'border-border-subtle text-fg-secondary hover:text-fg-primary'}`;
 
 export default function BuildBoxCard({
-  box, options, assets, kindOf, star, starReady, items, split, onChange, onRemove, onRetry,
+  box, options, assets, kindOf, rules, star, starReady, items, split, onChange, onRemove, onRetry,
 }: {
   box: BuildBox;
   options: ExplorerOptions;
   assets: TftAssetsBundle | null;
   kindOf: (id: string) => ItemBucket;
+  rules: ItemListRules | null;
   /** Stern, mit dem gerade gerechnet wird; null = alle. */
   star: number | null;
   starReady: boolean;
@@ -67,9 +70,12 @@ export default function BuildBoxCard({
     kindOf,
     known: id => options.itemById.has(id),
     fits: (id, carried) => itemFitsUnit(options, box.unit, id, carried),
-  }), [shown, box, kindOf, options]);
+    allItems: options.items,
+    rules,
+  }), [shown, box, kindOf, options, rules]);
   const rows = allRows.filter(r => r.kind === box.kind);
-  const kinds = useMemo(() => PICK_KINDS.filter(k => k === 'standard' || allRows.some(r => r.kind === k)) as BuildKind[], [allRows]);
+  // Volle Antwort: eine fehlende Zeile sagt nichts ueber die Spielzahl.
+  const capped = (shown?.rows?.length ?? 0) >= EXPLORER_ROW_CAP;
   const traits = useMemo(() => {
     const own = new Set(unit?.traits ?? []);
     // Stufe 2 muss mehr als eine Unit bedeuten (Rival: 1/1/2), sonst filtert sie nichts Sinnvolles.
@@ -104,7 +110,7 @@ export default function BuildBoxCard({
     let a: VerdictSide | null = null;
     let b: VerdictSide | null = null;
     if (rowsAreDisjoint(box)) {
-      a = ra ?? null; b = rb ?? null;
+      a = sideOf(ra); b = sideOf(rb);
       if (shown && (!a || !b)) return t('tft.build.few');
     } else {
       const sa = split?.[0]?.data?.summary;
@@ -130,10 +136,10 @@ export default function BuildBoxCard({
     <section className="@container rounded-xl border border-border-subtle bg-surface-base p-3 flex flex-col gap-2 min-w-0">
       <div className="flex items-center gap-2">
         <OptIcon src={unit?.img ?? null} alt={unit?.name ?? box.unit} className="w-9 h-9" border={costColor(unit?.cost ?? 1)} />
-        <h2 className="text-sm font-medium text-fg-bright truncate flex-1 min-w-0">{unit?.name ?? box.unit}</h2>
-        {shown && <span className="text-[11px] text-fg-muted tabular-nums shrink-0">{num(shown.summary.games)} {t('tft.games')}</span>}
+        <h2 className="text-sm font-medium text-fg-bright truncate min-w-0">{unit?.name ?? box.unit}</h2>
         <button type="button" onClick={onRemove} aria-label={t('tft.explorer.x.remove')} title={t('tft.explorer.x.remove')}
           className="w-6 h-6 shrink-0 rounded text-fg-muted hover:text-fg-primary hover:bg-surface-overlay">×</button>
+        {shown && <span className="ml-auto text-[11px] text-fg-muted tabular-nums shrink-0">{num(shown.summary.games)} {t('tft.games')}</span>}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5">
@@ -166,7 +172,7 @@ export default function BuildBoxCard({
           })}
         </div>
         <div className="flex flex-wrap gap-1" role="group">
-          {kinds.map(k => (
+          {(PICK_KINDS as BuildKind[]).map(k => (
             <button key={k} type="button" aria-pressed={box.kind === k} className={pill(box.kind === k)}
               onClick={() => set({ kind: k, compare: [] })}>
               {t(KIND_LABEL[k])}
@@ -224,8 +230,9 @@ export default function BuildBoxCard({
               {rows.map(r => {
                 const on = box.compare.includes(r.restKey);
                 const fixable = canFix(box.fixed.length, r.rest);
-                const weak = isWeakRow({ matches: r.matches, half: r.half });
+                const faint = r.thin || (r.half != null && isWeakRow({ matches: r.matches, half: r.half }));
                 const label = r.rest.map(itemLabel).join(' + ');
+                const copies = r.rest.length === 1 ? box.fixed.filter(id => id === r.rest[0]).length + 1 : 1;
                 const body = (
                   <>
                     <span className="flex items-center gap-0.5 shrink-0">
@@ -233,7 +240,7 @@ export default function BuildBoxCard({
                     </span>
                     {r.rest.length === 1 && (
                       <span className="truncate text-xs text-fg-primary">
-                        {r.doubled.includes(r.rest[0]) && <span className="text-gold-earnings mr-1">2×</span>}
+                        {copies > 1 && <span className="text-gold-earnings mr-1">{copies}×</span>}
                         {itemLabel(r.rest[0])}
                       </span>
                     )}
@@ -247,12 +254,13 @@ export default function BuildBoxCard({
                     ) : (
                       <span title={label} className="flex items-center gap-1.5 min-w-0">{body}</span>
                     )}
-                    <span className={`text-right text-xs tabular-nums ${weak ? 'text-fg-muted' : 'text-fg-bright'}`}>
-                      {fmtAvg(r.avg)}<span className="text-[10px] text-fg-muted"> ±{r.half.toFixed(2)}</span>
+                    <span className={`text-right text-xs tabular-nums ${faint ? 'text-fg-muted' : 'text-fg-bright'}`}>
+                      {r.avg == null ? '—' : fmtAvg(r.avg)}
+                      {r.half != null && r.games >= MIN_GAMES_FOR_RANGE && <span className="text-[10px] text-fg-muted"> ±{r.half.toFixed(2)}</span>}
                     </span>
-                    <span className={`text-right text-xs tabular-nums ${weak ? 'text-fg-muted' : 'text-fg-secondary'}`}>{fmtPct0(r.top4)}</span>
-                    <span className="hidden @[30rem]:block text-right text-xs tabular-nums text-fg-secondary">{fmtPct0(r.top1)}</span>
-                    <span className="text-right text-[11px] tabular-nums text-fg-muted">{num(r.games)}</span>
+                    <span className={`text-right text-xs tabular-nums ${faint ? 'text-fg-muted' : 'text-fg-secondary'}`}>{fmtPct0(r.top4)}</span>
+                    <span className={`hidden @[30rem]:block text-right text-xs tabular-nums ${faint ? 'text-fg-muted' : 'text-fg-secondary'}`}>{fmtPct0(r.top1)}</span>
+                    <span className="text-right text-[11px] tabular-nums text-fg-muted">{r.noData ? (capped ? '—' : '<5') : num(r.games)}</span>
                     {canCompare(r) ? (
                       <button type="button" onClick={() => toggleCompare(r.restKey)} aria-pressed={on} aria-label={`${t('tft.build.compare')}: ${label}`} title={t('tft.build.compare')}
                         className={`w-6 h-6 flex items-center justify-center rounded ${on ? 'text-accent' : 'text-fg-muted hover:text-fg-primary'}`}>

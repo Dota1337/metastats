@@ -71,6 +71,8 @@ const META_PULSE_CHILDREN = TFT_WHAT_TO_BUILD_ENABLED
   ? [{ href: '/tft/meta-pulse/what-to-build', label: 'nav.whatToBuild' }] as const
   : [];
 
+const MENU_MIN_WIDTH_PX = 208;
+
 // Klappmenue an Meta Pulse. Liegt per Portal im body: die Leiste hat overflow-x-auto
 // und wuerde ein normal positioniertes Menue abschneiden. Der Name bleibt ein Link,
 // nur der Pfeil oeffnet. Scrollen schliesst, weil das Menue an der Leiste haengt.
@@ -115,7 +117,13 @@ function MetaPulseMenu({ pathname }: { pathname: string }) {
         onClick={() => {
           if (open) { setPos(null); return; }
           const r = btn.current?.getBoundingClientRect();
-          if (r) setPos({ left: r.left, top: r.bottom + 6 });
+          // Linke Kante am Namen, nicht am Pfeil daneben. Die Leiste kann seitlich
+          // verschoben sein: dann im Bild halten.
+          const link = btn.current?.previousElementSibling?.getBoundingClientRect();
+          if (r) {
+            const left = Math.max(8, Math.min(link?.left ?? r.left, window.innerWidth - MENU_MIN_WIDTH_PX - 8));
+            setPos({ left, top: r.bottom + 6 });
+          }
         }}
         className="-ml-3 w-5 h-5 flex items-center justify-center rounded text-[#3ecf8e] hover:bg-surface-overlay"
       >
@@ -124,11 +132,11 @@ function MetaPulseMenu({ pathname }: { pathname: string }) {
         </svg>
       </button>
       {open && createPortal(
-        <div ref={menu} role="menu" style={{ left: pos.left, top: pos.top }}
-          className="fixed z-[70] min-w-40 rounded-lg border border-border-subtle bg-surface-raised p-1 shadow-xl">
+        <div ref={menu} role="menu" style={{ left: pos.left, top: pos.top, minWidth: MENU_MIN_WIDTH_PX }}
+          className="fixed z-[70] rounded-lg border border-border-subtle bg-surface-raised p-1.5 shadow-xl">
           {META_PULSE_CHILDREN.map(c => (
             <a key={c.href} role="menuitem" href={withLang(c.href)}
-              className={`block px-2.5 py-1.5 rounded text-sm whitespace-nowrap hover:bg-surface-overlay ${pathname === c.href ? 'text-white' : 'text-fg-secondary hover:text-white'}`}>
+              className={`block px-3 py-2.5 rounded text-base whitespace-nowrap hover:bg-surface-overlay ${pathname === c.href ? 'text-white' : 'text-fg-secondary hover:text-white'}`}>
               {t(c.label)}
             </a>
           ))}

@@ -8,7 +8,7 @@ import { withAlpha } from '../../lib/color';
 import { useI18n } from '../../lib/i18n';
 import { formatTftDesc, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
-import { holdersOf, placementBlocks, type ItemRow } from '../../lib/tft-item-tier-rows';
+import { holdersOf, placementBlocks, sortHolders, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
 import ItemStatLine from './ItemStatLine';
@@ -24,15 +24,24 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
   textsPending: boolean;
   detailHref: string;
   unitHref: (characterId: string) => string;
+  holderSort: HolderSort;
+  onHolderSort: (by: HolderSort) => void;
   onClose: () => void;
-}>(function ItemDetailPanel({ item: it, letter, assets, texts, textsPending, detailHref, unitHref, onClose }, ref) {
+}>(function ItemDetailPanel({ item: it, letter, assets, texts, textsPending, detailHref, unitHref, holderSort, onHolderSort, onClose }, ref) {
   const { t, lang } = useI18n();
   const meta = assets?.items[it.apiName];
   const url = tftIconUrl(assets, meta?.icon);
   const name = tftLabel(meta, lang) || prettyId(it.apiName);
   const text = itemTextFor(texts, it.apiName, lang);
   const desc = text?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
-  const holders = holdersOf(it);
+  const allHolders = holdersOf(it);
+  // Ohne Delta gibt es nichts umzuschalten: die Reihe steht dann schon nach Ø.
+  const hasDelta = allHolders.some(h => h[2] != null);
+  const holders = hasDelta ? sortHolders(allHolders, holderSort) : allHolders;
+  const sortButtons: { key: HolderSort; label: string; title: string }[] = [
+    { key: 'delta', label: t('tft.item.sortDelta'), title: t('tft.item.holderDelta') },
+    { key: 'avg', label: t('tft.avgPlacement'), title: t('tft.avgPlacement') },
+  ];
   const blocks = placementBlocks(it);
   const bars = blocks ? [
     { key: 'first', label: t('tft.item.place1'), value: blocks.first },
@@ -102,11 +111,27 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
 
       <div className="mt-4 pt-3 border-t border-border-subtle">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-xs font-semibold text-white">{t(holders.some(h => h[2] != null) ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
+          <h3 className="text-xs font-semibold text-white">{t(hasDelta ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
           <a href={detailHref} className="text-xs text-accent hover:text-white whitespace-nowrap">
             {t('tft.item.seeAll')} →
           </a>
         </div>
+        {hasDelta && (
+          <div role="group" aria-label={t('tft.sortBy')} className="flex flex-wrap gap-1.5 mb-2.5">
+            {sortButtons.map(b => (
+              <button
+                key={b.key}
+                type="button"
+                aria-pressed={holderSort === b.key}
+                title={b.title}
+                onClick={() => onHolderSort(b.key)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium ${holderSort === b.key ? 'bg-accent-fill text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'}`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+        )}
         {holders.length > 0 && (
           <div className="grid grid-cols-5 gap-x-2 gap-y-2.5">
             {holders.slice(0, 10).map(([cid, avg, delta]) => {

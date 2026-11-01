@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  filterItems, groupItemsByTier, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
+  filterItems, groupItemsByTier, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter, sortHolders,
   parseItemSort, parseItemTypes, placementBlocks, toggleItemKind,
 } from './tft-item-tier-rows.ts';
 
@@ -69,6 +69,14 @@ test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus
   const two = filterItems(rows, { type: ['emblem', 'artifact'], search: '', assets: a, lang: 'de' }).map(i => i.apiName);
   assert.deepEqual(two, ['DA_18_EmblemDefender', 'DA_Artifact_Dawncore']);
   assert.equal(filterItems(rows, { type: [], search: '', assets: a, lang: 'de' }).length, rows.length);
+});
+
+test('Umschalter im Fenster: Ø sortiert eine Kopie, Delta laesst die Server-Reihenfolge', () => {
+  const holders = [['A', 4.5, -0.3], ['B', null, null], ['C', 3.2, -0.1], ['D', 4.5, 0.1], ['E', 3.9, null]];
+  const before = JSON.stringify(holders);
+  assert.deepEqual(sortHolders(holders, 'avg').map(h => h[0]), ['C', 'E', 'A', 'D', 'B']);
+  assert.deepEqual(sortHolders(holders, 'delta').map(h => h[0]), ['A', 'B', 'C', 'D', 'E']);
+  assert.equal(JSON.stringify(holders), before);
 });
 
 test('Traeger des Fensters: neues Feld gewinnt, alte Staende bleiben lesbar', () => {

@@ -28,6 +28,16 @@ export function holdersOf(it: Pick<ItemRow, 'holders' | 'topUsers' | 'topUserAvg
   return it.holders ?? it.topUsers.map((id, i): ItemHolder => [id, it.topUserAvgs?.[i] ?? null, null]);
 }
 
+export type HolderSort = 'delta' | 'avg';
+
+/** Reihenfolge der Kacheln im Fenster. Delta ist die Reihenfolge vom Server. Bei Ø
+ *  eine Kopie (die Zeilen liegen im Cache der Liste), bester zuerst, ohne Ø ans Ende,
+ *  Gleichstand bleibt in Server-Reihenfolge. */
+export function sortHolders(holders: readonly ItemHolder[], by: HolderSort): ItemHolder[] {
+  if (by === 'delta') return [...holders];
+  return [...holders].sort((a, b) => (a[1] == null ? (b[1] == null ? 0 : 1) : b[1] == null ? -1 : a[1] - b[1]));
+}
+
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;
 export type ItemSortBy = (typeof ITEM_SORTS)[number];
 

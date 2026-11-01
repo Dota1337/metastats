@@ -25,7 +25,7 @@ import { useI18n } from '../../lib/i18n';
 import { loadItemTexts, type ItemTexts } from '../../lib/tft-item-texts';
 import {
   filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemTierLetter,
-  parseItemSort, parseItemTypes, type ItemKind, type ItemRow, type ItemSortBy,
+  parseItemSort, parseItemTypes, type HolderSort, type ItemKind, type ItemRow, type ItemSortBy,
 } from '../../lib/tft-item-tier-rows';
 
 export type { ItemRow };
@@ -54,6 +54,8 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
   const [sort, setSort] = useState<ItemSortBy>(initialSort);
   const [type, setType] = useState<readonly ItemKind[]>(initialType);
   const [search, setSearch] = useState('');
+  // Hier statt im Fenster: am Handy schliesst man es vor jedem Item-Wechsel.
+  const [holderSort, setHolderSort] = useState<HolderSort>('delta');
 
   const { filters, setFilters, rows: items, hasData, patches, dataEnd, loading, awaitingStored, assets } =
     useTftStatsList<ItemRow>({
@@ -220,6 +222,8 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
                   textsPending={textsPending}
                   detailHref={itemHref(selectedRow.apiName)}
                   unitHref={unitHref}
+                  holderSort={holderSort}
+                  onHolderSort={setHolderSort}
                   onClose={closePanel}
                 />
               </>

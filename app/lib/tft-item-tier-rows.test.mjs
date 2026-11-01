@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 
 import {
   filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
-  parseItemSort, parseItemType, placementBlocks,
+  parseItemSort, parseItemTypes, placementBlocks, toggleItemKind,
 } from './tft-item-tier-rows.ts';
 
 const row = (apiName, avgPlacement, games = 1000, extra = {}) => ({
@@ -64,11 +64,30 @@ test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus
     DA_Unbekannt: 'standard',
   });
   const rows = Object.keys(a.items).map(id => row(id, 4));
-  const left = filterItems(rows, { type: 'potion', search: '', assets: a, lang: 'de' }).map(i => i.apiName);
+  const left = filterItems(rows, { type: ['potion'], search: '', assets: a, lang: 'de' }).map(i => i.apiName);
   assert.deepEqual(left, ['DA_HealthPotion18', 'DA_HealthPotion18_Radiant']);
-  assert.equal(parseItemType('potion'), 'potion');
-  assert.equal(parseItemType('other'), null);
-  assert.equal(parseItemType('Quatsch'), null);
+  const two = filterItems(rows, { type: ['emblem', 'artifact'], search: '', assets: a, lang: 'de' }).map(i => i.apiName);
+  assert.deepEqual(two, ['DA_18_EmblemDefender', 'DA_Artifact_Dawncore']);
+  assert.equal(filterItems(rows, { type: [], search: '', assets: a, lang: 'de' }).length, rows.length);
+});
+
+test('Mehrere Arten: Adresse hat eine feste Schreibweise, alle fuenf heissen Alle', () => {
+  assert.deepEqual(parseItemTypes('potion'), ['potion']);
+  assert.deepEqual(parseItemTypes('emblem,radiant,emblem'), ['radiant', 'emblem']);
+  assert.deepEqual(parseItemTypes('Quatsch,artifact,other'), ['artifact']);
+  assert.deepEqual(parseItemTypes('Quatsch'), []);
+  assert.deepEqual(parseItemTypes(''), []);
+  assert.deepEqual(parseItemTypes(null), []);
+  assert.deepEqual(parseItemTypes('standard,radiant,emblem,artifact,potion'), []);
+  // Beim Umschalten dieselbe Regel: die Klickfolge aendert die Adresse nicht.
+  const emblemFirst = toggleItemKind(toggleItemKind([], 'emblem'), 'radiant');
+  const radiantFirst = toggleItemKind(toggleItemKind([], 'radiant'), 'emblem');
+  assert.deepEqual(emblemFirst, ['radiant', 'emblem']);
+  assert.deepEqual(radiantFirst, emblemFirst);
+  assert.deepEqual(toggleItemKind(['radiant', 'emblem'], 'radiant'), ['emblem']);
+  // Letzte aus = Alle, fuenfte an = Alle.
+  assert.deepEqual(toggleItemKind(['emblem'], 'emblem'), []);
+  assert.deepEqual(toggleItemKind(['standard', 'radiant', 'emblem', 'artifact'], 'potion'), []);
 });
 
 test("Tactician's Crown, Shield und Cape stehen nicht auf der Seite", () => {
@@ -84,7 +103,7 @@ test("Tactician's Crown, Shield und Cape stehen nicht auf der Seite", () => {
 test('Komponenten stehen nicht auf der Seite, auch wenn nur das Merkmal sie verraet', () => {
   const withOldName = { items: { ...assets.items, TFT_Item_BFSword: { name: 'B.F. Sword', tags: ['component'] } } };
   const items = [row('DA_Item_A', 4), row('DA_Component_Sword', 5), row('TFT_Item_BFSword', 5), row('DA_HealthPotion18', 2.9)];
-  const left = filterItems(items, { type: null, search: '', assets: withOldName, lang: 'de' }).map(i => i.apiName);
+  const left = filterItems(items, { type: [], search: '', assets: withOldName, lang: 'de' }).map(i => i.apiName);
   assert.deepEqual(left, ['DA_Item_A', 'DA_HealthPotion18']);
   // Noch ohne Bild- und Namensdaten greift wenigstens die Kennung.
   assert.equal(isListedItem('DA_Component_Sword'), false);
@@ -118,10 +137,10 @@ test('Augment-Embleme fliegen raus, das echte Emblem bleibt', () => {
 test('Suche findet Namen und Kennung, Art filtert', () => {
   const items = [row('DA_Item_A', 4), row('DA_Artifact_B', 4)];
   const f = (type, search) => filterItems(items, { type, search, assets, lang: 'en' }).map(i => i.apiName);
-  assert.deepEqual(f(null, ''), ['DA_Item_A', 'DA_Artifact_B']);
-  assert.deepEqual(f('artifact', ''), ['DA_Artifact_B']);
-  assert.deepEqual(f(null, 'alph'), ['DA_Item_A']);
-  assert.deepEqual(f(null, 'artifact_b'), ['DA_Artifact_B']);
+  assert.deepEqual(f([], ''), ['DA_Item_A', 'DA_Artifact_B']);
+  assert.deepEqual(f(['artifact'], ''), ['DA_Artifact_B']);
+  assert.deepEqual(f([], 'alph'), ['DA_Item_A']);
+  assert.deepEqual(f([], 'artifact_b'), ['DA_Artifact_B']);
 });
 
 test('Platzverteilung ergibt 100 % und zeigt ohne Wert nichts', () => {
@@ -138,10 +157,11 @@ test('Adress-Werte werden geprueft und nur bei Abweichung geschrieben', () => {
   assert.equal(parseItemSort('win'), 'win');
   assert.equal(parseItemSort('quatsch'), 'avg');
   assert.equal(parseItemSort(null), 'avg');
-  assert.equal(parseItemType('radiant'), 'radiant');
-  assert.equal(parseItemType('other'), null);
-  assert.equal(itemExtraQuery({ item: null, sort: 'avg', type: null }), '');
-  assert.equal(itemExtraQuery({ item: 'A B&c', sort: 'win', type: 'emblem' }), '&item=A%20B%26c&sort=win&type=emblem');
+  assert.deepEqual(parseItemTypes('radiant'), ['radiant']);
+  assert.deepEqual(parseItemTypes('other'), []);
+  assert.equal(itemExtraQuery({ item: null, sort: 'avg', type: [] }), '');
+  assert.equal(itemExtraQuery({ item: 'A B&c', sort: 'win', type: ['emblem'] }), '&item=A%20B%26c&sort=win&type=emblem');
+  assert.equal(itemExtraQuery({ item: null, sort: 'avg', type: ['radiant', 'emblem'] }), '&type=radiant,emblem');
 });
 
 test('Die Adress-Parameter bleiben ausserhalb der Filter-Schluessel', () => {

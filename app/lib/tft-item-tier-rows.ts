@@ -36,8 +36,21 @@ export function itemKindOf(apiName: string, assets: TftAssetsBundle | null): Ite
   return bucket === 'other' ? 'standard' : bucket;
 }
 
-export function parseItemType(v: string | null | undefined): ItemKind | null {
-  return ITEM_KINDS.includes(v as ItemKind) ? (v as ItemKind) : null;
+// Mehrere Arten zugleich (User 01.11.2026). Leer heisst „Alle", alle fuenf auch:
+// feste Reihenfolge und eine einzige Schreibweise, damit die Adresse nicht von der
+// Klickfolge abhaengt.
+function normalizeKinds(isOn: (k: ItemKind) => boolean): ItemKind[] {
+  const kinds = ITEM_KINDS.filter(isOn);
+  return kinds.length === ITEM_KINDS.length ? [] : kinds;
+}
+
+export function parseItemTypes(v: string | null | undefined): ItemKind[] {
+  const wanted = (v ?? '').split(',');
+  return normalizeKinds(k => wanted.includes(k));
+}
+
+export function toggleItemKind(selected: readonly ItemKind[], kind: ItemKind): ItemKind[] {
+  return normalizeKinds(k => (k === kind ? !selected.includes(k) : selected.includes(k)));
 }
 
 /** Augment-Embleme tragen Namen und Bild des echten Emblems, ihre Werte waeren
@@ -58,12 +71,12 @@ export function isListedItem(apiName: string, assets?: TftAssetsBundle | null): 
 /** Item-Art und Suche, wie vorher in der Tabelle. */
 export function filterItems(
   items: readonly ItemRow[],
-  { type, search, assets, lang }: { type: ItemKind | null; search: string; assets: TftAssetsBundle | null; lang: Lang },
+  { type, search, assets, lang }: { type: readonly ItemKind[]; search: string; assets: TftAssetsBundle | null; lang: Lang },
 ): ItemRow[] {
   const q = search.trim().toLowerCase();
   return items.filter(it => {
     if (!isListedItem(it.apiName, assets)) return false;
-    if (type && itemKindOf(it.apiName, assets) !== type) return false;
+    if (type.length > 0 && !type.includes(itemKindOf(it.apiName, assets))) return false;
     if (!q) return true;
     const meta = assets?.items[it.apiName];
     return (meta?.name || '').toLowerCase().includes(q)
@@ -143,6 +156,6 @@ export function placementBlocks(it: Pick<ItemRow, 'top4Rate' | 'top1Rate'>): { f
 }
 
 /** Weitere Adress-Parameter der Seite, nur bei Abweichung vom Standard. */
-export function itemExtraQuery({ item, sort, type }: { item: string | null; sort: ItemSortBy; type: ItemKind | null }): string {
-  return `${item ? `&item=${encodeURIComponent(item)}` : ''}${sort !== 'avg' ? `&sort=${sort}` : ''}${type ? `&type=${type}` : ''}`;
+export function itemExtraQuery({ item, sort, type }: { item: string | null; sort: ItemSortBy; type: readonly ItemKind[] }): string {
+  return `${item ? `&item=${encodeURIComponent(item)}` : ''}${sort !== 'avg' ? `&sort=${sort}` : ''}${type.length > 0 ? `&type=${type.join(',')}` : ''}`;
 }

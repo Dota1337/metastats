@@ -6,7 +6,7 @@
 // Units den Vorpatch waehlt, muss hier wieder herauskommen.
 import type { ReactNode } from 'react';
 import { useI18n, type TranslationKey } from '../../lib/i18n';
-import { ITEM_KINDS, type ItemKind, type ItemSortBy } from '../../lib/tft-item-tier-rows';
+import { ITEM_KINDS, toggleItemKind, type ItemKind, type ItemSortBy } from '../../lib/tft-item-tier-rows';
 import type { Filters, PatchInfo } from '../../lib/tft-filters';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
 import { DayOptions, displayPatchOf, PatchOptions, patchHintOf, RankOptions, RegionOptions } from './StatsFilterBar';
@@ -55,8 +55,8 @@ export default function ItemsFilterBar({
   onChange: (next: Filters) => void;
   search: string;
   onSearch: (v: string) => void;
-  type: ItemKind | null;
-  onType: (v: ItemKind | null) => void;
+  type: readonly ItemKind[];
+  onType: (v: readonly ItemKind[]) => void;
   sort: ItemSortBy;
   onSort: (v: ItemSortBy) => void;
   // Vorpatch-Vergleich vorhanden: dann gibt es auch die Sortierung danach.
@@ -64,20 +64,21 @@ export default function ItemsFilterBar({
 }) {
   const { t } = useI18n();
   const shownPatch = displayPatchOf(filters, patches);
-  const kindButtons: { value: ItemKind | null; label: string }[] = [
-    { value: null, label: t('tft.item.bucket.all') },
-    ...ITEM_KINDS.map(k => ({ value: k, label: t(KIND_LABEL[k]) })),
+  // „Alle" leert die Auswahl, jede Art schaltet einzeln an und aus.
+  const kindButtons: { key: string; pressed: boolean; next: readonly ItemKind[]; label: string }[] = [
+    { key: 'all', pressed: type.length === 0, next: [], label: t('tft.item.bucket.all') },
+    ...ITEM_KINDS.map(k => ({ key: k, pressed: type.includes(k), next: toggleItemKind(type, k), label: t(KIND_LABEL[k]) })),
   ];
   return (
     <>
     <div role="group" aria-label={t('nav.items')} className="flex flex-wrap gap-1.5 mb-2">
       {kindButtons.map(b => (
         <button
-          key={b.value ?? 'all'}
+          key={b.key}
           type="button"
-          aria-pressed={type === b.value}
-          onClick={() => onType(b.value)}
-          className={`px-3 py-1.5 rounded-md text-xs font-medium ${type === b.value ? 'bg-accent-fill text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'}`}
+          aria-pressed={b.pressed}
+          onClick={() => onType(b.next)}
+          className={`px-3 py-1.5 rounded-md text-xs font-medium ${b.pressed ? 'bg-accent-fill text-white' : 'bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white'}`}
         >
           {b.label}
         </button>

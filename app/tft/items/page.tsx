@@ -1,7 +1,7 @@
 import { itemsStart, toSearchParams } from '../../lib/seo/initial-data';
 import { statsPendingCss } from '../../lib/seo/stats-pending';
 import { itemTextsSubset } from '../../lib/tft-item-texts-server';
-import { parseItemSort, parseItemType } from '../../lib/tft-item-tier-rows';
+import { parseItemSort, parseItemTypes } from '../../lib/tft-item-tier-rows';
 import ItemsClient, { type ItemRow } from './ItemsClient';
 
 // Server-Huelle der Items-Liste (SEO-Plan Schritt 3), wie app/tft/units/page.tsx.
@@ -24,7 +24,7 @@ export default async function Page({ searchParams }: {
         initial={start.data}
         initialItem={item}
         initialSort={parseItemSort(sp.get('sort'))}
-        initialType={parseItemType(sp.get('type'))}
+        initialType={parseItemTypes(sp.get('type'))}
         initialTexts={item ? itemTextsSubset(item) : null}
       />
     </>

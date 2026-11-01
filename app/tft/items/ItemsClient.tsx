@@ -25,7 +25,7 @@ import { useI18n } from '../../lib/i18n';
 import { loadItemTexts, type ItemTexts } from '../../lib/tft-item-texts';
 import {
   filterItems, groupItemsByTier, isListedItem, itemExtraQuery, itemTierLetter,
-  parseItemSort, parseItemType, type ItemKind, type ItemRow, type ItemSortBy,
+  parseItemSort, parseItemTypes, type ItemKind, type ItemRow, type ItemSortBy,
 } from '../../lib/tft-item-tier-rows';
 
 export type { ItemRow };
@@ -38,13 +38,13 @@ const SHEET_QUERY = '(max-width: 1023.98px)';
 // rechnet dort 8 s live und kommt ohne Ergebnis zurueck.
 const noTrendRegion = (region: string) => region === 'west' || region === 'asia';
 
-export default function ItemsClient({ initialFilters, initial, initialItem = null, initialSort = 'avg', initialType = null, initialTexts = null }: {
+export default function ItemsClient({ initialFilters, initial, initialItem = null, initialSort = 'avg', initialType = [], initialTexts = null }: {
   // Vom Server (page.tsx), siehe UnitsClient.tsx.
   initialFilters: Filters;
   initial: StatsInitial<ItemRow> | null;
   initialItem?: string | null;
   initialSort?: ItemSortBy;
-  initialType?: ItemKind | null;
+  initialType?: readonly ItemKind[];
   // Text nur des Items aus ?item=, damit er im ersten HTML steht.
   initialTexts?: ItemTexts | null;
 }) {
@@ -52,7 +52,7 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
   const pathname = usePathname();
   const [selected, setSelected] = useState<string | null>(initialItem);
   const [sort, setSort] = useState<ItemSortBy>(initialSort);
-  const [type, setType] = useState<ItemKind | null>(initialType);
+  const [type, setType] = useState<readonly ItemKind[]>(initialType);
   const [search, setSearch] = useState('');
 
   const { filters, setFilters, rows: items, hasData, patches, dataEnd, loading, awaitingStored, assets } =
@@ -71,7 +71,9 @@ export default function ItemsClient({ initialFilters, initial, initialItem = nul
     /* eslint-disable react-hooks/set-state-in-effect -- Absicht: Adresse gibt es erst im Browser, Angleich vor dem ersten Zeichnen */
     setSelected(sp.get('item'));
     setSort(parseItemSort(sp.get('sort')));
-    setType(parseItemType(sp.get('type')));
+    // Gleicher Inhalt behaelt den Stand: sonst rechnet jeder Aufruf die Reihen neu.
+    const nextType = parseItemTypes(sp.get('type'));
+    setType(prev => (prev.join() === nextType.join() ? prev : nextType));
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 

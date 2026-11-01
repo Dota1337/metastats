@@ -3452,7 +3452,7 @@ const translations = {
 
   // Items-Seite: Reihen + Fenster rechts
   'tft.item.kind.items': t6('Craftable', 'Craftable', '\uC870\uD569 \uC544\uC774\uD15C', '\u5408\u6210\u88C5\u5907', 'Fabricables', 'Fabricables'),
-  'tft.item.kind.radiants': t6('Radiants', 'Radiants', '\uB798\uB514\uC5B8\uD2B8', '\u706F\u706C', 'Radiantes', 'Radieux'),
+  'tft.item.kind.radiants': t6('Radiants', 'Radiants', '\uB798\uB514\uC5B8\uD2B8', '\u5149\u660E\u7248', 'Radiantes', 'Radieux'),
   'tft.item.kind.potions': t6('Tr\u00E4nke', 'Potions', '\uBB3C\uC57D', '\u836F\u6C34', 'Pociones', 'Potions'),
   'tft.item.count': t6('{n} Items', '{n} items', '\uC544\uC774\uD15C {n}\uAC1C', '{n}\u4EF6\u88C5\u5907', '{n} objetos', '{n} objets'),
   'tft.item.countOne': t6('1 Item', '1 item', '\uC544\uC774\uD15C 1\uAC1C', '1\u4EF6\u88C5\u5907', '1 objeto', '1 objet'),

@@ -11,7 +11,7 @@
     "tables": 46,
     "rpcs": 38,
     "files": 13,
-    "edges": 527,
+    "edges": 528,
     "unused": 7,
     "unresolved": 1
   },
@@ -4874,6 +4874,11 @@
     {
       "from": "fn:get_tft_item_stats_list",
       "to": "db:tft_daily_item_stats",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_item_stats_list",
+      "to": "db:tft_daily_unit_stats",
       "kind": "reads"
     },
     {

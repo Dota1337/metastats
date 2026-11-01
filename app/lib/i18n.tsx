@@ -680,6 +680,7 @@ const translations = {
   'tft.build.title': t6('What to build', 'What to build', '\uBB34\uC5C7\uC744 \uB9CC\uB4E4\uAE4C', '\u51FA\u4EC0\u4E48\u88C5\u5907', 'Qu\u00E9 construir', 'Que construire'),
   'tft.build.placeholder': t6('Unit und Items', 'Unit and items', '\uC720\uB2DB\uACFC \uC544\uC774\uD15C', '\u5355\u4F4D\u548C\u88C5\u5907', 'Unidad e \u00EDtems', 'Unit\u00E9 et objets'),
   'tft.build.addUnit': t6('Unit hinzuf\u00FCgen', 'Add unit', '\uC720\uB2DB \uCD94\uAC00', '\u6DFB\u52A0\u5355\u4F4D', 'A\u00F1adir unidad', 'Ajouter une unit\u00E9'),
+  'tft.build.costGroup': t6('{n}-Cost', '{n}-Cost', '{n}\uCF54\uC2A4\uD2B8', '{n}\u8D39', 'Coste {n}', 'Co\u00FBt {n}'),
   'tft.build.allStars': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todas', 'Toutes'),
   'tft.build.single': t6('Einzel', 'Single', '\uB2E8\uC77C', '\u5355\u4EF6', 'Individual', 'Seul'),
   'tft.build.duo': t6('Duo', 'Duo', '\uB4C0\uC624', '\u53CC\u4EF6', 'D\u00FAo', 'Duo'),

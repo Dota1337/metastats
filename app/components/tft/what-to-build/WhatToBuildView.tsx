@@ -144,9 +144,21 @@ export default function WhatToBuildView() {
   };
   const addUnit = (unit: string) => {
     const box = pending ? boxFromQuestion(unit, pending, kindOf) : emptyBox(unit);
+    scrollToNewCard.current = true;
     setBoxes(b => [...b, box]);
     if (pending) { setPending(null); setText(''); setChoices({}); }
   };
+
+  // Die offene Auswahl ist hoch: Wer unten waehlt, haette die neue Karte sonst ueber dem Bild.
+  const cardsRef = useRef<HTMLDivElement>(null);
+  const scrollToNewCard = useRef(false);
+  useEffect(() => {
+    if (!scrollToNewCard.current) return;
+    scrollToNewCard.current = false;
+    const cards = cardsRef.current?.querySelectorAll('section');
+    const top = cards?.[cards.length - 1]?.getBoundingClientRect().top;
+    if (top !== undefined && top < 0) window.scrollBy(0, top - 12);
+  }, [boxes.length]);
 
   const itemIcon = (id: string, cls = 'w-5 h-5') => <OptIcon src={options.itemById.get(id)?.img ?? null} alt={options.itemById.get(id)?.name ?? id} className={cls} />;
   const itemLabel = (id: string) => options.itemById.get(id)?.name ?? id;
@@ -244,7 +256,7 @@ export default function WhatToBuildView() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
+      <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-start">
         {plans.map(p => (
           <BuildBoxCard
             key={p.box.unit}
@@ -281,36 +293,44 @@ function PlusBox({ unitRows, taken, highlight, onPick }: {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
+    // Beim Klick statt beim Druecken schliessen: Die Box schrumpft dabei stark und wuerde das
+    // Ziel unter dem Zeiger wegschieben. Capture, damit der oeffnende Klick nicht mitzaehlt.
+    const onClick = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
   }, [open]);
 
   return (
     <div ref={box} onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
-      className={`rounded-xl border border-dashed bg-surface-base min-h-[16rem] ${highlight ? 'border-accent ring-2 ring-accent-a50' : 'border-border-default'} ${open ? 'p-2' : 'flex items-center justify-center'}`}>
+      className={`rounded-xl border border-dashed bg-surface-base min-h-[16rem] ${highlight ? 'border-accent ring-2 ring-accent-a50' : 'border-border-default'} ${open ? 'p-1 sm:p-2' : 'flex items-center justify-center'}`}>
       {!open ? (
         <button type="button" onClick={() => setOpen(true)} aria-label={t('tft.build.addUnit')} title={t('tft.build.addUnit')}
           className={`w-14 h-14 rounded-full border-2 flex items-center justify-center text-fg-secondary hover:text-fg-bright hover:border-accent-a60 ${highlight ? 'border-accent text-fg-bright animate-pulse' : 'border-border-default'}`}>
           <svg aria-hidden="true" viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
         </button>
       ) : (
-        <div className="max-h-[26rem] overflow-y-auto p-1 space-y-1.5">
-          {unitRows.map((row, ri) => (
-            <div key={ri} className="grid grid-cols-[repeat(auto-fill,2.25rem)] gap-1">
-              {row.map(u => {
-                const off = taken.has(u.id);
-                return (
-                  <button key={u.id} type="button" disabled={off} aria-label={u.name} title={u.name}
-                    autoFocus={ri === 0 && u === row[0]}
-                    onClick={() => { setOpen(false); onPick(u.id); }}
-                    className={`w-9 h-9 rounded ${off ? 'opacity-30 cursor-not-allowed' : 'hover:ring-2 hover:ring-accent-a60'}`}>
-                    <OptIcon src={u.img} alt={u.name} className="w-9 h-9" border={costColor(u.cost)} />
-                  </button>
-                );
-              })}
-            </div>
-          ))}
+        <div className="space-y-2">
+          {unitRows.map((row, ri) => {
+            const label = t('tft.build.costGroup').replace('{n}', String(row[0].cost));
+            return (
+              <div key={row[0].cost} role="group" aria-label={label}>
+                <div aria-hidden="true" className="mb-1 text-xs font-bold text-fg-secondary">{label}</div>
+                <div className="grid grid-cols-[repeat(auto-fill,2.75rem)] gap-1">
+                  {row.map(u => {
+                    const off = taken.has(u.id);
+                    return (
+                      <button key={u.id} type="button" disabled={off} aria-label={u.name} title={u.name}
+                        autoFocus={ri === 0 && u === row[0]}
+                        onClick={() => { setOpen(false); onPick(u.id); }}
+                        className={`w-11 h-11 rounded ${off ? 'opacity-30 cursor-not-allowed' : 'hover:ring-2 hover:ring-accent-a60'}`}>
+                        <OptIcon src={u.img} alt={u.name} className="w-11 h-11" border={costColor(u.cost)} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

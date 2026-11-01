@@ -1,6 +1,6 @@
 'use client';
 import type { TftAssetsBundle } from '../../lib/tft-cdragon';
-import { tftIconUrl, findItem, formatTftDesc, tftLabel } from '../../lib/tft-cdragon';
+import { tftIconUrl, findItem, tftAugmentLocalised, tftLabel } from '../../lib/tft-cdragon';
 import { useI18n } from '../../lib/i18n';
 import {
   type CompGuide as CompGuideData,
@@ -25,13 +25,6 @@ import {
 // Die Stage-Tipps der tftacademy-Fassung sind ersatzlos entfallen — MetaTFT
 // clustert aus Match-Daten und hat keinen redaktionellen Fließtext. Ein
 // generierter Ersatz wäre erfundener Inhalt.
-
-interface AugmentMeta {
-  name?: string;
-  desc?: string;
-  icon?: string;
-  tier?: number;
-}
 
 const STAGE_ORDER: AugmentStage[] = ['2-1', '3-2', '4-2'];
 
@@ -59,10 +52,11 @@ function StageBadge({ stages }: { stages: AugmentStage[] }) {
 function AugmentTile({
   apiName, assets, stages,
 }: { apiName: string; assets: TftAssetsBundle | null; stages: AugmentStage[] | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   // assets.augments, nicht assets.items — Augments stehen im Bundle in einer
   // eigenen Map. Die Vorgängerfassung las hier items[] und traf nie.
-  const meta = assets?.augments?.[apiName] as AugmentMeta | undefined;
+  const meta = assets?.augments?.[apiName];
+  const shown = tftAugmentLocalised(meta, lang);
   if (assets && !meta) return null;
   const iconUrl = meta?.icon ? tftIconUrl(assets, meta.icon) : null;
   const tier = typeof meta?.tier === 'number' ? meta.tier : null;
@@ -70,7 +64,7 @@ function AugmentTile({
     <a
       href={withLang(`/tft/augments/${encodeURIComponent(apiName)}`)}
       className="flex flex-col items-center w-14 hover:scale-105 transition"
-      title={formatTftDesc(meta?.desc) || meta?.name || apiName}
+      title={shown.desc || shown.name || apiName}
     >
       <div className="relative">
         <div
@@ -78,7 +72,7 @@ function AugmentTile({
           style={{ borderColor: augmentTierBorderColor(tier) }}
         >
           {iconUrl ? (
-            <img src={iconUrl} alt={meta?.name || apiName} className="w-full h-full object-cover" />
+            <img src={iconUrl} alt={shown.name || apiName} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-surface-overlay" />
           )}
@@ -86,7 +80,7 @@ function AugmentTile({
         {stages && stages.length > 0 && stages.length < STAGE_ORDER.length && <StageBadge stages={stages} />}
       </div>
       <div className="text-white text-[11px] mt-0.5 text-center truncate w-full">
-        {meta?.name || apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?/, '')}
+        {shown.name || apiName.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Augment_)?/, '')}
       </div>
     </a>
   );

@@ -125,13 +125,17 @@ export interface TftAugment {
   aliasOf?: string;
 }
 
-/** Pick the augment's localised name+desc; falls back to en, then top-level fields. */
+/**
+ * Name und Text eines Augments fuer die ANZEIGE, Text schon aufbereitet. `name` und
+ * `desc` am Eintrag bleiben Englisch fuer die Logik (tft-comp-guides.ts).
+ * Rueckfall auf Englisch; ohne Eintrag leer.
+ */
 export function tftAugmentLocalised(
   a: TftAugment | null | undefined,
   lang: 'de' | 'en' | 'ko' | 'zh' | 'es' | 'fr',
 ): { name: string; desc: string } {
   if (!a) return { name: '', desc: '' };
-  const loc = a.i18n?.[lang];
+  const loc = a.i18n?.[process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES === '0' ? 'en' : lang];
   if (loc && (loc.name || loc.desc)) return { name: loc.name || a.name, desc: formatTftDesc(loc.desc || a.desc) };
   const en = a.i18n?.en;
   if (en) return { name: en.name || a.name, desc: formatTftDesc(en.desc || a.desc) };

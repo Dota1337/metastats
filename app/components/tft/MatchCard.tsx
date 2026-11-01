@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { traitTierColor, traitTierFromRiot } from '../../lib/tft-trait-style';
 import { withAlpha } from '../../lib/color';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftTraitDisplayName, tftTraitDescription, type TftAssetsBundle } from '../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftTraitDisplayName, tftTraitDescription, tftAugmentLocalised, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../lib/tft-match-processor';
 import { formatStage } from '../../lib/tft-stage';
 import { useI18n } from '../../lib/i18n';
@@ -132,7 +132,7 @@ function ActivatedTraits({ participant, assets }: { participant: TftParticipantS
 // own full-width row now.)
 
 function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   if (!augments?.length) return null;
   // Used to be hidden on <lg — but augments are core context. Show them
   // everywhere; just size them down on small screens so they don't crowd.
@@ -140,13 +140,14 @@ function AugmentRow({ augments, assets }: { augments: string[]; assets: TftAsset
     <div className="flex gap-1 flex-shrink-0">
       {augments.map((a, i) => {
         const info = assets?.augments[a];
+        const name = tftAugmentLocalised(info, lang).name || a;
         const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
         const url = tftIconUrl(assets, info?.icon);
         const inner = url ? (
-          <img src={url} alt={info!.name} title={info!.name} className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
+          <img src={url} alt={name} title={name} className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 hover:scale-110 transition" style={{ borderColor: tierColor }} />
         ) : (
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-surface-raised flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={info?.name || a}>
-            <span className="text-[7px] sm:text-[8px] text-fg-secondary truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded border-2 bg-surface-raised flex items-center justify-center hover:brightness-125 transition" style={{ borderColor: tierColor }} title={name}>
+            <span className="text-[7px] sm:text-[8px] text-fg-secondary truncate px-0.5">{name.slice(0, 4)}</span>
           </div>
         );
         return (

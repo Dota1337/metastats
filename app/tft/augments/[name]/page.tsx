@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, tftAugmentLocalised, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, compsShowingAugment, type CompGuide } from '../../../lib/tft-comp-guides';
 import {
   loadAugmentStages,
@@ -50,6 +50,7 @@ export default function TftAugmentReferenceDetailPage() {
   useEffect(() => { loadAugmentStages().then(setStagesOverride); }, []);
 
   const meta = assets?.augments[apiName];
+  const shown = tftAugmentLocalised(meta, lang);
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
   const iconUrl = tftIconUrl(assets, meta?.icon);
@@ -100,13 +101,13 @@ export default function TftAugmentReferenceDetailPage() {
           <div className="mt-2 bg-surface-base border border-border-subtle rounded-lg p-5">
             <div className="flex items-start gap-4 flex-wrap">
               {iconUrl ? (
-                <img src={iconUrl} alt={meta.name} className="w-20 h-20 rounded-lg border-2" style={{ borderColor: tierColor }} />
+                <img src={iconUrl} alt={shown.name} className="w-20 h-20 rounded-lg border-2" style={{ borderColor: tierColor }} />
               ) : (
                 <div className="w-20 h-20 rounded-lg bg-surface-overlay" />
               )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-white text-2xl font-medium">{meta.name}</h1>
+                  <h1 className="text-white text-2xl font-medium">{shown.name}</h1>
                   {tier > 0 && (
                     <span
                       className="px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
@@ -116,8 +117,8 @@ export default function TftAugmentReferenceDetailPage() {
                     </span>
                   )}
                 </div>
-                {meta.desc && (
-                  <p className="text-fg-secondary text-sm mt-3 leading-relaxed whitespace-pre-line">{formatTftDesc(meta.desc)}</p>
+                {shown.desc && (
+                  <p className="text-fg-secondary text-sm mt-3 leading-relaxed whitespace-pre-line">{shown.desc}</p>
                 )}
               </div>
             </div>

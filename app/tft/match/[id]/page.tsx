@@ -7,7 +7,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftAugmentLocalised, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
 import { formatStage } from '../../../lib/tft-stage';
 
@@ -284,19 +284,20 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
 }
 
 function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAssetsBundle | null }) {
-  const { withLang } = useI18n();
+  const { withLang, lang } = useI18n();
   if (!augments?.length) return null;
   return (
     <div className="flex flex-col gap-1 flex-shrink-0">
       {augments.map((a, i) => {
         const info = assets?.augments[a];
+        const name = tftAugmentLocalised(info, lang).name || a;
         const tierColor = info?.tier === 3 ? '#c39bff' : info?.tier === 2 ? '#e0c75a' : '#9ab0bf';
         const url = tftIconUrl(assets, info?.icon);
         const inner = url ? (
           <img
             src={url}
-            alt={info!.name}
-            title={info!.name}
+            alt={name}
+            title={name}
             className="w-8 h-8 rounded border-2 hover:scale-110 transition"
             style={{ borderColor: tierColor }}
           />
@@ -304,9 +305,9 @@ function AugmentColumn({ augments, assets }: { augments: string[]; assets: TftAs
           <div
             className="w-8 h-8 rounded border-2 bg-surface-raised flex items-center justify-center hover:brightness-125 transition"
             style={{ borderColor: tierColor }}
-            title={info?.name || a}
+            title={name}
           >
-            <span className="text-[8px] text-fg-secondary truncate px-0.5">{(info?.name || a).slice(0, 4)}</span>
+            <span className="text-[8px] text-fg-secondary truncate px-0.5">{name.slice(0, 4)}</span>
           </div>
         );
         return (

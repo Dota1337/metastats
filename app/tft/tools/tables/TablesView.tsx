@@ -63,7 +63,7 @@ export default function TablesView({ loot, wisps, names }: { loot: LootTablesFil
               {loot.tables.map(tb => <LootCard key={tb.key} table={tb} t={t} />)}
             </div>
           )}
-          {view === 'coven' && loot && <CovenCard coven={loot.coven} name={covenLabel} t={t} />}
+          {view === 'coven' && loot && <CovenCard coven={loot.coven} name={covenLabel} augmentName={nameOf(loot.coven.api, loot.coven.augmentName)} t={t} />}
           {view === 'wisps' && wisps && <WispList entries={wisps.wisps} bands={wisps.bands} t={t} />}
         </NamerContext.Provider>
 
@@ -379,7 +379,7 @@ function RewardTile({ r, t }: { r: LootReward; t: T }) {
   );
 }
 
-function CovenCard({ coven, name, t }: { coven: CovenTable; name: string; t: T }) {
+function CovenCard({ coven, name, augmentName, t }: { coven: CovenTable; name: string; augmentName: string; t: T }) {
   return (
     <section className="bg-surface-base border border-border-subtle rounded-lg p-4">
       <CardHead name={name} icon={coven.icon} patch={coven.patch} t={t} />
@@ -410,7 +410,7 @@ function CovenCard({ coven, name, t }: { coven: CovenTable; name: string; t: T }
             sub={s}
             t={t}
             labels={false}
-            extra={s.label?.t === 'essence' ? <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-accent/50 bg-accent/25 text-white tabular-nums whitespace-nowrap">{coven.augmentName}: +{s.label.ap} {t('tft.tables.ap')}</span> : null}
+            extra={s.label?.t === 'essence' ? <span className="text-[11px] font-medium px-1.5 py-0.5 rounded border border-accent/50 bg-accent/25 text-white tabular-nums whitespace-nowrap">{augmentName}: +{s.label.ap} {t('tft.tables.ap')}</span> : null}
           />
         ))}
       </div>

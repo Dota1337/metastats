@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, findChampion, tftAugmentLocalised, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { loadCompGuidesBundle, compsShowingAugment, type CompGuide as CompGuideData } from '../../../lib/tft-comp-guides';
 import { loadAugmentStages, type AugmentStagesOverride } from '../../../lib/tft-augment-stages';
 import { compPath } from '../../../lib/tft-comp-path';
@@ -100,6 +100,7 @@ function AugmentPanel({
 }) {
   const { withLang, lang } = useI18n();
   const meta = assets?.augments[apiName];
+  const shown = tftAugmentLocalised(meta, lang);
   const tier = meta?.tier ?? 0;
   const tierColor = TIER_COLORS[tier] || 'var(--fg-muted)';
   const iconUrl = tftIconUrl(assets, meta?.icon);
@@ -137,7 +138,7 @@ function AugmentPanel({
         {iconUrl ? (
           <img
             src={iconUrl}
-            alt={meta.name}
+            alt={shown.name}
             className="w-14 h-14 rounded-lg border-2 flex-shrink-0"
             style={{ borderColor: tierColor }}
           />
@@ -145,7 +146,7 @@ function AugmentPanel({
           <div className="w-14 h-14 rounded-lg bg-surface-overlay flex-shrink-0" />
         )}
         <div className="min-w-0 flex-1">
-          <h2 className="text-white text-base font-medium">{meta.name}</h2>
+          <h2 className="text-white text-base font-medium">{shown.name}</h2>
           {tier > 0 && (
             <span
               className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] uppercase tracking-widest"
@@ -157,8 +158,8 @@ function AugmentPanel({
         </div>
       </div>
 
-      {meta.desc && (
-        <p className="text-fg-secondary text-xs leading-relaxed whitespace-pre-line mb-3">{formatTftDesc(meta.desc)}</p>
+      {shown.desc && (
+        <p className="text-fg-secondary text-xs leading-relaxed whitespace-pre-line mb-3">{shown.desc}</p>
       )}
 
       <div className="border-t border-border-subtle pt-3">

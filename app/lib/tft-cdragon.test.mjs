@@ -5,9 +5,33 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { tftPlayableChampions, traitTierMinUnits, traitTierLabel } from './tft-cdragon.ts';
+import { tftAugmentLocalised, tftPlayableChampions, traitTierMinUnits, traitTierLabel } from './tft-cdragon.ts';
 
 const bundle = (n) => JSON.parse(fs.readFileSync(new URL(`../../public/tft-assets-${n}.json`, import.meta.url), 'utf8'));
+
+const AUGMENT = {
+  name: 'Staff', desc: 'Gain <b>2</b>', icon: null, tier: 1,
+  i18n: { en: { name: 'Staff', desc: 'Gain <b>2</b>' }, de: { name: 'Stab', desc: 'Erhalte <b>2</b>' } },
+};
+
+test('Augment in der Sprache des Besuchers, Text aufbereitet, Rueckfall auf Englisch', () => {
+  assert.deepEqual(tftAugmentLocalised(AUGMENT, 'de'), { name: 'Stab', desc: 'Erhalte 2' });
+  assert.deepEqual(tftAugmentLocalised(AUGMENT, 'ko'), { name: 'Staff', desc: 'Gain 2' });
+  assert.deepEqual(tftAugmentLocalised({ ...AUGMENT, i18n: undefined }, 'de'), { name: 'Staff', desc: 'Gain 2' });
+  assert.deepEqual(tftAugmentLocalised(undefined, 'de'), { name: '', desc: '' });
+});
+
+test('Augment: Schalter stellt auf Englisch, der Eintrag selbst bleibt englisch', () => {
+  const before = process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES;
+  process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES = '0';
+  try {
+    assert.equal(tftAugmentLocalised(AUGMENT, 'de').name, 'Staff');
+  } finally {
+    if (before === undefined) delete process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES;
+    else process.env.NEXT_PUBLIC_TFT_LOCAL_NAMES = before;
+  }
+  assert.equal(AUGMENT.name, 'Staff');
+});
 
 test('Set 18: keine Alias-Kopie in der Auswahl, Quelle bleibt', () => {
   const ids = tftPlayableChampions(bundle(18)).map((x) => x.id);

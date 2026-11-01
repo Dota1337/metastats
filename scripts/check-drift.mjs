@@ -529,6 +529,7 @@ function read(path) {
 // die eine Sprachdatei haben kann: aktive Items und die Synergien; Units nicht,
 // weil Deutsch und Spanisch sie meist gleich schreiben und nichts gespeichert wird.
 // Ohne die Schwelle (Anteil statt fester Zahl) wuerde ein neues Set rot.
+// Aktive Augments tragen Name und Text je Sprache in `i18n`.
 {
   const MIN_ITEM_SHARE = 0.8;
   let bundle = null;
@@ -540,12 +541,17 @@ function read(path) {
   });
   const traits = Object.values(bundle?.traits ?? {});
   const noTraits = ['de', 'ko', 'zh', 'es', 'fr'].filter(lang => traits.filter(t => t?.names?.[lang]).length < traits.length * 0.5);
-  if (short.length || noTraits.length) {
-    console.error(`✗ DRIFT: Namen je Sprache fehlen im Bundle (Items: ${short.join(',') || '-'}, Synergien: ${noTraits.join(',') || '-'})`);
+  const activeAugments = bundle?.active?.augments ?? [];
+  const noAugments = ['de', 'ko', 'zh', 'es', 'fr'].filter(lang => {
+    const n = activeAugments.filter(id => bundle?.augments?.[id]?.i18n?.[lang]?.name && bundle?.augments?.[id]?.i18n?.[lang]?.desc).length;
+    return activeAugments.length === 0 || n / activeAugments.length < MIN_ITEM_SHARE;
+  });
+  if (short.length || noTraits.length || noAugments.length) {
+    console.error(`✗ DRIFT: Namen je Sprache fehlen im Bundle (Items: ${short.join(',') || '-'}, Synergien: ${noTraits.join(',') || '-'}, Augments: ${noAugments.join(',') || '-'})`);
     console.error('    → scripts/fetch-tft-assets.mjs (applyLocalizedNames) und Riots Sprachdateien pruefen.');
     failures++;
   } else {
-    console.log(`✓ Namen je Sprache im Bundle (${active.length} aktive Items, ${traits.length} Synergien)`);
+    console.log(`✓ Namen je Sprache im Bundle (${active.length} aktive Items, ${traits.length} Synergien, ${activeAugments.length} aktive Augments)`);
   }
 }
 

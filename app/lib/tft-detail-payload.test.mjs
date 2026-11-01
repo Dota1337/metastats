@@ -7,6 +7,24 @@ import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, unitDet
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
 
+test('Traeger ohne Delta: Auswahl nach Spielen, Reihenfolge nach sichtbarem Ø', () => {
+  const rows = [
+    { characterId: 'Viel', games: 900, sumPlacement: 4500 },
+    { characterId: 'Mittel', games: 500, sumPlacement: 1500 },
+    { characterId: 'Wenig', games: 100, sumPlacement: 400 },
+    { characterId: 'Winzig', games: 20, sumPlacement: 20 },
+    { characterId: 'Stark', games: 60, sumPlacement: 60 },
+  ];  // Winzig hat den besten Rohwert, ist aber nicht unter den 4 meistgespielten.
+  assert.deepEqual(itemHolders(rows, 4), [['Stark', 1, null], ['Mittel', 3, null], ['Wenig', 4, null], ['Viel', 5, null]]);
+  // Ist er dabei, steht er ohne Ø (unter 30 Spielen) ganz hinten.
+  assert.deepEqual(itemHolders(rows).map(h => h[0]), ['Stark', 'Mittel', 'Wenig', 'Viel', 'Winzig']);
+  // Delta bleibt vorne, der Rest fuellt nur die freien Plaetze, und ist alles voll, keiner.
+  const mixed = [{ characterId: 'D', games: 200, sumPlacement: 1000, delta: -0.2 }, { characterId: 'A', games: 300, sumPlacement: 1200 }, { characterId: 'B', games: 300, sumPlacement: 900 }];
+  assert.deepEqual(itemHolders(mixed, 2).map(h => h[0]), ['D', 'A']);
+  assert.deepEqual(itemHolders(mixed, 1).map(h => h[0]), ['D']);
+  assert.deepEqual(itemHolders(mixed).map(h => h[0]), ['D', 'B', 'A']);
+});
+
 test('Beste Traeger: Delta zuerst, bestes oben, danach die meistgespielten ohne Delta', () => {
   const rows = [
     { characterId: 'Haeufig', games: 900, sumPlacement: 3600 },

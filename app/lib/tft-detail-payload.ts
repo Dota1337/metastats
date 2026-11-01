@@ -75,18 +75,30 @@ export function carrierAvgPlacement(games: number | undefined, sumPlacement: num
  *  statt Objekt, die Zeilen stehen 10-mal je Item in jeder Listenantwort. */
 export type ItemHolder = [characterId: string, avgPlacement: number | null, delta: number | null];
 
-/** Erst die Units mit Delta, das beste zuerst (niedriger Platz = besser), danach bis
- *  `max` die meistgespielten ohne Delta. Stand von vor 0112 hat keines: dann Haeufigkeit. */
+/** Erst die Units mit Delta, das beste zuerst (niedriger Platz = besser). Die freien
+ *  Plaetze bis `max` bekommen die meistgespielten ohne Delta, diese stehen nach dem
+ *  sichtbaren Ø (User 01.11.2026: von oben links nach unten rechts), nach Spielzahl
+ *  saehe die Reihe zufaellig aus, die steht nicht auf der Kachel. Ohne Ø ans Ende. */
 export function itemHolders(
   rows: readonly { characterId: string; games: number; sumPlacement?: number; delta?: number | null }[],
   max = 10,
 ): ItemHolder[] {
   const byId = (a: { characterId: string }, b: { characterId: string }) => (a.characterId < b.characterId ? -1 : a.characterId > b.characterId ? 1 : 0);
-  const scored = rows.filter(r => r.delta != null).sort((a, b) => (a.delta as number) - (b.delta as number) || byId(a, b));
-  const rest = rows.filter(r => r.delta == null).sort((a, b) => b.games - a.games || byId(a, b));
-  return [...scored, ...rest].slice(0, max).map(r => [
+  const avgOf = (r: { games: number; sumPlacement?: number }) => carrierAvgPlacement(r.games, r.sumPlacement);
+  const scored = rows.filter(r => r.delta != null).sort((a, b) => (a.delta as number) - (b.delta as number) || byId(a, b)).slice(0, max);
+  const fill = rows
+    .filter(r => r.delta == null)
+    .sort((a, b) => b.games - a.games || byId(a, b))
+    .slice(0, Math.max(0, max - scored.length))
+    .sort((a, b) => {
+      const av = avgOf(a);
+      const bv = avgOf(b);
+      if (av == null || bv == null) return av == null && bv == null ? b.games - a.games || byId(a, b) : av == null ? 1 : -1;
+      return av - bv || b.games - a.games || byId(a, b);
+    });
+  return [...scored, ...fill].map(r => [
     r.characterId,
-    carrierAvgPlacement(r.games, r.sumPlacement),
+    avgOf(r),
     r.delta == null ? null : Math.round(r.delta * 100) / 100,
   ]);
 }

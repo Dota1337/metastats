@@ -125,9 +125,9 @@ function MetaPulseMenu({ pathname }: { pathname: string }) {
             setPos({ left, top: r.bottom + 6 });
           }
         }}
-        className="-ml-3 w-5 h-5 flex items-center justify-center rounded text-[#3ecf8e] hover:bg-surface-overlay"
+        className="-ml-3 w-6 h-6 flex items-center justify-center rounded text-[#3ecf8e] hover:bg-surface-overlay"
       >
-        <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
+        <svg aria-hidden="true" viewBox="0 0 20 20" className={`w-[18px] h-[18px] transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M5 8l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>

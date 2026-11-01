@@ -456,7 +456,7 @@ const translations = {
   'tft.builderItemsAll': t6('Alle', 'All', '\uC804\uCCB4', '\u5168\u90E8', 'Todos', 'Tous'),
   'tft.builderItemsCompleted': t6('Fertige Items', 'Completed items', '\uC644\uC131 \uC544\uC774\uD15C', '\u6210\u54C1\u88C5\u5907', '\u00CDtems completos', 'Objets compl\u00E9t\u00E9s'),
   'tft.builderItemsComponents': t6('Komponenten', 'Components', '\uBD80\uD488', '\u90E8\u4EF6', 'Componentes', 'Composants'),
-  'tft.builderItemsRadiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u706F\u706C\u88C5\u5907', 'Radiantes', 'Radieux'),
+  'tft.builderItemsRadiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u5149\u660E\u88C5\u5907', 'Radiantes', 'Radieux'),
   'tft.builderItemsArtifacts': t6('Artefakte', 'Artifacts', '\uC720\uBB3C', '\u9057\u7269', 'Artefactos', 'Artefacts'),
   'tft.builderItemsEmblems': t6('Embleme', 'Emblems', '\uBB38\uC7A5', '\u5FBD\u7AE0', 'Emblemas', 'Embl\u00E8mes'),
   'tft.builderMfStance': t6('Modus', 'Stance', '\uBAA8\uB4DC', '\u6A21\u5F0F', 'Modo', 'Mode'),
@@ -3448,7 +3448,7 @@ const translations = {
   'tft.item.bucket.standard': t6('Standard', 'Standard', '\uAE30\uBCF8', '\u6807\u51C6', 'Est\u00E1ndar', 'Standard'),
   'tft.item.bucket.artifact': t6('Artefakte', 'Artifacts', '\uC544\uD2F0\uD329\uD2B8', '\u795E\u5668', 'Artefactos', 'Artefacts'),
   'tft.item.bucket.emblem': t6('Embleme', 'Emblems', '\uBB38\uC7A5', '\u5FBD\u7AE0', 'Emblemas', 'Embl\u00E8mes'),
-  'tft.item.bucket.radiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u706F\u706C', 'Radiantes', 'Radieux'),
+  'tft.item.bucket.radiant': t6('Radiant', 'Radiant', '\uB798\uB514\uC5B8\uD2B8', '\u5149\u660E\u7248', 'Radiantes', 'Radieux'),
 
   // Items-Seite: Reihen + Fenster rechts
   'tft.item.kind.items': t6('Craftable', 'Craftable', '\uC870\uD569 \uC544\uC774\uD15C', '\u5408\u6210\u88C5\u5907', 'Fabricables', 'Fabricables'),

@@ -43,12 +43,14 @@ test('ohne Buchstaben: Traenke, zu wenig Spiele, je nach Spielen — nicht nach 
   assert.deepEqual(none.items.map(i => i.apiName), ['DA_HealthPotion18', 'DA_ManaPotion18', 'wenig']);
 });
 
-test("Tactician's Crown und Shield stehen nicht auf der Seite, der Cape bleibt", () => {
-  for (const id of ['DA_TacticiansCrown', 'DA_TacticiansShield', 'TFT_Item_ForceOfNature', 'TFT_Item_TacticiansScepter']) {
+test("Tactician's Crown, Shield und Cape stehen nicht auf der Seite", () => {
+  for (const id of [
+    'DA_TacticiansCrown', 'DA_TacticiansShield', 'DA_TacticiansCape',
+    'TFT_Item_ForceOfNature', 'TFT_Item_TacticiansScepter', 'TFT_Item_TacticiansRing',
+  ]) {
     assert.equal(isListedItem(id), false, id);
   }
-  assert.equal(isListedItem('DA_TacticiansCape'), true);
-  assert.equal(isListedItem('TFT_Item_TacticiansRing'), true);
+  assert.equal(isListedItem('DA_Crownguard'), true);
 });
 
 test('Komponenten stehen nicht auf der Seite, auch wenn nur das Merkmal sie verraet', () => {

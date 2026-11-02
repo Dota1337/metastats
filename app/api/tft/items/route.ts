@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
-import { coreFromListRow, itemDetailBody, itemHolders, itemHoldersCommon, type Blocks, type CarrierRow, type DetailCore } from '../../../lib/tft-detail-payload';
+import {
+  coreFromListRow, holderDeltaMap, itemDetailBody, itemHolders, itemHoldersCommon,
+  type Blocks, type CarrierRow, type DetailCore, type ItemHolder,
+} from '../../../lib/tft-detail-payload';
 import { itemCarriersFor } from '../../../lib/tft-detail-builds';
 import {
   resolveFilters,
@@ -80,6 +83,20 @@ async function readPrecomputedItems(
   }
 }
 
+// Traeger einer Zeile von get_tft_item_stats_list fuer das Fenster der Items-Seite und
+// das Delta der Detailseite (EINE Rechnung, sonst zeigten beide verschiedene Zahlen).
+// Direkt aus der Zeile: der Merge der Liste verwirft das Delta und kappt vor den besten
+// Units, die oft nicht zu den 12 haeufigsten gehoeren (0112).
+// holdersCommon = Knopf „Häufigste Träger" (0114). Ohne Delta gibt es keinen Knopf,
+// holders zeigt dann schon die meistgespielten. Weicht von topUsers nur ab, wenn unter
+// dessen 12 drei oder mehr ausgeschlossene Units stehen (topUsers kappt vor dem
+// Ausschluss, hier danach).
+function listRowHolders(r: ItemListRow): { holders: ItemHolder[]; holdersCommon?: ItemHolder[] } {
+  const holderRows = (r.top_users_merged || []).flat().filter(u => !isExcludedUnit(u.characterId));
+  const holders = itemHolders(holderRows);
+  return holderRows.some(u => u.delta != null) ? { holders, holdersCommon: itemHoldersCommon(holderRows) } : { holders };
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
@@ -99,6 +116,8 @@ export async function GET(request: NextRequest) {
     let filterSet: number | null = null;
     let filterPatch: string | null = null;
     let carriers: Blocks<CarrierRow[]> = 'failed';
+    // Delta je Traeger aus derselben Listenzeile wie die Kernwerte (User 02.11.2026).
+    let deltas: Map<string, number> | null = null;
     try {
       const publisher = isSnapshotPublisher(request);
       const filters = await resolveFilters(searchParams, { publisher });
@@ -111,7 +130,9 @@ export async function GET(request: NextRequest) {
       const hit = await lookupSnapshot('items', { ...snapshotFilterOpts(filters), minGames: 0 });
       const snapItems = (hit?.payload as { items?: any[] } | undefined)?.items;
       if (Array.isArray(snapItems) && snapItems.length > 0) {
-        core = coreFromListRow(snapItems.find(x => x.apiName === id));
+        const listRow = snapItems.find(x => x.apiName === id);
+        core = coreFromListRow(listRow);
+        deltas = holderDeltaMap(listRow);
       } else {
         // Dieselbe Quelle wie die Liste: erst der Vorrat (0108), dann live.
         const pre = await readPrecomputedItems(filters, (await getAvailablePatches())[0]?.last_day,
@@ -124,6 +145,7 @@ export async function GET(request: NextRequest) {
           p_set: filters.setNumber,
         }, publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined);
         const row = rows.find(r => r.api_name === id);
+        deltas = holderDeltaMap(row ? listRowHolders(row) : null);
         const games = row ? Number(row.games) : 0;
         const top1Raw = row ? Number(row.top1) : 0;
         core = row && games > 0
@@ -141,7 +163,7 @@ export async function GET(request: NextRequest) {
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, carriers);
+    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, carriers, deltas);
     return cacheable ? cachedJson(body) : NextResponse.json(body);
   }
 
@@ -215,14 +237,8 @@ export async function GET(request: NextRequest) {
           .filter(cid => !isExcludedUnit(cid))
           .slice(0, 10);
         // topUsers bleibt die Namensliste nach Haeufigkeit (Companion-Apps). Das Fenster
-        // liest holders. Direkt aus der Zeile: der Merge oben verwirft das Delta und
-        // kappt vor den besten Units, die oft nicht zu den 12 haeufigsten gehoeren (0112).
-        const holderRows = (r.top_users_merged || []).flat().filter(u => !isExcludedUnit(u.characterId));
-        const holders = itemHolders(holderRows);
-        // Knopf „Häufigste Träger" (0114). Ohne Delta gibt es keinen Knopf, holders zeigt dann
-        // schon die meistgespielten. Weicht von topUsers nur ab, wenn unter dessen 12 drei oder
-        // mehr ausgeschlossene Units stehen (topUsers kappt vor dem Ausschluss, hier danach).
-        const holdersCommon = holderRows.some(u => u.delta != null) ? itemHoldersCommon(holderRows) : undefined;
+        // liest holders (listRowHolders).
+        const { holders, holdersCommon } = listRowHolders(r);
         const games = Number(r.games);
         const avgPlacement = games > 0 ? Number(r.sum_placement) / games : null;
         const top4Rate = games > 0 ? Number(r.top4) / games : null;

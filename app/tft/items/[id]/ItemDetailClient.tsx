@@ -8,13 +8,15 @@ import { compsWithItem as selectCompsWithItem, detailFiltersFrom, detailKey, sha
 import type { ItemDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
-import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftTraitDisplayName, tftLabel, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, formatTftDesc, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
-import { parseClusterKey } from '../../../lib/tft-cluster';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
-import { compPath } from '../../../lib/tft-comp-path';
 import { loadItemTexts, itemTextFor, type ItemTexts } from '../../../lib/tft-item-texts';
+import { dataEndOf, itemListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
+import { holderDeltaColor, holderDeltaText } from '../../../lib/tft-item-tier-rows';
 import ItemStatLine from '../../../components/tft/ItemStatLine';
+import CompFamilyRow from '../../../components/tft/CompFamilyRow';
+import CompFamilyListHeader from '../../../components/tft/CompFamilyListHeader';
 
 interface ItemDetail {
   apiName: string;
@@ -27,10 +29,16 @@ interface ItemDetail {
     avgPlacement: number | null;
     top4Rate?: number | null;
     top1Rate?: number | null;
+    /** Aus der Listenzeile des Items (holderDeltaMap), null = kein Wert. Fehlt in alten Antworten. */
+    delta?: number | null;
   }[];
   /** Startdaten ohne Traeger: der Browser laedt sie nach. */
   itemsPending?: boolean;
 }
+
+// Comps-Block: `withItem` = alle Comps mit dem Item in den Carry-Items (fuer die
+// Combos), `rows` = Zeilen fuer die Comp-Familien (itemListFamilies).
+interface CompsState { withItem: any[]; rows: CompApiRow[]; dataEnd: string | null }
 
 // `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
 // Unit-Detailseite (UnitDetailClient.tsx).
@@ -47,21 +55,24 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
     () => initial?.detail ? ((initial.detail.item as ItemDetail | undefined) || null) : undefined);
   const [hasData, setHasData] = useState<boolean | null>(() => initial?.detail ? !!initial.detail.hasData : null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
-  // ALL comps that contain this item — we slice top-6 for the "comps with item"
-  // display, but use the full list to aggregate item-combo stats below.
-  const [compsWithItem, setCompsWithItem] = useState<any[]>(() => initial?.comps ?? []);
+  // Startdaten: Combos (comps) und Familien-Zeilen (families) getrennt. Fehlen die
+  // Familien-Zeilen, zeigt die Seite die Combos gleich und holt die Comps trotzdem.
+  const initialComps: CompsState | null = initial?.comps
+    ? { withItem: initial.comps, rows: initial.families?.rows ?? [], dataEnd: initial.families?.dataEnd ?? null }
+    : null;
+  const [comps, setComps] = useState<CompsState | null>(initialComps);
   // Startdaten ohne Traeger (kein Vorrat fuer diese Filter): Kernwerte gleich
   // zeigen, die Antwort der API trotzdem holen.
   const initialPending = !!(initial?.detail?.item as ItemDetail | undefined)?.itemsPending;
   // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
   const shownDetail = useRef<string | null>(initial?.detail && !initialPending ? initial.key : null);
-  const shownComps = useRef<string | null>(initial?.comps ? initial.key : null);
+  const shownComps = useRef<string | null>(initialComps && initial?.families ? initial.key : null);
   // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
   // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
   // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
   const loadedDetail = useRef(new Map<string, { hasData: boolean; item: ItemDetail | null }>(
     initial?.detail && !initialPending ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
-  const loadedComps = useRef(new Map<string, any[]>(initial?.comps ? [[initial.key, initial.comps]] : []));
+  const loadedComps = useRef(new Map<string, CompsState>(initialComps && initial?.families ? [[initial.key, initialComps]] : []));
   // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
   // Rest fragt der Effekt unten.
   const selectBucket = (next: TierBucket) => {
@@ -69,7 +80,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
     const d = loadedDetail.current.get(k);
     if (d && shownDetail.current !== k) { shownDetail.current = k; setHasData(d.hasData); setData(d.item); }
     const c = loadedComps.current.get(k);
-    if (c && shownComps.current !== k) { shownComps.current = k; setCompsWithItem(c); }
+    if (c && shownComps.current !== k) { shownComps.current = k; setComps(c); }
     setBucket(next);
   };
 
@@ -106,20 +117,26 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
           setHasData(false); setData(null);
         });
     }
-    // Cross-query: comps that frequently build this item on their lead carry.
-    // Uses the existing carryItems jsonb (top-3-item triples per comp) so no
-    // aggregator change is needed.
+    // Comps: Familien wie im Comps-Reiter (itemListFamilies), Combos aus allen
+    // Comps mit dem Item in den Carry-Items.
     if (shownComps.current !== key) {
       fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
           if (cancelled) return;
-          const filtered = selectCompsWithItem(d.comps || [], id);
-          loadedComps.current.set(key, filtered);
+          const rows = (d.comps || []) as CompApiRow[];
+          const v: CompsState = { withItem: selectCompsWithItem(rows, id), rows, dataEnd: dataEndOf(d.filters) };
+          loadedComps.current.set(key, v);
           shownComps.current = key;
-          setCompsWithItem(filtered);
+          setComps(v);
         })
-        .catch(() => { if (cancelled) return; shownComps.current = null; setCompsWithItem([]); });
+        .catch(() => {
+          if (cancelled) return;
+          shownComps.current = null;
+          // Startdaten mit Combos, aber ohne Familien: die Combos bleiben stehen.
+          if (key === initial?.key && initialComps) return;
+          setComps(null);
+        });
     }
     return () => { cancelled = true; };
   }, [bucket, id, region, days]);
@@ -133,7 +150,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
   const itemCombos = useMemo(() => {
     type ComboAgg = { items: string[]; count: number; wPlace: number; wTop4: number };
     const bySig = new Map<string, ComboAgg>();
-    for (const c of compsWithItem) {
+    for (const c of comps?.withItem || []) {
       const sets = c.carryItems || [];
       const avg = c.avgPlacement;
       const t4 = c.top4Rate;
@@ -156,9 +173,17 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
       .map(e => ({ items: e.items, games: e.count, avgPlacement: e.wPlace / e.count, top4Rate: e.wTop4 / e.count }))
       .sort((a, b) => a.avgPlacement - b.avgPlacement)
       .slice(0, 8);
-  }, [compsWithItem, id]);
+  }, [comps, id]);
 
-  const compsTop6 = useMemo(() => compsWithItem.slice(0, 6), [compsWithItem]);
+  // Comps wie im Comps-Reiter: die Familien, deren Item-Traeger das Item am
+  // haeufigsten tragen (User 02.11.2026), hoechstens 10.
+  const families = useMemo(() => (comps ? itemListFamilies(comps.rows, assets, id) : []), [comps, assets, id]);
+  const showCarriers = !!data && data.topUsers.length > 0;
+  // Spalte Delta nur, wenn mindestens ein Traeger einen Wert hat (Traenke, alte Antworten: keine).
+  const showDelta = showCarriers && data!.topUsers.some(u => u.delta != null);
+  const carrierCols = showDelta
+    ? 'grid-cols-[minmax(0,1fr)_repeat(4,3rem)] sm:grid-cols-[minmax(0,1fr)_repeat(4,4rem)]'
+    : 'grid-cols-[minmax(0,1fr)_repeat(3,4rem)]';
 
   const itemMeta = assets?.items[id];
   const itemText = itemTextFor(texts || clientTexts, id, lang);
@@ -182,7 +207,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
   return (
     <main className="min-h-screen bg-surface-page">
       <Nav active="items" />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="bg-surface-base border border-border-subtle rounded-lg p-5 mb-5">
           <a href={withLang("/tft/items")} className="inline-flex items-center py-1.5 -my-1.5 text-accent text-sm font-bold hover:underline">← {t('nav.items')}</a>
           <div className="flex items-center gap-4 mt-2">
@@ -261,16 +286,20 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
 
         {hasData === false && <EmptyData />}
         {data && (
-          <>
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <Stat label={t('tft.avgPlacement')} value={data.avgPlacement?.toFixed(2) ?? '—'} />
-              <Stat label={t('tft.top4')} value={data.top4Rate != null ? `${(data.top4Rate * 100).toFixed(1)}%` : '—'} />
-              <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
-            </div>
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <Stat label={t('tft.avgPlacement')} value={data.avgPlacement?.toFixed(2) ?? '—'} />
+            <Stat label={t('tft.top4')} value={data.top4Rate != null ? `${(data.top4Rate * 100).toFixed(1)}%` : '—'} />
+            <Stat label={t('tft.gamesShort')} value={data.games.toLocaleString('de-DE')} />
+          </div>
+        )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
-              {data.topUsers.length > 0 && (
-                <div>
+        {/* Traeger und Combos nebeneinander, die Comps darunter ueber die volle
+            Breite (User 02.11.2026). Fehlt einer der beiden, nimmt der andere die
+            ganze Zeile. */}
+        {(showCarriers || itemCombos.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5 items-start">
+              {showCarriers && data && (
+                <div className={itemCombos.length === 0 ? 'lg:col-span-2' : ''}>
                   <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
                   {/* 1D-Carrier-Tabelle: Carrier × (Avg-Place, Top4%, Games).
                       avgPlacement war schon im Aggregator (sumPlacement/games),
@@ -280,9 +309,10 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                       (feedback_no_fake_values), füllt sich beim nächsten
                       Daily-Crawl auf. */}
                   <div className="bg-surface-raised border border-border-subtle rounded overflow-hidden">
-                    <div className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken">
+                    <div className={`grid ${carrierCols} gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken`}>
                       <div>{t('tft.item.topCarrier.carrier')}</div>
                       <div className="text-right">{t('tft.avgPlacement')}</div>
+                      {showDelta && <div className="text-right" title={t('tft.item.holderDelta')}>{t('tft.item.sortDelta')}</div>}
                       <div className="text-right">{t('tft.top4')}</div>
                       <div className="text-right">{t('tft.gamesShort')}</div>
                     </div>
@@ -294,7 +324,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                         <a
                           key={u.characterId}
                           href={withLang(`/tft/units/${encodeURIComponent(u.characterId)}?bucket=${bucket}`)}
-                          className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-border-subtle"
+                          className={`grid ${carrierCols} gap-2 items-center px-3 py-1.5 text-xs hover:bg-white/5 border-t border-border-subtle`}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             {churl ? (
@@ -305,6 +335,13 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                             <span className="text-white truncate">{tftLabel(ch, lang) || prettyChar(u.characterId)}</span>
                           </div>
                           <div className="text-right text-white tabular-nums">{u.avgPlacement?.toFixed(2) ?? '—'}</div>
+                          {showDelta && (
+                            u.delta != null ? (
+                              <div className="text-right font-semibold tabular-nums" style={{ color: holderDeltaColor(u.delta) }} title={t('tft.item.holderDelta')}>
+                                {holderDeltaText(u.delta)}
+                              </div>
+                            ) : <div className="text-right text-fg-muted tabular-nums">—</div>
+                          )}
                           <div className="text-right text-[#3ecf8e] tabular-nums">{u.top4Rate != null ? `${(u.top4Rate * 100).toFixed(0)}%` : '—'}</div>
                           <div className="text-right text-fg-muted tabular-nums">{u.games}</div>
                         </a>
@@ -314,51 +351,14 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                 </div>
               )}
 
-              {compsTop6.length > 0 && (
-                <div>
-                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
-                  <div className="space-y-1.5">
-                    {compsTop6.map(c => {
-                      const parts = parseClusterKey(c.clusterKey);
-                      const traitName = parts ? (tftTraitDisplayName(assets, parts.trait, lang) || prettyTrait(parts.trait)) : '';
-                      const carry = parts && assets ? assets.champions[parts.carry] : null;
-                      const carryUrl = tftChampionTileUrl(assets, carry);
-                      return (
-                        <a
-                          key={c.slug}
-                          href={withLang(`${compPath(c.slug)}?bucket=${bucket}&region=${region}&days=${days}`)}
-                          className="flex items-center gap-2 bg-surface-raised border border-border-subtle rounded p-2 hover:border-accent-a40 transition-colors"
-                        >
-                          {carryUrl && (
-                            <img src={carryUrl} alt="" className="w-8 h-8 rounded border border-[#c39bff]/60 object-cover flex-shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="text-white text-[11px] font-medium truncate leading-tight">
-                              {traitName} · {tftLabel(carry, lang) || (parts ? prettyChar(parts.carry) : '')}
-                            </div>
-                          </div>
-                          <div className="text-right text-[11px] tabular-nums leading-tight">
-                            <div className="text-white">Ø {c.avgPlacement?.toFixed(2) ?? '—'}</div>
-                            <div className="text-fg-muted">{c.games}</div>
-                          </div>
-                        </a>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Item-Combos: strongest 2er/3er builds containing this item, weighted
-            from the comps payload. Approximation — comp-level avg/top4 are
-            applied to each contained item-set, weighted by the per-comp count
-            of that set. A true per-combo aggregation would need an aggregator-
-            touch; this client-side cross gets us the ranking without backend
-            work. ≥5 games gate so noise doesn't dominate. */}
-        {itemCombos.length > 0 && (
-          <div className="bg-surface-base border border-border-subtle rounded p-4 mb-5">
+              {/* Item-Combos: strongest 2er/3er builds containing this item, weighted
+                  from the comps payload. Approximation — comp-level avg/top4 are
+                  applied to each contained item-set, weighted by the per-comp count
+                  of that set. A true per-combo aggregation would need an aggregator-
+                  touch; this client-side cross gets us the ranking without backend
+                  work. ≥5 games gate so noise doesn't dominate. */}
+              {itemCombos.length > 0 && (
+          <div className={`bg-surface-base border border-border-subtle rounded p-4 ${showCarriers ? '' : 'lg:col-span-2'}`}>
             <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-1">{t('tft.item.combos.title')}</h2>
             <p className="text-fg-muted text-[11px] mb-3">{t('tft.item.combos.caption')}</p>
             <div className="space-y-1.5">
@@ -390,6 +390,31 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
               ))}
             </div>
           </div>
+              )}
+            </div>
+        )}
+
+        {/* Comps wie im Comps-Reiter (CompFamilyRow), ueber die volle Breite. */}
+        {families.length > 0 && (
+          <section className="mb-5">
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
+            <CompFamilyListHeader t={t} />
+            <div className="space-y-1.5">
+              {families.map((f, i) => (
+                <CompFamilyRow
+                  key={f.familyKey}
+                  family={f}
+                  rank={i + 1}
+                  assets={assets}
+                  region={region}
+                  bucket={bucket}
+                  days={days}
+                  patch="current"
+                  end={comps?.dataEnd ?? null}
+                />
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Sibling items — completed items that share a component with this
@@ -435,4 +460,3 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 function prettyApi(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?(?:Item_)?/, ''); }
 function prettyChar(id: string) { return id.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }
-function prettyTrait(s: string) { return s.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, ''); }

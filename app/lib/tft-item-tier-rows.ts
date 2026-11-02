@@ -47,6 +47,15 @@ export function holderView(
   return { holders, toggle, best: holders.some(h => h[2] != null) };
 }
 
+/** Delta eines Traegers als Text und Farbe, gleich im Fenster der Items-Seite und in
+ *  der Traeger-Tabelle der Item-Detailseite: negativ = besser = gruen, echtes Minus. */
+export function holderDeltaText(delta: number): string {
+  return delta < 0 ? `−${Math.abs(delta).toFixed(2)}` : delta > 0 ? `+${delta.toFixed(2)}` : '0.00';
+}
+export function holderDeltaColor(delta: number): string {
+  return delta < 0 ? '#3ecf8e' : delta > 0 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)';
+}
+
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;
 export type ItemSortBy = (typeof ITEM_SORTS)[number];
 

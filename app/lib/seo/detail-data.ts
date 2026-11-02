@@ -16,7 +16,7 @@ import { resolveFilters } from '../tft-supabase-reader';
 import { snapshotFilterOpts } from '../stats-patch-display';
 import { normalizeBucket } from '../tft-stats-loader';
 import { isExcludedItem, isExcludedUnit } from '../tft-excluded';
-import { coreFromListRow, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
+import { coreFromListRow, holderDeltaMap, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
 import { lookupDetailBuildsStock } from '../tft-detail-builds';
 import {
   compsOfTrait, compsWithItem, detailFiltersFrom, detailKey, sharedComponentItems,
@@ -29,7 +29,7 @@ import type { TftAssetsBundle } from '../tft-cdragon';
 import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
 import { assetsForVisitor, subsetBundle } from './initial-data';
-import { dataEndOf, familyRowsFor, leanCompRow, unitListFamilies, type CompApiRow } from '../tft-comp-families';
+import { dataEndOf, familyRowsFor, itemListFamilies, leanCompRow, unitListFamilies, type CompApiRow } from '../tft-comp-families';
 
 const BUDGET_MS = 1500;
 // Vorgerechnete Staende je Filter, nicht je Seite: viele Detailseiten lesen
@@ -145,16 +145,7 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
       for (const slot of Object.values(slots || {}) as any[]) for (const e of slot?.entries || []) items.add(e.item);
     }
   }
-  // Die Comp-Zeilen zeigen Units, ihre Items, Embleme und den Familien-Trait.
-  for (const c of comps?.rows || []) {
-    const p = unitIdsOfComp(c.clusterKey);
-    if (p.trait) traitIds.add(p.trait);
-    for (const ch of p.champions) champions.add(ch);
-    for (const u of c.typicalUnits || []) {
-      champions.add(u.characterId);
-      for (const it of u.topItems || []) items.add(it.apiName);
-    }
-  }
+  addCompRowAssets(comps?.rows, champions, items, traitIds);
   return {
     key: detailKey(id, f),
     detail,
@@ -166,6 +157,22 @@ export async function unitDetailStart(id: string, sp: URLSearchParams): Promise<
       withAbility: false,
     })),
   };
+}
+
+// Bild-Ausschnitt fuer Comp-Zeilen (CompFamilyRow) der Unit- und der Item-Seite:
+// Units, ihre Items (auch Bauteile: fehlen sie im Ausschnitt, haelt
+// componentCheckFromItems sie fuer fertige Items, der Browser rechnet andere
+// Item-Traeger als der Server und die Liste springt), Embleme, Familien-Trait.
+function addCompRowAssets(rows: CompApiRow[] | null | undefined, champions: Set<string>, items: Set<string>, traitIds: Set<string>) {
+  for (const c of rows || []) {
+    const p = unitIdsOfComp(c.clusterKey);
+    if (p.trait) traitIds.add(p.trait);
+    for (const ch of p.champions) champions.add(ch);
+    for (const u of c.typicalUnits || []) {
+      champions.add(u.characterId);
+      for (const it of u.topItems || []) items.add(it.apiName);
+    }
+  }
 }
 
 // ---------- Item ----------
@@ -183,6 +190,8 @@ export interface ItemDetailInitial {
   detail: { hasData?: boolean; item?: unknown } | null;
   /** ALLE Comps, deren Carry-Items das Item enthalten (die Seite rechnet daraus Combos). */
   comps: ItemCompRef[] | null;
+  /** Zeilen der Comp-Familien mit dem Item (itemListFamilies), wie /api/tft/comps. */
+  families: { rows: CompApiRow[]; dataEnd: string | null } | null;
   assets: TftAssetsBundle;
 }
 
@@ -202,19 +211,25 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
   let detail: ItemDetailInitial['detail'] = null;
   const itemRows = listRows(itemsSnap, 'items');
   if (itemRows) {
+    const listRow = itemRows.find(x => x.apiName === id);
     detail = itemDetailBody({
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
-      core: coreFromListRow(itemRows.find(x => x.apiName === id)), coreKnown: true,
+      core: coreFromListRow(listRow), coreKnown: true,
       filterSet: r.setNumber, filterPatch: r.displayPatch,
-    }, stock ? (stock.items[id] ?? null) : 'pending').body;
+    }, stock ? (stock.items[id] ?? null) : 'pending', holderDeltaMap(listRow)).body;
   }
-  const compRows = listRows(compsSnap, 'comps');
-  const comps = compRows
-    ? compsWithItem(compRows, id).map(c => ({
+  const rawComps = listRows(compsSnap, 'comps');
+  const compRows = rawComps as CompApiRow[] | null;
+  const comps = rawComps
+    ? compsWithItem(rawComps, id).map(c => ({
         ...compRef(c),
         carryItems: (c.carryItems || []).map((ci: { items?: string[]; count: number }) => ({ items: ci.items || [], count: ci.count })),
       }))
     : null;
+  // Wie die Unit-Seite: nur die Zeilen der gezeigten Familien; null (Teildaten
+  // zeigten etwas anderes) → der Browser holt die Comps selbst.
+  const famRows = compRows ? familyRowsFor(compRows, list => itemListFamilies(list, bundle, id), leanCompRow) : null;
+  const families = famRows ? { rows: famRows, dataEnd: dataEndOf(compsSnap?.filters) } : null;
   if (!detail && !comps) return null;
 
   const items = new Set<string>([id]);
@@ -232,10 +247,12 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
     for (const ch of p.champions) champions.add(ch);
   }
   for (const c of comps || []) for (const ci of c.carryItems) for (const it of ci.items) items.add(it);
+  addCompRowAssets(families?.rows, champions, items, traitIds);
   return {
     key: detailKey(id, f),
     detail,
     comps,
+    families,
     assets: await assetsForVisitor(subsetBundle(bundle, { champions, items, traitIds, withAbility: false, activeItems: true })),
   };
 }

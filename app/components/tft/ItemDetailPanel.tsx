@@ -8,7 +8,7 @@ import { withAlpha } from '../../lib/color';
 import { useI18n } from '../../lib/i18n';
 import { formatTftDesc, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
-import { holderView, placementBlocks, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
+import { holderDeltaColor, holderDeltaText, holderView, placementBlocks, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
 import ItemStatLine from './ItemStatLine';
@@ -163,10 +163,10 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
                   {delta != null && (
                     <span
                       className="block text-[11px] leading-tight text-center font-semibold tabular-nums"
-                      style={{ color: delta < 0 ? '#3ecf8e' : delta > 0 ? 'var(--pos-loss-text)' : 'var(--fg-secondary)' }}
+                      style={{ color: holderDeltaColor(delta) }}
                       title={t('tft.item.holderDelta')}
                     >
-                      {delta < 0 ? `−${Math.abs(delta).toFixed(2)}` : delta > 0 ? `+${delta.toFixed(2)}` : '0.00'}
+                      {holderDeltaText(delta)}
                     </span>
                   )}
                 </a>

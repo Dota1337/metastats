@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   attachPatchDeltas, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
-  familyShowsUnit, SHOWN_BOARD_UNITS,
+  familyShowsUnit, SHOWN_BOARD_UNITS, itemListFamilies, ITEM_COMP_LIMIT, ITEM_COMP_MIN_COPIES,
 } from './tft-comp-families.ts';
 import { compTraitFamilyKey } from './tft-cluster.ts';
 import { buildPatchDeltaIndex } from './tft-patch-delta.ts';
@@ -141,6 +141,34 @@ test('familyShowsUnit: nur die meistgespielten Units des gezeigten Bretts zaehle
   assert.equal(familyShowsUnit(fam, 'U' + (SHOWN_BOARD_UNITS - 1)), true);
   assert.equal(familyShowsUnit(fam, 'U' + SHOWN_BOARD_UNITS), false);
   assert.equal(familyShowsUnit({ mainComp: {} }, 'U0'), false);
+});
+
+// Item-Detailseite (User 02.11.2026): Comps nach Kopien des Items auf ihren
+// Item-Traegern, meiste zuerst, ab 30 Kopien, hoechstens 10.
+test('itemListFamilies: Kopien auf Item-Traegern (auch Tanks), meiste zuerst, Rest zaehlt nicht', () => {
+  const u = (characterId, games, items) => ({
+    characterId, count: games, gamesWithUnit: games,
+    topItems: Object.entries(items).map(([apiName, count]) => ({ apiName, count })),
+  });
+  const row = (slug, games, units) => ({ slug, clusterKey: slug, games, avgPlacement: 4, top4Rate: 0.5, top1Rate: 0.1, pickRate: 0.01, typicalUnits: units });
+  const rows = [
+    // Tank traegt Items → zaehlt mit; Filler traegt kaum Items → zaehlt nicht.
+    row('DA_T@4_DA_Carry', 1000, [u('DA_Carry', 1000, { DA_IE: 900, DA_GS: 800, DA_X: 700 }), u('DA_Tank', 1000, { DA_Garg: 950, DA_IE: 20 }), u('DA_Filler', 1000, { DA_IE: 40, DA_Only: 300 })]),
+    // Weniger Spiele, aber mehr Kopien → steht vorne.
+    row('DA_W@4_DA_C4', 600, [u('DA_C4', 600, { DA_IE: 950, DA_Y: 500 })]),
+    row('DA_U@4_DA_C2', 500, [u('DA_C2', 500, { DA_IE: ITEM_COMP_MIN_COPIES, DA_Y: 480, DA_Z: 470 })]),
+    row('DA_V@4_DA_C3', 400, [u('DA_C3', 400, { DA_IE: ITEM_COMP_MIN_COPIES - 1, DA_Y: 390, DA_Z: 380 })]),
+  ];
+  assert.deepEqual(itemListFamilies(rows, null, 'DA_IE').map(f => f.familyKey), ['DA_W__DA_C4', 'DA_T__DA_Carry', 'DA_U__DA_C2']);
+  assert.deepEqual(itemListFamilies(rows, null, 'DA_Garg').map(f => f.familyKey), ['DA_T__DA_Carry'], 'Tank-Item');
+  assert.deepEqual(itemListFamilies(rows, null, 'DA_Only'), [], 'nur auf einer Unit ohne Items');
+  assert.deepEqual(itemListFamilies(rows, null, 'DA_Fehlt'), []);
+  // Hoechstens 10, Gleichstand nach Schluessel.
+  const many = Array.from({ length: ITEM_COMP_LIMIT + 2 }, (_, i) =>
+    row(`DA_M${String(i).padStart(2, '0')}@4_DA_C${i}`, 300, [u(`DA_C${i}`, 300, { DA_IE: 100, DA_Y: 290 })]));
+  const top = itemListFamilies(many, null, 'DA_IE');
+  assert.equal(top.length, ITEM_COMP_LIMIT);
+  assert.equal(top[0].familyKey, 'DA_M00__DA_C0');
 });
 
 // Kleine Zeilen (tft-comp-minor-rows, 0103): zaehlen in die Summen der Familie,

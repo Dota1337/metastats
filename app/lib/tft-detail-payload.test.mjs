@@ -3,7 +3,7 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, itemHoldersCommon, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, holderDeltaMap, itemCarriers, itemDetailBody, itemHolders, itemHoldersCommon, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
 
@@ -145,4 +145,23 @@ test('itemCarriers / itemDetailBody: ab 30 Spielen, hoechstens 10, Raten aus Sum
   assert.equal(pending.body.item.itemsPending, true);
   assert.deepEqual(pending.body.item.topUsers, []);
   assert.equal(itemDetailBody({ ...input, id: IE }, rows).body.item.topUsers.length, 10);
+});
+
+test('Delta der Detailseite: aus holders ∪ holdersCommon der Listenzeile, ohne Wert null', () => {
+  const listRow = {
+    holders: [['U0', 3.9, -0.21], ['U1', 4.1, null]],
+    holdersCommon: [['U1', 4.1, null], ['U2', 4.4, 0.3], ['U3', 4, 0]],
+  };
+  const m = holderDeltaMap(listRow);
+  assert.deepEqual([...m.entries()], [['U0', -0.21], ['U2', 0.3], ['U3', 0]]);
+  assert.equal(holderDeltaMap(undefined).size, 0);
+  assert.equal(holderDeltaMap({ holders: [['X', 4, Number.NaN]] }).size, 0);
+  // Rohzeile und Listen-Tupel ergeben dieselbe Map (Liste und Detail-Route rechnen gleich).
+  const raw = [{ characterId: 'U0', games: 500, sumPlacement: 1950, delta: -0.214 }, { characterId: 'U2', games: 300, sumPlacement: 1320, delta: 0.3 }];
+  assert.deepEqual([...holderDeltaMap({ holders: itemHolders(raw), holdersCommon: itemHoldersCommon(raw) })], [['U0', -0.21], ['U2', 0.3]]);
+  const carriers = [['U0', 500, 1950, 300, 60], ['U1', 400, 1640, 200, 40], ['U2', 300, 1320, 150, 30]];
+  const users = itemDetailBody({ ...input, id: IE }, carriers, m).body.item.topUsers;
+  assert.deepEqual(users.map(u => [u.characterId, u.delta]), [['U0', -0.21], ['U1', null], ['U2', 0.3]]);
+  // Ohne Map (Kernwerte aus der Wochendatei) kein Feld.
+  assert.ok(!('delta' in itemDetailBody({ ...input, id: IE }, carriers).body.item.topUsers[0]));
 });

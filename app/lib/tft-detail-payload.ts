@@ -123,6 +123,19 @@ export function itemHolders(
   ]);
 }
 
+/** Delta je Unit aus der Listenzeile eines Items (holders ∪ holdersCommon), fuer die
+ *  Traeger-Tabelle der Item-Detailseite (User 02.11.2026): dieselbe Zahl wie im Fenster
+ *  der Items-Seite, ohne eigene Abfrage. Units ohne Delta fehlen in der Map. */
+export function holderDeltaMap(
+  row: { holders?: readonly ItemHolder[] | null; holdersCommon?: readonly ItemHolder[] | null } | null | undefined,
+): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const h of [...(row?.holders || []), ...(row?.holdersCommon || [])]) {
+    if (Array.isArray(h) && typeof h[0] === 'string' && typeof h[2] === 'number' && Number.isFinite(h[2])) out.set(h[0], h[2]);
+  }
+  return out;
+}
+
 const itemEntry = ([item, games, top4, sp]: BuildRow) =>
   ({ item, games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
 
@@ -249,7 +262,13 @@ export function unitDetailBody(p: DetailInput, builds: Blocks<UnitBuildsRaw>): D
   };
 }
 
-export function itemDetailBody(p: DetailInput, carriers: Blocks<CarrierRow[]>): DetailResult<Record<string, unknown>> {
+/** `deltas` (holderDeltaMap): mit Map traegt jeder Traeger `delta` (null = kein Wert,
+ *  die Seite zeigt „—"); ohne Map (Kernwerte aus der Wochendatei) fehlt das Feld. */
+export function itemDetailBody(
+  p: DetailInput,
+  carriers: Blocks<CarrierRow[]>,
+  deltas?: ReadonlyMap<string, number> | null,
+): DetailResult<Record<string, unknown>> {
   const { id, region, bucket } = p;
   let core = p.core;
   let stats: ReturnType<typeof loadTftStats> | null = null;
@@ -270,7 +289,7 @@ export function itemDetailBody(p: DetailInput, carriers: Blocks<CarrierRow[]>): 
         avgPlacement: core.avgPlacement,
         top4Rate: core.top4Rate,
         top1Rate: core.top1Rate,
-        topUsers: itemCarriers(rows),
+        topUsers: itemCarriers(rows).map(u => (deltas ? { ...u, delta: deltas.get(u.characterId) ?? null } : u)),
         ...(carriers === 'pending' ? { itemsPending: true } : {}),
       },
     },

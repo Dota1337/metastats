@@ -505,6 +505,45 @@ export function unitListFamilies(rows: CompApiRow[], assets: TftAssetsBundle | n
   return standardListFamilies(rows, assets).filter(f => familyShowsUnit(f, unitId));
 }
 
+// Item-Detailseite (User 02.11.2026: „zeige die Comps, bei denen die Carries am
+// häufigsten das Item tragen -> mit den meisten Spielen"): die Familien der
+// Standardansicht der Liste, nach den Kopien des Items auf ihren Item-Traegern
+// (die Units, die in der Zeile Items tragen, auch Tanks — mit nur den genannten
+// Carries haette Gargoyle keine Comp, gemessen 02.11.: 0 von 40), ueber alle
+// Zeilen der Familie. Ab 30 Kopien, sonst landen Einzeltreffer in der Liste
+// (Elderwood-Emblem: 1 Kopie in 23.308 Spielen Blossom·Zyra). Meiste zuerst,
+// hoechstens 10. `topItems` traegt keine Platzierung: das Ø der Zeile bleibt
+// das der ganzen Comp.
+export const ITEM_COMP_MIN_COPIES = 30;
+export const ITEM_COMP_LIMIT = 10;
+export function itemListFamilies(rows: CompApiRow[], assets: TftAssetsBundle | null, itemId: string): CompFamily[] {
+  const byKey = new Map<string, CompApiRow[]>();
+  for (const r of rows) {
+    const k = rowFamilyKey(r);
+    const list = byKey.get(k);
+    if (list) list.push(r); else byKey.set(k, [r]);
+  }
+  const copiesOf = (f: CompFamily) => {
+    const holders = new Set(f.itemCarriers ?? [...f.carries, ...f.tanks]);
+    let n = 0;
+    for (const key of new Set(f.memberKeys ?? [f.familyKey])) {
+      for (const r of byKey.get(key) || []) {
+        for (const u of r.typicalUnits || []) {
+          if (!holders.has(u.characterId)) continue;
+          for (const it of u.topItems || []) if (it.apiName === itemId) n += Number(it.count) || 0;
+        }
+      }
+    }
+    return n;
+  };
+  return standardListFamilies(rows, assets)
+    .map(f => ({ f, copies: copiesOf(f) }))
+    .filter(x => x.copies >= ITEM_COMP_MIN_COPIES)
+    .sort((a, b) => b.copies - a.copies || (a.f.familyKey < b.f.familyKey ? -1 : a.f.familyKey > b.f.familyKey ? 1 : 0))
+    .slice(0, ITEM_COMP_LIMIT)
+    .map(x => x.f);
+}
+
 // Suche matched gegen Trait-Display-Name + Carry-Display-Name + raw apiNames.
 export function visibleFamilies(
   families: CompFamily[],

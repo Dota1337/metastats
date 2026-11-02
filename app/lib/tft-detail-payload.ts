@@ -75,31 +75,22 @@ export function carrierAvgPlacement(games: number | undefined, sumPlacement: num
  *  statt Objekt, die Zeilen stehen 10-mal je Item in jeder Listenantwort. */
 export type ItemHolder = [characterId: string, avgPlacement: number | null, delta: number | null];
 
-/** Traeger fuer den Knopf „Ø Platzierung": die bewerteten Units mit dem besten Ø (gleiche
- *  Schwelle wie Delta, sonst gewinnen Units mit einer Handvoll Spielen), freie Plaetze die
- *  meistgespielten. Die ganze Reihe steht nach sichtbarem Ø, ohne Ø ans Ende. */
-export function itemHoldersByAvg(
+/** Traeger fuer den Knopf „Häufigste Träger" (User 02.11.2026): die meistgespielten, in
+ *  dieser Reihenfolge (vom User so gewaehlt, obwohl die Spielzahl nicht auf der Kachel
+ *  steht). Ø und Delta wie bei den anderen Traegern. */
+export function itemHoldersCommon(
   rows: readonly { characterId: string; games: number; sumPlacement?: number; delta?: number | null }[],
   max = 10,
 ): ItemHolder[] {
   const byId = (a: { characterId: string }, b: { characterId: string }) => (a.characterId < b.characterId ? -1 : a.characterId > b.characterId ? 1 : 0);
-  const avgOf = (r: { games: number; sumPlacement?: number }) => carrierAvgPlacement(r.games, r.sumPlacement);
-  const byAvg = (a: (typeof rows)[number], b: (typeof rows)[number]) => {
-    const av = avgOf(a);
-    const bv = avgOf(b);
-    if (av == null || bv == null) return av == null && bv == null ? b.games - a.games || byId(a, b) : av == null ? 1 : -1;
-    return av - bv || b.games - a.games || byId(a, b);
-  };
-  const rated = rows.filter(r => r.delta != null).sort(byAvg).slice(0, max);
-  const fill = rows
-    .filter(r => r.delta == null)
+  return [...rows]
     .sort((a, b) => b.games - a.games || byId(a, b))
-    .slice(0, Math.max(0, max - rated.length));
-  return [...rated, ...fill].sort(byAvg).map(r => [
-    r.characterId,
-    avgOf(r),
-    r.delta == null ? null : Math.round(r.delta * 100) / 100,
-  ]);
+    .slice(0, max)
+    .map(r => [
+      r.characterId,
+      carrierAvgPlacement(r.games, r.sumPlacement),
+      r.delta == null ? null : Math.round(r.delta * 100) / 100,
+    ]);
 }
 
 /** Erst die Units mit Delta, das beste zuerst (niedriger Platz = besser). Die freien

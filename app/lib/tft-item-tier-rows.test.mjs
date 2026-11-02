@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import {
-  filterItems, groupItemsByTier, holdersFor, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
+  filterItems, groupItemsByTier, holderView, holdersOf, isListedItem, itemExtraQuery, itemKindOf, itemTierLetter,
   parseItemSort, parseItemTypes, placementBlocks, toggleItemKind,
 } from './tft-item-tier-rows.ts';
 
@@ -71,19 +71,24 @@ test('Knoepfe: Traenke fuer sich, auch die Radiant-Traenke; nichts faellt heraus
   assert.equal(filterItems(rows, { type: [], search: '', assets: a, lang: 'de' }).length, rows.length);
 });
 
-test('Umschalter im Fenster: eigene Auswahl je Knopf, alter Stand wird umsortiert', () => {
-  const holders = [['A', 4.5, -0.3], ['B', null, null], ['C', 3.2, -0.1], ['D', 4.5, 0.1], ['E', 3.9, null]];
-  const before = JSON.stringify(holders);
-  const topUsers = [];
-  // Neuer Stand: Ø zeigt andere Units als Delta.
-  assert.deepEqual(holdersFor({ holders, holdersAvg: [['X', 2, 0.5]], topUsers }, 'avg').map(h => h[0]), ['X']);
-  assert.deepEqual(holdersFor({ holders, holdersAvg: [['X', 2, 0.5]], topUsers }, 'delta').map(h => h[0]), ['A', 'B', 'C', 'D', 'E']);
-  // Stand von vor 0113: dieselben Units nach Ø, Eingabe bleibt unberuehrt.
-  assert.deepEqual(holdersFor({ holders, topUsers }, 'avg').map(h => h[0]), ['C', 'E', 'A', 'D', 'B']);
-  assert.equal(JSON.stringify(holders), before);
-  // Ohne Delta kein Umsortieren: holders steht schon richtig.
-  const none = [['P', 4, null], ['Q', 3, null]];
-  assert.deepEqual(holdersFor({ holders: none, topUsers }, 'avg').map(h => h[0]), ['P', 'Q']);
+test('Umschalter im Fenster: Delta | Häufigste Träger, Ueberschrift folgt dem Knopf', () => {
+  const holders = [['A', 4.5, -0.3], ['B', null, null], ['C', 3.2, -0.1]];
+  const holdersCommon = [['X', 4, null], ['A', 4.5, -0.3]];
+  const topUsers = ['X', 'A'];
+  const ids = v => v.holders.map(h => h[0]);
+  // Neuer Stand: zwei eigene Auswahlen, Knopf sichtbar.
+  const d = holderView({ holders, holdersCommon, topUsers }, 'delta');
+  assert.deepEqual([ids(d), d.toggle, d.best], [['A', 'B', 'C'], true, true]);
+  const c = holderView({ holders, holdersCommon, topUsers }, 'common');
+  assert.deepEqual([ids(c), c.toggle, c.best], [['X', 'A'], true, false]);
+  // Stand von vor 0114 (ohne holdersCommon): kein Knopf, Delta-Reihe bleibt, auch wenn 'common' gewaehlt ist.
+  const old = holderView({ holders, topUsers }, 'common');
+  assert.deepEqual([ids(old), old.toggle, old.best], [['A', 'B', 'C'], false, true]);
+  // Ohne Delta (Traenke): kein Knopf, Ueberschrift „Häufigste Träger".
+  const none = holderView({ holders: [['P', 4, null], ['Q', 3, null]], topUsers }, 'delta');
+  assert.deepEqual([ids(none), none.toggle, none.best], [['P', 'Q'], false, false]);
+  // Leere Auswahl zaehlt nicht als Knopf.
+  assert.equal(holderView({ holders, holdersCommon: [], topUsers }, 'common').toggle, false);
 });
 
 test('Traeger des Fensters: neues Feld gewinnt, alte Staende bleiben lesbar', () => {

@@ -19,9 +19,9 @@ export interface ItemRow {
   /** Traeger fuer das Fenster, beste nach Delta zuerst. Fehlt in Staenden von vor
    *  Migration 0112. */
   holders?: ItemHolder[];
-  /** Traeger fuer den Knopf „Ø Platzierung", eigene Auswahl (Migration 0113). Nur bei
-   *  Items mit Delta, sonst steht holders schon nach Ø. */
-  holdersAvg?: ItemHolder[];
+  /** Traeger fuer den Knopf „Häufigste Träger": die 10 meistgespielten nach Kopien
+   *  (Migration 0114). Nur bei Items mit Delta, sonst zeigt holders sie schon. */
+  holdersCommon?: ItemHolder[];
   /** Nur noch in Staenden von Migration 0111: Ø-Platz, gleiche Reihenfolge wie topUsers. */
   topUserAvgs?: (number | null)[];
 }
@@ -31,15 +31,20 @@ export function holdersOf(it: Pick<ItemRow, 'holders' | 'topUsers' | 'topUserAvg
   return it.holders ?? it.topUsers.map((id, i): ItemHolder => [id, it.topUserAvgs?.[i] ?? null, null]);
 }
 
-export type HolderSort = 'delta' | 'avg';
+export type HolderSort = 'delta' | 'common';
 
-/** Kacheln im Fenster je Knopf. Delta und Ø haben eigene Auswahlen vom Server. Stand von
- *  vor 0113 hat holdersAvg nicht: dann dieselben Units nach Ø, als Kopie (die Zeilen
- *  liegen im Cache der Liste), ohne Ø ans Ende, Gleichstand in Server-Reihenfolge. */
-export function holdersFor(it: Pick<ItemRow, 'holders' | 'holdersAvg' | 'topUsers' | 'topUserAvgs'>, by: HolderSort): ItemHolder[] {
-  const all = holdersOf(it);
-  if (by === 'delta' || !all.some(h => h[2] != null)) return all;
-  return it.holdersAvg ?? [...all].sort((a, b) => (a[1] == null ? (b[1] == null ? 0 : 1) : b[1] == null ? -1 : a[1] - b[1]));
+/** Was das Fenster zeigt (User 02.11.2026): Umschalter „Delta | Häufigste Träger" nur, wenn
+ *  die Zeile die eigene Auswahl holdersCommon hat. Staende von vor 0114 haben sie nicht, dann
+ *  wie vorher ohne Knopf (kein Nachbau: dort fehlt fuer viele haeufige Units das Ø).
+ *  `best` = Ueberschrift „Beste Träger", sonst „Häufigste Träger". */
+export function holderView(
+  it: Pick<ItemRow, 'holders' | 'holdersCommon' | 'topUsers' | 'topUserAvgs'>,
+  by: HolderSort,
+): { holders: ItemHolder[]; toggle: boolean; best: boolean } {
+  const toggle = (it.holdersCommon?.length ?? 0) > 0;
+  if (toggle && by === 'common') return { holders: it.holdersCommon as ItemHolder[], toggle, best: false };
+  const holders = holdersOf(it);
+  return { holders, toggle, best: holders.some(h => h[2] != null) };
 }
 
 export const ITEM_SORTS = ['avg', 'top4', 'win', 'pick', 'games', 'velocity'] as const;

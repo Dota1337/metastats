@@ -3,27 +3,28 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, itemHoldersByAvg, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, itemCarriers, itemDetailBody, itemHolders, itemHoldersCommon, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
 
-test('Knopf Ø: die bewerteten Units mit dem besten Ø, nicht die mit dem besten Delta', () => {
+test('Knopf Häufigste Träger: die meistgespielten nach Kopien, mit oder ohne Delta', () => {
   const rows = [
     { characterId: 'BestesDelta', games: 500, sumPlacement: 2500, delta: -0.4 },
-    { characterId: 'BesterSchnitt', games: 500, sumPlacement: 1500, delta: 0.3 },
-    { characterId: 'Mitte', games: 500, sumPlacement: 2000, delta: 0.1 },
-    { characterId: 'Unbewertet', games: 900, sumPlacement: 2700 },
-    { characterId: 'Winzig', games: 40, sumPlacement: 40 },
+    { characterId: 'BesterSchnitt', games: 600, sumPlacement: 1800, delta: 0.3 },
+    { characterId: 'Unbewertet', games: 900, sumPlacement: 4500 },
+    { characterId: 'Winzig', games: 20, sumPlacement: 20 },
     { characterId: 'Ohne', games: 10, sumPlacement: 10 },
   ];
-  // Kappe 2: nur bewertete, die beste Delta-Unit fliegt raus, beste Schnitte bleiben.
-  assert.deepEqual(itemHoldersByAvg(rows, 2), [['BesterSchnitt', 3, 0.3], ['Mitte', 4, 0.1]]);
-  // Freie Plaetze: meistgespielte Unbewertete; die ganze Reihe faellt nach Ø, ohne Ø hinten.
-  assert.deepEqual(itemHoldersByAvg(rows).map(h => h[0]), ['Winzig', 'Unbewertet', 'BesterSchnitt', 'Mitte', 'BestesDelta', 'Ohne']);
-  assert.deepEqual(itemHoldersByAvg(rows, 4).map(h => h[0]), ['Unbewertet', 'BesterSchnitt', 'Mitte', 'BestesDelta']);
+  // Reihenfolge nach Kopien, nicht nach Ø oder Delta; Ø unter 30 Spielen „—" (null).
+  assert.deepEqual(itemHoldersCommon(rows), [
+    ['Unbewertet', 5, null], ['BesterSchnitt', 3, 0.3], ['BestesDelta', 5, -0.4], ['Winzig', null, null], ['Ohne', null, null],
+  ]);
+  // Kappe: die beste Delta-Unit fliegt raus, wenn sie seltener ist.
+  assert.deepEqual(itemHoldersCommon(rows, 2).map(h => h[0]), ['Unbewertet', 'BesterSchnitt']);
+  assert.equal(itemHoldersCommon(rows).length, 5);
   // Eingabe bleibt unberuehrt, Gleichstand fest.
-  const tie = [{ characterId: 'B', games: 100, sumPlacement: 400, delta: -0.1 }, { characterId: 'A', games: 100, sumPlacement: 400, delta: 0.1 }];
-  assert.deepEqual(itemHoldersByAvg(tie).map(h => h[0]), ['A', 'B']);
+  const tie = [{ characterId: 'B', games: 100, sumPlacement: 400, delta: -0.123 }, { characterId: 'A', games: 100, sumPlacement: 400 }];
+  assert.deepEqual(itemHoldersCommon(tie), [['A', 4, null], ['B', 4, -0.12]]);
   assert.deepEqual(tie.map(r => r.characterId), ['B', 'A']);
 });
 

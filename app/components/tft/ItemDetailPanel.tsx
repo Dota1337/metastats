@@ -8,7 +8,7 @@ import { withAlpha } from '../../lib/color';
 import { useI18n } from '../../lib/i18n';
 import { formatTftDesc, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../lib/tft-cdragon';
 import { itemTextFor, type ItemTexts } from '../../lib/tft-item-texts';
-import { holdersFor, holdersOf, placementBlocks, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
+import { holderView, placementBlocks, type HolderSort, type ItemRow } from '../../lib/tft-item-tier-rows';
 import { TIER_COLORS, TIER_TOOLTIP_KEY, type TierLetter } from '../../lib/tft-tier-letter';
 import { costColor } from '../../lib/tft-ui';
 import ItemStatLine from './ItemStatLine';
@@ -34,12 +34,11 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
   const name = tftLabel(meta, lang) || prettyId(it.apiName);
   const text = itemTextFor(texts, it.apiName, lang);
   const desc = text?.desc ?? (textsPending ? null : meta?.desc ? formatTftDesc(meta.desc) : null);
-  // Ohne Delta gibt es nichts umzuschalten: die Reihe steht dann schon nach Ø.
-  const hasDelta = holdersOf(it).some(h => h[2] != null);
-  const holders = holdersFor(it, holderSort);
+  // Ohne Delta gibt es nichts umzuschalten: die Reihe zeigt dann schon die meistgespielten.
+  const { holders, toggle, best } = holderView(it, holderSort);
   const sortButtons: { key: HolderSort; label: string; title: string }[] = [
     { key: 'delta', label: t('tft.item.sortDelta'), title: t('tft.item.holderDelta') },
-    { key: 'avg', label: t('tft.avgPlacement'), title: t('tft.avgPlacement') },
+    { key: 'common', label: t('tft.topUsers'), title: t('tft.topUsers') },
   ];
   const blocks = placementBlocks(it);
   const bars = blocks ? [
@@ -110,12 +109,12 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
 
       <div className="mt-4 pt-3 border-t border-border-subtle">
         <div className="flex items-center justify-between gap-2 mb-2">
-          <h3 className="text-xs font-semibold text-white">{t(hasDelta ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
+          <h3 className="text-xs font-semibold text-white">{t(best ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
           <a href={detailHref} className="text-xs text-accent hover:text-white whitespace-nowrap">
             {t('tft.item.seeAll')} →
           </a>
         </div>
-        {hasDelta && (
+        {toggle && (
           <div role="group" aria-label={t('tft.sortBy')} className="flex flex-wrap gap-1.5 mb-2.5">
             {sortButtons.map(b => (
               <button

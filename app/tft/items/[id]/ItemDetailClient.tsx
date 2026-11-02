@@ -281,12 +281,15 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
 
         {/* Traeger und Combos nebeneinander, die Comps darunter ueber die volle
             Breite (User 02.11.2026). Fehlt einer der beiden, nimmt der andere die
-            ganze Zeile. */}
+            ganze Zeile. Beide in derselben Box mit Titel innen, gleich hoch
+            (Raster streckt die Zellen, User 03.11.2026). Traeger-Box erst ab
+            640 px: auf dem Handy naehme ihr Innenabstand den Namen 32 px
+            (gemessen 390 px: 23 statt 55 px, 8 von 10 Namen gekuerzt). */}
         {(showCarriers || showCombos) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5">
               {showCarriers && data && (
-                <div className={showCombos ? '' : 'lg:col-span-2'}>
-                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
+                <div className={`sm:bg-surface-base sm:border sm:border-border-subtle sm:rounded sm:p-4 ${showCombos ? '' : 'lg:col-span-2'}`}>
+                  <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2 sm:mb-3">{t('tft.item.topCarrier.title')}</h2>
                   {/* Platzhalter, solange die Traeger nachladen (Filter ohne Vorrat, ~3 s). */}
                   <StatsListPending show={carriersPending} e3={false} rows={8} />
                   {/* 1D-Carrier-Tabelle: Carrier × (Avg-Place, Top4%, Games).

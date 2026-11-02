@@ -28,7 +28,7 @@ test('Knopf Häufigste Träger: die meistgespielten nach Kopien, mit oder ohne D
   assert.deepEqual(tie.map(r => r.characterId), ['B', 'A']);
 });
 
-test('Traeger ohne Delta: Auswahl nach Spielen, Reihenfolge nach sichtbarem Ø', () => {
+test('Traeger ganz ohne Delta (Traenke): meistgespielte nach Kopien, mit Delta Fuellplaetze nach Ø', () => {
   const rows = [
     { characterId: 'Viel', games: 900, sumPlacement: 4500 },
     { characterId: 'Mittel', games: 500, sumPlacement: 1500 },
@@ -36,10 +36,10 @@ test('Traeger ohne Delta: Auswahl nach Spielen, Reihenfolge nach sichtbarem Ø',
     { characterId: 'Winzig', games: 20, sumPlacement: 20 },
     { characterId: 'Stark', games: 60, sumPlacement: 60 },
   ];  // Winzig hat den besten Rohwert, ist aber nicht unter den 4 meistgespielten.
-  assert.deepEqual(itemHolders(rows, 4), [['Stark', 1, null], ['Mittel', 3, null], ['Wenig', 4, null], ['Viel', 5, null]]);
-  // Ist er dabei, steht er ohne Ø (unter 30 Spielen) ganz hinten.
-  assert.deepEqual(itemHolders(rows).map(h => h[0]), ['Stark', 'Mittel', 'Wenig', 'Viel', 'Winzig']);
-  // Delta bleibt vorne, der Rest fuellt nur die freien Plaetze, und ist alles voll, keiner.
+  assert.deepEqual(itemHolders(rows, 4), [['Viel', 5, null], ['Mittel', 3, null], ['Wenig', 4, null], ['Stark', 1, null]]);
+  // Ist er dabei, steht er nach Kopien ganz hinten.
+  assert.deepEqual(itemHolders(rows).map(h => h[0]), ['Viel', 'Mittel', 'Wenig', 'Stark', 'Winzig']);
+  // Mit Delta: Delta bleibt vorne, der Rest fuellt die freien Plaetze nach Ø, ist alles voll, keiner.
   const mixed = [{ characterId: 'D', games: 200, sumPlacement: 1000, delta: -0.2 }, { characterId: 'A', games: 300, sumPlacement: 1200 }, { characterId: 'B', games: 300, sumPlacement: 900 }];
   assert.deepEqual(itemHolders(mixed, 2).map(h => h[0]), ['D', 'A']);
   assert.deepEqual(itemHolders(mixed, 1).map(h => h[0]), ['D']);

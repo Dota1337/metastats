@@ -95,12 +95,14 @@ export function itemHoldersCommon(
 
 /** Erst die Units mit Delta, das beste zuerst (niedriger Platz = besser). Die freien
  *  Plaetze bis `max` bekommen die meistgespielten ohne Delta, diese stehen nach dem
- *  sichtbaren Ø (User 01.11.2026: von oben links nach unten rechts), nach Spielzahl
- *  saehe die Reihe zufaellig aus, die steht nicht auf der Kachel. Ohne Ø ans Ende. */
+ *  sichtbaren Ø (User 01.11.2026: von oben links nach unten rechts). Ohne Ø ans Ende.
+ *  Hat KEINE Unit ein Delta (Traenke), heisst die Liste „Häufigste Träger" und steht wie
+ *  der gleichnamige Knopf nach Kopien (User 02.11.2026). */
 export function itemHolders(
   rows: readonly { characterId: string; games: number; sumPlacement?: number; delta?: number | null }[],
   max = 10,
 ): ItemHolder[] {
+  if (!rows.some(r => r.delta != null)) return itemHoldersCommon(rows, max);
   const byId = (a: { characterId: string }, b: { characterId: string }) => (a.characterId < b.characterId ? -1 : a.characterId > b.characterId ? 1 : 0);
   const avgOf = (r: { games: number; sumPlacement?: number }) => carrierAvgPlacement(r.games, r.sumPlacement);
   const scored = rows.filter(r => r.delta != null).sort((a, b) => (a.delta as number) - (b.delta as number) || byId(a, b)).slice(0, max);

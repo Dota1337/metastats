@@ -38,20 +38,24 @@ export interface DeltaView { pair: PatchDeltaPair; loading: boolean }
 // passt die eine Zeile nie in den Seitenrahmen (gemessen bis 1920 px: 28 von 56
 // Zeilen umgebrochen), dann bleibt es bei zwei Zeilen. Umschaltpunkte in rem:
 // px-Werte sortiert Tailwind 4 vor die Standard-Stufen.
+// Spiele und Pickrate teilen sich seit 03.11.2026 eine Spalte (Spiele oben,
+// Pickrate darunter, User). Die Knopf-Leiste belegt weiter drei Spalten
+// (3 × 3.5rem + 2 Abstaende = 192 px; Comps-Reiter: 4 Knoepfe = 146 px), die
+// gesparte Breite geht an den Namen — die Units-Flaeche bleibt gleich breit.
 export function compListGrid(delta: boolean) {
   return delta
     ? {
-        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_3.75rem]',
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.75rem]',
         // Units eine Spalte breiter als ohne Δ: die Δ-Spalte nimmt dem Namen
         // Platz, sonst bricht Flex bei 768 px um (gemessen 38 von 56 Zeilen).
-        units: 'md:col-[1/7] md:row-start-2',
-        actions: 'md:col-[7/-1] md:row-start-2',
+        units: 'md:col-[1/6] md:row-start-2',
+        actions: 'md:col-[6/-1] md:row-start-2',
         oneLineOnly: 'hidden',
       }
     : {
-        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.5rem] min-[85.375rem]:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]',
-        units: 'md:col-[1/6] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
-        actions: 'md:col-[6/-1] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem] min-[85.375rem]:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_9.125rem]',
+        units: 'md:col-[1/5] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
+        actions: 'md:col-[5/-1] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
         oneLineOnly: 'hidden min-[85.375rem]:block',
       };
 }
@@ -594,11 +598,13 @@ export default function CompRow({
         <div className="hidden md:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden md:block text-right tabular-nums text-fg-secondary font-medium text-[13px]">
-          {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
-        </div>
-        <div className="hidden md:block text-right tabular-nums text-fg-bright text-[13px]">
-          {comp.games}
+        {/* Spiele oben, Pickrate direkt darunter (User 03.11.2026), Groessen
+            und Farben wie vorher in zwei eigenen Spalten. */}
+        <div className="hidden md:flex flex-col items-end tabular-nums text-[13px] leading-tight">
+          <span className="text-fg-bright">{comp.games}</span>
+          <span className="text-fg-secondary font-medium">
+            {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
+          </span>
         </div>
         {deltaView && (
           <div className="hidden md:block text-right tabular-nums">
@@ -628,10 +634,13 @@ export default function CompRow({
           <span className="text-fg-bright font-semibold">
             {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
           </span>
-          <span className="text-fg-secondary font-medium">
-            {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(1)}%` : '—'}
+          {/* Spiele ueber Pickrate wie ab 768 px (User 03.11.2026). */}
+          <span className="inline-flex flex-col items-end leading-tight">
+            <span className="text-fg-muted">{comp.games}</span>
+            <span className="text-fg-secondary font-medium">
+              {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(1)}%` : '—'}
+            </span>
           </span>
-          <span className="text-fg-muted">{comp.games}</span>
           {deltaView && <span className="hidden sm:inline">{deltaValue}</span>}
           <div className="hidden sm:flex items-center gap-1.5">{extraButtons}</div>
         </div>

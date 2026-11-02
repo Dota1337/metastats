@@ -110,7 +110,7 @@ const ItemDetailPanel = forwardRef<HTMLElement, {
       <div className="mt-4 pt-3 border-t border-border-subtle">
         <div className="flex items-center justify-between gap-2 mb-2">
           <h3 className="text-xs font-semibold text-white">{t(best ? 'tft.item.bestHolders' : 'tft.topUsers')}</h3>
-          <a href={detailHref} className="text-xs text-accent hover:text-white whitespace-nowrap">
+          <a href={detailHref} className="text-sm text-accent hover:text-white whitespace-nowrap">
             {t('tft.item.seeAll')} →
           </a>
         </div>

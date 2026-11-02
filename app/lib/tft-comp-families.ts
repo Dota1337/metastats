@@ -374,9 +374,14 @@ export function buildCompFamilies(
       augments,
     });
   }
-  // Sort families nach aktueller Sort-Metrik. Bei Sort-by-Avg nutzen wir
-  // das Family-weighted-Aggregat (Sort by Top1/Pick analog).
-  out.sort((a, b) => {
+  out.sort(compareFamilies(sortBy));
+  return out;
+}
+
+/** Reihenfolge der Familien nach Sort-Metrik (Familien-Aggregat): Ø aufsteigend, sonst
+ *  absteigend. Geteilt von buildCompFamilies und dem sortierbaren Kopf der Item-Detailseite. */
+export function compareFamilies(sortBy: CompSortBy) {
+  return (a: CompFamily, b: CompFamily): number => {
     switch (sortBy) {
       case 'win':  return -(a.weightedTop1Rate ?? 0) - -(b.weightedTop1Rate ?? 0);
       case 'top4': return -(a.weightedTop4Rate ?? 0) - -(b.weightedTop4Rate ?? 0);
@@ -385,8 +390,7 @@ export function buildCompFamilies(
       case 'avg':
       default: return (a.weightedAvgPlacement ?? 9) - (b.weightedAvgPlacement ?? 9);
     }
-  });
-  return out;
+  };
 }
 
 // Nur Comps des laufenden Sets. Das rollierende Zeitfenster reicht ueber den

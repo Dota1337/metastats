@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   attachPatchDeltas, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
-  familyShowsUnit, SHOWN_BOARD_UNITS, itemListFamilies, ITEM_COMP_LIMIT, ITEM_COMP_MIN_COPIES,
+  familyShowsUnit, SHOWN_BOARD_UNITS, itemListFamilies, ITEM_COMP_LIMIT, ITEM_COMP_MIN_COPIES, compareFamilies,
 } from './tft-comp-families.ts';
 import { compTraitFamilyKey } from './tft-cluster.ts';
 import { buildPatchDeltaIndex } from './tft-patch-delta.ts';
@@ -204,4 +204,17 @@ test('buildCompFamilies: ohne minorRows unveraendert (eine Variante behaelt ihre
   const [f] = buildCompFamilies([r], 'avg', null);
   assert.equal(f.totalGames, 300);
   assert.equal(f.mainComp.avgPlacement, 4.2);
+});
+
+test('compareFamilies: Ø aufsteigend, Top 4 / Sieg / Pick / Spiele absteigend (Kopf der Item-Seite)', () => {
+  const fam = (k, avg, t4, t1, pick, games) => ({ familyKey: k, weightedAvgPlacement: avg, weightedTop4Rate: t4, weightedTop1Rate: t1, familyPickRate: pick, totalGames: games });
+  const list = [fam('a', 4.2, 0.5, 0.1, 0.02, 300), fam('b', 3.9, 0.6, 0.2, 0.01, 100), fam('c', 4.5, 0.4, 0.3, 0.03, 900)];
+  const order = s => [...list].sort(compareFamilies(s)).map(f => f.familyKey);
+  assert.deepEqual(order('avg'), ['b', 'a', 'c']);
+  assert.deepEqual(order('top4'), ['b', 'a', 'c']);
+  assert.deepEqual(order('win'), ['c', 'b', 'a']);
+  assert.deepEqual(order('pick'), ['c', 'a', 'b']);
+  assert.deepEqual(order('games'), ['c', 'a', 'b']);
+  // Ohne Wert ans Ende (Ø) bzw. wie 0.
+  assert.deepEqual([fam('x', null, null, null, null, null), ...list].sort(compareFamilies('avg')).at(-1).familyKey, 'x');
 });

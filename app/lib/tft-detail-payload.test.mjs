@@ -3,7 +3,7 @@
 // Zustaende pending/failed fuer Startdaten und Datenbank-Fehler.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { carrierAvgPlacement, holderDeltaMap, itemCarriers, itemDetailBody, itemHolders, itemHoldersCommon, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
+import { carrierAvgPlacement, comboUnitIds, holderDeltaMap, itemCarriers, itemDetailBody, itemHolders, itemHoldersCommon, itemSetCombos, unitDetailBody, unitItemBlocks } from './tft-detail-payload.ts';
 
 const IE = 'TFT_Item_InfinityEdge', GR = 'TFT_Item_GuinsoosRageblade', TG = 'TFT_Item_ThiefsGloves';
 
@@ -164,4 +164,52 @@ test('Delta der Detailseite: aus holders ∪ holdersCommon der Listenzeile, ohne
   assert.deepEqual(users.map(u => [u.characterId, u.delta]), [['U0', -0.21], ['U1', null], ['U2', 0.3]]);
   // Ohne Map (Kernwerte aus der Wochendatei) kein Feld.
   assert.ok(!('delta' in itemDetailBody({ ...input, id: IE }, carriers).body.item.topUsers[0]));
+});
+
+// Kombinationen (Migration 0115, User 02.11.2026): Auswahl nach Spielen, Anzeige nach Ø.
+test('Kombinationen: die 8 meistgespielten ab 100 Spielen, nach Ø gezeigt, ohne Thief\'s Gloves', () => {
+  // S0 1000 Spiele Ø 4,5 … S9 100 Spiele Ø 3,6: S8/S9 fallen hinter die 8 meistgespielten.
+  const rows = Array.from({ length: 10 }, (_, i) => {
+    const games = 1000 - 100 * i;
+    return [`S${i}|${IE}`, games, Math.round(games / 2), Math.round(games * (4.5 - 0.1 * i))];
+  });
+  rows.push([`${IE}|${TG}`, 5000, 2500, 20000], [`LOW|${IE}`, 99, 99, 99]);
+  const c = itemSetCombos(rows);
+  assert.deepEqual(c.map(s => s.items[0]), ['S7', 'S6', 'S5', 'S4', 'S3', 'S2', 'S1', 'S0']);
+  assert.equal(c[7].games, 1000);
+  assert.equal(c[7].avgPlacement, 4.5);
+  assert.equal(c[7].top4Rate, 0.5);
+  // Doppelte Items bleiben (echte Builds).
+  assert.deepEqual(itemSetCombos([[`${IE}|${IE}|${IE}`, 300, 200, 1100]])[0].items, [IE, IE, IE]);
+  assert.deepEqual(itemSetCombos(null), []);
+});
+
+test('Kombinationen: Units aus der Listenzeile — meistgespielte zuerst, hoechstens 10', () => {
+  const h = id => [id, 4, null];
+  assert.deepEqual(comboUnitIds({ holders: [h('B')], holdersCommon: [h('A'), h('B')] }), ['A', 'B']);
+  assert.deepEqual(comboUnitIds({ holders: [h('B'), h('C')] }), ['B', 'C']);
+  assert.deepEqual(comboUnitIds({ topUsers: ['X', 'Y', 3] }), ['X', 'Y'], 'Stand von vor 0112');
+  assert.equal(comboUnitIds({ holdersCommon: Array.from({ length: 12 }, (_, i) => h(`U${i}`)) }).length, 10);
+  assert.deepEqual(comboUnitIds(undefined), []);
+});
+
+test('itemDetailBody: Kombinationen pending / failed / nicht abgefragt / keine / Daten', () => {
+  const carriers = [['U0', 500, 1950, 300, 60]];
+  const sets = [[`A|${IE}`, 400, 200, 1600]];
+  const body = combos => itemDetailBody({ ...input, id: IE }, carriers, null, combos);
+  const pending = body('pending');
+  assert.equal(pending.body.item.combosPending, true);
+  assert.ok(!('combos' in pending.body.item));
+  assert.equal(pending.cacheable, false);
+  const failed = body('failed');
+  assert.ok(!('combos' in failed.body.item) && !('combosPending' in failed.body.item), 'Fehlschlag: keine Box');
+  assert.equal(failed.cacheable, false);
+  const skipped = body(undefined);
+  assert.ok(!('combos' in skipped.body.item), 'Companion fragt nicht ab');
+  assert.equal(skipped.cacheable, true);
+  assert.deepEqual(body(null).body.item.combos, []);
+  const ok = body(sets);
+  assert.equal(ok.cacheable, true);
+  assert.deepEqual(ok.body.item.combos, [{ items: ['A', IE], games: 400, avgPlacement: 4, top4Rate: 0.5 }]);
+  assert.equal(ok.body.item.topUsers.length, 1, 'Traeger unberuehrt');
 });

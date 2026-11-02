@@ -19,7 +19,7 @@ import { isExcludedItem, isExcludedUnit } from '../tft-excluded';
 import { coreFromListRow, holderDeltaMap, itemDetailBody, unitDetailBody } from '../tft-detail-payload';
 import { lookupDetailBuildsStock } from '../tft-detail-builds';
 import {
-  compsOfTrait, compsWithItem, detailFiltersFrom, detailKey, sharedComponentItems,
+  compsOfTrait, detailFiltersFrom, detailKey, sharedComponentItems,
   traitFiltersFrom, traitIdsForParam,
 } from '../tft-detail-filters';
 import { sortUnitsRareLast } from '../tft-list-sort';
@@ -175,21 +175,17 @@ function addCompRowAssets(rows: CompApiRow[] | null | undefined, champions: Set<
   }
 }
 
-// ---------- Item ----------
-
 function compRef(c: Record<string, any>): CompRef {
   return { slug: c.slug, clusterKey: c.clusterKey, games: c.games, avgPlacement: c.avgPlacement, top4Rate: c.top4Rate };
 }
 
-export interface ItemCompRef extends CompRef {
-  carryItems: { items: string[]; count: number }[];
-}
+// ---------- Item ----------
 
 export interface ItemDetailInitial {
   key: string;
+  /** Antwort von /api/tft/items?id=… — die Kombinationen immer `combosPending` (sie
+   *  brauchen die Datenbank, die Startdaten nie): der Browser holt sie nach. */
   detail: { hasData?: boolean; item?: unknown } | null;
-  /** ALLE Comps, deren Carry-Items das Item enthalten (die Seite rechnet daraus Combos). */
-  comps: ItemCompRef[] | null;
   /** Zeilen der Comp-Familien mit dem Item (itemListFamilies), wie /api/tft/comps. */
   families: { rows: CompApiRow[]; dataEnd: string | null } | null;
   assets: TftAssetsBundle;
@@ -216,21 +212,14 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
       id, region: f.region.toLowerCase(), bucket: normalizeBucket(f.bucket),
       core: coreFromListRow(listRow), coreKnown: true,
       filterSet: r.setNumber, filterPatch: r.displayPatch,
-    }, stock ? (stock.items[id] ?? null) : 'pending', holderDeltaMap(listRow)).body;
+    }, stock ? (stock.items[id] ?? null) : 'pending', holderDeltaMap(listRow), 'pending').body;
   }
-  const rawComps = listRows(compsSnap, 'comps');
-  const compRows = rawComps as CompApiRow[] | null;
-  const comps = rawComps
-    ? compsWithItem(rawComps, id).map(c => ({
-        ...compRef(c),
-        carryItems: (c.carryItems || []).map((ci: { items?: string[]; count: number }) => ({ items: ci.items || [], count: ci.count })),
-      }))
-    : null;
+  const compRows = listRows(compsSnap, 'comps') as CompApiRow[] | null;
   // Wie die Unit-Seite: nur die Zeilen der gezeigten Familien; null (Teildaten
   // zeigten etwas anderes) → der Browser holt die Comps selbst.
   const famRows = compRows ? familyRowsFor(compRows, list => itemListFamilies(list, bundle, id), leanCompRow) : null;
   const families = famRows ? { rows: famRows, dataEnd: dataEndOf(compsSnap?.filters) } : null;
-  if (!detail && !comps) return null;
+  if (!detail && !families) return null;
 
   const items = new Set<string>([id]);
   const champions = new Set<string>();
@@ -241,17 +230,11 @@ export async function itemDetailStart(id: string, sp: URLSearchParams): Promise<
   for (const [k] of sharedComponentItems(bundle.items || {}, bundle.active?.items, id, composition)) items.add(k);
   const item = (detail?.item ?? null) as Record<string, any> | null;
   for (const u of item?.topUsers || []) champions.add(u.characterId);
-  for (const c of (comps || []).slice(0, 6)) {
-    const p = unitIdsOfComp(c.clusterKey);
-    if (p.trait) traitIds.add(p.trait);
-    for (const ch of p.champions) champions.add(ch);
-  }
-  for (const c of comps || []) for (const ci of c.carryItems) for (const it of ci.items) items.add(it);
+  // Bilder der Kombinationen kommen mit dem vollen Bundle (die Kombinationen selbst laedt der Browser).
   addCompRowAssets(families?.rows, champions, items, traitIds);
   return {
     key: detailKey(id, f),
     detail,
-    comps,
     families,
     assets: await assetsForVisitor(subsetBundle(bundle, { champions, items, traitIds, withAbility: false, activeItems: true })),
   };

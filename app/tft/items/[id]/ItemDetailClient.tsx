@@ -4,7 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import TierFilter, { type TierBucket } from '../../../components/tft/TierFilter';
-import { compsWithItem as selectCompsWithItem, detailFiltersFrom, detailKey, sharedComponentItems } from '../../../lib/tft-detail-filters';
+import { detailFiltersFrom, detailKey, sharedComponentItems } from '../../../lib/tft-detail-filters';
 import type { ItemDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
@@ -12,11 +12,15 @@ import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, formatTftDesc,
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { costColor as costColorOf } from '../../../lib/tft-ui';
 import { loadItemTexts, itemTextFor, type ItemTexts } from '../../../lib/tft-item-texts';
-import { dataEndOf, itemListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
+import { compareFamilies, dataEndOf, itemListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
 import { holderDeltaColor, holderDeltaText } from '../../../lib/tft-item-tier-rows';
 import ItemStatLine from '../../../components/tft/ItemStatLine';
 import CompFamilyRow from '../../../components/tft/CompFamilyRow';
-import CompFamilyListHeader from '../../../components/tft/CompFamilyListHeader';
+import CompFamilyListHeader, { type CompHeaderSort } from '../../../components/tft/CompFamilyListHeader';
+import StatsListPending from '../../../components/tft/StatsListPending';
+
+/** Kombination aus /api/tft/items?id= (itemSetCombos, Migration 0115). */
+interface ItemCombo { items: string[]; games: number; avgPlacement: number | null; top4Rate: number | null }
 
 interface ItemDetail {
   apiName: string;
@@ -34,11 +38,14 @@ interface ItemDetail {
   }[];
   /** Startdaten ohne Traeger: der Browser laedt sie nach. */
   itemsPending?: boolean;
+  /** Fehlt bei Fehlschlag, im Companion-Abruf und in Antworten von vor 0115: dann keine Box. */
+  combos?: ItemCombo[];
+  /** Startdaten: Kombinationen kommen immer erst aus dem Abruf im Browser. */
+  combosPending?: boolean;
 }
 
-// Comps-Block: `withItem` = alle Comps mit dem Item in den Carry-Items (fuer die
-// Combos), `rows` = Zeilen fuer die Comp-Familien (itemListFamilies).
-interface CompsState { withItem: any[]; rows: CompApiRow[]; dataEnd: string | null }
+// Comps-Block: Zeilen fuer die Comp-Familien (itemListFamilies).
+interface CompsState { rows: CompApiRow[]; dataEnd: string | null }
 
 // `initial`: Startdaten der Server-Huelle (page.tsx), Bloecke wie bei der
 // Unit-Detailseite (UnitDetailClient.tsx).
@@ -55,24 +62,23 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
     () => initial?.detail ? ((initial.detail.item as ItemDetail | undefined) || null) : undefined);
   const [hasData, setHasData] = useState<boolean | null>(() => initial?.detail ? !!initial.detail.hasData : null);
   const [assets, setAssets] = useState<TftAssetsBundle | null>(() => initial?.assets ?? null);
-  // Startdaten: Combos (comps) und Familien-Zeilen (families) getrennt. Fehlen die
-  // Familien-Zeilen, zeigt die Seite die Combos gleich und holt die Comps trotzdem.
-  const initialComps: CompsState | null = initial?.comps
-    ? { withItem: initial.comps, rows: initial.families?.rows ?? [], dataEnd: initial.families?.dataEnd ?? null }
+  const initialComps: CompsState | null = initial?.families
+    ? { rows: initial.families.rows, dataEnd: initial.families.dataEnd }
     : null;
   const [comps, setComps] = useState<CompsState | null>(initialComps);
-  // Startdaten ohne Traeger (kein Vorrat fuer diese Filter): Kernwerte gleich
-  // zeigen, die Antwort der API trotzdem holen.
-  const initialPending = !!(initial?.detail?.item as ItemDetail | undefined)?.itemsPending;
+  // Startdaten ohne Traeger (kein Vorrat fuer diese Filter) oder ohne Kombinationen
+  // (immer): Kernwerte gleich zeigen, die Antwort der API trotzdem holen.
+  const initialItem = (initial?.detail?.item as ItemDetail | undefined) || null;
+  const initialPending = !!(initialItem?.itemsPending || initialItem?.combosPending);
   // Filter-Schluessel der gezeigten Daten je Block: gleich → kein Abruf.
   const shownDetail = useRef<string | null>(initial?.detail && !initialPending ? initial.key : null);
-  const shownComps = useRef<string | null>(initialComps && initial?.families ? initial.key : null);
+  const shownComps = useRef<string | null>(initialComps ? initial!.key : null);
   // Geladene Staende je Schluessel, Startdaten zaehlen mit: zurueck auf einen
   // schon gezeigten Rang → keine neue Abfrage, und nicht die Kopie der API,
   // die bis zu 6 h aelter sein kann als die Startdaten (Zahlen sprangen).
   const loadedDetail = useRef(new Map<string, { hasData: boolean; item: ItemDetail | null }>(
-    initial?.detail && !initialPending ? [[initial.key, { hasData: !!initial.detail.hasData, item: (initial.detail.item as ItemDetail | undefined) || null }]] : []));
-  const loadedComps = useRef(new Map<string, CompsState>(initialComps && initial?.families ? [[initial.key, initialComps]] : []));
+    initial?.detail && !initialPending ? [[initial.key, { hasData: !!initial.detail.hasData, item: initialItem }]] : []));
+  const loadedComps = useRef(new Map<string, CompsState>(initialComps ? [[initial!.key, initialComps]] : []));
   // Rangwechsel: schon geladene Staende gleich beim Klick zeigen; fuer den
   // Rest fragt der Effekt unten.
   const selectBucket = (next: TierBucket) => {
@@ -103,7 +109,13 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
           if (cancelled) return;
-          const v = { hasData: !!d.hasData, item: (d.item as ItemDetail | undefined) || null };
+          const api = (d.item as ItemDetail | undefined) || null;
+          // Startdaten mit Traegern: nur die Kombinationen uebernehmen — Kernwerte und
+          // Traeger der API-Kopie koennen bis zu 6 h aelter sein (Zahlen sprangen).
+          const keepStart = key === initial?.key && !!initialItem && !initialItem.itemsPending;
+          const v = keepStart
+            ? { hasData: !!initial!.detail!.hasData, item: { ...initialItem!, combosPending: false, combos: api?.combos } }
+            : { hasData: !!d.hasData, item: api };
           loadedDetail.current.set(key, v);
           shownDetail.current = key;
           setHasData(v.hasData);
@@ -112,20 +124,18 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
         .catch(() => {
           if (cancelled) return;
           shownDetail.current = null;
-          // Nachladen der Traeger gescheitert: Kernwerte der Startdaten bleiben.
-          if (initialPending && key === initial?.key) { setData(d => (d ? { ...d, itemsPending: false } : d)); return; }
+          // Nachladen gescheitert: Kernwerte der Startdaten bleiben, Platzhalter weg.
+          if (initialPending && key === initial?.key) { setData(d => (d ? { ...d, itemsPending: false, combosPending: false } : d)); return; }
           setHasData(false); setData(null);
         });
     }
-    // Comps: Familien wie im Comps-Reiter (itemListFamilies), Combos aus allen
-    // Comps mit dem Item in den Carry-Items.
+    // Comps: Familien wie im Comps-Reiter (itemListFamilies).
     if (shownComps.current !== key) {
       fetch(`/api/tft/comps?region=${region}&bucket=${bucket}&days=${days}&patch=current&source=data`)
         .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then(d => {
           if (cancelled) return;
-          const rows = (d.comps || []) as CompApiRow[];
-          const v: CompsState = { withItem: selectCompsWithItem(rows, id), rows, dataEnd: dataEndOf(d.filters) };
+          const v: CompsState = { rows: (d.comps || []) as CompApiRow[], dataEnd: dataEndOf(d.filters) };
           loadedComps.current.set(key, v);
           shownComps.current = key;
           setComps(v);
@@ -133,54 +143,30 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
         .catch(() => {
           if (cancelled) return;
           shownComps.current = null;
-          // Startdaten mit Combos, aber ohne Familien: die Combos bleiben stehen.
-          if (key === initial?.key && initialComps) return;
           setComps(null);
         });
     }
     return () => { cancelled = true; };
   }, [bucket, id, region, days]);
 
-  // Item-Combo-Aggregation: cross all comps that contain this item, sum the
-  // per-comp carryItems-counts weighted by comp avg-place + top4. Result = the
-  // strongest 2er/3er-Sets globally that contain this item. Approximation
-  // because we inherit comp-level stats (not per-set), but the count weights
-  // the average toward the actually-played sets — accurate enough as a "what
-  // builds work" surface without a new backend aggregation.
-  const itemCombos = useMemo(() => {
-    type ComboAgg = { items: string[]; count: number; wPlace: number; wTop4: number };
-    const bySig = new Map<string, ComboAgg>();
-    for (const c of comps?.withItem || []) {
-      const sets = c.carryItems || [];
-      const avg = c.avgPlacement;
-      const t4 = c.top4Rate;
-      if (avg == null) continue;
-      for (const s of sets) {
-        const set: string[] = s.items || [];
-        if (!set.includes(id)) continue;
-        const cnt = Number(s.count) || 0;
-        if (cnt <= 0) continue;
-        const sig = [...set].sort().join('|');
-        const e = bySig.get(sig) || { items: set, count: 0, wPlace: 0, wTop4: 0 };
-        e.count += cnt;
-        e.wPlace += cnt * Number(avg);
-        if (t4 != null) e.wTop4 += cnt * Number(t4);
-        bySig.set(sig, e);
-      }
-    }
-    return [...bySig.values()]
-      .filter(e => e.count >= 5)
-      .map(e => ({ items: e.items, games: e.count, avgPlacement: e.wPlace / e.count, top4Rate: e.wTop4 / e.count }))
-      .sort((a, b) => a.avgPlacement - b.avgPlacement)
-      .slice(0, 8);
-  }, [comps, id]);
-
   // Comps wie im Comps-Reiter: die Familien, deren Item-Traeger das Item am
   // haeufigsten tragen (User 02.11.2026), hoechstens 10.
   const families = useMemo(() => (comps ? itemListFamilies(comps.rows, assets, id) : []), [comps, assets, id]);
-  const showCarriers = !!data && data.topUsers.length > 0;
+  // Klick auf einen Spaltenkopf ordnet DIESE 10 um (User 02.11.2026), „Comps" = zurueck
+  // auf die meisten Kopien. Auswahl und Bretter bleiben dieselben: itemListFamilies
+  // waehlt sie fest, hier wird nur umsortiert. Kein Richtungswechsel (nicht verlangt).
+  const [compSort, setCompSort] = useState<CompHeaderSort | null>(null);
+  const shownFamilies = useMemo(
+    () => (compSort ? [...families].sort(compareFamilies(compSort)) : families),
+    [families, compSort],
+  );
+  const carriersPending = !!data?.itemsPending;
+  const combosPending = !!data?.combosPending;
+  const itemCombos = data?.combos ?? [];
+  const showCarriers = !!data && (carriersPending || data.topUsers.length > 0);
+  const showCombos = combosPending || itemCombos.length > 0;
   // Spalte Delta nur, wenn mindestens ein Traeger einen Wert hat (Traenke, alte Antworten: keine).
-  const showDelta = showCarriers && data!.topUsers.some(u => u.delta != null);
+  const showDelta = !!data && data.topUsers.some(u => u.delta != null);
   const carrierCols = showDelta
     ? 'grid-cols-[minmax(0,1fr)_repeat(4,3rem)] sm:grid-cols-[minmax(0,1fr)_repeat(4,4rem)]'
     : 'grid-cols-[minmax(0,1fr)_repeat(3,4rem)]';
@@ -269,7 +255,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
           )}
         </div>
 
-        <div className="flex justify-end items-center gap-2 mb-4">
+        <div className="flex justify-start items-center gap-2 mb-4">
           <a
             href={withLang(buildExplorerUrl({ items: [id], bucket }))}
             className="px-2.5 py-1.5 rounded text-xs bg-surface-raised border border-border-subtle text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors flex items-center gap-1.5"
@@ -296,11 +282,13 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
         {/* Traeger und Combos nebeneinander, die Comps darunter ueber die volle
             Breite (User 02.11.2026). Fehlt einer der beiden, nimmt der andere die
             ganze Zeile. */}
-        {(showCarriers || itemCombos.length > 0) && (
+        {(showCarriers || showCombos) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-5 items-start">
               {showCarriers && data && (
-                <div className={itemCombos.length === 0 ? 'lg:col-span-2' : ''}>
+                <div className={showCombos ? '' : 'lg:col-span-2'}>
                   <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.item.topCarrier.title')}</h2>
+                  {/* Platzhalter, solange die Traeger nachladen (Filter ohne Vorrat, ~3 s). */}
+                  <StatsListPending show={carriersPending} e3={false} rows={8} />
                   {/* 1D-Carrier-Tabelle: Carrier × (Avg-Place, Top4%, Games).
                       avgPlacement war schon im Aggregator (sumPlacement/games),
                       vorher nur nicht angezeigt. top4Rate seit 2026-06-19
@@ -308,6 +296,7 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                       Top4-Bucket rendern "—" statt eines erfundenen Werts
                       (feedback_no_fake_values), füllt sich beim nächsten
                       Daily-Crawl auf. */}
+                  {!carriersPending && (
                   <div className="bg-surface-raised border border-border-subtle rounded overflow-hidden">
                     <div className={`grid ${carrierCols} gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken`}>
                       <div>{t('tft.item.topCarrier.carrier')}</div>
@@ -348,22 +337,21 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                       );
                     })}
                   </div>
+                  )}
                 </div>
               )}
 
-              {/* Item-Combos: strongest 2er/3er builds containing this item, weighted
-                  from the comps payload. Approximation — comp-level avg/top4 are
-                  applied to each contained item-set, weighted by the per-comp count
-                  of that set. A true per-combo aggregation would need an aggregator-
-                  touch; this client-side cross gets us the ranking without backend
-                  work. ≥5 games gate so noise doesn't dominate. */}
-              {itemCombos.length > 0 && (
+              {/* Item-Kombinationen (Migration 0115): Item-Sets der 10 meistgespielten Traeger,
+                  die das Item enthalten, mit echtem Ø und Top 4 je Set — auch fuer Tank-Items.
+                  Die 8 meistgespielten ab 100 Spielen, nach Ø (itemSetCombos). */}
+              {showCombos && (
           <div className={`bg-surface-base border border-border-subtle rounded p-4 ${showCarriers ? '' : 'lg:col-span-2'}`}>
-            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-1">{t('tft.item.combos.title')}</h2>
-            <p className="text-fg-muted text-[11px] mb-3">{t('tft.item.combos.caption')}</p>
+            <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-3">{t('tft.item.combos.title')}</h2>
+            <StatsListPending show={combosPending} e3={false} rows={8} />
             <div className="space-y-1.5">
               {itemCombos.map((s, i) => (
-                <div key={i} className="grid grid-cols-[1fr_4rem_4rem_4rem] gap-3 items-center bg-surface-raised border border-border-subtle rounded px-3 py-2">
+                // Handy: schmalere Zahlen-Spalten, sonst quetschen die drei Item-Bilder (390 px: 74 px fuer 96 px Bilder).
+                <div key={i} className="grid grid-cols-[minmax(0,1fr)_2.75rem_4.5rem_3rem] gap-2 sm:grid-cols-[1fr_4rem_4rem_4rem] sm:gap-3 items-center bg-surface-raised border border-border-subtle rounded px-3 py-2">
                   <div className="flex items-center gap-1.5">
                     {s.items.map((it, j) => {
                       const im = assets?.items[it];
@@ -374,17 +362,17 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                           href={withLang(`/tft/items/${encodeURIComponent(it)}?bucket=${bucket}`)}
                           onClick={e => e.stopPropagation()}
                           title={tftLabel(im, lang) || it}
-                          className="hover:scale-110 transition-transform"
+                          className="flex-shrink-0 hover:scale-110 transition-transform"
                         >
                           <img src={iurl} alt={tftLabel(im, lang) || it} className={`w-7 h-7 rounded ${it === id ? 'ring-2 ring-accent' : ''}`} />
                         </a>
                       ) : (
-                        <div key={j} className="w-7 h-7 rounded bg-surface-overlay" />
+                        <div key={j} className="w-7 h-7 flex-shrink-0 rounded bg-surface-overlay" />
                       );
                     })}
                   </div>
-                  <div className="text-right text-white tabular-nums text-xs">{s.avgPlacement.toFixed(2)}</div>
-                  <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{(s.top4Rate * 100).toFixed(0)}% Top 4</div>
+                  <div className="text-right text-white tabular-nums text-xs">{s.avgPlacement?.toFixed(2) ?? '—'}</div>
+                  <div className="text-right text-[#3ecf8e] tabular-nums text-xs">{s.top4Rate != null ? `${(s.top4Rate * 100).toFixed(0)}% Top 4` : '—'}</div>
                   <div className="text-right text-fg-muted tabular-nums text-xs">{s.games}</div>
                 </div>
               ))}
@@ -395,12 +383,12 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
         )}
 
         {/* Comps wie im Comps-Reiter (CompFamilyRow), ueber die volle Breite. */}
-        {families.length > 0 && (
+        {shownFamilies.length > 0 && (
           <section className="mb-5">
             <h2 className="text-fg-secondary text-xs uppercase tracking-widest mb-2">{t('tft.compsWithItem')}</h2>
-            <CompFamilyListHeader t={t} />
+            <CompFamilyListHeader t={t} sort={compSort} onSort={setCompSort} />
             <div className="space-y-1.5">
-              {families.map((f, i) => (
+              {shownFamilies.map((f, i) => (
                 <CompFamilyRow
                   key={f.familyKey}
                   family={f}

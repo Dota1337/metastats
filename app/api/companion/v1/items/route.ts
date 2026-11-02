@@ -27,8 +27,9 @@ export async function GET(request: NextRequest) {
     return companionJson({ v: COMPANION_API_VERSION, error: 'bad_id' }, { status: 400, ...NO_STORE });
   }
   const inner = new URL('/api/tft/items', request.nextUrl.origin);
+  // combos=0: die App liest nur die Traeger, die Kombinations-Abfrage (0115) entfaellt.
   inner.search = new URLSearchParams({
-    region, patch: 'current', bucket: 'master_plus', days: '3', bucketAuto: '1', ...(id ? { id } : {}),
+    region, patch: 'current', bucket: 'master_plus', days: '3', bucketAuto: '1', ...(id ? { id, combos: '0' } : {}),
   }).toString();
   const res = await itemsGET(new NextRequest(inner));
   if (!res.ok) {

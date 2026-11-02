@@ -9,7 +9,7 @@
 // live je id.
 import { callRpc, rpcWindowArgs, type ResolvedFilters } from './tft-supabase-reader';
 import { lookupSnapshot } from './snapshot-lookup';
-import type { CarrierRow, UnitBuildsRaw } from './tft-detail-payload';
+import type { BuildRow, CarrierRow, UnitBuildsRaw } from './tft-detail-payload';
 
 export interface DetailBuildsStock {
   hasData: boolean;
@@ -69,6 +69,18 @@ export async function unitBuildsFor(f: Filters, id: string): Promise<UnitBuildsR
   const stock = await lookupDetailBuildsStock(f);
   if (stock) return stock.units[id] ?? null;
   return (await loadUnitBuilds(f, [id]))[id] ?? null;
+}
+
+/** Kombinationen eines Items (Migration 0115): Item-Sets der genannten Units, die das Item
+ *  enthalten, ueber Units und Fenster zusammengezaehlt. Immer live, auch in der Standardansicht —
+ *  der Vorrat kappt bei 10 Sets je Unit (0096), zwei Quellen zeigten verschiedene Zahlen.
+ *  Eigenes Zeitlimit: die Traeger warten nie darauf. null = keine Units. Wirft bei DB-Fehler. */
+export const COMBO_RPC_TIMEOUT_MS = 5000;
+export async function itemCombosFor(f: Filters, id: string, unitIds: string[]): Promise<BuildRow[] | null> {
+  if (unitIds.length === 0) return null;
+  const rows = await callRpc<{ set_key: string; games: number | string; top4: number | string; sum_placement: number | string }[]>(
+    'get_tft_item_set_combos', { p_api_name: id, p_character_ids: unitIds, ...rpcArgs(f) }, COMBO_RPC_TIMEOUT_MS);
+  return rows.map(r => [r.set_key, Number(r.games), Number(r.top4), Number(r.sum_placement)]);
 }
 
 /** Traeger eines Items: Vorrat, sonst live. null = keine Daten. Wirft bei DB-Fehler. */

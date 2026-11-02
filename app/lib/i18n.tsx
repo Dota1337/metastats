@@ -3479,14 +3479,6 @@ const translations = {
     '\uC8FC\uC694 \uC544\uC774\uD15C \uC870\uD569', '\u70ED\u95E8\u88C5\u5907\u7EC4\u5408',
     'Combinaciones de \u00EDtems principales', 'Meilleures combinaisons d\'objets'
   ),
-  'tft.item.combos.caption': t6(
-    'St\u00E4rkste Builds, in denen dieses Item vorkommt \u2014 \u00FCber alle Comps gewichtet.',
-    'Strongest builds containing this item \u2014 weighted across all comps.',
-    '\uC774 \uC544\uC774\uD15C\uC774 \uD3EC\uD568\uB41C \uAC00\uC7A5 \uAC15\uB825\uD55C \uBE4C\uB4DC \u2014 \uBAA8\uB4E0 \uC870\uD569 \uAC00\uC911\uCE58 \uC801\uC6A9.',
-    '\u5305\u542B\u8BE5\u88C5\u5907\u7684\u6700\u5F3A\u6784\u5EFA \u2014 \u8DE8\u9635\u5BB9\u52A0\u6743\u3002',
-    'Las builds m\u00E1s fuertes que contienen este \u00EDtem \u2014 ponderado a trav\u00E9s de todas las comps.',
-    'Builds les plus fortes contenant cet objet \u2014 pond\u00E9r\u00E9es sur l\'ensemble des comps.'
-  ),
 
   // \u2500 Augment Detail Page \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'tft.augment.allTiers': t6(

@@ -9,9 +9,9 @@
     "routes": 91,
     "groups": 30,
     "tables": 46,
-    "rpcs": 38,
+    "rpcs": 39,
     "files": 13,
-    "edges": 528,
+    "edges": 532,
     "unused": 7,
     "unresolved": 1
   },
@@ -2255,6 +2255,12 @@
       "declared": true
     },
     {
+      "id": "fn:get_tft_item_set_combos",
+      "kind": "rpc",
+      "label": "get_tft_item_set_combos",
+      "declared": true
+    },
+    {
       "id": "fn:get_tft_item_stats_list",
       "kind": "rpc",
       "label": "get_tft_item_stats_list",
@@ -3568,6 +3574,11 @@
     },
     {
       "from": "api:/api/tft/detail-builds",
+      "to": "fn:get_tft_item_set_combos",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/detail-builds",
       "to": "fn:get_tft_set_bucket_coverage",
       "kind": "calls"
     },
@@ -3684,6 +3695,11 @@
     {
       "from": "api:/api/tft/items",
       "to": "fn:get_tft_item_list_precomputed",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/items",
+      "to": "fn:get_tft_item_set_combos",
       "kind": "calls"
     },
     {
@@ -4623,6 +4639,11 @@
     },
     {
       "from": "api:/api/tft/units",
+      "to": "fn:get_tft_item_set_combos",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/units",
       "to": "fn:get_tft_set_bucket_coverage",
       "kind": "calls"
     },
@@ -4869,6 +4890,11 @@
     {
       "from": "fn:get_tft_item_list_precomputed",
       "to": "db:tft_item_list_precomputed",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:get_tft_item_set_combos",
+      "to": "db:tft_daily_unit_builds",
       "kind": "reads"
     },
     {

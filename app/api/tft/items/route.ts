@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeBucket } from '../../../lib/tft-stats-loader';
 import {
-  coreFromListRow, holderDeltaMap, itemDetailBody, itemHolders, itemHoldersCommon,
-  type Blocks, type CarrierRow, type DetailCore, type ItemHolder,
+  comboUnitIds, coreFromListRow, holderDeltaMap, itemDetailBody, itemHolders, itemHoldersCommon,
+  type Blocks, type BuildRow, type CarrierRow, type DetailCore, type ItemHolder,
 } from '../../../lib/tft-detail-payload';
-import { itemCarriersFor } from '../../../lib/tft-detail-builds';
+import { itemCarriersFor, itemCombosFor } from '../../../lib/tft-detail-builds';
 import {
   resolveFilters,
   callRpc,
@@ -118,6 +118,15 @@ export async function GET(request: NextRequest) {
     let carriers: Blocks<CarrierRow[]> = 'failed';
     // Delta je Traeger aus derselben Listenzeile wie die Kernwerte (User 02.11.2026).
     let deltas: Map<string, number> | null = null;
+    // Kombinationen (0115) aus den Item-Sets der 10 meistgespielten Units der Listenzeile,
+    // parallel zu den Traegern. ?combos=0 = nicht abfragen (Companion liest nur die Traeger).
+    const wantCombos = searchParams.get('combos') !== '0';
+    let combos: Blocks<BuildRow[]> | undefined = wantCombos ? 'failed' : undefined;
+    let combosP: Promise<Blocks<BuildRow[]>> | null = null;
+    const combosFailed = (e: Error) => {
+      console.error('[items detail] combos', e.message);
+      return 'failed' as const;
+    };
     try {
       const publisher = isSnapshotPublisher(request);
       const filters = await resolveFilters(searchParams, { publisher });
@@ -133,6 +142,7 @@ export async function GET(request: NextRequest) {
         const listRow = snapItems.find(x => x.apiName === id);
         core = coreFromListRow(listRow);
         deltas = holderDeltaMap(listRow);
+        if (wantCombos) combosP = itemCombosFor(filters, id, comboUnitIds(listRow)).catch(combosFailed);
       } else {
         // Dieselbe Quelle wie die Liste: erst der Vorrat (0108), dann live.
         const pre = await readPrecomputedItems(filters, (await getAvailablePatches())[0]?.last_day,
@@ -145,7 +155,9 @@ export async function GET(request: NextRequest) {
           p_set: filters.setNumber,
         }, publisher ? PUBLISHER_RPC_TIMEOUT_MS : undefined);
         const row = rows.find(r => r.api_name === id);
-        deltas = holderDeltaMap(row ? listRowHolders(row) : null);
+        const holders = row ? listRowHolders(row) : null;
+        deltas = holderDeltaMap(holders);
+        if (wantCombos) combosP = itemCombosFor(filters, id, comboUnitIds(holders)).catch(combosFailed);
         const games = row ? Number(row.games) : 0;
         const top1Raw = row ? Number(row.top1) : 0;
         core = row && games > 0
@@ -160,11 +172,18 @@ export async function GET(request: NextRequest) {
       }
       coreKnown = true;
       carriers = await carriersP;
+      if (combosP) combos = await combosP;
     } catch {
       // Datenbank nicht erreichbar → unten auf die Wochendatei zurueckfallen.
     }
-    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, carriers, deltas);
-    return cacheable ? cachedJson(body) : NextResponse.json(body);
+    const { body, cacheable } = itemDetailBody({ id, region, bucket, core, coreKnown, filterSet, filterPatch }, carriers, deltas, combos);
+    if (cacheable) return cachedJson(body);
+    // Nur die Kombinationen fehlen: kurz zwischenspeichern, damit nicht jeder Aufruf die
+    // Datenbank erneut trifft — der naechste Abruf nach 10 s versucht es wieder.
+    if (combos === 'failed' && carriers !== 'failed' && core) {
+      return cachedJson(body, { cache: DEGRADED_CACHE_CONTROL });
+    }
+    return NextResponse.json(body);
   }
 
   // Notreserve bei DB-Ausfall, siehe app/lib/snapshot-fallback.ts.

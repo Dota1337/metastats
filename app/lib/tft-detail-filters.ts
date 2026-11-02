@@ -77,15 +77,9 @@ function rootVariantId(ids: string[]): string {
 interface CompRow {
   clusterKey?: string;
   typicalUnits?: { characterId?: string }[];
-  carryItems?: { items?: string[] }[];
   // Volle Zeile unter der Listen-Schwelle (nur fuer das Brett ihrer Comp,
   // tft-comp-minor-rows) — keine eigene Comp fuer diese Seiten.
   listFill?: boolean;
-}
-
-/** Item-Detail: ALLE Comps, deren Carry-Items das Item enthalten (die Seite rechnet daraus Combos). */
-export function compsWithItem<T extends CompRow>(rows: T[], id: string): T[] {
-  return rows.filter(c => !c.listFill && (c.carryItems || []).some(ci => (ci.items || []).includes(id)));
 }
 
 /**

@@ -136,6 +136,34 @@ export function holderDeltaMap(
   return out;
 }
 
+/** Units fuer die Kombinationen: die 10 meistgespielten der Listenzeile (holdersCommon, sonst
+ *  holders — ohne Delta stehen die schon nach Kopien; Staende von vor 0112: topUsers). Aus der
+ *  Listenzeile statt aus den Traegern, damit beide Abfragen parallel laufen. */
+export function comboUnitIds(
+  row: { holders?: readonly ItemHolder[] | null; holdersCommon?: readonly ItemHolder[] | null; topUsers?: readonly unknown[] | null } | null | undefined,
+): string[] {
+  const fromHolders = (row?.holdersCommon ?? row?.holders ?? []).map(h => h?.[0]).filter((id): id is string => typeof id === 'string');
+  const ids = fromHolders.length > 0 ? fromHolders : (row?.topUsers ?? []).filter((id): id is string => typeof id === 'string');
+  return ids.slice(0, 10);
+}
+
+/** Kombinationen der Item-Detailseite (User 02.11.2026): Sets mit dem Item aus
+ *  get_tft_item_set_combos (Summe ueber die Units, nur Units mit 3 fertigen Items). Die
+ *  8 meistgespielten ab 100 Spielen — nach Ø ausgewaehlt stuenden nur die Builds einer Unit
+ *  oben (IE: 9 von 9 Elder Dragon) und 30 Spiele schwanken um ±0,4 —, gezeigt nach Ø.
+ *  Sets mit Thief's Gloves fallen raus, doppelte Items bleiben (echte Builds, Vow×3). */
+export const COMBO_MIN_GAMES = 100;
+export const COMBO_LIMIT = 8;
+export function itemSetCombos(rows: readonly BuildRow[] | null | undefined) {
+  const byKey = (a: BuildRow, b: BuildRow) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+  return (rows || [])
+    .filter(r => r[1] >= COMBO_MIN_GAMES && !setContainsExcludedItem(r[0].split('|')))
+    .sort((a, b) => b[1] - a[1] || byKey(a, b))
+    .slice(0, COMBO_LIMIT)
+    .map(setEntry)
+    .sort((a, b) => (a.avgPlacement as number) - (b.avgPlacement as number) || b.games - a.games);
+}
+
 const itemEntry = ([item, games, top4, sp]: BuildRow) =>
   ({ item, games, avgPlacement: rate(sp, games), top4Rate: rate(top4, games) });
 
@@ -268,6 +296,9 @@ export function itemDetailBody(
   p: DetailInput,
   carriers: Blocks<CarrierRow[]>,
   deltas?: ReadonlyMap<string, number> | null,
+  /** Sets aus get_tft_item_set_combos (itemCombosFor). undefined = nicht abgefragt (Companion):
+   *  kein Feld. `failed` ebenfalls ohne Feld — der Browser zeigt dann keine Box. */
+  combos?: Blocks<BuildRow[]>,
 ): DetailResult<Record<string, unknown>> {
   const { id, region, bucket } = p;
   let core = p.core;
@@ -277,8 +308,11 @@ export function itemDetailBody(
     return { body: { region, bucket, hasData: p.coreKnown ? false : !!stats, item: null }, cacheable: false };
   }
   const rows = carriers === 'pending' || carriers === 'failed' ? null : carriers;
+  const combosField = combos === 'pending' ? { combosPending: true }
+    : combos === undefined || combos === 'failed' ? {}
+    : { combos: itemSetCombos(combos) };
   return {
-    cacheable: carriers !== 'failed' && carriers !== 'pending',
+    cacheable: carriers !== 'failed' && carriers !== 'pending' && combos !== 'failed' && combos !== 'pending',
     body: {
       region, bucket,
       set: p.filterSet ?? stats?.set ?? null, patch: p.filterPatch ?? stats?.patch ?? null,
@@ -291,6 +325,7 @@ export function itemDetailBody(
         top1Rate: core.top1Rate,
         topUsers: itemCarriers(rows).map(u => (deltas ? { ...u, delta: deltas.get(u.characterId) ?? null } : u)),
         ...(carriers === 'pending' ? { itemsPending: true } : {}),
+        ...combosField,
       },
     },
   };

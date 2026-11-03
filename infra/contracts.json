@@ -844,6 +844,18 @@
       "pinned": true,
       "minHoursLeft": 1440,
       "note": "https-Zugang von refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Eigenes Zertifikat, gueltig bis 23.10.2029; alle Aufrufer vertrauen nur ihm (app/lib/box-tls.mjs). Geprueft wird das AUSGELIEFERTE Zertifikat gegen genau diese Liste, nicht die Datei. Rot heisst: weniger als 60 Tage Restlaufzeit, die Box liefert ein anderes Zertifikat aus, als im Code steht, oder der https-Zugang laeuft nicht — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard. Wechsel: Anleitung im Kopf von box-tls.mjs. Rot: journalctl -u metastats-refresh-api | grep '\\[tls\\]'."
+    },
+    {
+      "id": "box/datenbank-sicherung",
+      "owner": "infra/hetzner/metastats-pg-backup.sh",
+      "type": "backup-file",
+      "dir": "/mnt/HC_Volume_105869432/backups",
+      "namePattern": "^metastats_\\d{8}\\.dump$",
+      "maxAgeHours": 30,
+      "repeatAlarmHours": 72,
+      "minBytes": 300000000,
+      "minShareOfLargest": 0.7,
+      "note": "Taegliche Sicherung der Box-Datenbank. Das Skript laeuft per Root-Crontab, steht also nicht in der Systemkarte, und sein Log ist leer. 30 h: um 23:00 UTC ist die heutige Datei ~18 h alt, nach einem ausgefallenen Tag ~42 h. Ab 72 h anderer Wortlaut = zweite Mail, denn die Aufraeumregel (-mtime +3) laeuft auch dann, wenn der Dump scheitert, und loescht die letzte gute Kopie am 5. Tag nach ihrem Entstehen. Gelb unter 70 % der groessten vorhandenen Datei: echt nach einem Setwechsel, weil metastats-pg-prune.sh dann tft_player_match_cache und tft_match_lobby leert (03.11.: 56 von ~64 GB Tabellendaten); bleibt dann bis zu 4 Tage gelb. Untergrenze 0,3 GB faengt nur 'praktisch leer', nach einem Setwechsel sind 0,4 bis 0,9 GB zu erwarten (geschaetzt). Rot: ls -la in der Ablage, und das Skript von Hand starten. Nie mit systemctl start metastats-contracts pruefen, das ueberschreibt die Statusdatei; node scripts/check-contracts.mjs --id box/datenbank-sicherung reicht."
     }
   ]
 }

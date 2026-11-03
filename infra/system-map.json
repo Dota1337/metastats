@@ -1660,6 +1660,9 @@
     ],
     "metastats-refresh-api.service": [
       "box/tls-zertifikat"
+    ],
+    "infra/hetzner/metastats-pg-backup.sh": [
+      "box/datenbank-sicherung"
     ]
   }
 }

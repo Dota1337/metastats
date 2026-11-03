@@ -16,7 +16,7 @@
  * Box sind. Sonst würden wir lokal Supabase messen und Hetzner draufschreiben.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -573,6 +573,7 @@ async function runCheck(c) {
     if (c.type === 'box-main') return await checkBoxMain(c, r);
     if (c.type === 'comp-catalog-days') return await checkCompCatalogDays(c, r);
     if (c.type === 'tls-cert') return await checkTlsCert(c, r);
+    if (c.type === 'backup-file') return checkBackupFile(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -1349,6 +1350,60 @@ function checkTlsCert(c, r) {
       done(r(res.status, `${c.host}:${port} ${res.detail}`));
     });
   });
+}
+
+/**
+ * Sicherung als Datei auf der Box (Art backup-file): Alter und Groesse der
+ * neuesten Datei. Reine Bewertung, getrennt vom Lesen der Ablage testbar.
+ *
+ * Der Text steht bei Rot und Gelb im oeffentlichen Issue (redactReport in
+ * contracts-alert.mjs): kein Pfad, kein Dateiname. Immer h und GB, weil reasonKey
+ * nur Ziffern ausblendet: eine wechselnde Einheit waere ein neuer Grund, also
+ * eine Extra-Mail. Aus demselben Grund aendert sich der Wortlaut genau einmal,
+ * bei repeatAlarmHours — das ist die zweite Mail, bevor die Aufraeumregel des
+ * Sicherungs-Skripts auch die letzte gute Kopie loescht.
+ *
+ * Verglichen wird mit der GROESSTEN vorhandenen Datei, nicht mit der von
+ * gestern: sonst waere ein Abfall am Folgetag wieder gruen (3 GB gegen 3 GB)
+ * und ein Schwund von 25 % je Tag bliebe ganz unbemerkt.
+ */
+export function evaluateBackupFile({ files, now = Date.now(), maxAgeHours, repeatAlarmHours, minBytes, minShareOfLargest }) {
+  if (!files.length) return { status: 'broken', detail: 'Keine Sicherung vorhanden' };
+  const gb = (n) => `${(n / 1e9).toFixed(2)} GB`;
+  const newest = files.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a));
+  const ageHours = (now - newest.mtimeMs) / 3_600_000;
+  const age = `Neueste Sicherung ${Math.round(ageHours)} h alt`;
+  if (ageHours >= repeatAlarmHours) return { status: 'broken', detail: `${age} (max ${maxAgeHours} h), der Ausfall dauert an` };
+  if (ageHours > maxAgeHours) return { status: 'broken', detail: `${age} (max ${maxAgeHours} h)` };
+  if (newest.bytes < minBytes) return { status: 'broken', detail: `Neueste Sicherung nur ${gb(newest.bytes)} (min ${gb(minBytes)})` };
+  const largest = Math.max(...files.map((f) => f.bytes));
+  if (newest.bytes < largest * minShareOfLargest) {
+    return {
+      status: 'warn',
+      detail: `Neueste Sicherung ${gb(newest.bytes)}, die groesste vorhandene hat ${gb(largest)} (min ${Math.round(minShareOfLargest * 100)} % davon)`,
+    };
+  }
+  return { status: 'ok', detail: `${age}, ${gb(newest.bytes)}, ${files.length} Dateien` };
+}
+
+// Lesefehler werden bewusst nicht gefangen: runCheck macht daraus `error`, und
+// redactReport ersetzt den Text. Node-Fehlertexte enthalten den Pfad und duerfen
+// nicht ins oeffentliche Issue. Volume nicht eingehaengt = Ordner fehlt = rot.
+function checkBackupFile(c, r) {
+  if (!isOnBox()) return r('skipped', 'nur auf der Hetzner-Box prüfbar');
+  const pattern = new RegExp(c.namePattern);
+  const files = readdirSync(c.dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && pattern.test(e.name))
+    .map((e) => statSync(join(c.dir, e.name)))
+    .map((s) => ({ bytes: s.size, mtimeMs: s.mtimeMs }));
+  const res = evaluateBackupFile({
+    files,
+    maxAgeHours: c.maxAgeHours,
+    repeatAlarmHours: c.repeatAlarmHours,
+    minBytes: c.minBytes,
+    minShareOfLargest: c.minShareOfLargest,
+  });
+  return r(res.status, res.detail);
 }
 
 async function checkBoxMain(c, r) {

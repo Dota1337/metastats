@@ -3,8 +3,10 @@
 // Ablauf: die Box schreibt taeglich 23:00 UTC contracts-status.json
 // (check-contracts.mjs). refresh-api gibt eine GEKUERZTE Fassung unter
 // GET /contracts-status heraus (redactReport), eine GitHub-Action holt sie um
-// 23:30 und legt pro rotem Vertrag eine Aufgabe an (decide). Aufgaben, die der
-// Bot anlegt, schicken dem Repo-Besitzer eine Mail.
+// 23:30 und legt pro rotem Vertrag eine Aufgabe an (decide). Eine Aufgabe allein
+// schickt keine Mail: GitHub benachrichtigt nur Zustaendige und Beobachter, und
+// das Repo hat keine Beobachter. Darum weist der Lauf jede Aufgabe dem Besitzer zu
+// (assignTargets, assignOwner).
 //
 // Gelb (`warn`) bekommt ebenfalls eine Aufgabe, betitelt mit "(Warnung)": eine
 // Mail beim ersten Mal und je neuem Grund, danach Ruhe. Gelb zaehlt nicht fuer
@@ -201,4 +203,36 @@ export function decide(input, issues) {
     ops.push({ op: 'close', number: issue.number, comment: 'Vertrag gibt es nicht mehr.' });
   }
   return ops;
+}
+
+// ---- Zustaendigkeit --------------------------------------------------------
+
+const sameLogin = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+
+// Offene und in diesem Lauf wiedergeoeffnete Aufgaben, in denen der Besitzer
+// fehlt. Was dieser Lauf schliesst, bleibt draussen, sonst kaeme zu einer
+// erledigten Sache noch eine Mail. Ein fehlendes Feld assignees gilt als nicht
+// zugewiesen: der POST in assignOwner ersetzt niemanden.
+export function assignTargets(ops, issues, owner) {
+  const numbersOf = (kind) => new Set(ops.filter((o) => o.op === kind).map((o) => o.number));
+  const closing = numbersOf('close');
+  const reopening = numbersOf('reopen');
+  return issues
+    .filter((i) => parseMarker(i.body)?.key)
+    .filter((i) => (i.state === 'open' && !closing.has(i.number)) || reopening.has(i.number))
+    .filter((i) => !(i.assignees ?? []).some((login) => sameLogin(login, owner)))
+    .map((i) => i.number);
+}
+
+// Einziger Weg zur Zuweisung. Wirft nie, damit eine Panne hier nicht die Alarme
+// der Nacht stoppt. GitHub verwirft eine Zuweisung ohne Rechte still, deshalb
+// zaehlt nur, was die Antwort zeigt. Rueckgabe: null oder der Grund.
+export async function assignOwner(gh, number, owner) {
+  try {
+    const issue = await gh('POST', `/issues/${number}/assignees`, { assignees: [owner] });
+    const assigned = (issue?.assignees ?? []).some((a) => sameLogin(a?.login, owner));
+    return assigned ? null : 'GitHub hat die Zuweisung verworfen';
+  } catch (err) {
+    return err?.message || 'unbekannter Fehler';
+  }
 }

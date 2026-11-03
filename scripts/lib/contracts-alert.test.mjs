@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   decide, redactReport, sign, verifySignature, keyOf, withMarker, parseMarker, BUNDLE_AT,
+  assignTargets, assignOwner,
 } from './contracts-alert.mjs';
 
 const NOW = Date.parse('2026-09-29T23:30:00Z');
@@ -188,4 +189,58 @@ test('Totmann-Aufgaben schliessen, sobald frisch', () => {
   const ops = decide({ kind: 'report', report: report(), now: NOW }, [issue(1, 'open', '__unreachable'), issue(2, 'open', '__stale')]);
   assert.ok(ops.some((o) => o.op === 'close' && o.number === 1));
   assert.ok(ops.some((o) => o.op === 'close' && o.number === 2));
+});
+
+// ---- Zustaendigkeit (ohne sie verschickt GitHub keine Mail) -------------------
+
+const OWNER = 'Dota1337';
+const withPeople = (i, assignees) => ({ ...i, assignees });
+
+test('zuweisen: offene Aufgabe, in der der Besitzer fehlt', () => {
+  assert.deepEqual(assignTargets([], [withPeople(issue(1, 'open', 'k'), [])], OWNER), [1]);
+  assert.deepEqual(assignTargets([], [withPeople(issue(2, 'open', 'k'), ['jemand'])], OWNER), [2]);
+  assert.deepEqual(assignTargets([], [issue(3, 'open', 'k')], OWNER), [3], 'fehlendes Feld gilt als nicht zugewiesen');
+});
+
+test('zuweisen: nicht doppelt, Gross-/Kleinschreibung egal', () => {
+  assert.deepEqual(assignTargets([], [withPeople(issue(1, 'open', 'k'), ['dota1337'])], OWNER), []);
+});
+
+test('zuweisen: geschlossen nur, wenn dieser Lauf sie wieder oeffnet', () => {
+  const closed = withPeople(issue(1, 'closed', 'k'), []);
+  assert.deepEqual(assignTargets([], [closed], OWNER), []);
+  assert.deepEqual(assignTargets([{ op: 'reopen', number: 1 }], [closed], OWNER), [1]);
+  assert.deepEqual(assignTargets([{ op: 'reopen', number: 1 }], [{ ...closed, assignees: [OWNER] }], OWNER), []);
+});
+
+test('zuweisen: keine Mail fuer das, was dieser Lauf schliesst, keine fremden Aufgaben', () => {
+  const open = withPeople(issue(1, 'open', 'k'), []);
+  assert.deepEqual(assignTargets([{ op: 'close', number: 1 }], [open], OWNER), []);
+  const fremd = { number: 2, state: 'open', title: 't', body: 'ohne Marker', assignees: [] };
+  assert.deepEqual(assignTargets([], [fremd], OWNER), []);
+});
+
+test('zuweisen greift auch bei den fruehen Ausgaengen von decide', () => {
+  const open = withPeople(issue(4, 'open', 'k'), []);
+  const un = decide({ kind: 'unreachable', why: 'HTTP 503' }, [open]);
+  assert.deepEqual(assignTargets(un, [open], OWNER), [4]);
+  const stale = decide({ kind: 'report', report: report(), now: NOW + 31 * 3_600_000 }, [open]);
+  assert.deepEqual(assignTargets(stale, [open], OWNER), [4]);
+});
+
+test('assignOwner: Erfolg, einziger Aufruf mit richtigem Pfad', async () => {
+  const calls = [];
+  const gh = async (...args) => { calls.push(args); return { assignees: [{ login: 'dota1337' }] }; };
+  assert.equal(await assignOwner(gh, 26, OWNER), null);
+  assert.deepEqual(calls, [['POST', '/issues/26/assignees', { assignees: [OWNER] }]]);
+});
+
+test('assignOwner: still verworfene Zuweisung wird gemeldet', async () => {
+  assert.match(await assignOwner(async () => ({ assignees: [] }), 26, OWNER), /verworfen/);
+  assert.match(await assignOwner(async () => null, 26, OWNER), /verworfen/);
+});
+
+test('assignOwner: GitHub-Fehler wirft nicht, sondern nennt den Grund', async () => {
+  const gh = async () => { throw new Error('GitHub POST /issues/26/assignees → HTTP 403'); };
+  assert.match(await assignOwner(gh, 26, OWNER), /HTTP 403/);
 });

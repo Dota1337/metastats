@@ -1,8 +1,9 @@
 name: Contracts alert daily
 
 # Holt taeglich den Vertragsstatus der Box (Timer 23:00 UTC) und legt pro rotem
-# Laufzeit-Vertrag eine Aufgabe mit Label contract-broken an — die Aufgabe
-# schickt die Mail. Logik und Regeln: scripts/lib/contracts-alert.mjs.
+# Laufzeit-Vertrag eine Aufgabe mit Label contract-broken an und weist sie dem
+# Repo-Besitzer zu. Erst die Zuweisung loest die Mail aus, das Repo hat keine
+# Beobachter. Logik und Regeln: scripts/lib/contracts-alert.mjs.
 #
 # Das Repo ist oeffentlich: die Box liefert nur einen gekuerzten Status, und
 # das Skript schreibt ihn nicht ins Log.

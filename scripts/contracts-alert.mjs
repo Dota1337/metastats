@@ -15,7 +15,7 @@
 // nur die Operationen (Titel sind bereits neutral).
 
 import { readFileSync } from 'node:fs';
-import { decide, sign, LABEL } from './lib/contracts-alert.mjs';
+import { decide, sign, LABEL, assignTargets, assignOwner } from './lib/contracts-alert.mjs';
 import { boxFetch } from '../app/lib/box-tls.mjs';
 
 const args = process.argv.slice(2);
@@ -24,6 +24,7 @@ const fileIdx = args.indexOf('--status-file');
 const STATUS_FILE = fileIdx >= 0 ? args[fileIdx + 1] : null;
 
 const REPO = process.env.GITHUB_REPOSITORY || 'Dota1337/metastats';
+const OWNER = REPO.split('/')[0];
 const GH = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 
 async function fetchStatus() {
@@ -78,12 +79,30 @@ async function listIssues() {
     all.push(...batch.filter((i) => !i.pull_request));
     if (batch.length < 100) break;
   }
-  return all.map((i) => ({ number: i.number, state: i.state, title: i.title, body: i.body || '' }));
+  return all.map((i) => ({
+    number: i.number,
+    state: i.state,
+    title: i.title,
+    body: i.body || '',
+    assignees: (i.assignees ?? []).map((a) => a.login),
+  }));
+}
+
+// Erst die Zuweisung loest die Mail aus. Scheitert sie, laufen die uebrigen
+// Schritte weiter und der Lauf endet rot; die naechste Nacht versucht es erneut.
+async function assign(number) {
+  const why = await assignOwner(gh, number, OWNER);
+  if (!why) return;
+  console.error(`::error::Aufgabe #${number} ohne Zustaendigen, es geht keine Mail raus: ${why}`);
+  process.exitCode = 1;
 }
 
 async function apply(op) {
   switch (op.op) {
-    case 'create': return gh('POST', '/issues', { title: op.title, body: op.body, labels: [LABEL] });
+    case 'create': {
+      const issue = await gh('POST', '/issues', { title: op.title, body: op.body, labels: [LABEL] });
+      return assign(issue.number);
+    }
     case 'comment': return gh('POST', `/issues/${op.number}/comments`, { body: op.body });
     // title nur beim Wechsel rot <-> gelb (" (Warnung)" im Titel)
     case 'edit': return gh('PATCH', `/issues/${op.number}`, op.title ? { body: op.body, title: op.title } : { body: op.body });
@@ -102,14 +121,18 @@ if (input.kind === 'report') input.now = Date.now();
 if (!GH && !DRY) throw new Error('GITHUB_TOKEN fehlt');
 const issues = GH ? await listIssues() : [];
 const ops = decide(input, issues);
+const toAssign = assignTargets(ops, issues, OWNER);
 
 console.log(input.kind === 'report'
   ? `Status: ${input.report.summary?.ok ?? '?'} ok, ${input.report.summary?.warn ?? 0} gelb, ${(input.report.summary?.broken ?? 0) + (input.report.summary?.error ?? 0)} rot`
   : `Status: nicht abrufbar (${input.why})`);
+for (const number of toAssign) console.log(`- assign #${number}`);
 for (const op of ops) console.log(`- ${op.op}${op.number ? ` #${op.number}` : ''}${op.title ? ` "${op.title}"` : ''}`);
-if (ops.length === 0) console.log('- nichts zu tun');
+if (ops.length === 0 && toAssign.length === 0) console.log('- nichts zu tun');
 
 if (!DRY) {
+  // Vor den Operationen, damit ein Kommentar im selben Lauf schon eine Mail ausloest.
+  for (const number of toAssign) await assign(number);
   if (ops.some((o) => o.op === 'create')) await gh('POST', '/labels', { name: LABEL, color: 'B60205', description: 'Laufzeit-Vertrag rot (automatisch)' });
   for (const op of ops) await apply(op);
 }

@@ -1549,6 +1549,9 @@
       "revalidate/edge-frische-stats",
       "daily-crawl/patch-axis"
     ],
+    "metastats-tft-live-standings.service": [
+      "tft-live-standings/frische"
+    ],
     "metastats-snapshot-publisher.service": [
       "comp-boards/liste-gegen-knoepfe",
       "comp-merge/set-axis",

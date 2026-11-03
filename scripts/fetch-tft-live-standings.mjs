@@ -8,6 +8,8 @@
  *     → jedes Tabellenblatt mit Name + Punkte-Spalte wird eine Stufe
  *   - normale Google-Tabellen mit gid (China) → CSV-Export; Runden-Raster
  *     („Name,Points,,Name,Points,…") wird je Spieler aufsummiert
+ *   - normale Google-Tabellen OHNE gid (TOC China) → Reiter aus /htmlview, jeder
+ *     Reiter mit Rangliste wird eine Stufe (Bracket-Format: parseBracketGrid)
  *   - apactft.com (APAC) → HTML-Tabellen mit Name + Punkte-Spalte
  *
  * Laeuft stuendlich auf der Box (metastats-tft-live-standings.timer), schreibt
@@ -28,6 +30,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { inLiveWindow, liveStarted, num, parseBracketGrid, sheetTabs, stageName } from './lib/tft-live-standings.mjs';
 
 function loadEnv() {
   const candidates = ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')];
@@ -54,7 +57,6 @@ const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!SUPA_KEY) { console.error('SUPABASE_SERVICE_ROLE_KEY required'); process.exit(1); }
 
 const USER_AGENT = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)';
-const DAY_MS = 86_400_000;
 // Blaetter ohne Rangliste (Lobby-Einteilung, Ueberblick, Regeln).
 const SKIP_TAB = /lobb|overview|creator|schedule|rules|format|info|bracket|seeding/i;
 
@@ -113,10 +115,6 @@ const IS_POINTS = /^(points|pts|total|total points)$/i;
 const IS_PLACE = /^(#|top|position|placement|rank|pos|place)$/i;
 const IS_REGION = /^region$/i;
 const IS_GAME = /^(m|round|game|r|g)\s*\d+$/i;
-const num = (s) => {
-  const t = String(s ?? '').replace(/[,\s]/g, '');
-  return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : null;
-};
 
 function splitTeam(raw) {
   const m = raw.match(/^([A-Z0-9]{2,5})\s+(\S.*)$/);
@@ -176,6 +174,8 @@ export function parseGrid(rows) {
   return out.length ? out : null;
 }
 
+const parseStandings = (rows) => parseBracketGrid(rows) ?? parseGrid(rows);
+
 function htmlTables(html) {
   const out = [];
   for (const m of html.matchAll(/<table[\s\S]*?<\/table>/g)) {
@@ -191,32 +191,50 @@ function htmlTables(html) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Quellen → [{ source, stage, stageOrder, rows }]
 
-// Blattnamen stehen als JS-String im Seitenquelltext ("Days 1 \x26 2").
-const unescapeJs = (s) => s
-  .replace(/\\x([0-9a-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-  .replace(/\\u([0-9a-f]{4})/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-  .replace(/\\(.)/g, '$1');
-
 async function readPublishedSheet(base, html) {
-  const tabs = [...html.matchAll(/items\.push\(\{name: "((?:[^"\\]|\\.)*)", pageUrl: "[^"]*", gid: "(\d+)"/g)]
-    .map((m, i) => ({ name: unescapeJs(m[1]), gid: m[2], order: i }));
   const stages = [];
-  for (const t of tabs) {
+  for (const t of sheetTabs(html)) {
     if (SKIP_TAB.test(t.name)) continue;
     const { text } = await fetchText(`${base}/pub?gid=${t.gid}&single=true&output=csv`);
-    const rows = parseGrid(parseCsv(text));
+    const rows = parseStandings(parseCsv(text));
     if (rows) stages.push({ source: 'gsheet', stage: t.name, stageOrder: t.order, rows });
   }
   return stages;
 }
 
+// Google-Tabelle ohne gid: alle Reiter lesen. Ohne gid liefert Google sonst nur
+// den ersten Reiter (TOC China: die Spieler-Liste), gid=0 gibt es dort gar nicht
+// (HTTP 400, 147 Fehlschlaege seit 28.10.2026). Faellt ein Reiter aus, bleiben
+// die anderen; der Vertrag tft-live-standings/frische sieht die zurueckbleibende
+// Stufe.
+async function readWholeSheet(id) {
+  const base = `https://docs.google.com/spreadsheets/d/${id}`;
+  const { text: html } = await fetchText(`${base}/htmlview`);
+  const stages = [];
+  let failed = 0;
+  for (const t of sheetTabs(html)) {
+    if (SKIP_TAB.test(t.name)) continue;
+    try {
+      const { text } = await fetchText(`${base}/export?format=csv&gid=${t.gid}`);
+      const rows = parseStandings(parseCsv(text));
+      if (rows) stages.push({ source: 'gsheet', stage: stageName(t.name), stageOrder: t.order, rows });
+    } catch (e) {
+      failed++;
+      console.warn(`  [teil-fail] ${id} Reiter ${t.name}: ${e.message}`);
+    }
+  }
+  if (!stages.length && failed) throw new Error(`alle ${failed} Reiter gescheitert`);
+  return stages;
+}
+
 export async function readSource(url) {
-  // Google-Tabelle mit fester ID + gid (China): CSV-Export genau dieses Blatts.
   const plain = url.match(/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]{20,})/);
   if (plain) {
-    const gid = (url.match(/[#?&]gid=(\d+)/) || [])[1] || '0';
+    const gid = (url.match(/[#?&]gid=(\d+)/) || [])[1];
+    if (!gid) return readWholeSheet(plain[1]);
+    // Google-Tabelle mit fester ID + gid (China): CSV-Export genau dieses Blatts.
     const { text } = await fetchText(`https://docs.google.com/spreadsheets/d/${plain[1]}/export?format=csv&gid=${gid}`);
-    const rows = parseGrid(parseCsv(text));
+    const rows = parseStandings(parseCsv(text));
     return rows ? [{ source: 'gsheet', stage: 'Overall', stageOrder: 0, rows }] : [];
   }
   const { text, finalUrl } = await fetchText(url);
@@ -225,7 +243,7 @@ export async function readSource(url) {
   if (/apactft\.com/i.test(finalUrl)) {
     const stages = [];
     htmlTables(text).forEach((t, i) => {
-      const rows = parseGrid(t);
+      const rows = parseStandings(t);
       if (rows) stages.push({ source: 'apactft', stage: stages.length ? `Standings ${i + 1}` : 'Standings', stageOrder: i, rows });
     });
     return stages;
@@ -243,9 +261,7 @@ async function main() {
   const filter = ONLY_ID ? `&id=eq.${enc(ONLY_ID)}` : '';
   const tours = await sb(`tft_tournaments?select=id,start_date,end_date,standings_sources&standings_sources=not.is.null${filter}`);
   const now = Date.now();
-  const inWindow = (t) => t.start_date && t.end_date
-    && now >= Date.parse(t.start_date) - 2 * DAY_MS
-    && now <= Date.parse(t.end_date) + 2 * DAY_MS;   // Ende+1 Tag inkl. des ganzen Endtags
+  const inWindow = (t) => inLiveWindow(t, now);
   const due = ONLY_ID ? tours : tours.filter(inWindow);
   console.log(`[live] ${due.length} tournament(s) due (${tours.length} with sources)`);
 
@@ -260,7 +276,7 @@ async function main() {
       // Vor Turnierbeginn (+1 Tag) ist eine leere Tabelle normal, kein Fehler —
       // sonst endet der Lauf mit Exit 2, wenn nur angekuendigte Turniere faellig sind.
       if (!stages.length) {
-        if (now < Date.parse(t.start_date) + DAY_MS) { console.log(`  [no-table, noch nicht begonnen] ${t.id} ${url}`); continue; }
+        if (!liveStarted(t, now)) { console.log(`  [no-table, noch nicht begonnen] ${t.id} ${url}`); continue; }
         failed++; console.warn(`  [no-table] ${t.id} ${url}`); continue;
       }
 

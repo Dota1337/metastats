@@ -69,6 +69,15 @@
       "note": "Comp-Katalog Phase 3 (Migration 0102): ist der neueste Crawl-Tag des laufenden Sets ein Katalog-Tag (crawl_meta.catalog_id), muessen alle Regionen des Tages markiert sein und ihre Comp-Zeilen Perfekt-Zaehler tragen. Gelb: eine Region klassisch gezaehlt (Wiederholungslauf) — sie fehlt im Vergleich zum Vorpatch, der nur gleich gezaehlte Tage nimmt. Rot: markierte Region ohne einen einzigen Perfekt-Zaehler — der Schalter 'Perfekt getroffen' der Detailseite verschwindet. Ohne Katalog-Tag (Schalter COMP_CATALOG_COLLECT aus bzw. Patch vor COMP_CATALOG_COLLECT_FROM_PATCH, die 3 Anlauftage eines Patches) gruen. Rot auch: Schalter gilt fuer den Patch des Tages, die Anlauftage sind vorbei, aber keine Region markiert — der Start je Brett ist ausgeblieben (seit 20.10.2026, Start ab 18.5)."
     },
     {
+      "id": "tft-live-standings/frische",
+      "owner": "metastats-tft-live-standings.service",
+      "type": "live-standings",
+      "maxAgeHours": 3,
+      "stageLagHours": 6,
+      "skipTournaments": [],
+      "note": "03.11.2026: Die Turniertabelle blieb seit dem 28.10. leer, ohne dass etwas Alarm schlug: der Dienst endete fast immer mit Exit 0, weil andere Turniere gleichzeitig liefen. Geprueft wird je laufendem Turnier mit Quelle (Fenster wie der Sammler, ab Start+1 Tag). Rot: Zeilen kommen nicht mehr nach. Gelb: nie Zeilen gehabt oder eine einzelne Stufe bleibt zurueck. Turniere ohne lesbare Tabelle gehoeren in skipTournaments."
+    },
+    {
       "id": "comp-boards/liste-gegen-knoepfe",
       "owner": "metastats-snapshot-publisher.service",
       "type": "comp-board-buttons",

@@ -27,6 +27,7 @@ import { compsToCheck, evaluateCompBoardButtons } from './comp-board-buttons.mjs
 import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
 import { BOX_TLS_CERTS } from '../../app/lib/box-tls.mjs';
+import { evaluateLiveStandings, liveTournamentsToCheck } from './tft-live-standings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -563,6 +564,7 @@ async function runCheck(c) {
     if (c.type === 'coverage') return await checkCoverage(c, r);
     if (c.type === 'guide-coverage') return await checkGuideCoverage(c, r);
     if (c.type === 'comp-board-buttons') return await checkCompBoardButtons(c, r);
+    if (c.type === 'live-standings') return await checkLiveStandings(c, r);
     if (c.type === 'anon-lockout') return await checkAnonLockout(c, r);
     if (c.type === 'set-axis') return await checkSetAxis(c, r);
     if (c.type === 'trait-style-axis') return await checkTraitStyleAxis(c, r);
@@ -1864,6 +1866,24 @@ async function checkGuideCoverage(c, r) {
     minFamilies: c.minFamilies,
     maxAgeHours: c.maxAgeHours,
   });
+  return r(out.status, out.detail);
+}
+
+/**
+ * Turnier-Zwischenstand: bekommt jedes laufende Turnier mit Quelle frische Zeilen?
+ * Ein Frische-Vertrag auf die Tabelle allein geht nicht, zwischen den Turnieren
+ * sind null neue Zeilen der Normalfall. Regeln: tft-live-standings.mjs.
+ */
+async function checkLiveStandings(c, r) {
+  const now = Date.now();
+  const tours = await (await supaGet('tft_tournaments?select=id,start_date,end_date&standings_sources=not.is.null')).json();
+  const active = liveTournamentsToCheck(tours, now, c.skipTournaments ?? []);
+  const rowsById = new Map();
+  for (const t of active) {
+    const res = await supaGet(`tft_tournament_live_standings?select=stage,fetched_at&tournament_id=eq.${encodeURIComponent(t.id)}&limit=1000`);
+    rowsById.set(t.id, await res.json());
+  }
+  const out = evaluateLiveStandings(active, rowsById, { now, maxAgeHours: c.maxAgeHours, stageLagHours: c.stageLagHours });
   return r(out.status, out.detail);
 }
 

@@ -30,8 +30,20 @@ umask 077
 DEST=/mnt/HC_Volume_105869432/backups
 DATE=$(date -u +%Y%m%d)
 RETENTION_DAYS=3
+# Vorfall-Vorsorge 2026-11-03: das Aufraeumen laeuft vor dem Dump, also auch an
+# Tagen, an denen der Dump scheitert. Mit reiner Altersregel waere bei einem
+# Dauerausfall am 5. Tag auch die letzte gute Kopie weg. Die neuesten
+# KEEP_NEWEST bleiben deshalb immer, egal wie alt sie sind.
+KEEP_NEWEST=2
 # Retention FIRST so disk space is available for the new backup.
-find "$DEST" -name "metastats_*.dump" -type f -mtime "+${RETENTION_DAYS}" -delete || true
+# Scheitert hier etwas, wird nichts geloescht und der Dump laeuft trotzdem.
+find "$DEST" -name "metastats_*.dump" -type f -printf '%T@\t%p\n' \
+  | sort -rn \
+  | tail -n "+$((KEEP_NEWEST + 1))" \
+  | cut -f2- \
+  | while IFS= read -r old; do
+      find "$old" -type f -mtime "+${RETENTION_DAYS}" -delete
+    done || true
 # Atomar: erst nach .tmp, nur bei Erfolg umbenennen. Bei Abbruch (ENOSPC,
 # pg_dump-Fehler) bleibt kein Torso unter dem echten Namen zurueck.
 TMP="$DEST/.metastats_${DATE}.dump.tmp"

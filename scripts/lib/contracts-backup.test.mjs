@@ -126,6 +126,6 @@ test('Vertrag im Register passt zum Sicherungs-Skript', () => {
 
   // Die Grenze muss zwischen "heute" (~18 h) und "gestern" (~42 h) liegen.
   assert.ok(c.maxAgeHours > 24 && c.maxAgeHours < 42, `maxAgeHours ${c.maxAgeHours}`);
-  // Zweite Mail vor dem Loeschen: die Aufraeumregel braucht ~119 h, 23:00-Laeufe liegen 24 h auseinander.
-  assert.ok(c.repeatAlarmHours < 119 - 24, `repeatAlarmHours ${c.repeatAlarmHours}`);
+  // Die zweite Mail muss spaeter als die erste kommen und innerhalb weniger Tage.
+  assert.ok(c.repeatAlarmHours > 42 + 24 && c.repeatAlarmHours <= 96, `repeatAlarmHours ${c.repeatAlarmHours}`);
 });

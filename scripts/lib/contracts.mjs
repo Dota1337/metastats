@@ -1360,8 +1360,8 @@ function checkTlsCert(c, r) {
  * contracts-alert.mjs): kein Pfad, kein Dateiname. Immer h und GB, weil reasonKey
  * nur Ziffern ausblendet: eine wechselnde Einheit waere ein neuer Grund, also
  * eine Extra-Mail. Aus demselben Grund aendert sich der Wortlaut genau einmal,
- * bei repeatAlarmHours — das ist die zweite Mail, bevor die Aufraeumregel des
- * Sicherungs-Skripts auch die letzte gute Kopie loescht.
+ * bei repeatAlarmHours — das ist die zweite Mail, damit ein Dauerausfall nicht
+ * bei einer einzigen Mail bleibt.
  *
  * Verglichen wird mit der GROESSTEN vorhandenen Datei, nicht mit der von
  * gestern: sonst waere ein Abfall am Folgetag wieder gruen (3 GB gegen 3 GB)

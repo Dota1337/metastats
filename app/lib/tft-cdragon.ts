@@ -458,13 +458,12 @@ export function tftIconUrl(bundle: TftAssetsBundle | null, iconPath: string | nu
 }
 
 // 10 Bundle-Eintraege tragen woertlich den String "none" statt eines Pfades
-// (TFT_ArmoryKeyCompleted, TFT17_PVE_Krug, …). Bisher endete das in einem
-// 404 bei CommunityDragon — harmlos. Ueber den Proxy waere `/api/img/none`
-// dagegen ein Request auf den eigenen Origin, der nicht auf `.png` endet und
-// damit durch den Middleware-Matcher laeuft: ein Supabase-Auth-Roundtrip pro
-// kaputtem Icon. Hier abfangen, nicht dort.
+// (TFT_ArmoryKeyCompleted, TFT17_PVE_Krug, …). Dasselbe gilt fuer `{hash}`: das
+// Abruf-Skript rechnet `{16-hex}` zwar in einen Pfad um (cdragonHashToPath), ein
+// anderes Format bliebe aber stehen. Beides waere nur ein sicherer 404 im Browser,
+// deshalb gar nicht erst abrufen. Hier abfangen, nicht in der Route.
 function isNonPath(iconPath: string): boolean {
-  return iconPath.toLowerCase() === 'none';
+  return iconPath.toLowerCase() === 'none' || iconPath.startsWith('{');
 }
 
 // Einzige Stelle, an der aus Base + Pfad eine Bild-URL wird — bewusst EIN

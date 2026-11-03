@@ -28,6 +28,7 @@ import { applyLocalizedNames } from './lib/tft-localized-names.mjs';
 import { applyValueTable, binHash, changesFingerprint, correctFromNotes, livePatchOf, loadSetChanges, patchesUpTo } from './lib/tft-value-corrections.mjs';
 import { fetchNotes } from './detect-tft-bpatches.mjs';
 import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
+import { cdragonHashToPath } from './lib/tft-image-paths.mjs';
 import { LISTING_URL, listingStamp, nextBundleStamp } from './lib/tft-data-freshness.mjs';
 
 const SOURCE_URL = 'https://raw.communitydragon.org/latest/cdragon/tft/en_us.json';
@@ -91,10 +92,13 @@ async function fetchJSON(url) {
 // We keep this relative; frontend prepends the CD raw prefix.
 function normalizeIconPath(raw) {
   if (!raw || typeof raw !== 'string') return null;
-  return raw
+  const path = raw
     .replace(/\.tex$/i, '.png')
     .replace(/\.dds$/i, '.png')
     .toLowerCase();
+  // `{16-hex}` statt eines Pfades: CDragon kennt den Dateinamen noch nicht. Sobald
+  // es ihn kennt, steht hier wieder ein normaler Pfad und der naechste Lauf nimmt ihn.
+  return cdragonHashToPath(path) ?? path;
 }
 
 // Das aktive Set kommt aus public/tft-set.json, NICHT aus der CDragon-Datenlage.

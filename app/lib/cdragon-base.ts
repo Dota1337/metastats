@@ -18,6 +18,16 @@ export const CDRAGON_GAME_BASE = 'https://raw.communitydragon.org/latest/game/';
 // Schranke reicht die Route CommunityDragons kompletten Baum durch.
 export const CDRAGON_PATH_PREFIXES = ['assets/maps/', 'assets/characters/', 'assets/ux/'] as const;
 
+// Dateien, deren Namen CDragon nicht kennt, liegen unter `unknown/<hash>.png` (seit
+// 03.11.2026 die Kopfbilder von 13 Set-18-Units). Bewusst ein exaktes Muster und
+// kein Praefix: `unknown/` als Praefix gaebe den ganzen Ordner frei. Spiegel in
+// scripts/lib/tft-image-paths.mjs, der Test vergleicht beide.
+export const CDRAGON_UNKNOWN_RE = /^unknown\/[0-9a-f]{16}\.png$/;
+
+function isAllowedPath(path: string): boolean {
+  return CDRAGON_PATH_PREFIXES.some((p) => path.startsWith(p)) || CDRAGON_UNKNOWN_RE.test(path);
+}
+
 // Nur echte Bild-Endungen. Im Bundle: 4.911x .png, sonst nichts (die 10
 // restlichen Eintraege sind woertlich der String "none" — kein Pfad, siehe
 // tftIconUrl). jpg/jpeg/webp sind Vorrat fuer kuenftige CDragon-Formate.
@@ -37,8 +47,8 @@ export function imageContentType(path: string): string | null {
 }
 
 // Ein CDragon-Pfad ist genau dann proxybar, wenn er unter einem bekannten
-// Praefix liegt, eine Bild-Endung hat und kein Segment enthaelt, das aus der
-// Base herausfuehren koennte. Die Rueckgabe ist die gepruefte absolute URL —
+// Praefix liegt oder dem `unknown/`-Muster entspricht, eine Bild-Endung hat und
+// kein Segment enthaelt, das aus der Base herausfuehren koennte. Die Rueckgabe ist die gepruefte absolute URL —
 // der Aufrufer baut sie nicht selbst noch einmal zusammen.
 export function safeCdragonUrl(segments: string[]): string | null {
   if (segments.length === 0) return null;
@@ -47,7 +57,7 @@ export function safeCdragonUrl(segments: string[]): string | null {
     if (seg.includes('\\') || seg.includes('\0') || seg.includes('/')) return null;
   }
   const path = segments.join('/');
-  if (!CDRAGON_PATH_PREFIXES.some((p) => path.startsWith(p))) return null;
+  if (!isAllowedPath(path)) return null;
   if (!imageContentType(path)) return null;
 
   // Zweite Schranke nach dem URL-Bau. Die Segment-Pruefung oben deckt den
@@ -57,7 +67,8 @@ export function safeCdragonUrl(segments: string[]): string | null {
   // besteht die Pruefung oben und wird erst hier zu einer Ebene hoch
   // (Sicherheitsdurchsicht 24.10.2026: assets/maps/%2e%2e/%2e%2e/data/x.png).
   const url = new URL(path, CDRAGON_GAME_BASE);
-  if (!CDRAGON_PATH_PREFIXES.some((p) => url.href.startsWith(CDRAGON_GAME_BASE + p))) return null;
+  if (!url.href.startsWith(CDRAGON_GAME_BASE)) return null;
+  if (!isAllowedPath(url.href.slice(CDRAGON_GAME_BASE.length))) return null;
   if (url.search || url.hash) return null;
   return url.href;
 }

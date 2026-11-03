@@ -303,7 +303,10 @@ export default function TftItemDetailPage({ initial, texts }: { initial: ItemDet
                   <div className="bg-surface-raised border border-border-subtle rounded overflow-hidden">
                     <div className={`grid ${carrierCols} gap-2 px-3 py-1.5 text-[10px] uppercase tracking-widest text-fg-muted bg-surface-sunken`}>
                       <div>{t('tft.item.topCarrier.carrier')}</div>
-                      <div className="text-right">{t('tft.avgPlacement')}</div>
+                      {/* Eine Zeile (User 03.11.2026). flex: der Text ist breiter als die
+                          Spalte, text-right wuerde ihn nach rechts ueberstehen lassen;
+                          so ragt er nach links in die breite erste Spalte. */}
+                      <div className="flex justify-end whitespace-nowrap">{t('tft.avgPlacement')}</div>
                       {showDelta && <div className="text-right" title={t('tft.item.holderDelta')}>{t('tft.item.sortDelta')}</div>}
                       <div className="text-right">{t('tft.top4')}</div>
                       <div className="text-right">{t('tft.gamesShort')}</div>

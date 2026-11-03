@@ -30,8 +30,8 @@ import { IMG_CACHE_CONTROL, IMG_CDN_CACHE_CONTROL } from '../../../lib/api-cache
 // kostet. Nach 5 s geben wir auf.
 const UPSTREAM_TIMEOUT_MS = 5000;
 
-// Groesste im Bundle gemessene Datei: 43.845 B. 4 MB ist reichlich Luft und
-// zugleich eine harte Schranke gegen einen Pfad, der wider Erwarten doch auf
+// Die breiten Kopfbilder der Units sind bis 429.337 B gross (13 unknown-Bilder,
+// gemessen 03.11.2026). 4 MB ist reichlich Luft und zugleich eine harte Schranke gegen einen Pfad, der wider Erwarten doch auf
 // etwas Grosses zeigt.
 const MAX_BYTES = 4 * 1024 * 1024;
 

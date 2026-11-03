@@ -35,6 +35,29 @@ test('weist fremde Praefixe und Nicht-Bilder zurueck', () => {
   assert.equal(safeCdragonUrl(['none']), null);
 });
 
+test('gibt unter unknown/ nur das exakte Muster frei, nicht den Ordner', () => {
+  const hash = '8dc562676f27747d';
+  const boese = [
+    seg(`unknown/${hash.toUpperCase()}.png`),
+    seg(`unknown/${hash.slice(1)}.png`), // 15 Zeichen
+    seg(`unknown/${hash}0.png`), // 17 Zeichen
+    seg(`unknown/${hash.slice(1)}g.png`), // kein Hex
+    seg(`unknown/${hash}.jpg`),
+    seg(`unknown/${hash}.PNG`),
+    seg(`unknown/x/${hash}.png`),
+    seg(`unknown/${hash}.png/x.png`),
+    seg('unknown/%2e%2e/assets/x.png'),
+    seg('unknown/%2E%2E/assets/maps/x.png'),
+    seg('unknown/../assets/maps/x.png'),
+    seg('unknown/x.png'),
+    seg('unknown/'),
+    ['unknown'],
+    [`{${hash}}`],
+  ];
+  for (const p of boese) assert.equal(safeCdragonUrl(p), null, `durchgelassen: ${JSON.stringify(p)}`);
+  assert.equal(safeCdragonUrl(seg(`unknown/${hash}.png`)), `${CDRAGON_GAME_BASE}unknown/${hash}.png`);
+});
+
 test('laesst die echten Bundle-Praefixe durch', () => {
   const echt = [
     'assets/maps/tft/icons/items/hexcore/tft_item_bluebuff.tft_set13.png',

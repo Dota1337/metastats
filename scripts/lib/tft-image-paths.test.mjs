@@ -4,20 +4,24 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   safeCdragonUrl,
   CDRAGON_GAME_BASE as TS_BASE,
   CDRAGON_PATH_PREFIXES as TS_PREFIXES,
+  CDRAGON_UNKNOWN_RE as TS_UNKNOWN_RE,
   imageContentType as tsContentType,
 } from '../../app/lib/cdragon-base.ts';
 import {
   mirrorKeyFor,
   collectImagePaths,
   looksLikeCompleteImage,
+  cdragonHashToPath,
   CDRAGON_GAME_BASE,
   CDRAGON_PATH_PREFIXES,
+  CDRAGON_UNKNOWN_RE,
   imageContentType,
 } from './tft-image-paths.mjs';
 
@@ -31,6 +35,38 @@ function routeKey(path) {
 test('Base und Praefixe sind in beiden Dateien gleich', () => {
   assert.equal(CDRAGON_GAME_BASE, TS_BASE);
   assert.deepEqual(CDRAGON_PATH_PREFIXES, [...TS_PREFIXES]);
+  assert.equal(CDRAGON_UNKNOWN_RE.source, TS_UNKNOWN_RE.source);
+  assert.equal(CDRAGON_UNKNOWN_RE.flags, TS_UNKNOWN_RE.flags);
+});
+
+test('Platzhalter werden zum unknown-Pfad, alles andere bleibt unberuehrt', () => {
+  assert.equal(cdragonHashToPath('{8dc562676f27747d}'), 'unknown/8dc562676f27747d.png');
+  const unveraendert = ['{8dc562676f27747}', '{8dc562676f27747d0}', '8dc562676f27747d', '{8DC562676F27747D}', 'none', '', 'assets/ux/x.png'];
+  for (const raw of unveraendert) assert.equal(cdragonHashToPath(raw), null, raw);
+  // Das Ergebnis muss die Regel der Route bestehen, sonst waere es wertlos.
+  const p = cdragonHashToPath('{8dc562676f27747d}');
+  assert.equal(routeKey(p), p);
+  assert.equal(mirrorKeyFor(p), p);
+});
+
+test('kein Bild-Feld traegt einen Platzhalter, und jedes Unit-Bild wird kopiert', () => {
+  const placeholders = [];
+  for (const f of readdirSync(PUBLIC_DIR).filter((n) => /^tft-assets.*\.json$/.test(n))) {
+    JSON.stringify(JSON.parse(readFileSync(resolve(PUBLIC_DIR, f), 'utf8')), (k, v) => {
+      if ((k === 'icon' || k === 'tile') && typeof v === 'string' && v.startsWith('{')) placeholders.push(`${f}: ${v}`);
+      return v;
+    });
+  }
+  assert.deepEqual(placeholders, []);
+
+  const { paths } = collectImagePaths(PUBLIC_DIR);
+  const known = new Set(paths);
+  assert.ok(paths.some((p) => CDRAGON_UNKNOWN_RE.test(p)), 'keine unknown-Bilder gesammelt');
+  const bundle = JSON.parse(readFileSync(resolve(PUBLIC_DIR, 'tft-assets.json'), 'utf8'));
+  for (const [id, c] of Object.entries(bundle.champions)) {
+    if (!c.icon || c.icon === 'none' || c.icon.startsWith('/') || c.icon.startsWith('http')) continue;
+    assert.ok(known.has(c.icon), `${id}: ${c.icon}`);
+  }
 });
 
 test('Grenzfaelle werden gleich entschieden', () => {
@@ -44,6 +80,16 @@ test('Grenzfaelle werden gleich entschieden', () => {
     'assets/ux/foo.gif',
     'assets/ux/foo',
     'assets/loadouts/companions/foo.png',
+    'unknown/8dc562676f27747d.png',
+    'unknown/8DC562676F27747D.png',
+    'unknown/8dc562676f27747.png',
+    'unknown/8dc562676f27747d.jpg',
+    'unknown/8dc562676f27747d.PNG',
+    'unknown/x/8dc562676f27747d.png',
+    'unknown/%2e%2e/assets/maps/x.png',
+    'unknown/../assets/maps/x.png',
+    'unknown/',
+    '{8dc562676f27747d}',
     'assets/maps/../../plugins/x.png',
     'assets/maps/./x.png',
     'assets/maps//x.png',

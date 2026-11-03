@@ -9,15 +9,30 @@
 //      prueft `tft-image-paths.test.mjs` beide Seiten gegeneinander.
 //   2. Welche dieser Pfade kommen in unseren Daten vor? Antwort: jede Zeichenkette
 //      in `public/tft-*.json`, die mit `assets/` beginnt (oder mit der vollen
-//      CDragon-Adresse) und die Regel aus 1. besteht. Bewusst ALLE Dateien, nicht
-//      nur das aktuelle Bundle: aeltere Sets und Turnier-/Comp-Dateien zeigen
-//      ebenfalls Bilder.
+//      CDragon-Adresse) oder dem `unknown/`-Muster entspricht und die Regel aus 1.
+//      besteht. Bewusst ALLE Dateien, nicht nur das aktuelle Bundle: aeltere Sets
+//      und Turnier-/Comp-Dateien zeigen ebenfalls Bilder.
 
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const CDRAGON_GAME_BASE = 'https://raw.communitydragon.org/latest/game/';
 export const CDRAGON_PATH_PREFIXES = ['assets/maps/', 'assets/characters/', 'assets/ux/'];
+// Gleich wie in app/lib/cdragon-base.ts: exaktes Muster, kein Praefix. Warum, steht dort.
+export const CDRAGON_UNKNOWN_RE = /^unknown\/[0-9a-f]{16}\.png$/;
+
+export function isAllowedPath(path) {
+  return CDRAGON_PATH_PREFIXES.some((p) => path.startsWith(p)) || CDRAGON_UNKNOWN_RE.test(path);
+}
+
+// CDragon schreibt fuer Dateien, deren Namen es nicht kennt, nur `{16-hex}` in die
+// Daten; das Bild liegt unter `unknown/<hash>.png`. Steht hier und nicht im
+// Abruf-Skript, damit der Test es laden kann, ohne das Skript zu starten.
+// Rueckgabe null: kein solcher Platzhalter.
+export function cdragonHashToPath(raw) {
+  const m = /^\{([0-9a-f]{16})\}$/.exec(raw);
+  return m ? `unknown/${m[1]}.png` : null;
+}
 
 // Gleiche Endungen wie IMG_EXT in app/lib/cdragon-base.ts.
 const IMG_EXT = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
@@ -38,7 +53,7 @@ export function mirrorKeyFor(path) {
     if (!seg || seg === '.' || seg === '..') return null;
     if (seg.includes('\\') || seg.includes('\0')) return null;
   }
-  if (!CDRAGON_PATH_PREFIXES.some((p) => path.startsWith(p))) return null;
+  if (!isAllowedPath(path)) return null;
   if (!imageContentType(path)) return null;
   let url;
   try {
@@ -75,7 +90,7 @@ function pathsInFile(file) {
   const found = [];
   for (const s of strings) {
     const rel = s.startsWith(CDRAGON_GAME_BASE) ? s.slice(CDRAGON_GAME_BASE.length) : s;
-    if (!rel.startsWith('assets/')) continue;
+    if (!rel.startsWith('assets/') && !CDRAGON_UNKNOWN_RE.test(rel)) continue;
     const key = mirrorKeyFor(rel);
     if (key) found.push(key);
   }

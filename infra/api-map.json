@@ -1622,6 +1622,7 @@
       "via": [
         "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
+        "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-supabase-reader.ts",
         "public/tft-set.json"

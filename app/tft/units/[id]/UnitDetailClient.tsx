@@ -87,11 +87,14 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
   useEffect(() => { loadTftAssets().then(b => { if (b) setAssets(b); }); }, []);
   useEffect(() => { if (!initialInfo) loadUnitInfo().then(setInfo); }, [initialInfo]);
   useEffect(() => {
-    fetch(`/api/tft/unit-history?characterId=${encodeURIComponent(id)}&bucket=${bucket}&patches=5`)
+    // Alte Antworten nach einem Filterwechsel verwerfen.
+    let cancelled = false;
+    fetch(`/api/tft/unit-history?characterId=${encodeURIComponent(id)}&bucket=${bucket}&region=${region}&patches=5`)
       .then(r => r.ok ? r.json() : { timeline: [] })
-      .then(d => setTimeline(d.timeline || []))
-      .catch(() => setTimeline([]));
-  }, [id, bucket]);
+      .then(d => { if (!cancelled) setTimeline(d.timeline || []); })
+      .catch(() => { if (!cancelled) setTimeline([]); });
+    return () => { cancelled = true; };
+  }, [id, bucket, region]);
   useEffect(() => {
     // Alte Antworten nach einem Rangwechsel verwerfen.
     let cancelled = false;

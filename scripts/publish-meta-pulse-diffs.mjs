@@ -264,6 +264,9 @@ async function main() {
                 set: Number(p.set_number), patch: p.patch, entity, lastDay: isoDay(p.last_day),
                 totalMatches: Number(p.total_matches), regions, buckets, now: Date.now(), closed,
                 requireWindow: true,
+                // Abgeschlossen: Tage + letzter Tag exakt, sonst bleibt nach einem spaeten
+                // Patch-Schnitt eine zu lange Datei stehen (18.5b, 03.11.2026).
+                ...(closed ? { exactDays: win.p_days } : {}),
                 ...(comp ?? {}),
               };
               if (!FORCE) {

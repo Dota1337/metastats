@@ -1,76 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { callRpc, getAvailablePatches, expandRegions, expandBuckets } from '../../../lib/tft-supabase-reader';
+import { callRpc, getAvailablePatches, expandRegions, expandBuckets, ALL_REGIONS, type PatchInfo } from '../../../lib/tft-supabase-reader';
 import { cachedJson } from '../../../lib/api-cache';
+import {
+  listKey,
+  normalizePatchDiffRows,
+  patchDiffWindowArgs,
+  PATCH_DIFF_BUCKETS,
+  type PatchDiffRow,
+} from '../../../lib/snapshot-matrix';
+import { loadPatchDiff } from '../../../lib/meta-pulse-diff-snapshot';
+import { buildUnitTimeline, UNIT_HISTORY_CLOSED_MAX_AGE_MS, UNIT_HISTORY_MAX_PATCHES } from '../../../lib/tft-unit-history';
 
-// /api/tft/unit-history?characterId=X&patches=5&bucket=master_plus
-// Per-unit avg_placement / pick_rate / top4 across last N patches.
+// /api/tft/unit-history?characterId=X&bucket=master_plus&region=all&patches=5
+// Patch-Verlauf einer Unit (Ø-Platz, Top 4, Pickrate) ueber die letzten Patches.
+//
+// Alle Regionen nur aus den Dateien der Box (tft/patch-diff/*), kein Live-
+// Rueckfall: ueber alle Regionen lief die Abfrage in die 8-s-Grenze, der Fehler
+// wurde verschluckt und die leere Antwort 6 h gecacht (Karte fehlte seit Wochen,
+// gefunden 03.11.2026). Fehlt eine Datei: weniger Punkte, kurz gecacht.
+// Einzelregion live, je Patch genau sein Fenster (0,3-2,8 s, siehe patch-diff).
+// Regionsgruppen und unbekannte Rang-Gruppen bietet die Seite nicht an, sie
+// bleiben leer, statt je Wert eine Abfrage auszuloesen.
 
-interface UnitRow {
-  character_id: string;
-  games: number;
-  sum_placement: number;
-  top4: number;
-  top1: number;
-  participants: number;
+// Alle Units einer Region teilen sich dieselbe Abfrage je Patch und Rang-Gruppe:
+// gleichzeitige Anfragen warten auf dieselbe, nach einem Fehler 60 s Ruhe.
+const LIVE_RETRY_AFTER_MS = 60_000;
+const liveInflight = new Map<string, Promise<PatchDiffRow[]>>();
+const liveFailedAt = new Map<string, number>();
+
+function liveRows(region: string, bucketLabel: string, buckets: string[], p: PatchInfo): Promise<PatchDiffRow[]> {
+  const key = `${region}|${bucketLabel}|${p.patch}`;
+  const running = liveInflight.get(key);
+  if (running) return running;
+  const failedAt = liveFailedAt.get(key);
+  if (failedAt && Date.now() - failedAt < LIVE_RETRY_AFTER_MS) return Promise.reject(new Error('Pause nach Fehler'));
+  const win = patchDiffWindowArgs(p);
+  if (!win) return Promise.reject(new Error(`Patch ${p.patch} ohne Tage`));
+  const run = callRpc<Record<string, unknown>[]>('get_tft_unit_stats', {
+    p_regions: [region],
+    p_buckets: buckets,
+    ...win,
+    p_patch: p.patch,
+    p_set: p.set_number,
+  })
+    .then(rows => {
+      liveFailedAt.delete(key);
+      return normalizePatchDiffRows('unit', rows);
+    })
+    .catch((e: unknown) => {
+      liveFailedAt.set(key, Date.now());
+      throw e;
+    })
+    .finally(() => liveInflight.delete(key));
+  liveInflight.set(key, run);
+  return run;
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const characterId = searchParams.get('characterId');
   if (!characterId) return NextResponse.json({ error: 'characterId required' }, { status: 400 });
-  const patchCount = Math.max(2, Math.min(10, parseInt(searchParams.get('patches') || '5', 10)));
+  const wanted = parseInt(searchParams.get('patches') || '', 10);
+  const patchCount = Math.max(2, Math.min(UNIT_HISTORY_MAX_PATCHES, wanted || UNIT_HISTORY_MAX_PATCHES));
   const bucket = searchParams.get('bucket') || 'master_plus';
-  const regionParam = searchParams.get('region') || 'all';
-  // A group name ('all','europe',…) expands to its platforms; a real platform
-  // ('euw1') must stay a single-element filter. Falling back to REGION_GROUPS.all
-  // for an unknown key silently turned a single-region request into a global one.
-  const regions = expandRegions(regionParam);
-  // Expand group names ('master_plus','all') to the real bucket values — the
-  // RPC matches bucket = ANY(...) and no row is literally tagged 'master_plus',
-  // so passing the group name returned 0 rows → empty timeline → missing chart.
+  const regions = expandRegions(searchParams.get('region') || 'all');
+  const allRegions = listKey(regions) === listKey(ALL_REGIONS);
+  if (!Object.hasOwn(PATCH_DIFF_BUCKETS, bucket) || (!allRegions && regions.length !== 1)) {
+    return cachedJson({ characterId, timeline: [] });
+  }
   const buckets = expandBuckets(bucket);
 
   const allPatches = await getAvailablePatches(180);
   const patches = allPatches.slice(0, patchCount);
-  if (patches.length === 0) return cachedJson({ characterId, timeline: [] });
+  // Leere Liste = Datenbank gerade nicht erreichbar: nicht 6 h festschreiben.
+  if (patches.length === 0) return cachedJson({ characterId, timeline: [] }, { degraded: true });
 
-  // Fire all patch RPCs in parallel — the previous sequential await loop
-  // was 5×5s = 25-30s cold. Promise.allSettled keeps a single failure from
-  // dropping the rest of the timeline.
-  const settled = await Promise.allSettled(patches.map(p =>
-    callRpc<UnitRow[]>('get_tft_unit_stats', {
-      p_regions: regions,
-      p_buckets: buckets,
-      p_days: 30,
-      p_patch: p.patch,
-      p_set: p.set_number,
-    }).then(rows => ({ p, rows }))
-  ));
+  const rowsByPatch = await Promise.all(patches.map((p): Promise<PatchDiffRow[] | null> => (allRegions
+    ? loadPatchDiff({
+      entity: 'unit',
+      regions,
+      bucketLabel: bucket,
+      buckets,
+      patch: p,
+      set: Number(p.set_number),
+      closed: p.patch !== allPatches[0].patch,
+      closedMaxAgeMs: UNIT_HISTORY_CLOSED_MAX_AGE_MS,
+    })
+    : liveRows(regions[0], bucket, buckets, p)
+  ).catch(() => null)));
 
-  const timeline: any[] = [];
-  for (const s of settled) {
-    if (s.status !== 'fulfilled') continue;
-    const { p, rows } = s.value;
-    const row = rows.find(r => r.character_id === characterId);
-    const participants = rows[0]?.participants || 0;
-    if (row && row.games > 0) {
-      timeline.push({
-        patch: p.patch,
-        firstDay: p.first_day,
-        lastDay: p.last_day,
-        games: Number(row.games),
-        avgPlacement: Number(row.sum_placement) / Number(row.games),
-        top4Rate: Number(row.top4) / Number(row.games),
-        top1Rate: Number(row.top1) / Number(row.games),
-        pickRate: participants > 0 ? Number(row.games) / Number(participants) : null,
-      });
-    }
-  }
-  // Oldest patch left, newest right. Order by last_day (the patch's most
-  // recent active day), which is monotonic with recency. Riot's raw
-  // game_version strings ("17.2" predates "16.10") don't sort chronologically,
-  // and first_day can tie across overlapping patches (16.9 and 16.10 both
-  // start 05-12), so last_day is the reliable key for "current = rightmost".
-  timeline.sort((a, b) => (a.lastDay < b.lastDay ? -1 : a.lastDay > b.lastDay ? 1 : 0));
-  return cachedJson({ characterId, timeline });
+  const { timeline, missing } = buildUnitTimeline(characterId, patches, rowsByPatch);
+  const res = cachedJson({ characterId, timeline }, { degraded: missing });
+  res.headers.set('x-snapshot', `unit-history=${allRegions ? 'blob' : 'live'}${missing ? '-partial' : ''}`);
+  return res;
 }

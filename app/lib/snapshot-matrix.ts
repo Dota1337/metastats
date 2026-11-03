@@ -1163,6 +1163,17 @@ export function isValidPatchDiff(snap: unknown, want: {
   graceMs?: number;
   /** Box: nur Blobs mit Patch-Fenster gelten, alte werden neu gerechnet. */
   requireWindow?: boolean;
+  /**
+   * Box, abgeschlossener Patch: die Datei muss genau diese Tage und denselben
+   * letzten Tag tragen. Sonst bleibt nach einem spaet eingetragenen Patch-Schnitt
+   * eine zu lange Datei stehen (18.5b am 03.11.2026: 9 statt 6 Tage, die Tage ab
+   * 28.10. doppelt mit 18.5c). Nur die Box prueft das: die Seite liest die alte
+   * Datei weiter, bis die neue da ist (hoechstens eine Stunde), statt eine Luecke
+   * zu zeigen.
+   */
+  exactDays?: number;
+  /** Nur Leser, abgeschlossener Patch: andere Frist als PATCH_DIFF_CLOSED_MAX_AGE_MS. */
+  closedMaxAgeMs?: number;
   /** Nur Comps: Zaehlart der Anfrage (compDeltaAssign); fehlt = klassisch. */
   assign?: CompAssign;
   /** Nur Comps: Katalog-Tage des Patches laut get_tft_comp_marked_days. */
@@ -1182,6 +1193,10 @@ export function isValidPatchDiff(snap: unknown, want: {
     return false;
   }
   if (Number(s.minGames) !== PATCH_DIFF_MIN_GAMES) return false;
+  if (want.exactDays != null
+    && (Number(s.days) !== want.exactDays || String(s.lastDay ?? '').slice(0, 10) !== String(want.lastDay).slice(0, 10))) {
+    return false;
+  }
   const comp = want.entity === 'comp';
   if (comp && (!compAssignMatches(s, want) || !compRowFloorMatches(s, want))) return false;
   if (comp && compClassicOfMixed(want)) return compClassicFileUsable(s, want, PATCH_DIFF_CLOSED_MAX_AGE_MS);
@@ -1193,7 +1208,7 @@ export function isValidPatchDiff(snap: unknown, want: {
     return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
   }
   const age = want.now - Date.parse(String(s.generatedAt));
-  const maxAge = want.closed ? PATCH_DIFF_CLOSED_MAX_AGE_MS : PATCH_DIFF_MAX_AGE_MS;
+  const maxAge = want.closed ? (want.closedMaxAgeMs ?? PATCH_DIFF_CLOSED_MAX_AGE_MS) : PATCH_DIFF_MAX_AGE_MS;
   return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
 }
 

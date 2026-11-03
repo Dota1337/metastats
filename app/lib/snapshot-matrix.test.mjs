@@ -528,6 +528,25 @@ const PD_WANT = {
   closed: false,
 };
 
+test('Patch-Diff-Blob: exactDays verlangt genau die Tage und den letzten Tag des Patches', () => {
+  // Fall 18.5b (03.11.2026): 9 statt 6 Tage, letzter Tag hinter dem Patch-Ende.
+  const base = { ...PD_SNAP, days: 6, window: 'patch', lastDay: '2026-10-27', generatedAt: '2026-10-07T09:00:00Z' };
+  const closed = { ...PD_WANT, closed: true, lastDay: '2026-10-27' };
+  assert.equal(isValidPatchDiff(base, { ...closed, exactDays: 6 }), true);
+  assert.equal(isValidPatchDiff({ ...base, days: 9 }, { ...closed, exactDays: 6 }), false);
+  assert.equal(isValidPatchDiff({ ...base, days: 6, lastDay: '2026-10-30' }, { ...closed, exactDays: 6 }), false);
+  // Der Leser verlangt das nicht: die alte Datei gilt weiter, bis die neue da ist.
+  assert.equal(isValidPatchDiff({ ...base, days: 9, lastDay: '2026-10-30' }, closed), true);
+});
+
+test('Patch-Diff-Blob: closedMaxAgeMs verlaengert nur abgeschlossene Patches', () => {
+  const old = { ...PD_SNAP, generatedAt: '2026-08-01T09:00:00Z' };   // gut 2 Monate
+  const long = 120 * 86_400_000;
+  assert.equal(isValidPatchDiff(old, { ...PD_WANT, closed: true }), false);
+  assert.equal(isValidPatchDiff(old, { ...PD_WANT, closed: true, closedMaxAgeMs: long }), true);
+  assert.equal(isValidPatchDiff(old, { ...PD_WANT, closed: false, closedMaxAgeMs: long }), false);
+});
+
 test('Patch-Diff-Blob: passender laufender und abgeschlossener Patch wird angenommen', () => {
   assert.equal(isValidPatchDiff(PD_SNAP, PD_WANT), true);
   // Abgeschlossen: andere Summe (180- gegen 30-Tage-Liste) zaehlt nicht.

@@ -902,6 +902,10 @@ export function isValidPatchDiff(snap, want) {
     }
     if (Number(s.minGames) !== PATCH_DIFF_MIN_GAMES)
         return false;
+    if (want.exactDays != null
+        && (Number(s.days) !== want.exactDays || String(s.lastDay ?? '').slice(0, 10) !== String(want.lastDay).slice(0, 10))) {
+        return false;
+    }
     const comp = want.entity === 'comp';
     if (comp && (!compAssignMatches(s, want) || !compRowFloorMatches(s, want)))
         return false;
@@ -915,7 +919,7 @@ export function isValidPatchDiff(snap, want) {
         return !want.closed && withinRunningGrace(s, want.lastDay, want.now, want.graceMs);
     }
     const age = want.now - Date.parse(String(s.generatedAt));
-    const maxAge = want.closed ? PATCH_DIFF_CLOSED_MAX_AGE_MS : PATCH_DIFF_MAX_AGE_MS;
+    const maxAge = want.closed ? (want.closedMaxAgeMs ?? PATCH_DIFF_CLOSED_MAX_AGE_MS) : PATCH_DIFF_MAX_AGE_MS;
     return Number.isFinite(age) && age >= -5 * 60 * 1000 && age <= maxAge;
 }
 // ---------------------------------------------------------------------------

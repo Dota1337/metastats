@@ -111,6 +111,8 @@ export async function loadPatchDiff(o: {
   patch: MetaPulsePatchInfo;
   set: number;
   closed: boolean;
+  /** Abgeschlossener Patch: andere Frist fuer das Alter der Datei. */
+  closedMaxAgeMs?: number;
   /** Nur Comps: Zaehlart und Tage des Patches je Zaehlart. */
   assign?: CompAssign;
   days?: CompPatchDays;
@@ -129,6 +131,7 @@ export async function loadPatchDiff(o: {
     buckets: o.buckets,
     now: Date.now(),
     closed: o.closed,
+    closedMaxAgeMs: o.closedMaxAgeMs,
     graceMs: RUNNING_PATCH_GRACE_MS,
     ...comp,
   });

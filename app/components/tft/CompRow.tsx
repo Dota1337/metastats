@@ -42,10 +42,14 @@ export interface DeltaView { pair: PatchDeltaPair; loading: boolean }
 // Pickrate darunter, User). Die Knopf-Leiste belegt weiter drei Spalten
 // (3 × 3.5rem + 2 Abstaende = 192 px; Comps-Reiter: 4 Knoepfe = 146 px), die
 // gesparte Breite geht an den Namen — die Units-Flaeche bleibt gleich breit.
+// Seit 03.11.2026 alle Werte-Spalten gleich breit und zentriert (User), Abstand
+// der Spaltenmitten ueberall 68 px. Nicht ueber 3.5rem gehen: ab 768 px liegen
+// drei dieser Spalten ueber den Knoepfen, jeder Pixel mehr fehlt den Units
+// (Comps-Reiter 768 px mit Scrollbalken: 62 px = 37 von 117 Zeilen umgebrochen).
 export function compListGrid(delta: boolean) {
   return delta
     ? {
-        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem_3.75rem]',
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_3.5rem_3.5rem_3.5rem_3.5rem_3.5rem]',
         // Units eine Spalte breiter als ohne Δ: die Δ-Spalte nimmt dem Namen
         // Platz, sonst bricht Flex bei 768 px um (gemessen 38 von 56 Zeilen).
         units: 'md:col-[1/6] md:row-start-2',
@@ -53,7 +57,7 @@ export function compListGrid(delta: boolean) {
         oneLineOnly: 'hidden',
       }
     : {
-        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_5rem_3.5rem_3.5rem_3.5rem] min-[85.375rem]:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_5rem_3.5rem_3.5rem_3.5rem_9.125rem]',
+        cols: 'md:grid-cols-[1.5rem_1.75rem_minmax(0,1fr)_3.5rem_3.5rem_3.5rem_3.5rem] min-[85.375rem]:grid-cols-[1.5rem_1.75rem_minmax(13rem,1fr)_minmax(0,auto)_3.5rem_3.5rem_3.5rem_3.5rem_9.125rem]',
         units: 'md:col-[1/5] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
         actions: 'md:col-[5/-1] md:row-start-2 min-[85.375rem]:col-auto min-[85.375rem]:row-auto',
         oneLineOnly: 'hidden min-[85.375rem]:block',
@@ -592,22 +596,22 @@ export default function CompRow({
             Entscheidungswerte (Top4/Top1) hell + semibold,
             Kontextwert (Pickrate) sekundär + medium,
             Stichprobe (Games) gedämpft + regular. */}
-        <div className="hidden md:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={top4ShareTip}>
+        <div className="hidden md:block text-center tabular-nums text-fg-bright font-semibold text-[13px]" title={top4ShareTip}>
           {comp.top4Rate != null ? `${(comp.top4Rate * 100).toFixed(0)}%` : '—'}
         </div>
-        <div className="hidden md:block text-right tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
+        <div className="hidden md:block text-center tabular-nums text-fg-bright font-semibold text-[13px]" title={winShareTip}>
           {comp.top1Rate != null ? `${(comp.top1Rate * 100).toFixed(0)}%` : '—'}
         </div>
         {/* Spiele oben, Pickrate direkt darunter (User 03.11.2026), Groessen
             und Farben wie vorher in zwei eigenen Spalten. */}
-        <div className="hidden md:flex flex-col items-end tabular-nums text-[13px] leading-tight">
+        <div className="hidden md:flex flex-col items-center tabular-nums text-[13px] leading-tight">
           <span className="text-fg-bright">{comp.games}</span>
           <span className="text-fg-secondary font-medium">
             {comp.pickRate != null ? `${(comp.pickRate * 100).toFixed(2)}%` : '—'}
           </span>
         </div>
         {deltaView && (
-          <div className="hidden md:block text-right tabular-nums">
+          <div className="hidden md:block text-center tabular-nums">
             {deltaValue}
           </div>
         )}

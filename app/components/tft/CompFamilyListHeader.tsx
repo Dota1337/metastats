@@ -30,17 +30,23 @@ export default function CompFamilyListHeader({
   onSort?: (next: CompHeaderSort | null) => void;
 }) {
   const grid = compListGrid(!!deltaView);
-  const label = (key: CompHeaderSort | null, text: string) => {
+  const label = (key: CompHeaderSort | null, text: string, stack?: 'top' | 'bottom') => {
     if (!onSort) return text;
     const active = sort === key;
+    // 24 px Tippflaeche auf dem Tablet. Spiele/Pickrate stehen so eng wie die
+    // Zahlen darunter (16 px, User 03.11.2026): ihre Flaeche waechst nur nach
+    // aussen in das py-2 des Kopfs, sonst ueberlappen sich die zwei Knoepfe.
+    const hit = stack === 'top'
+      ? 'relative before:absolute before:inset-x-0 before:-top-2 before:bottom-0'
+      : stack === 'bottom'
+        ? 'relative before:absolute before:inset-x-0 before:top-0 before:-bottom-2'
+        : 'min-h-6';
     return (
       <button
         type="button"
         aria-pressed={active}
         onClick={() => onSort(key)}
-        // min-h-6: 24 px Tippflaeche auf dem Tablet, auch fuer die zwei
-        // uebereinander stehenden Knoepfe Spiele/Pickrate.
-        className={`min-h-6 font-semibold transition-colors hover:text-white ${active ? 'text-white underline underline-offset-4 decoration-accent' : ''}`}
+        className={`${hit} font-semibold transition-colors hover:text-white ${active ? 'text-white underline underline-offset-4 decoration-accent' : ''}`}
       >
         {text}
       </button>
@@ -55,18 +61,19 @@ export default function CompFamilyListHeader({
         <div></div>
         <div>{label(null, t('nav.comps'))}</div>
         <div className={grid.oneLineOnly}></div>
-        {/* flex statt text-center: „Avg Placement" ist bei 13 px breiter als die
-            80-px-Spalte; text-center schiebt den Ueberhang nur nach rechts,
+        {/* Alle Werte-Spalten gleich breit und zentriert (User 03.11.2026). flex
+            statt text-center: „Avg. Place" ist bei 13 px breiter als die
+            56-px-Spalte; text-center schiebt den Ueberhang nur nach rechts,
             flex verteilt ihn auf beide Seiten. */}
         <div className="flex justify-center">{label('avg', t('tft.avgPlacement'))}</div>
-        <div className="text-right">{label('top4', t('tft.top4'))}</div>
-        <div className="text-right">{label('win', t('tft.top1'))}</div>
-        <div className="flex flex-col items-end">
-          <span>{label('games', t('tft.gamesShort'))}</span>
-          <span>{label('pick', t('tft.pickRate'))}</span>
+        <div className="flex justify-center">{label('top4', t('tft.top4'))}</div>
+        <div className="flex justify-center">{label('win', t('tft.top1'))}</div>
+        <div className="flex flex-col items-center">
+          <span>{label('games', t('tft.gamesShort'), 'top')}</span>
+          <span>{label('pick', t('tft.pickRate'), 'bottom')}</span>
         </div>
         {deltaView && (
-          <div className="text-right text-[#c39bff]">
+          <div className="flex justify-center text-[#c39bff]">
             {deltaHeader(t, deltaView.pair)}
           </div>
         )}

@@ -7,7 +7,10 @@ After=network-online.target
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-TimeoutStartSec=300
+# 600 statt 300 (03.11.2026): gemessen 130-251 s, und der Status wird erst ganz am
+# Ende geschrieben. Reisst der Lauf das Limit, gibt es fuer diese Nacht keinen
+# Stand, und der Ausfall faellt erst am zweiten Tag auf.
+TimeoutStartSec=600
 # Exit != 0 bei Vertragsbruch ist hier ERWUENSCHT: die Unit taucht dann in
 # `systemctl --failed` auf, das ist der Sichtbarkeits-Mechanismus. Deshalb darf
 # an dieser Unit NIEMALS ein OnSuccess= haengen und sie darf in keiner Kette

@@ -1,10 +1,10 @@
 {
   "set": 18,
   "source": "tactics.tools/info/patch-notes",
-  "fetchedAt": "2026-10-31T06:11:16.287Z",
+  "fetchedAt": "2026-11-05T09:48:52.330Z",
   "patches": {
     "18.1": {
-      "scrapedAt": "2026-10-31T06:11:16.513Z",
+      "scrapedAt": "2026-11-05T09:48:52.826Z",
       "sections": [
         {
           "category": "Mid-Patch Updates",
@@ -403,7 +403,7 @@
       }
     },
     "18.2": {
-      "scrapedAt": "2026-10-31T06:11:18.710Z",
+      "scrapedAt": "2026-11-05T09:48:55.209Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -897,7 +897,7 @@
       }
     },
     "18.3": {
-      "scrapedAt": "2026-10-31T06:11:20.910Z",
+      "scrapedAt": "2026-11-05T09:48:57.607Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -1276,7 +1276,7 @@
       }
     },
     "18.4": {
-      "scrapedAt": "2026-10-31T06:11:23.143Z",
+      "scrapedAt": "2026-11-05T09:49:00.002Z",
       "sections": [
         {
           "category": "MID-PATCH UPDATE",
@@ -1750,8 +1750,53 @@
       }
     },
     "18.5": {
-      "scrapedAt": "2026-10-31T06:11:25.187Z",
+      "scrapedAt": "2026-11-05T09:49:02.321Z",
       "sections": [
+        {
+          "category": "MID-PATCH UPDATE",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha’ZixBase Damage: 250/345/500 ⇒ 230/310/450 APIsolated Damage: 280/390/590 ⇒ 250/350/530 AP"
+            },
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "BramblebackArmor Ignore (AP): 25% ⇒ 10%Armor Ignore Base: 25% ⇒ 30%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Hand Of Justice",
+              "change": "Hand of JusticeOmnivamp: 15% ⇒ 12%Radiant Omnivamp: 30% ⇒ 25%"
+            }
+          ]
+        },
+        {
+          "category": "",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Brambleback",
+              "change": "Brambleback: Healing On-Hit: 5% ⇒ 4%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood Emblem’s stats have been properly corrected after having their nerf from 18.4 temporarily reverted."
+            },
+            {
+              "apiName": null,
+              "displayName": "Luxury Subscription",
+              "change": "Luxury Subscription correctly grants 2-star 1-cost champions."
+            },
+            {
+              "apiName": null,
+              "displayName": "U.R.F",
+              "change": "U.R.F. and Spreading Roots are now properly excluded"
+            }
+          ]
+        },
         {
           "category": "LARGE CHANGES",
           "entries": [
@@ -2009,7 +2054,156 @@
         }
       ],
       "counts": {
-        "totalEntries": 49,
+        "totalEntries": 56,
+        "withApiName": 0
+      }
+    },
+    "18.6": {
+      "scrapedAt": "2026-11-05T09:49:04.962Z",
+      "sections": [
+        {
+          "category": "LARGE CHANGES",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blossom 0",
+              "change": "BlossomAD/AP: 12/30/50/55% ⇒ 12/30/55/65%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Elderwood 0",
+              "change": "Elderwood9 Piece HP Bonus: 25% ⇒ 10%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sprykin 0",
+              "change": "SprykinBFF Ranged AD/AP: 15/28/33% ⇒ 15/30/38%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kobuko",
+              "change": "KobukoSpell Healing (AP): 285/335/480 ⇒ 300/350/550"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rek'Sai",
+              "change": "Rek'SaiSpell Healing (AP): 10/14/20 ⇒ 10/16/24"
+            },
+            {
+              "apiName": null,
+              "displayName": "Murkwolf",
+              "change": "MurkwolfEmpowered Attack Damage: 65/100/160 AD ⇒ 65/100/180 AD"
+            },
+            {
+              "apiName": null,
+              "displayName": "Malphite",
+              "change": "MalphiteShield: 735/885/2000 (AP) ⇒ 750/925/2000 (AP)Spell Damage (AP): 40/60/2000 ⇒ 100/150/2000"
+            },
+            {
+              "apiName": null,
+              "displayName": "Nidalee",
+              "change": "NidaleeAD FormHeal: 300/450/2000 (AP) ⇒ 325/550/2000 (AP)Third Cast Bonus Damage: 125% ⇒ 140%AP FormEmpowered Attack Damage: 185/275/2000 (AP) ⇒ 195/295/2000 (AP)Third Attack Damage: 330/500/3000 (AP) ⇒ 350/525/3000 (AP)"
+            },
+            {
+              "apiName": null,
+              "displayName": "Sentinel",
+              "change": "SentinelShield HP Ratio: 10% ⇒ 12%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Clockwork Accelerator",
+              "change": "Clockwork AcceleratorAS per Proc: 10% ⇒ 12%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Embiggen",
+              "change": "EmbiggenBonus Pixie AD/AP: 50% ⇒ 35%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Plot Armor",
+              "change": "Plot ArmorBase Resists: 8 ⇒ 10"
+            },
+            {
+              "apiName": null,
+              "displayName": "Shopping Spree",
+              "change": "Shopping SpreeInitial Gold Granted: 6 ⇒ 7"
+            },
+            {
+              "apiName": null,
+              "displayName": "Unrivaled",
+              "change": "UnrivaledRengar Heal Share: 25% ⇒ 50%Kha'Zix Mana Share: 50% ⇒ 70%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Rengar",
+              "change": "Rengar Heal Share: 25% ⇒ 50%"
+            },
+            {
+              "apiName": null,
+              "displayName": "Kha'Zix",
+              "change": "Kha'Zix Mana Share: 50% ⇒ 70%"
+            }
+          ]
+        },
+        {
+          "category": "BUG FIXES AND FOLLOW THE FIX CHECK IN",
+          "entries": [
+            {
+              "apiName": null,
+              "displayName": "Blighting Jewel",
+              "change": "Blighting Jewel no longer grants more AP than intended."
+            },
+            {
+              "apiName": null,
+              "displayName": "Slightly Magic Roll",
+              "change": "Slightly Magic Roll now correctly grants its HP and size."
+            },
+            {
+              "apiName": null,
+              "displayName": "Cooking Pot",
+              "change": "Cooking Pot is properly excluded from Coronation and Spreading Roots"
+            },
+            {
+              "apiName": null,
+              "displayName": "Flexible",
+              "change": "Flexible and U.R.F. should now be mutually exclusive."
+            },
+            {
+              "apiName": null,
+              "displayName": "Gambler's Blade",
+              "change": "Gambler's Blade no longer drops gold on PVE rounds."
+            },
+            {
+              "apiName": null,
+              "displayName": "Hard Commit",
+              "change": "Hard Commit no longer grants ineligible emblems."
+            },
+            {
+              "apiName": null,
+              "displayName": "Worth the Wait",
+              "change": "Worth the Wait and Worth the Wait II now properly display the select champion's name in the Augment tooltip"
+            },
+            {
+              "apiName": null,
+              "displayName": "Clear Mind",
+              "change": "Clear Mind will no longer grant XP erroneously under certain circumstances."
+            },
+            {
+              "apiName": null,
+              "displayName": "Cluttered Mind",
+              "change": "Cluttered mind will no longer grant XP erroneously under certain circumstances."
+            },
+            {
+              "apiName": null,
+              "displayName": "Nesting Anvils",
+              "change": "Nesting Anvils will no longer fail to grant the component anvil and gold when the player has a full bench"
+            }
+          ]
+        }
+      ],
+      "counts": {
+        "totalEntries": 26,
         "withApiName": 0
       }
     }

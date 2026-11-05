@@ -1,12 +1,12 @@
 {
   "set": 18,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-10-31T06:11:16.030Z",
+  "fetchedAt": "2026-11-05T09:48:52.080Z",
   "counts": {
     "silver": 69,
     "gold": 112,
     "prismatic": 68,
-    "pinned": 429
+    "pinned": 428
   },
   "tiers": {
     "DA_AugmentedPower": 1,
@@ -217,7 +217,6 @@
     "TFT_Augment_HardBargain": 2,
     "DA_HealingOrbsII": 2,
     "TFT9_Augment_HealingOrbsII": 2,
-    "DA_HeartOfSteel": 2,
     "TFT_Augment_WarmogsBuckle": 2,
     "DA_HeroicGrabBag": 2,
     "TFT10_Augment_HeroicGrabBag": 2,

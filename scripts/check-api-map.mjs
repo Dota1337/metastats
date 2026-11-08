@@ -24,18 +24,14 @@ const MAP_PATH = resolve(ROOT, 'infra', 'api-map.json');
 
 /**
  * Tabellen, die die Seite benutzt, die aber in keiner Migration angelegt
- * werden. Alle drei stammen aus der LoL-Zeit und wurden direkt in Supabase
- * erzeugt, bevor es den Migrations-Ordner gab. Sie stehen hier namentlich,
- * damit der Check nicht dauerhaft meckert — und damit auffaellt, wenn eine
- * VIERTE dazukommt: dann ist gerade jemand am Migrations-Ordner vorbei.
- * Seit 08.11.2026 raus: champion_stats (gibt es nicht, kein Leser mehr) und
- * die Sicht tft_position_unit_cell (build-api-map erkennt jetzt create view).
+ * werden. Die Liste ist seit 08.11.2026 leer: champion_stats (gab es nicht,
+ * kein Leser mehr) und die Sicht tft_position_unit_cell (build-api-map erkennt
+ * jetzt create view) sind raus, die drei alten LoL-Tabellen players,
+ * ranked_stats und market_value_history stehen seitdem in Migration 0118.
+ * Kommt hier wieder etwas hinzu, ist gerade jemand am Migrations-Ordner
+ * vorbei — dann lieber die Migration nachreichen als den Namen eintragen.
  */
-const KNOWN_UNDECLARED_TABLES = new Set([
-  'market_value_history',
-  'players',
-  'ranked_stats',
-]);
+const KNOWN_UNDECLARED_TABLES = new Set([]);
 
 if (!existsSync(MAP_PATH)) {
   console.error('✗ infra/api-map.json fehlt — `npm run build:api-map` laufen lassen.');

@@ -11,7 +11,7 @@
     "tables": 46,
     "rpcs": 38,
     "files": 12,
-    "edges": 516,
+    "edges": 398,
     "unused": 2,
     "unresolved": 1
   },
@@ -144,9 +144,7 @@
       "label": "/api/anomalies",
       "group": "anomalies",
       "file": "app/api/anomalies/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/MarketInsights.tsx"
@@ -159,9 +157,7 @@
       "group": "champions",
       "file": "app/api/champions/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/ddragon-version-server.ts",
-        "app/lib/lol-champion-filters.ts",
         "app/lib/lol-champion-list.ts"
       ],
       "used": true,
@@ -176,11 +172,9 @@
       "group": "champions",
       "file": "app/api/champions/[id]/builds/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/ddragon-version-server.ts",
         "app/lib/lol-item-names.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/regions.ts",
         "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
@@ -201,9 +195,7 @@
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-comp-guides-server.ts",
-        "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-comp-guides.ts"
       ],
       "used": true,
       "usedBy": [
@@ -224,9 +216,7 @@
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-comp-matchups-server.ts",
-        "app/lib/tft-roll-odds.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -243,9 +233,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
-        "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-comp-guides.ts"
       ],
       "used": true,
       "usedBy": [
@@ -259,16 +247,12 @@
       "group": "companion/v1",
       "file": "app/api/companion/v1/lobby/route.ts",
       "via": [
-        "app/lib/box-tls.mjs",
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
         "app/lib/tft-hetzner-matches.ts",
-        "app/lib/tft-player-search-server.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-player-search-server.ts"
       ],
       "used": true,
       "usedBy": [
@@ -285,9 +269,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
-        "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-comp-guides.ts"
       ],
       "used": true,
       "usedBy": [
@@ -304,9 +286,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
-        "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-comp-guides.ts"
       ],
       "used": true,
       "usedBy": [
@@ -322,12 +302,9 @@
       "via": [
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-player-search-server.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-player-search-server.ts"
       ],
       "used": true,
       "usedBy": [
@@ -344,9 +321,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/current-set.ts",
         "app/lib/tft-cdragon.ts",
-        "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-roll-odds.ts",
-        "public/tft-set.json"
+        "app/lib/tft-comp-guides.ts"
       ],
       "used": true,
       "usedBy": [
@@ -389,8 +364,7 @@
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [],
@@ -403,12 +377,10 @@
       "group": "homepage-stats",
       "file": "app/api/homepage-stats/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/ddragon-version-server.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -423,7 +395,6 @@
       "group": "img",
       "file": "app/api/img/[...p]/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/cdragon-base.ts"
       ],
       "used": true,
@@ -451,9 +422,7 @@
       "label": "/api/internal/ops-snapshot",
       "group": "internal",
       "file": "app/api/internal/ops-snapshot/route.ts",
-      "via": [
-        "app/lib/box-tls.mjs"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/internal/OpsGraph.tsx"
@@ -494,8 +463,6 @@
       "group": "leaderboard",
       "file": "app/api/leaderboard/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -510,8 +477,6 @@
       "group": "leaderboard",
       "file": "app/api/leaderboard/resolve/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -526,7 +491,6 @@
       "group": "live-game",
       "file": "app/api/live-game/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -541,7 +505,6 @@
       "group": "live-game",
       "file": "app/api/live-game/ranks/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -555,9 +518,7 @@
       "label": "/api/market-rankings",
       "group": "market-rankings",
       "file": "app/api/market-rankings/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/HomeClient.tsx"
@@ -570,11 +531,9 @@
       "group": "marktwert",
       "file": "app/api/marktwert/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -600,7 +559,6 @@
       "group": "mastery",
       "file": "app/api/mastery/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -615,7 +573,6 @@
       "group": "matches",
       "file": "app/api/matches/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -631,7 +588,6 @@
       "group": "patch-notes",
       "file": "app/api/patch-notes/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/ddragon-version-server.ts",
         "app/lib/lol-patch-dates.ts"
       ],
@@ -647,7 +603,6 @@
       "group": "player-season-stats",
       "file": "app/api/player-season-stats/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/seasons.ts"
       ],
       "used": true,
@@ -674,7 +629,6 @@
       "group": "summoner",
       "file": "app/api/summoner/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/seasons.ts"
       ],
@@ -693,9 +647,7 @@
       "label": "/api/tft/augments",
       "group": "tft",
       "file": "app/api/tft/augments/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
+      "via": [],
       "used": false,
       "usedBy": []
     },
@@ -706,11 +658,9 @@
       "group": "tft",
       "file": "app/api/tft/available-patches/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -726,7 +676,6 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/comp-detail-snapshot.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-fallback.ts",
@@ -735,8 +684,7 @@
         "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-comp-list-units.ts",
         "app/lib/tft-comp-matchups-server.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -766,14 +714,12 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/board/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-classify-comp.ts",
         "app/lib/tft-comp-guides-server.ts",
         "app/lib/tft-comp-guides.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -787,8 +733,7 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/community/route.ts",
       "via": [
-        "app/lib/current-set.ts",
-        "public/tft-set.json"
+        "app/lib/current-set.ts"
       ],
       "used": true,
       "usedBy": [
@@ -816,13 +761,11 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/duel/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-comp-matchups-server.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -836,19 +779,16 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/families/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/cdragon-base.ts",
         "app/lib/comp-detail-snapshot.ts",
         "app/lib/current-set.ts",
         "app/lib/og/data.ts",
         "app/lib/player-lookup-server.ts",
-        "app/lib/regions.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-cdragon.ts",
         "app/lib/tft-comp-catalog-resolver.ts",
         "app/lib/tft-player-search-server.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -863,8 +803,7 @@
       "file": "app/api/tft/comps/share/route.ts",
       "via": [
         "app/lib/community-author.ts",
-        "app/lib/current-set.ts",
-        "public/tft-set.json"
+        "app/lib/current-set.ts"
       ],
       "used": true,
       "usedBy": [
@@ -878,11 +817,9 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/trend/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -897,12 +834,10 @@
       "group": "tft/comps",
       "file": "app/api/tft/comps/variants/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-comp-list-units.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -916,12 +851,10 @@
       "group": "tft",
       "file": "app/api/tft/detail-builds/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-detail-builds.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -934,11 +867,7 @@
       "label": "/api/tft/explorer",
       "group": "tft",
       "file": "app/api/tft/explorer/route.ts",
-      "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/box-tls.mjs",
-        "app/lib/regions.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/tft/explorer/ExplorerFilters.tsx",
@@ -953,15 +882,12 @@
       "group": "tft",
       "file": "app/api/tft/items/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-detail-builds.ts",
         "app/lib/tft-stats-loader.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -981,13 +907,10 @@
       "group": "tft",
       "file": "app/api/tft/leaderboard/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1002,10 +925,8 @@
       "file": "app/api/tft/marktwert/route.ts",
       "via": [
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
-        "app/lib/tft-classify-comp.ts",
-        "public/tft-set.json"
+        "app/lib/tft-classify-comp.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1020,9 +941,7 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/history/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/current-set.ts",
-        "public/tft-set.json"
+        "app/lib/current-set.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1037,11 +956,9 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/leaderboard/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1055,10 +972,7 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/lookup/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/current-set.ts",
-        "app/lib/regions.ts",
-        "public/tft-set.json"
+        "app/lib/current-set.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1072,9 +986,7 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/movers/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/current-set.ts",
-        "public/tft-set.json"
+        "app/lib/current-set.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1087,10 +999,7 @@
       "label": "/api/tft/marktwert/peaks",
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/peaks/route.ts",
-      "via": [
-        "app/lib/api-cache.ts",
-        "public/tft-set.json"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/tft/MarketValueHero.tsx"
@@ -1102,10 +1011,7 @@
       "label": "/api/tft/marktwert/refresh",
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/refresh/route.ts",
-      "via": [
-        "app/lib/box-tls.mjs",
-        "app/lib/regions.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/tft/MarketValueHero.tsx",
@@ -1119,11 +1025,9 @@
       "group": "tft/marktwert",
       "file": "app/api/tft/marktwert/sparklines/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1137,7 +1041,6 @@
       "group": "tft",
       "file": "app/api/tft/matches/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -1154,13 +1057,11 @@
       "group": "tft",
       "file": "app/api/tft/meta-pulse/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/comp-assign-server.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1176,13 +1077,10 @@
       "group": "tft",
       "file": "app/api/tft/onetricks/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-hetzner-matches.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1196,13 +1094,11 @@
       "group": "tft",
       "file": "app/api/tft/patch-diff/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/comp-assign-server.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1220,12 +1116,10 @@
       "group": "tft",
       "file": "app/api/tft/patch-notes/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-patch-label.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1239,8 +1133,6 @@
       "group": "tft",
       "file": "app/api/tft/player-scoring/route.ts",
       "via": [
-        "app/lib/box-tls.mjs",
-        "app/lib/regions.ts",
         "app/lib/tft-hetzner-matches.ts"
       ],
       "used": true,
@@ -1256,11 +1148,9 @@
       "file": "app/api/tft/player-stats/route.ts",
       "via": [
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/tft-player-cache.ts",
-        "app/lib/tft-rank-history.ts",
-        "public/tft-set.json"
+        "app/lib/tft-rank-history.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1289,10 +1179,8 @@
       "group": "tft/positions",
       "file": "app/api/tft/positions/by-units/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
-        "app/lib/tft-classify-comp.ts",
-        "public/tft-set.json"
+        "app/lib/tft-classify-comp.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1319,9 +1207,7 @@
       "label": "/api/tft/pros",
       "group": "tft/pros",
       "file": "app/api/tft/pros/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/tft/player/[slug]/TftPlayerClient.tsx",
@@ -1336,11 +1222,8 @@
       "group": "tft/pros",
       "file": "app/api/tft/pros/by-comp/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
-        "app/lib/tft-hetzner-matches.ts",
-        "public/tft-set.json"
+        "app/lib/tft-hetzner-matches.ts"
       ],
       "used": false,
       "usedBy": []
@@ -1352,11 +1235,9 @@
       "group": "tft/pros",
       "file": "app/api/tft/pros/specialty/route.ts",
       "via": [
-        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/tft-classify-comp.ts",
-        "app/lib/tft-hetzner-matches.ts",
-        "public/tft-set.json"
+        "app/lib/tft-hetzner-matches.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1370,12 +1251,10 @@
       "group": "tft",
       "file": "app/api/tft/regions/divergence/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1389,13 +1268,10 @@
       "group": "tft",
       "file": "app/api/tft/rising/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/box-tls.mjs",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-hetzner-matches.ts",
-        "public/tft-set.json"
+        "app/lib/tft-hetzner-matches.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1409,9 +1285,7 @@
       "label": "/api/tft/search-players",
       "group": "tft",
       "file": "app/api/tft/search-players/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
+      "via": [],
       "used": true,
       "usedBy": [
         "app/components/Nav.tsx",
@@ -1427,7 +1301,6 @@
       "group": "tft",
       "file": "app/api/tft/search-riot/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/tft-player-search-server.ts"
       ],
       "used": true,
@@ -1442,9 +1315,7 @@
       "group": "tft",
       "file": "app/api/tft/sets/current/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/tft-patch-label.ts",
-        "public/tft-set.json"
+        "app/lib/tft-patch-label.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1458,7 +1329,6 @@
       "group": "tft",
       "file": "app/api/tft/status/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/riot-status.ts"
       ],
@@ -1474,7 +1344,6 @@
       "group": "tft",
       "file": "app/api/tft/summoner/route.ts",
       "via": [
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -1490,11 +1359,9 @@
       "group": "tft",
       "file": "app/api/tft/tournaments/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1510,11 +1377,9 @@
       "group": "tft",
       "file": "app/api/tft/trait-unitcount/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1529,12 +1394,10 @@
       "group": "tft",
       "file": "app/api/tft/traits/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1553,12 +1416,10 @@
       "group": "tft",
       "file": "app/api/tft/unit-history/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
         "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1572,15 +1433,12 @@
       "group": "tft",
       "file": "app/api/tft/units/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
-        "app/lib/regions.ts",
         "app/lib/snapshot-fallback.ts",
         "app/lib/snapshot-lookup.ts",
         "app/lib/tft-detail-builds.ts",
         "app/lib/tft-stats-loader.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
+        "app/lib/tft-supabase-reader.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1603,11 +1461,9 @@
       "group": "tournaments",
       "file": "app/api/tournaments/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1622,11 +1478,9 @@
       "group": "tournaments",
       "file": "app/api/tournaments/standings/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/current-set.ts",
         "app/lib/meta-pulse-diff-snapshot.ts",
-        "app/lib/snapshot-lookup.ts",
-        "public/tft-set.json"
+        "app/lib/snapshot-lookup.ts"
       ],
       "used": true,
       "usedBy": [
@@ -1640,8 +1494,6 @@
       "group": "transfer-predictions",
       "file": "app/api/transfer-predictions/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
-        "app/lib/regions.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -1656,7 +1508,6 @@
       "group": "version",
       "file": "app/api/version/route.ts",
       "via": [
-        "app/lib/api-cache.ts",
         "app/lib/ddragon-version-server.ts"
       ],
       "used": true,
@@ -1701,19 +1552,19 @@
       "id": "db:market_value_history",
       "kind": "table",
       "label": "market_value_history",
-      "declared": false
+      "declared": true
     },
     {
       "id": "db:players",
       "kind": "table",
       "label": "players",
-      "declared": false
+      "declared": true
     },
     {
       "id": "db:ranked_stats",
       "kind": "table",
       "label": "ranked_stats",
-      "declared": false
+      "declared": true
     },
     {
       "id": "db:site_config",
@@ -2306,11 +2157,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/anomalies",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/champions",
       "to": "ext:ddragon",
       "kind": "fetches"
@@ -2323,11 +2169,6 @@
     {
       "from": "api:/api/champions",
       "to": "file:champion-stats-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/champions",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -2346,28 +2187,8 @@
       "kind": "fetches"
     },
     {
-      "from": "api:/api/champions/[id]/builds",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/champions/[id]/builds",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/companion/v1/comp",
       "to": "ext:cdragon",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/comp",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/comp",
-      "to": "ext:riot-web",
       "kind": "fetches"
     },
     {
@@ -2404,21 +2225,6 @@
       "from": "api:/api/companion/v1/comps",
       "to": "ext:cdragon",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/comps",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/comps",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/comps",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/companion/v1/comps",
@@ -2467,21 +2273,6 @@
     },
     {
       "from": "api:/api/companion/v1/items",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/items",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/items",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/items",
       "to": "file:tft-assets.json",
       "kind": "reads"
     },
@@ -2507,23 +2298,8 @@
     },
     {
       "from": "api:/api/companion/v1/lobby",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lobby",
       "to": "ext:riot-api",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lobby",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lobby",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/companion/v1/lobby",
@@ -2552,21 +2328,6 @@
     },
     {
       "from": "api:/api/companion/v1/lookups",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lookups",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lookups",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/lookups",
       "to": "file:tft-assets.json",
       "kind": "reads"
     },
@@ -2587,21 +2348,6 @@
     },
     {
       "from": "api:/api/companion/v1/player",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/player",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/player",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/companion/v1/player",
       "to": "file:tft-assets.json",
       "kind": "reads"
     },
@@ -2618,27 +2364,12 @@
     {
       "from": "api:/api/companion/v1/search",
       "to": "ext:cdragon",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/search",
-      "to": "ext:metatft",
       "kind": "fetches"
     },
     {
       "from": "api:/api/companion/v1/search",
       "to": "ext:riot-api",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/search",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/search",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/companion/v1/search",
@@ -2664,21 +2395,6 @@
       "from": "api:/api/companion/v1/units",
       "to": "ext:cdragon",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/units",
-      "to": "ext:metatft",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/units",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/units",
-      "to": "file:tft-assets-*.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/companion/v1/units",
@@ -2727,11 +2443,6 @@
     },
     {
       "from": "api:/api/feed/tft-patches",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/feed/tft-patches",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -2757,11 +2468,6 @@
     },
     {
       "from": "api:/api/homepage-stats",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/homepage-stats",
       "to": "file:champion-stats-*.json",
       "kind": "reads"
     },
@@ -2773,11 +2479,6 @@
     {
       "from": "api:/api/homepage-stats",
       "to": "file:pro-teams.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/homepage-stats",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -2794,11 +2495,6 @@
       "from": "api:/api/img/[...p]",
       "to": "ext:cdragon",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/img/[...p]",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/internal/ops-snapshot",
@@ -2826,11 +2522,6 @@
       "kind": "fetches"
     },
     {
-      "from": "api:/api/leaderboard",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/leaderboard/resolve",
       "to": "db:players",
       "kind": "reads"
@@ -2839,11 +2530,6 @@
       "from": "api:/api/leaderboard/resolve",
       "to": "ext:riot-api",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/leaderboard/resolve",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/live-game",
@@ -2866,11 +2552,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/market-rankings",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/marktwert",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -2888,16 +2569,6 @@
     {
       "from": "api:/api/marktwert",
       "to": "db:ranked_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/marktwert",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/marktwert",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -2936,11 +2607,6 @@
       "kind": "fetches"
     },
     {
-      "from": "api:/api/patch-notes",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/player-season-stats",
       "to": "db:lol_player_match_cache",
       "kind": "reads"
@@ -2953,11 +2619,6 @@
     {
       "from": "api:/api/player-season-stats",
       "to": "file:seasons.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/player-season-stats",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -2991,11 +2652,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/tft/augments",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/tft/available-patches",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -3003,16 +2659,6 @@
     {
       "from": "api:/api/tft/available-patches",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/available-patches",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/available-patches",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3042,17 +2688,7 @@
     },
     {
       "from": "api:/api/tft/comps",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps",
       "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3137,17 +2773,7 @@
     },
     {
       "from": "api:/api/tft/comps/board",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/board",
       "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps/board",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3169,11 +2795,6 @@
       "from": "api:/api/tft/comps/board",
       "to": "fn:get_tft_set_bucket_coverage",
       "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/comps/community",
-      "to": "ext:riot-web",
-      "kind": "fetches"
     },
     {
       "from": "api:/api/tft/comps/community",
@@ -3203,16 +2824,6 @@
     {
       "from": "api:/api/tft/comps/duel",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps/duel",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/duel",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3282,11 +2893,6 @@
     },
     {
       "from": "api:/api/tft/comps/families",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/families",
       "to": "file:tft-assets-*.json",
       "kind": "reads"
     },
@@ -3337,11 +2943,6 @@
     },
     {
       "from": "api:/api/tft/comps/share",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/share",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3353,16 +2954,6 @@
     {
       "from": "api:/api/tft/comps/trend",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps/trend",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/trend",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3402,17 +2993,7 @@
     },
     {
       "from": "api:/api/tft/comps/variants",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/variants",
       "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/comps/variants",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3438,16 +3019,6 @@
     {
       "from": "api:/api/tft/detail-builds",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/detail-builds",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/detail-builds",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3491,16 +3062,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/tft/explorer",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/explorer",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/tft/items",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -3508,21 +3069,6 @@
     {
       "from": "api:/api/tft/items",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/items",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/items",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/items",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3587,16 +3133,6 @@
     },
     {
       "from": "api:/api/tft/leaderboard",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/leaderboard",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/leaderboard",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3617,27 +3153,12 @@
     },
     {
       "from": "api:/api/tft/marktwert",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert",
       "to": "file:tft-assets-*.json",
       "kind": "reads"
     },
     {
       "from": "api:/api/tft/marktwert",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/history",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/history",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3657,16 +3178,6 @@
     },
     {
       "from": "api:/api/tft/marktwert/leaderboard",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/leaderboard",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/leaderboard",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3682,32 +3193,7 @@
     },
     {
       "from": "api:/api/tft/marktwert/lookup",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/lookup",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/lookup",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/lookup",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/movers",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/movers",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3727,16 +3213,6 @@
     },
     {
       "from": "api:/api/tft/marktwert/peaks",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/peaks",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/peaks",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3746,24 +3222,9 @@
       "kind": "fetches"
     },
     {
-      "from": "api:/api/tft/marktwert/refresh",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
       "from": "api:/api/tft/marktwert/sparklines",
       "to": "blob:manifest",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/sparklines",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/marktwert/sparklines",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/tft/marktwert/sparklines",
@@ -3788,16 +3249,6 @@
     {
       "from": "api:/api/tft/meta-pulse",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/meta-pulse",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/meta-pulse",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3847,16 +3298,6 @@
     },
     {
       "from": "api:/api/tft/onetricks",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/onetricks",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/onetricks",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3878,16 +3319,6 @@
     {
       "from": "api:/api/tft/patch-diff",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/patch-diff",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/patch-diff",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -3947,11 +3378,6 @@
     },
     {
       "from": "api:/api/tft/patch-notes",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/patch-notes",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -3968,11 +3394,6 @@
     {
       "from": "api:/api/tft/player-scoring",
       "to": "box:hetzner",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/player-scoring",
-      "to": "ext:riot-api",
       "kind": "fetches"
     },
     {
@@ -4022,11 +3443,6 @@
     },
     {
       "from": "api:/api/tft/player-stats",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/player-stats",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -4067,17 +3483,7 @@
     },
     {
       "from": "api:/api/tft/positions/by-units",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/positions/by-units",
       "to": "file:tft-assets-*.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/positions/by-units",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -4102,11 +3508,6 @@
     },
     {
       "from": "api:/api/tft/pros",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/pros",
       "to": "fn:get_tft_pros_classified",
       "kind": "calls"
     },
@@ -4122,27 +3523,12 @@
     },
     {
       "from": "api:/api/tft/pros/by-comp",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/pros/by-comp",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/pros/by-comp",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
     {
       "from": "api:/api/tft/pros/specialty",
       "to": "box:hetzner",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/pros/specialty",
-      "to": "ext:riot-web",
       "kind": "fetches"
     },
     {
@@ -4163,16 +3549,6 @@
     {
       "from": "api:/api/tft/regions/divergence",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/regions/divergence",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/regions/divergence",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -4212,22 +3588,7 @@
     },
     {
       "from": "api:/api/tft/rising",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/rising",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/rising",
       "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/search-players",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -4247,16 +3608,6 @@
     },
     {
       "from": "api:/api/tft/sets/current",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/sets/current",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/sets/current",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -4271,11 +3622,6 @@
       "kind": "fetches"
     },
     {
-      "from": "api:/api/tft/status",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/tft/summoner",
       "to": "ext:riot-api",
       "kind": "fetches"
@@ -4284,16 +3630,6 @@
       "from": "api:/api/tft/tournaments",
       "to": "blob:manifest",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/tournaments",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/tournaments",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/tft/tournaments",
@@ -4318,16 +3654,6 @@
     {
       "from": "api:/api/tft/trait-unitcount",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/trait-unitcount",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/trait-unitcount",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -4362,16 +3688,6 @@
     },
     {
       "from": "api:/api/tft/traits",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/traits",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/traits",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -4402,16 +3718,6 @@
     },
     {
       "from": "api:/api/tft/unit-history",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/unit-history",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/unit-history",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -4438,21 +3744,6 @@
     {
       "from": "api:/api/tft/units",
       "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/units",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/units",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/units",
-      "to": "file:tft-assets.json",
       "kind": "reads"
     },
     {
@@ -4522,16 +3813,6 @@
     },
     {
       "from": "api:/api/tournaments",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tournaments",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tournaments",
       "to": "file:tft-set.json",
       "kind": "reads"
     },
@@ -4544,16 +3825,6 @@
       "from": "api:/api/tournaments/standings",
       "to": "ext:lolesports",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tournaments/standings",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tournaments/standings",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/tournaments/standings",
@@ -4591,19 +3862,9 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/transfer-predictions",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
       "from": "api:/api/version",
       "to": "ext:ddragon",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/version",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
     },
     {
       "from": "fn:get_tft_available_patches",

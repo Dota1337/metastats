@@ -156,7 +156,9 @@ function collapseToWildcard(names) {
 }
 
 function markersFor(file) {
-  const text = read(file);
+  // Ohne Kommentare: eine erwaehnte Adresse ist kein Abruf (08.11.2026: 8 von 9
+  // MetaTFT-Kanten kamen aus einem Kommentar in tft-roll-odds.ts:16).
+  const text = stripComments(read(file), file);
   const tables = new Set();
   const rpcs = new Set();
   const externals = new Set();
@@ -198,6 +200,10 @@ function resolveImport(spec, fromFile) {
   else if (spec.startsWith('.')) base = resolve(dirname(fromFile), spec);
   else return null; // Paket aus node_modules
   for (const cand of [`${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), base]) {
+    // Eingelesene JSON-Daten sind kein Code: wer sie als Code durchsucht, findet
+    // jede darin erwaehnte Adresse als Abruf. Die Datei selbst zaehlt weiter ueber
+    // das Pfad-Literal im Import (RE_JSON_LITERALS).
+    if (/\.json$/i.test(cand)) continue;
     if (existsSync(cand) && statSync(cand).isFile()) return cand;
   }
   return null;

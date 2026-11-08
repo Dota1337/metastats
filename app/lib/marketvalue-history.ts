@@ -6,6 +6,10 @@
 // Altzeilen (split_estimated) sind aus gemischten Splits gerechnet. Sie bilden
 // eine eigene Gruppe, damit der erste echte Split-Wert nicht gegen eine
 // Mischrechnung als "Explosion" oder "Einbruch" erscheint.
+//
+// Ebenso der Rechnungsstand (formula_rev, Migration 0120): aendert sich die
+// Rechnung fuer eine Rolle (08.11.2026 Support-Zweig), ist der Sprung keine
+// Veraenderung des Spielers. Fehlt die Spalte in einer Zeile, gilt Stand null.
 
 export interface MvHistoryRow {
   player_id: string;
@@ -13,12 +17,13 @@ export interface MvHistoryRow {
   recorded_at: string;
   split_id: string | null;
   split_estimated: boolean | null;
+  formula_rev?: number | null;
 }
 
-export const MV_HISTORY_COLUMNS = 'player_id, market_value, recorded_at, split_id, split_estimated';
+export const MV_HISTORY_COLUMNS = 'player_id, market_value, recorded_at, split_id, split_estimated, formula_rev';
 
 function groupKey(r: MvHistoryRow): string {
-  return `${r.split_id ?? ''}|${r.split_estimated ? 'est' : ''}`;
+  return `${r.split_id ?? ''}|${r.split_estimated ? 'est' : ''}|${r.formula_rev ?? ''}`;
 }
 
 /**

@@ -27,6 +27,18 @@ test('neueste Zeile vor der Woche: keine Wochenveraenderung', () => {
   assert.equal(weeklyReferenceByPlayer([row('a', 100, 15), row('a', 150, 9)], now).has('a'), false);
 });
 
+test('neuer Rechnungsstand (0120) trennt Gruppen, fehlende Spalte = Ursprung', () => {
+  const rev = (r, v) => ({ ...r, formula_rev: v });
+  const m = weeklyReferenceByPlayer([
+    row('a', 100, 10), rev(row('a', 145, 1), 2),                  // Sprung durch die Rechnung: kein Vergleich
+    rev(row('b', 140, 10), 2), rev(row('b', 150, 1), 2),          // gleicher Stand: Vergleich
+    row('c', 100, 10), rev(row('c', 110, 1), null),               // null und fehlend sind gleich
+  ], now);
+  assert.equal(m.has('a'), false);
+  assert.equal(m.get('b'), 140);
+  assert.equal(m.get('c'), 100);
+});
+
 test('Split-Wechsel und geschaetzte Gruppen zaehlen nicht', () => {
   const m = weeklyReferenceByPlayer([
     row('a', 100, 10, 's2'), row('a', 150, 1, 's3'),

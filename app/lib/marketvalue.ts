@@ -312,20 +312,26 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
 
   // === Role-Specific Factors ===
 
-  if (role === 'SUPPORT') {
+  if (role === 'SUPPORT' || role === 'UTILITY') {
+    // Riot nennt die Rolle UTILITY; bis 08.11.2026 griff dieser Zweig nie und Supports liefen durch den
+    // Schuetzen-Zweig (Multiplikator Median 0,99). Boni geeicht an 35 Supports ab Diamond (240 Spieler,
+    // Patch 16.15+, Gegenprobe auf getrennten Spielen): mit den alten Boni lagen Supports bei
+    // 1,33 / 1,64 / 1,80 (p10/p50/p90) gegen 1,21 / 1,47 / 1,75 der anderen Rollen, weil Sicht hier viermal
+    // zaehlt (Vision Score, Wards, Vision/Min, Dominanz). Mit diesen Boni 1,21 / 1,47 / 1,61.
+    // Grenzen und Strafen sind unveraendert. Rechnungsstand: SUPPORT_FORMULA_REV.
     const assistsPerGame = totalAssists / matches.length;
-    if (assistsPerGame > 18) { multiplier += 0.175; add('Support', 'Assists/Spiel', +0.175, `${assistsPerGame.toFixed(1)} (>18)`); }
-    else if (assistsPerGame > 12) { multiplier += 0.10; add('Support', 'Assists/Spiel', +0.10, `${assistsPerGame.toFixed(1)} (>12)`); }
+    if (assistsPerGame > 18) { multiplier += 0.12; add('Support', 'Assists/Spiel', +0.12, `${assistsPerGame.toFixed(1)} (>18)`); }
+    else if (assistsPerGame > 12) { multiplier += 0.07; add('Support', 'Assists/Spiel', +0.07, `${assistsPerGame.toFixed(1)} (>12)`); }
     else if (assistsPerGame < 6) { multiplier -= 0.10; add('Support', 'Assists/Spiel', -0.10, `${assistsPerGame.toFixed(1)} (<6)`); }
 
-    if (avgVision > 45) { multiplier += 0.175; add('Vision', 'Vision Score', +0.175, `${avgVision.toFixed(1)} (>45)`); }
-    else if (avgVision > 30) { multiplier += 0.10; add('Vision', 'Vision Score', +0.10, `${avgVision.toFixed(1)} (>30)`); }
+    if (avgVision > 45) { multiplier += 0.12; add('Vision', 'Vision Score', +0.12, `${avgVision.toFixed(1)} (>45)`); }
+    else if (avgVision > 30) { multiplier += 0.07; add('Vision', 'Vision Score', +0.07, `${avgVision.toFixed(1)} (>30)`); }
     else if (avgVision < 10) { multiplier -= 0.10; add('Vision', 'Vision Score', -0.10, `${avgVision.toFixed(1)} (<10)`); }
 
-    if (avgWards > 25) { multiplier += 0.10; add('Vision', 'Wards/Spiel', +0.10, `${avgWards.toFixed(1)} (>25)`); }
+    if (avgWards > 25) { multiplier += 0.07; add('Vision', 'Wards/Spiel', +0.07, `${avgWards.toFixed(1)} (>25)`); }
     else if (avgWards < 10) { multiplier -= 0.05; add('Vision', 'Wards/Spiel', -0.05, `${avgWards.toFixed(1)} (<10)`); }
 
-    if (avgDragons + avgBarons > 0.5) { multiplier += 0.10; add('Objectives', 'Dragon+Baron', +0.10, `${(avgDragons + avgBarons).toFixed(2)}/Spiel`); }
+    if (avgDragons + avgBarons > 0.5) { multiplier += 0.07; add('Objectives', 'Dragon+Baron', +0.07, `${(avgDragons + avgBarons).toFixed(2)}/Spiel`); }
 
     const avgHealShield = avgOptional(matches, m => {
       if (m.totalHealsOnTeammates == null && m.totalDamageShieldedOnTeammates == null) return undefined;
@@ -333,18 +339,18 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
     });
     if (avgHealShield != null) {
       const hsPerMin = avgHealShield / avgDuration;
-      if (hsPerMin > 500) { multiplier += 0.10; add('Support', 'Heal/Shield pro Min', +0.10, `${hsPerMin.toFixed(0)} (>500)`); }
-      else if (hsPerMin > 300) { multiplier += 0.05; add('Support', 'Heal/Shield pro Min', +0.05, `${hsPerMin.toFixed(0)} (>300)`); }
+      if (hsPerMin > 500) { multiplier += 0.07; add('Support', 'Heal/Shield pro Min', +0.07, `${hsPerMin.toFixed(0)} (>500)`); }
+      else if (hsPerMin > 300) { multiplier += 0.035; add('Support', 'Heal/Shield pro Min', +0.035, `${hsPerMin.toFixed(0)} (>300)`); }
     }
 
     const avgCC = avgOptional(matches, m => m.timeCCingOthers);
     if (avgCC != null) {
-      if (avgCC > 40) { multiplier += 0.08; add('Support', 'CC Score', +0.08, `${avgCC.toFixed(1)} (>40)`); }
-      else if (avgCC > 25) { multiplier += 0.04; add('Support', 'CC Score', +0.04, `${avgCC.toFixed(1)} (>25)`); }
+      if (avgCC > 40) { multiplier += 0.06; add('Support', 'CC Score', +0.06, `${avgCC.toFixed(1)} (>40)`); }
+      else if (avgCC > 25) { multiplier += 0.03; add('Support', 'CC Score', +0.03, `${avgCC.toFixed(1)} (>25)`); }
     }
 
-    if (visionPerMin > 1.5) { multiplier += 0.06; add('Vision', 'Vision/Min', +0.06, `${visionPerMin.toFixed(2)} (>1.5)`); }
-    if (visionDominance != null && visionDominance > 0.7) { multiplier += 0.06; add('Vision', 'Vision Dominanz', +0.06, `${(visionDominance * 100).toFixed(0)}% (>70%)`); }
+    if (visionPerMin > 1.5) { multiplier += 0.04; add('Vision', 'Vision/Min', +0.04, `${visionPerMin.toFixed(2)} (>1.5)`); }
+    if (visionDominance != null && visionDominance > 0.7) { multiplier += 0.04; add('Vision', 'Vision Dominanz', +0.04, `${(visionDominance * 100).toFixed(0)}% (>70%)`); }
 
   } else if (role === 'JUNGLE') {
     if (kda > 4.0) { multiplier += 0.175; add('Kampf', 'KDA', +0.175, `${kda.toFixed(2)} (>4.0)`); }
@@ -453,6 +459,17 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
   }
 
   return { multiplier: Math.max(multiplier, 0.1), breakdown };
+}
+
+/**
+ * Stand der Rechnung, den market_value_history.formula_rev je Zeile mitschreibt (Migration 0120).
+ * null = Ursprung. Nur Rollen, deren Rechnung sich geaendert hat, bekommen einen Stand; Vergleiche im
+ * Verlauf laufen nur innerhalb gleichen Stands (marketvalue-history.ts). Neue Aenderung an einem Zweig:
+ * Zahl erhoehen, sonst meldet die Seite den Sprung als echte Veraenderung.
+ */
+export const SUPPORT_FORMULA_REV = 2;
+export function formulaRevFor(role: string): number | null {
+  return role === 'SUPPORT' || role === 'UTILITY' ? SUPPORT_FORMULA_REV : null;
 }
 
 export function calculateMarketValue(

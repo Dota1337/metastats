@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
-import { calculateMarketValue } from '../../lib/marketvalue';
+import { calculateMarketValue, formulaRevFor } from '../../lib/marketvalue';
 import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
@@ -534,6 +534,8 @@ export async function GET(request: NextRequest) {
           games_analyzed: splitRankedMatches.length,
           base_value: marketValue.baseValue,
           multiplier: Math.round(marketValue.multiplier * 1000) / 1000,
+          // Rechnungsstand (0120): Verlaufs-Vergleiche nur innerhalb gleichen Stands.
+          formula_rev: formulaRevFor(marketValue.role),
         });
       if (historyError) console.error('market_value_history insert error:', historyError);
     }

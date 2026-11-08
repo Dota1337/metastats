@@ -8,6 +8,7 @@ import {
   parseBracketGrid,
   sheetTabs,
   stageName,
+  staleStages,
 } from './tft-live-standings.mjs';
 
 const grid = (text) => text.trim().split('\n').map(l => l.split(','));
@@ -176,4 +177,21 @@ test('Vertrag: Bewertung', () => {
 
   // Mehrere Zeilen je Stufe: die neueste zaehlt.
   assert.equal(run([{ stage: 'A', fetched_at: ago(9) }, { stage: 'A', fetched_at: ago(1) }]).status, 'ok');
+});
+
+test('staleStages: umbenannte Reiter, nur je Quelle', () => {
+  const db = [
+    { source: 'gsheet', stage: 'TOC-Semifinal' }, { source: 'gsheet', stage: 'TOC-Semifinal' },
+    { source: 'gsheet', stage: 'Semifinals' }, { source: 'gsheet', stage: 'TOC-Final' },
+    { source: 'apactft', stage: 'Standings' },
+  ];
+  const seen = new Map([['gsheet', new Set(['Semifinals', 'Finals'])]]);
+  assert.deepEqual(staleStages(db, seen), [
+    { source: 'gsheet', stage: 'TOC-Semifinal' }, { source: 'gsheet', stage: 'TOC-Final' },
+  ]);
+  // Quelle ohne gelesene Stufen: nichts loeschen (apactft oben bleibt, leeres Set ebenso).
+  assert.deepEqual(staleStages(db, new Map([['gsheet', new Set()]])), []);
+  assert.deepEqual(staleStages([], seen), []);
+  // Alles noch geliefert: nichts.
+  assert.deepEqual(staleStages([{ source: 'gsheet', stage: 'Finals' }], seen), []);
 });

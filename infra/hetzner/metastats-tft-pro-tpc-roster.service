@@ -1,3 +1,4 @@
+# STILLGELEGT 2026-08-02 — NICHT wieder aktivieren.
 [Unit]
 Description=TFT TPC Pro-Circuit Roster Crawler (Liquipedia → tpc_verified flag)
 After=network-online.target

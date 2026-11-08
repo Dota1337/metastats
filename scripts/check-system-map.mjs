@@ -58,11 +58,12 @@ const MANUAL_ONLY = new Set([
 ]);
 
 /**
- * Scripts, die pro-teams.json pflegen. Sie haben KEINEN automatischen Aufrufer
- * mehr, sind aber nicht verwaist: /teams, /ligen, der Knowledge-Graph und die
- * Transfer-Predictions lesen diese Datei live. Nicht loeschen — hier fehlt ein
- * Scheduler, kein Code. Stand 2026-08-03 ist die Datei vom 21.05. eingefroren,
- * und zwei der Crawler haengen an der abgeschalteten Riot-eSports-API.
+ * Scripts, die pro-teams.json pflegen. Nicht verwaist: /teams, /ligen,
+ * homepage-stats und die Transfer-Predictions lesen diese Datei live.
+ * crawl-pro-teams laeuft woechentlich (pro-teams-weekly.yml); die uebrigen
+ * bewusst NIE automatisch: crawl-rosters-validated ueberschriebe echte Kader
+ * mit festen Maerz-Kadern, link-team-rosters nahm im Probelauf 08.11.2026 233
+ * Konten das #Tag (pro-players.json traegt keine gepruefte mainAccount mehr).
  */
 const TEAM_DATA_MAINTAINERS = new Set([
   'scripts/crawl-pro-teams.mjs',

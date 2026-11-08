@@ -239,22 +239,12 @@ async function main() {
     console.log(`      Hinweis: ddragon meldet ${ddragonVersion}, der Terminplan LoL ${lolPatch} — ddragon hinkt nach einem Go-Live bis zu zwei Tage hinterher.`);
   }
 
-  // Set-Start/-Ende aus der Riot-Roadmap, falls gecrawlt. Bei einem Set-Wechsel
-  // gelten die alten Daten nicht mehr; ohne Roadmap-Eintrag liefert Riots
-  // Terminplan den Start (erster Patch der Set).
+  // Set-Start aus Riots Terminplan (erster Patch der Set). Bei einem Set-Wechsel
+  // gelten die alten Daten nicht mehr. Ein Set-Ende gibt es nur als Hand-Eintrag
+  // in tft-set.json — die eingefrorene tft-roadmap.json (Stand Mai 2026) ist
+  // seit 08.11.2026 weg, sie lieferte fuer Set 18 und 19 ohnehin nichts Neues.
   let setStartDate = changed ? null : (stored?.setStartDate ?? null);
-  let setEndDate = changed ? null : (stored?.setEndDate ?? null);
-  const ROADMAP = 'public/tft-roadmap.json';
-  if (existsSync(ROADMAP)) {
-    try {
-      const roadmap = JSON.parse(readFileSync(ROADMAP, 'utf8'));
-      const info = roadmap.sets?.[String(live.number)];
-      if (info) {
-        setStartDate = info.startDate || setStartDate;
-        setEndDate = info.endDate || setEndDate;
-      }
-    } catch {}
-  }
+  const setEndDate = changed ? null : (stored?.setEndDate ?? null);
   setStartDate ??= startsFor(stored, live.number)[0]?.from_day ?? null;
 
   const payload = {

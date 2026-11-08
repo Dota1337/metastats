@@ -259,31 +259,6 @@ async function fetchRiotAPI(nameTag) {
   }
 }
 
-async function getRiotRank(puuid, region) {
-  if (!RIOT_API_KEY || !puuid) return 'Unknown';
-  try {
-    const platformMap = {
-      'kr': 'kr', 'euw': 'euw1', 'na': 'na1', 'eun': 'eun1',
-      'br': 'br1', 'jp': 'jp1', 'oce': 'oc1'
-    };
-    const platform = platformMap[region?.toLowerCase()] || 'euw1';
-    const url = `https://${platform}.api.riotgames.com/lol/summoner/v4/summoners/by-puuid/${puuid}`;
-    const sumRes = await fetch(url, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
-    if (!sumRes.ok) return 'Unknown';
-    const sumData = await sumRes.json();
-
-    const leagueUrl = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-summoner/${sumData.id}`;
-    const leagueRes = await fetch(leagueUrl, { headers: { 'X-Riot-Token': RIOT_API_KEY } });
-    if (!leagueRes.ok) return 'Unknown';
-    const leagues = await leagueRes.json();
-    const soloq = leagues.find(l => l.queueType === 'RANKED_SOLO_5x5');
-    if (!soloq) return 'Unranked';
-    return `${soloq.tier} ${soloq.rank} ${soloq.leaguePoints}LP`;
-  } catch {
-    return 'Unknown';
-  }
-}
-
 // =========================================================
 // Main validation logic
 // =========================================================

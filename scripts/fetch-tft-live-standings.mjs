@@ -30,7 +30,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { inLiveWindow, liveStarted, num, parseBracketGrid, sheetTabs, stageName } from './lib/tft-live-standings.mjs';
+import { inLiveWindow, liveStarted, num, parseBracketGrid, sheetTabs, stageName, staleStages } from './lib/tft-live-standings.mjs';
 
 function loadEnv() {
   const candidates = ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')];
@@ -224,6 +224,8 @@ async function readWholeSheet(id) {
     }
   }
   if (!stages.length && failed) throw new Error(`alle ${failed} Reiter gescheitert`);
+  // Teil-Ausfall merken: dann darf main() keine verschwundenen Stufen loeschen.
+  if (failed) stages.partial = true;
   return stages;
 }
 
@@ -268,19 +270,27 @@ async function main() {
   let sources = 0, failed = 0, written = 0;
   for (const t of due) {
     const prune = inWindow(t);
+    // Welche Stufen lieferte dieser Lauf je Quelle, und war er vollstaendig?
+    // Nur dann werden Stufen geloescht, die keine Quelle mehr kennt.
+    const seen = new Map();
+    let complete = true;
     for (const url of Array.isArray(t.standings_sources) ? t.standings_sources : []) {
       sources++;
       let stages;
       try { stages = await readSource(url); }
-      catch (e) { failed++; console.warn(`  [fail] ${t.id} ${url}: ${e.message}`); continue; }
+      catch (e) { failed++; complete = false; console.warn(`  [fail] ${t.id} ${url}: ${e.message}`); continue; }
       // Vor Turnierbeginn (+1 Tag) ist eine leere Tabelle normal, kein Fehler —
       // sonst endet der Lauf mit Exit 2, wenn nur angekuendigte Turniere faellig sind.
       if (!stages.length) {
+        complete = false;
         if (!liveStarted(t, now)) { console.log(`  [no-table, noch nicht begonnen] ${t.id} ${url}`); continue; }
         failed++; console.warn(`  [no-table] ${t.id} ${url}`); continue;
       }
+      if (stages.partial) complete = false;
 
       for (const s of stages) {
+        if (!seen.has(s.source)) seen.set(s.source, new Set());
+        seen.get(s.source).add(s.stage);
         const byRaw = new Map();
         for (const r of s.rows) if (!byRaw.has(r.raw)) byRaw.set(r.raw, r);   // PK (…, raw_name)
         const rows = [...byRaw.values()].map(r => {
@@ -310,6 +320,13 @@ async function main() {
         } else if (stale.length) {
           console.log(`    kept ${stale.length} stale row(s) (${prune ? 'shrank >50%' : 'outside window'})`);
         }
+      }
+    }
+    if (prune && complete && seen.size && !DRY) {
+      const dbRows = await sb(`tft_tournament_live_standings?select=source,stage&tournament_id=eq.${enc(t.id)}&limit=5000`);
+      for (const g of staleStages(dbRows, seen)) {
+        await sb(`tft_tournament_live_standings?tournament_id=eq.${enc(t.id)}&source=eq.${enc(g.source)}&stage=eq.${enc(g.stage)}`, { method: 'DELETE' });
+        console.log(`  ${t.id} · ${g.source} · ${g.stage}: Stufe von keiner Quelle mehr geliefert, entfernt`);
       }
     }
   }

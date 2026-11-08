@@ -138,21 +138,11 @@ async function main() {
       // Resolve puuid → Riot ID
       let gameName, tagLine;
 
+      // Riot liefert in den Ranglisten nur noch die puuid; der fruehere Weg ueber
+      // summonerId (summoner/v4/summoners/{id}) ist abgeschaltet. Ohne puuid → SKIP.
       if (entry.puuid) {
         const account = await riotFetch(
           `https://${REGIONAL}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${entry.puuid}`
-        );
-        gameName = account.gameName;
-        tagLine = account.tagLine;
-      } else {
-        // Older API: resolve via summonerId → puuid → account
-        await sleep(1200);
-        const summoner = await riotFetch(
-          `https://${REGION}.api.riotgames.com/lol/summoner/v4/summoners/${entry.summonerId}`
-        );
-        await sleep(1200);
-        const account = await riotFetch(
-          `https://${REGIONAL}.api.riotgames.com/riot/account/v1/accounts/by-puuid/${summoner.puuid}`
         );
         gameName = account.gameName;
         tagLine = account.tagLine;

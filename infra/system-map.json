@@ -1055,7 +1055,6 @@
       "schedule": [],
       "scripts": [
         "scripts/detect-tft-set.mjs",
-        "scripts/fetch-tft-roadmap.mjs",
         "scripts/refresh-augment-tiers.mjs",
         "scripts/refresh-augment-stages.mjs",
         "scripts/refresh-patch-notes.mjs",

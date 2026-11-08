@@ -39,7 +39,6 @@ export const DAILY_TABLES = [
   'tft_daily_item_stats',
   'tft_daily_trait_stats',
   'tft_daily_comp_pairs',
-  'tft_daily_augment_stats',
   'tft_daily_trait_unitcount_stats',
   'tft_daily_crawl_meta',
   'tft_daily_comp_outcome',
@@ -328,25 +327,9 @@ export async function writeTftStatsToSupabase(opts) {
   await upsertRows('tft_daily_item_stats', itemRows,
     'region,bucket,patch,set_number,day,api_name');
 
-  // 4) Augments — per slot
-  const augRows = [];
-  for (const [apiName, slotMap] of Object.entries(payload.byAugment || {})) {
-    for (const [slotKey, buckets] of Object.entries(slotMap)) {
-      const slot = Number(slotKey);
-      if (Number.isNaN(slot)) continue;
-      for (const bucket of PERSIST_BUCKETS) {
-        const b = buckets[bucket];
-        if (!b || !b.games) continue;
-        augRows.push({
-          ...baseRow, bucket, api_name: apiName, slot,
-          games: b.games, sum_placement: b.sumPlacement, top4: b.top4,
-        });
-      }
-    }
-  }
-  log(`  [supabase] augment_stats: ${augRows.length} rows`);
-  await upsertRows('tft_daily_augment_stats', augRows,
-    'region,bucket,patch,set_number,day,api_name,slot');
+  // 4) Augments: Schreibweg am 08.11.2026 entfernt. Riots Match-V1 liefert seit
+  // Juni 2026 keine Augments mehr, es kamen nur noch 0 Zeilen an. Die Tabelle
+  // tft_daily_augment_stats bleibt mit ihrem Altbestand fuer /tft/augments.
 
   // 5) Traits — per activation level
   const traitRows = [];

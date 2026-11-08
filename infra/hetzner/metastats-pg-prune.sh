@@ -12,7 +12,18 @@
 # from cold-fills (kr/vn2) — that's governed by --max-cold-ids in the collector.
 #
 # Installed at /usr/local/bin/metastats-pg-prune.sh, run weekly via cron.
+# NICHT automatisch ausgerollt (deploy-hetzner kopiert nur scripts/): nach
+# einer Aenderung von Hand nach /usr/local/bin kopieren.
 set -euo pipefail
+
+# Sperre fuer den ganzen Lauf (08.11.2026). Vorher hielt pg_try_advisory_lock
+# in einem eigenen psql-Aufruf — die Sperre fiel mit dem Ende dieses Aufrufs
+# sofort wieder weg und schuetzte nichts. flock haelt, solange dieses Skript lebt.
+exec 9>/run/lock/metastats-pg-prune.lock
+if ! flock -n 9; then
+  echo "$(date -u +%FT%TZ) pg-prune laeuft bereits — dieser Lauf endet ohne Aenderung"
+  exit 0
+fi
 
 ENV_FILE=/etc/metastats-crawler/env
 if [ -f "$ENV_FILE" ]; then set -a; . "$ENV_FILE"; set +a; fi
@@ -46,8 +57,17 @@ fi
 
 # Lobbys + Bezugswerte der Spieler-Bewertung (0105): dieselbe Regel, nur das
 # laufende Set bleibt. Tabellen fehlen, solange 0105 nicht eingespielt ist.
+# In Portionen wie oben: nach einem Setwechsel sind das Millionen Zeilen
+# (~200.000 Lobbys je Tag, gemessen 31.10.-07.11.2026), in EINER Anweisung
+# waere das ein riesiger WAL-Schub auf einmal.
 if [ "$(psqlc "select to_regclass('public.tft_match_lobby') is not null;")" = "t" ]; then
-  LOBBY_OLD=$(psqlc "with d as (delete from tft_match_lobby where set_number is distinct from $CUR returning 1) select count(*) from d;")
+  LOBBY_OLD=0
+  while true; do
+    N=$(psqlc "with d as (delete from tft_match_lobby where ctid in (select ctid from tft_match_lobby where set_number is distinct from $CUR limit 50000) returning 1) select count(*) from d;")
+    LOBBY_OLD=$((LOBBY_OLD + N))
+    [ "$N" -eq 0 ] && break
+  done
+  if [ "$LOBBY_OLD" -gt 0 ]; then psqlc "vacuum (analyze) tft_match_lobby;" >/dev/null; fi
   POP_OLD=$(psqlc "with d as (delete from tft_player_scoring_population where set_number is distinct from $CUR returning 1) select count(*) from d;")
   echo "  lobby: $LOBBY_OLD alte Lobbys, $POP_OLD alte Bezugswerte geloescht"
 fi
@@ -68,22 +88,16 @@ fi
 #   • 2-Tage-TODAY-Guard (logic-flow): pg-prune läuft Sonntags 03:00 UTC während
 #     daily-crawl bei 00:00 UTC schon Backups produziert hat — niemals
 #     heutige/gestrige Backups droppen.
-#   • Advisory-Lock (logic-flow): falls Driver jemals selber prunet, wir wollen
-#     keine Race auf DROP TABLE.
+#   • Gegen zwei Laeufe gleichzeitig: flock oben am Skript (seit 08.11.2026,
+#     ersetzt die wirkungslose Advisory-Sperre).
 # ──────────────────────────────────────────────────────────────────────────
 
 PRUNE_AFTER_DAYS=21
 PRUNE_TODAY_GUARD_DAYS=2
-ADVISORY_LOCK_KEY=68740620   # arbitrary 32-bit int — eindeutig für pg-prune-backup
 
 echo "$(date -u +%FT%TZ) backup-prune: window=${PRUNE_AFTER_DAYS}d, guard=${PRUNE_TODAY_GUARD_DAYS}d"
 
-# pg_try_advisory_lock returnt true wenn der Lock geholt werden konnte. Bei
-# false: ein anderer Prozess prunet gerade — wir skippen ohne zu warten.
-LOCK_OK=$(psqlc "select pg_try_advisory_lock($ADVISORY_LOCK_KEY);")
-if [ "$LOCK_OK" != "t" ]; then
-  echo "  advisory lock held by another process — skipping backup-prune"
-else
+{
   # Tabellen-Liste holen: Regex-anchored auf das Driver-Naming-Pattern.
   # Format: tft_pmvs_backup_YYYYMMDD_<region> (region kann Ziffern enthalten,
   # daher [a-z0-9]+).
@@ -116,8 +130,6 @@ else
     fi
   done
   echo "  backup-prune done: dropped=$DROPPED, kept=$KEPT"
-
-  psqlc "select pg_advisory_unlock($ADVISORY_LOCK_KEY);" >/dev/null
-fi
+}
 
 echo "$(date -u +%FT%TZ) prune done."

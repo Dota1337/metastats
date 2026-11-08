@@ -7,7 +7,8 @@ import { cachedJson, SLOW_CACHE_CONTROL } from '../../../../lib/api-cache';
 
 // Returns everything the SetTimeline UI needs:
 //   - current set metadata (number, name, start, end, current patch)
-//   - all patches for this set (major from Riot roadmap, B/mini from our own
+//   - all patches for this set (major from Riot's patch schedule in
+//     tft-set.json#patchStarts, B/mini from our own
 //     tft_daily_unit_stats.patch distinct values — those are the ones we saw
 //     in actual matches, so hotfix patches that don't show up on Riot's
 //     support page are still captured)
@@ -28,12 +29,16 @@ export const dynamic = 'force-dynamic';
 interface Patch {
   version: string;          // "17.3" / "17.3b"
   date: string;             // ISO YYYY-MM-DD
-  isMajor: boolean;         // present in Riot roadmap
-  isHotfix: boolean;        // detected in DB but not in roadmap (B/c/mini patch)
+  isMajor: boolean;         // present in Riot's patch schedule
+  isHotfix: boolean;        // detected in DB but not in the schedule (B/c/mini patch)
 }
 
-interface RoadmapPatch { version: string; set: number; date: string }
-interface RoadmapShape { patches: RoadmapPatch[]; sets: Record<string, { startDate: string; endDate: string | null; patches: { version: string; date: string }[] }> }
+// Riots Terminplan, gepflegt von detect-tft-patch-schedule.mjs (gleiche Quelle
+// wie startsFor in scripts/lib/tft-patch-day.mjs). Ersetzt seit 08.11.2026 die
+// eingefrorene tft-roadmap.json (Stand Mai 2026, ohne Set 19).
+interface PatchStart { set: number; patch: string; from_day: string }
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const PATCH = /^\d+\.\d+$/;
 
 function loadJson<T = any>(rel: string): T | null {
   const p = resolve(process.cwd(), 'public', rel);
@@ -47,19 +52,21 @@ export async function GET() {
   if (!tftSet) {
     return NextResponse.json({ error: 'tft-set.json missing' }, { status: 503 });
   }
-  const roadmap = loadJson<RoadmapShape>('tft-roadmap.json');
-
   const setNumber: number = tftSet.setNumber;
-  const setInfo = roadmap?.sets?.[String(setNumber)];
-  const startDate = setInfo?.startDate || tftSet.setStartDate || null;
-  const endDate = setInfo?.endDate || tftSet.setEndDate || null;
+  const starts: PatchStart[] = (Array.isArray(tftSet.patchStarts) ? tftSet.patchStarts : [])
+    .filter((p: PatchStart) => p && p.set === setNumber && PATCH.test(String(p.patch)) && DAY.test(String(p.from_day)))
+    .sort((a: PatchStart, b: PatchStart) => a.from_day.localeCompare(b.from_day));
+  const startDate = tftSet.setStartDate || starts[0]?.from_day || null;
+  // Set-Ende bewusst nur aus tft-set.json: ohne Ende blendet MarketValueHero die
+  // Set-Zeitleiste aus, so wie bisher (die Roadmap trug fuer Set 18 auch keins).
+  const endDate = tftSet.setEndDate || null;
 
-  // Major patches from the roadmap (canonical labels + scheduled dates).
+  // Major patches from Riot's schedule (canonical labels + scheduled dates).
   // We index by base version ("17.3") so DB rows with the same base label
   // can match against them.
   const majorByVersion = new Map<string, string>();
-  for (const p of setInfo?.patches || []) {
-    majorByVersion.set(p.version, p.date);
+  for (const p of starts) {
+    majorByVersion.set(p.patch, p.from_day);
   }
 
   // Hotfix / B-patches: distinct patches we've actually observed in matches
@@ -77,11 +84,11 @@ export async function GET() {
         .map((r: { patch: string; first_day: string }) => ({ patch: r.patch, first_day: r.first_day }));
     }
   } catch {
-    // DB unavailable — degrade to roadmap-only patches
+    // DB unavailable — degrade to schedule-only patches
   }
 
-  // Merge: every roadmap major (whether already-live or future) + every DB
-  // distinct patch. Roadmap dates take precedence over DB first_day for
+  // Merge: every scheduled major (whether already-live or future) + every DB
+  // distinct patch. Schedule dates take precedence over DB first_day for
   // major patches; DB-only patches get isHotfix=true.
   const patchMap = new Map<string, Patch>();
   for (const [version, date] of majorByVersion) {
@@ -96,7 +103,7 @@ export async function GET() {
     if (!tftPatch) continue;
     const existing = patchMap.get(tftPatch);
     if (existing) {
-      // major patch already covered by the roadmap — skip
+      // major patch already covered by the schedule — skip
       continue;
     }
     const base = tftPatch.match(/^(\d+\.\d+)/)?.[1];
@@ -118,7 +125,7 @@ export async function GET() {
   }
 
   // 1h frisch reicht: ein Patch-Drop ist damit binnen einer Stunde in der
-  // Timeline. `degraded`, wenn weder Roadmap noch DB Patches geliefert haben —
+  // Timeline. `degraded`, wenn weder Terminplan noch DB Patches geliefert haben —
   // dann waere die Timeline leer, und genau das darf sich nicht festsetzen.
   return cachedJson({
     setNumber,

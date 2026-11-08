@@ -37,8 +37,8 @@ export function sheetTabs(html) {
 
 // Anzeigenamen der Stufen. Die Tabelle selbst nennt sie in der Spieler-Liste so
 // („Starting Stage": Play-ins, Swiss Stage); User-Entscheid 03.11.2026.
-// Einmal festgelegt lassen: eine spaetere Umbenennung hinterlaesst alte Zeilen,
-// weil der Sammler nur innerhalb einer Stufe aufraeumt.
+// Einmal festgelegt lassen: eine Umbenennung hier laesst die alte Stufe stehen,
+// bis ein vollstaendiger Lauf sie per staleStages() abraeumt.
 const STAGE_NAMES = { 'PI-Score': 'Play-ins', 'SS-Score': 'Swiss Stage' };
 export const stageName = (tab) => (Object.hasOwn(STAGE_NAMES, tab) ? STAGE_NAMES[tab] : tab);
 
@@ -92,6 +92,27 @@ export function parseBracketGrid(rows) {
     if (block) return block;
   }
   return null;
+}
+
+/**
+ * Stufen eines Turniers, die in der Datenbank liegen, im vollstaendigen Lauf
+ * aber keine Quelle mehr liefert — umbenannte oder geloeschte Reiter (TOC Fall
+ * 2026: „TOC-Semifinal" → „Semifinals" am 08.11., die alten Zeilen blieben als
+ * zweiter Reiter auf der Seite stehen). Nur aufrufen, wenn JEDE Quelle des
+ * Turniers ohne Ausfall gelesen wurde, sonst verschwindet ein Reiter, der nur
+ * gerade nicht erreichbar war.
+ * @param {Array<{source:string, stage:string}>} dbRows
+ * @param {Map<string, Set<string>>} seen  source → gelesene Stufen
+ * @returns {Array<{source:string, stage:string}>}
+ */
+export function staleStages(dbRows, seen) {
+  const out = new Map();
+  for (const r of dbRows) {
+    const got = seen.get(r.source);
+    if (!got || !got.size || got.has(r.stage)) continue;
+    out.set(`${r.source}|${r.stage}`, { source: r.source, stage: r.stage });
+  }
+  return [...out.values()];
 }
 
 /** Turniere, die der Vertrag gerade prueft: im Fenster, begonnen, nicht ausgenommen. */

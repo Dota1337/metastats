@@ -24,17 +24,17 @@ const MAP_PATH = resolve(ROOT, 'infra', 'api-map.json');
 
 /**
  * Tabellen, die die Seite benutzt, die aber in keiner Migration angelegt
- * werden. Alle fuenf stammen aus der LoL-Zeit und wurden direkt in Supabase
+ * werden. Alle drei stammen aus der LoL-Zeit und wurden direkt in Supabase
  * erzeugt, bevor es den Migrations-Ordner gab. Sie stehen hier namentlich,
  * damit der Check nicht dauerhaft meckert — und damit auffaellt, wenn eine
- * SECHSTE dazukommt: dann ist gerade jemand am Migrations-Ordner vorbei.
+ * VIERTE dazukommt: dann ist gerade jemand am Migrations-Ordner vorbei.
+ * Seit 08.11.2026 raus: champion_stats (gibt es nicht, kein Leser mehr) und
+ * die Sicht tft_position_unit_cell (build-api-map erkennt jetzt create view).
  */
 const KNOWN_UNDECLARED_TABLES = new Set([
-  'champion_stats',
   'market_value_history',
   'players',
   'ranked_stats',
-  'tft_position_unit_cell',
 ]);
 
 if (!existsSync(MAP_PATH)) {

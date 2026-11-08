@@ -258,6 +258,10 @@ function migrationFacts() {
     for (const m of sql.matchAll(/create\s+table\s+(?:if\s+not\s+exists\s+)?(?:public\.)?([a-z0-9_]+)/gi)) {
       declaredTables.add(m[1].toLowerCase());
     }
+    // Sichten liest der Code wie Tabellen (tft_position_unit_cell, 0013/0030).
+    for (const m of sql.matchAll(/create\s+(?:or\s+replace\s+)?view\s+(?:if\s+not\s+exists\s+)?(?:public\.)?([a-z0-9_]+)/gi)) {
+      declaredTables.add(m[1].toLowerCase());
+    }
     // Koerper bis zum passenden Dollar-Ende ($$ oder $function$ …): mit nur
     // $$ lief eine $function$-Funktion bis zum naechsten $$; der Datei und
     // verschluckte die Funktionen dazwischen (0102: get_tft_comp_marked_days).
@@ -314,9 +318,8 @@ const RE_DYNAMIC_ANY = /import\(\s*['"]([^'"]+)['"]/g;
 
 /**
  * Kommentare raus, bevor nach Pfaden gesucht wird. Ein auskommentierter Einbau
- * ist keine Nutzung — daran haengen `/api/tft/pros/by-comp` (auskommentiert in
- * app/tft/comps/[slug]/page.tsx) und `/api/knowledge-graph`, das nur noch im
- * Kopfkommentar eines Workflows steht. `//` mitten in einer URL bleibt stehen
+ * ist keine Nutzung — daran haengt z. B. `/api/tft/pros/by-comp` (auskommentiert
+ * in app/tft/comps/[slug]/page.tsx). `//` mitten in einer URL bleibt stehen
  * (Doppelpunkt davor).
  */
 function stripComments(text, file) {

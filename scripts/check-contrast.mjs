@@ -61,8 +61,6 @@ const EXCEPTIONS = {
 
 // Rohe Schriftfarben unter 4,5:1, Bestand 2026-10-25. Schluessel Datei|#hex.
 const RAW_TEXT_ALLOWED = {
-  // Platzhalterseite, keine Route mit Inhalt.
-  'app/components/tft/StubPage.tsx|#7b61ff': 'Platzhalter',
   // Dunkle Schrift auf heller Abzeichen-Flaeche, nie auf base.
   'app/components/tft/unit/UnitBuilds.tsx|#11151c': 'dunkel auf hell',
   'app/tft/units/[id]/UnitDetailClient.tsx|#11151c': 'dunkel auf hell',

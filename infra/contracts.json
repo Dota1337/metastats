@@ -57,9 +57,9 @@
       "table": "tft_daily_comp_classic_bucket",
       "dateColumn": "day",
       "maxLagDays": 1,
-      "minRows": 1,
-      "armed": false,
-      "note": "Seit Migration 0107 (29.10.2026): klassische Cluster je Region, Tag und Rang (inkl. pro_pool), an klassischen UND Katalog-Tagen, ab 2 Spielen, 40 Tage aufbewahrt. Spur fuer kuenftige Wechsel der Zaehlart; noch kein Leser. Der Writer schreibt sie nie fatal (nur Logzeile). minRows 1 als Platzhalter — scharf nach erster Messung (Zeilen je Tag ueber alle Regionen)."
+      "minRows": 10000,
+      "armed": true,
+      "note": "Seit Migration 0107 (29.10.2026): klassische Cluster je Region, Tag und Rang (inkl. pro_pool), an klassischen UND Katalog-Tagen, ab 2 Spielen, 40 Tage aufbewahrt. Spur fuer kuenftige Wechsel der Zaehlart; noch kein Leser. Der Writer schreibt sie nie fatal (nur Logzeile). Scharf seit 08.11.2026: gemessen 17.868–29.137 Zeilen je Tag (31.10.–07.11., alle Regionen), Schwelle 10.000 = gut die Haelfte des kleinsten Tages."
     },
     {
       "id": "daily-crawl/comp-catalog-days",
@@ -144,9 +144,9 @@
       "table": "tft_item_list_precomputed",
       "dateColumn": "computed_at",
       "windowDays": 2,
-      "minRows": 1,
-      "armed": false,
-      "note": "Seit Migration 0108 (29.10.2026): vorab berechnete Item-Listen, gleiche Fenster wie die Comp-Listen (Region alle x 5 Rang-Gruppen x 1-7 Tage x Patch-Faelle, West/Asien x 3 Rang-Gruppen x 1-7 Tage), gerechnet in scripts/precompute-comp-windows.mjs. Fehlen sie, rechnet /api/tft/items live: alle/West x 4-7 Tage laufen dann in 502 (gemessen 29.10.). minRows 1 als Platzhalter — scharf nach erstem Nachtlauf."
+      "minRows": 50,
+      "armed": true,
+      "note": "Seit Migration 0108 (29.10.2026): vorab berechnete Item-Listen, gleiche Fenster wie die Comp-Listen (Region alle x 5 Rang-Gruppen x 1-7 Tage x Patch-Faelle, West/Asien x 3 Rang-Gruppen x 1-7 Tage), gerechnet in scripts/precompute-comp-windows.mjs. Fehlen sie, rechnet /api/tft/items live: alle/West x 4-7 Tage laufen dann in 502 (gemessen 29.10.). Scharf seit 08.11.2026: gemessen 214 Zeilen in 48 h, davon 127 aus dem letzten Nachtlauf; Schwelle 50 schlaegt an, wenn zwei Naechte ausfallen oder ein Lauf nur einen Bruchteil schreibt."
     },
     {
       "id": "daily-crawl/crawl-meta",
@@ -268,10 +268,10 @@
       "backend": "hetzner",
       "table": "tft_player_scoring_population",
       "dateColumn": "computed_at",
-      "windowDays": 2,
-      "minRows": 1,
-      "armed": false,
-      "note": "Bezugswerte der Spieler-Bewertung (/tft/compare), jede Nacht 05:17 UTC komplett ersetzt — deshalb Fenster statt Tageszählung. Ohne Zeile all|* blendet der Vergleich den Block aus. Beobachtung bis 2–3 Nächte nach dem Start auf der Box, dann scharf schalten und minRows auf die gemessene Zeilenzahl setzen."
+      "windowDays": 1,
+      "minRows": 2,
+      "armed": true,
+      "note": "Bezugswerte der Spieler-Bewertung (/tft/compare), jede Nacht 05:17 UTC komplett ersetzt — deshalb Fenster statt Tageszählung. Ohne Zeile all|* blendet der Vergleich den Block aus. Scharf seit 08.11.2026: gemessen 19 Zeilen (Region x Patch, 7 davon Region all), alle vom Lauf 05:39 UTC. Schwelle 2, weil zum Set-Start nur ein Patch existiert; Fenster 1 Tag, damit schon EINE ausgefallene Nacht auffaellt (Pruefung 23:00 UTC)."
     },
     {
       "id": "player-scoring/lobbies",
@@ -280,9 +280,9 @@
       "table": "tft_match_lobby",
       "dateColumn": "captured_at",
       "windowDays": 1,
-      "minRows": 1000,
-      "armed": false,
-      "note": "Lobbys aller 8 Spieler, mitgeschrieben beim Nachladen der Spiele (LOBBY_CAPTURE=1). Fehlen sie, rechnet die Bewertung nur noch mit dem erwarteten Platz 4,5. Beobachtung, bis die Tagesmenge nach dem Start gemessen ist; minRows dann auf etwa die Hälfte davon."
+      "minRows": 50000,
+      "armed": true,
+      "note": "Lobbys aller 8 Spieler, mitgeschrieben beim Nachladen der Spiele (LOBBY_CAPTURE=1). Fehlen sie, rechnet die Bewertung nur noch mit dem erwarteten Platz 4,5. Scharf seit 08.11.2026: gemessen 108.027–298.955 Zeilen je vollem Tag (31.10.–07.11.), 189.503 in den letzten 24 h; Schwelle 50.000 = knapp die Haelfte des kleinsten Tages."
     },
     {
       "id": "tft/trait-style-axis",

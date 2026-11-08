@@ -10,8 +10,8 @@
     "groups": 27,
     "tables": 46,
     "rpcs": 38,
-    "files": 13,
-    "edges": 517,
+    "files": 12,
+    "edges": 516,
     "unused": 2,
     "unresolved": 1
   },
@@ -1905,7 +1905,7 @@
       "id": "db:tft_position_unit_cell",
       "kind": "table",
       "label": "tft_position_unit_cell",
-      "declared": false
+      "declared": true
     },
     {
       "id": "db:tft_pro_players",
@@ -2049,11 +2049,6 @@
       "id": "file:tft-metatft-comps-*.json",
       "kind": "file",
       "label": "tft-metatft-comps-*.json"
-    },
-    {
-      "id": "file:tft-roadmap.json",
-      "kind": "file",
-      "label": "tft-roadmap.json"
     },
     {
       "id": "file:tft-set.json",
@@ -4258,11 +4253,6 @@
     {
       "from": "api:/api/tft/sets/current",
       "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/sets/current",
-      "to": "file:tft-roadmap.json",
       "kind": "reads"
     },
     {

@@ -15,8 +15,8 @@
  *                            Generic per-player cache read. The Hetzner box is the only
  *                            source-of-truth for the Set-17 match cache (Supabase only has
  *                            the marketvalue + season snapshots replicated, not the full
- *                            per-match jsonb). All onetricks/coach/specialty/econ endpoints
- *                            route through here.
+ *                            per-match jsonb). All onetricks/specialty/companion-lobby
+ *                            endpoints route through here.
  *   POST /pros-by-comp    — { puuids, family_key | cluster_key, set_number?, min_games?, top_n?, since_ms? }
  *                            Reverse-lookup: welche Pro-Players spielen eine bestimmte Comp.
  *                            Cluster-Key Exact-Match ODER Family-Mode (<trait>__<carry>).
@@ -617,29 +617,9 @@ async function handleMarketvaluePool(body) {
   };
 }
 
-// ─ Peer gold-left baseline (econ-score) ────────────────────────────────────
-// Global Set-17 mean gold_left for placement≥5 players. The legacy Supabase
-// query .limit(2000) sampled an arbitrary slice; we hold the same semantic
-// here but run it on Hetzner so it actually returns Set-17 data.
-async function handlePeerBaseline(body) {
-  const setNumber = Number.isFinite(Number(body?.set_number)) ? Number(body.set_number) : SET_NUMBER;
-  const minPlacement = Math.max(1, Math.min(8, Number(body?.min_placement) || 5));
-  const sampleLimit = Math.max(100, Math.min(10000, Number(body?.limit) || 2000));
-  const sql = `
-    SELECT AVG(gold_left)::float AS avg_gold_left, COUNT(*)::int AS sample
-    FROM (
-      SELECT gold_left FROM tft_player_match_cache
-      WHERE set_number = $1 AND queue_id = $2 AND placement >= $3 AND gold_left IS NOT NULL
-      LIMIT $4
-    ) s
-  `;
-  const r = await pool.query(sql, [setNumber, QUEUE_RANKED, minPlacement, sampleLimit]);
-  return { avgGoldLeft: r.rows[0]?.avg_gold_left ?? null, sample: r.rows[0]?.sample ?? 0 };
-}
-
 // ─ Per-player match-cache read ─────────────────────────────────────────────
 // Generic read endpoint for the app's match-driven views (onetricks,
-// coach, specialty, econ, positions/by-units). All of these used to read
+// specialty, companion lobby, positions/by-units). All of these used to read
 // from Supabase directly, but the per-match jsonb cache only lives on
 // Hetzner — Supabase only has the Set-15-era rows mirrored from way back.
 // So everything routes through here now.
@@ -1140,13 +1120,12 @@ async function handleRequest(req, res) {
   const isRefresh = req.method === 'POST' && req.url === '/refresh-player';
   const isExplore = req.method === 'POST' && req.url === '/explore';
   const isPlayerMatches = req.method === 'POST' && req.url === '/player-matches';
-  const isPeerBaseline = req.method === 'POST' && req.url === '/peer-baseline';
   const isMvPool = req.method === 'POST' && req.url === '/marketvalue-pool';
   const isProsByComp = req.method === 'POST' && req.url === '/pros-by-comp';
   const isCompHistogram = req.method === 'POST' && req.url === '/player-comp-histogram';
   const isRising = req.method === 'POST' && req.url === '/rising';
   const isScoring = req.method === 'POST' && req.url === '/player-scoring';
-  if (!isRefresh && !isExplore && !isPlayerMatches && !isPeerBaseline && !isMvPool && !isProsByComp && !isCompHistogram && !isRising && !isScoring) {
+  if (!isRefresh && !isExplore && !isPlayerMatches && !isMvPool && !isProsByComp && !isCompHistogram && !isRising && !isScoring) {
     res.writeHead(404, { 'Content-Type': 'application/json' });
     return res.end(JSON.stringify({ error: 'not_found' }));
   }
@@ -1169,7 +1148,6 @@ async function handleRequest(req, res) {
 
   try {
     const result = isPlayerMatches ? await handlePlayerMatches(body)
-                  : isPeerBaseline ? await handlePeerBaseline(body)
                   : isMvPool ? await handleMarketvaluePool(body)
                   : isProsByComp ? await handleProsByComp(body)
                   : isCompHistogram ? await handlePlayerCompHistogram(body)

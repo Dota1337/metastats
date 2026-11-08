@@ -25,10 +25,12 @@ export const LOL_STATS_TIERS = Object.freeze(['EMERALD', 'DIAMOND', 'MASTER', 'G
 
 /**
  * Ab so vielen Matches im gewaehlten Rang zeigt die Liste nur den neuesten
- * Patch, darunter beide neuesten zusammen. 16.22 hatte nach vier Tagen 16.497
- * Matches (Emerald+); Challenger und GM+ bleiben dauerhaft bei zwei Patches.
+ * Patch, darunter beide neuesten zusammen. Seit 08.11.2026 50.000 statt 15.000
+ * (User): 16.22 hatte nach vier Tagen 17.075 Matches (Emerald+), mit 16.21
+ * zusammen 129.062 — bei ~8.000 je Tag reicht der neue Patch allein nach etwa
+ * einer Woche. Challenger und GM+ bleiben dauerhaft bei zwei Patches.
  */
-export const NEWEST_PATCH_MIN_MATCHES = 15_000;
+export const NEWEST_PATCH_MIN_MATCHES = 50_000;
 
 /**
  * Bannrate und KDA erst ab so vielen Matches mit diesen Daten im Fenster (die

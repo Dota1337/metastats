@@ -18,7 +18,7 @@ function file(o = {}) {
     version: 1, source: 'box', region: 'euw1', builtAt: iso(60_000), dataNewest: iso(3_600_000),
     matchesAnalyzed: 300_000,
     patches: [
-      { patch: '16.22', tiers: { MASTER: tier(9_000), EMERALD: tier(7_000) } },
+      { patch: '16.22', tiers: { MASTER: tier(30_000), EMERALD: tier(25_000) } },
       { patch: '16.21', tiers: { MASTER: tier(60_000), CHALLENGER: tier(2_000) } },
     ],
     roles,
@@ -48,17 +48,23 @@ test('Pruefregel: alt, Zukunft, falsche Region/Quelle, Patch-Reihenfolge, kaputt
 });
 
 test('Fenster: neuester Patch allein ab der Schwelle, sonst beide', () => {
-  // Alle Raenge: 16.22 = 16.000 >= 15.000 → nur 16.22.
-  assert.ok(9_000 + 7_000 >= NEWEST_PATCH_MIN_MATCHES);
+  // Alle Raenge: 16.22 = 55.000 >= 50.000 → nur 16.22.
+  assert.ok(30_000 + 25_000 >= NEWEST_PATCH_MIN_MATCHES);
   const all = boxStatsForTiers(file(), null);
   assert.deepEqual(all.patches, ['16.22']);
-  assert.equal(all.totalGames, 9 * 16_000);
-  assert.equal(all.matches, 16_000);
-  // Master+: 16.22 = 9.000 → beide Patches, Challenger aus 16.21 kommt dazu.
+  assert.equal(all.totalGames, 9 * 55_000);
+  assert.equal(all.matches, 55_000);
+  // Master+: 16.22 = 30.000 → beide Patches, Challenger aus 16.21 kommt dazu.
+  assert.ok(30_000 < NEWEST_PATCH_MIN_MATCHES);
   const mplus = boxStatsForTiers(file(), ['MASTER', 'GRANDMASTER', 'CHALLENGER']);
   assert.deepEqual(mplus.patches, ['16.22', '16.21']);
-  assert.equal(mplus.matches, 9_000 + 60_000 + 2_000);
-  assert.equal(mplus.stats['1'].games, 9 * 71_000);
+  assert.equal(mplus.matches, 30_000 + 60_000 + 2_000);
+  assert.equal(mplus.stats['1'].games, 9 * 92_000);
+  // Heutiger Stand (16.22 = 17.075 Matches) → beide Patches.
+  const today = file({ patches: [
+    { patch: '16.22', tiers: { EMERALD: tier(17_075) } }, { patch: '16.21', tiers: { EMERALD: tier(111_987) } },
+  ] });
+  assert.equal(boxStatsForTiers(today, null).matches, 129_062);
 });
 
 test('Pickraten-Nenner = Teilnehmer: Summe der Pickraten ist 1000 %', () => {

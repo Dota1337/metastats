@@ -53,8 +53,8 @@ interface FullRow {
   team_gold: number;
   participant: any;
   /**
-   * Riots info.teams. Kommt erst mit Migration 0117 + Sammler-Umbau in die Ablage; bis dahin
-   * fehlt die Spalte und `teams` steht NICHT im select (sonst scheitert die Abfrage).
+   * Riots info.teams (Migration 0117, seit 08.11.2026 eingespielt). Aeltere Zeilen bleiben null,
+   * der Sammler schreibt den Team-Teil erst ab seinem Umbau mit.
    */
   teams?: unknown;
 }
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     const full = await readAll<FullRow>((from, to) => {
       let q = supabaseAdmin
         .from('lol_player_match_cache')
-        .select('match_id,queue_id,game_creation,game_duration,team_kills,team_damage,team_gold,participant')
+        .select('match_id,queue_id,game_creation,game_duration,team_kills,team_damage,team_gold,participant,teams')
         .eq('puuid', puuid)
         .eq('queue_id', RANKED_SOLO)
         .gte('game_duration', MIN_DURATION_S)

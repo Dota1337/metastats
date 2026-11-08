@@ -431,13 +431,16 @@ function buildRow(raw, puuid, region) {
     sum('totalDamageDealtToChampions'),
     sum('goldEarned'),
     JSON.stringify(p),
+    // Riots Team-Teil (Drachen, Baron, erste Ziele) fuer die Objektiv-Kontrolle der
+    // Spielerseite (Migration 0117). Fehlt er, SQL-null statt JSON-"null".
+    Array.isArray(info.teams) ? JSON.stringify(info.teams) : null,
   ];
 }
 
 const COLS = [
   'puuid', 'match_id', 'region', 'queue_id', 'game_creation', 'game_duration',
   'patch_major', 'patch_minor', 'game_version', 'win', 'champion', 'role',
-  'team_kills', 'team_damage', 'team_gold', 'participant',
+  'team_kills', 'team_damage', 'team_gold', 'participant', 'teams',
 ];
 
 async function insertRows(rows) {

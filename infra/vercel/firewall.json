@@ -1,0 +1,54 @@
+{
+  "_comment": "Soll-Stand der Vercel-Firewall-Regeln (Projekt metastats). Abgleich: node scripts/vercel-firewall.mjs --check, Einspielen: --apply. Regeln, die nur in Vercel stehen, meldet --check, loescht aber nichts. Notfall: Regel hier auf active:false oder rateLimit.action auf log, dann --apply. Seit 08.11.2026 versioniert; die zwei Beobachtungs-Regeln stehen seit 02.09.2026 nur in Vercel.",
+  "projectId": "prj_TMjSl1CaEXUmXJKNaUxwz8rX4D0L",
+  "teamId": "team_dgGvGxN1TvL4htRkogR90ism",
+  "rules": [
+    {
+      "name": "API-Beobachtung 120/min",
+      "description": "Beobachtungsphase: zaehlt nur und schreibt ins Log, blockt nichts.",
+      "active": true,
+      "conditionGroup": [
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/" }] }
+      ],
+      "action": { "mitigate": { "action": "rate_limit", "rateLimit": { "limit": 120, "window": 60, "algo": "fixed_window", "keys": ["ip"], "action": "log" }, "actionDuration": null, "redirect": null } }
+    },
+    {
+      "name": "Teure Pfade Beobachtung 30/min",
+      "description": "Beobachtungsphase fuer die beiden teuersten Abfragen; blockt nichts.",
+      "active": true,
+      "conditionGroup": [
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/leaderboard" }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/explorer/matches" }] }
+      ],
+      "action": { "mitigate": { "action": "rate_limit", "rateLimit": { "limit": 30, "window": 60, "algo": "fixed_window", "keys": ["ip"], "action": "log" }, "actionDuration": null, "redirect": null } }
+    },
+    {
+      "name": "Riot-nah LoL 60/min",
+      "description": "Routen, die Riot mit dem LoL-Key rufen. 429 ab 61 Abrufen je IP und Minute; die Box (Marktwert-Lauf ruft /api/summoner in Serie) ist ausgenommen.",
+      "active": true,
+      "conditionGroup": [
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/summoner" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/matches" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/mastery" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/live-game" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/leaderboard" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/transfer-predictions" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] }
+      ],
+      "action": { "mitigate": { "action": "rate_limit", "rateLimit": { "limit": 60, "window": 60, "algo": "fixed_window", "keys": ["ip"], "action": "rate_limit" }, "actionDuration": null, "redirect": null } }
+    },
+    {
+      "name": "Riot-nah TFT 60/min",
+      "description": "Routen, die Riot mit dem TFT-Key oder die Box-Ablage rufen. 429 ab 61 Abrufen je IP und Minute, Box ausgenommen. Liegt ueber den Grenzen im Code (10-30/min), damit dort zuerst die eigene Antwort kommt.",
+      "active": true,
+      "conditionGroup": [
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/summoner" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/matches" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/player-stats" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/search-riot" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/marktwert/refresh" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] },
+        { "conditions": [{ "type": "path", "op": "pre", "value": "/api/tft/pros/specialty" }, { "type": "ip_address", "op": "eq", "value": "37.27.219.140", "neg": true }] }
+      ],
+      "action": { "mitigate": { "action": "rate_limit", "rateLimit": { "limit": 60, "window": 60, "algo": "fixed_window", "keys": ["ip"], "action": "rate_limit" }, "actionDuration": null, "redirect": null } }
+    }
+  ]
+}

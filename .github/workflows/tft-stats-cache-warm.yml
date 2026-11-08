@@ -31,7 +31,35 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Der Server stoesst diesen Lauf puenktlich an (scripts/gh-dispatch-due.mjs, Box alle 5 min), weil
+  # GitHub die Zeitplaene seit 02.11.2026 Stunden zu spaet oder gar nicht startet. Kommt der Zeitplan
+  # hinterher, nachdem der Anstoss schon lief, entfaellt der Doppel-Lauf. Ohne Anstoss vom Server
+  # (kein workflow_dispatch im Fenster) laeuft der Zeitplan wie bisher.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.g.outputs.run }}
+    steps:
+      - id: g
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WINDOW_MIN: '1200'
+        run: |
+          run=true
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            since=$(date -u -d "-$WINDOW_MIN min" +%Y-%m-%dT%H:%M:%SZ)
+            n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow tft-stats-cache-warm.yml --event workflow_dispatch --created ">=$since" --json databaseId -q length || echo 0)
+            if [ "${n:-0}" -gt 0 ]; then run=false; fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Lauf noetig: $run"
+
   warm:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

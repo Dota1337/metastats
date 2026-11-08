@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateMarketValue, formulaRevFor, SUPPORT_FORMULA_REV } from './marketvalue.ts';
+import { calculateMarketValue, marketValueGames, MV_FORMULA_REV } from './marketvalue.ts';
 
 const RANKED = { tier: 'GRANDMASTER', rank: 'I', leaguePoints: 400, wins: 100, losses: 100 };
 
@@ -55,8 +55,28 @@ test('andere Rollen rechnen unveraendert (Schuetze)', () => {
   assert.ok(!labels(adc).includes('Assists/Spiel'));
 });
 
-test('Rechnungsstand nur fuer Supports', () => {
-  assert.equal(formulaRevFor('UTILITY'), SUPPORT_FORMULA_REV);
-  assert.equal(formulaRevFor('SUPPORT'), SUPPORT_FORMULA_REV);
-  for (const r of ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UNKNOWN']) assert.equal(formulaRevFor(r), null);
+test('Rechnungsstand 2 fuer alle Rollen', () => {
+  assert.equal(MV_FORMULA_REV, 2);
+});
+
+test('Remakes und Autofill-Spiele zaehlen nicht, FILL und fehlende Angabe schon', () => {
+  const base = games(20);
+  const remakes = games(5, { gameEndedInEarlySurrender: true, assists: 0, visionScore: 0, wardsPlaced: 0 });
+  const autofill = games(5, { roleAssignment: 'AUTOFILL', role: 'TOP', assists: 0, visionScore: 0 });
+  const withNoise = calculateMarketValue(RANKED, [...base, ...remakes, ...autofill]);
+  const clean = calculateMarketValue(RANKED, base);
+  assert.equal(withNoise.stats.gamesAnalyzed, 20);
+  assert.equal(withNoise.value, clean.value);
+  assert.equal(withNoise.role, 'UTILITY');
+
+  const fill = calculateMarketValue(RANKED, [...base, ...games(4, { roleAssignment: 'FILL' }), ...games(3, { roleAssignment: null })]);
+  assert.equal(fill.stats.gamesAnalyzed, 27);
+
+  assert.deepEqual(marketValueGames([{ gameEndedInEarlySurrender: false, roleAssignment: 'PRIMARY' }]).length, 1);
+  assert.equal(marketValueGames([{ gameEndedInEarlySurrender: true }, { roleAssignment: 'AUTOFILL' }]).length, 0);
+});
+
+test('nur Remakes/Autofill: kein Wert-Ausfall, aber 0 gezaehlte Spiele', () => {
+  const r = calculateMarketValue(RANKED, games(12, { roleAssignment: 'AUTOFILL' }));
+  assert.equal(r.stats.gamesAnalyzed, 0);
 });

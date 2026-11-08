@@ -28,14 +28,59 @@ export interface TeamObjectives {
   firstDragon: boolean;
 }
 
+/**
+ * Ziele eines Teams aus `info.teams[].objectives`. Fehlt ein Schluessel bei Riot,
+ * fehlt auch das Feld — nie 0 einsetzen (alte Spiele kennen z. B. `horde` nicht).
+ * `voidGator` (ab 16.22) ist unbekannt und wird bewusst nicht gelesen.
+ */
+export interface TeamObjectiveCounts {
+  teamId: number;
+  tower?: number;
+  dragon?: number;
+  baron?: number;
+  riftHerald?: number;
+  horde?: number;
+  inhibitor?: number;
+  firstTower?: boolean;
+  firstDragon?: boolean;
+  firstBaron?: boolean;
+}
+
+const OBJECTIVE_KEYS = ['tower', 'dragon', 'baron', 'riftHerald', 'horde', 'inhibitor'] as const;
+const FIRST_KEYS = [['tower', 'firstTower'], ['dragon', 'firstDragon'], ['baron', 'firstBaron']] as const;
+
+type RiotTeam = { teamId?: unknown; objectives?: Record<string, { first?: unknown; kills?: unknown } | undefined> };
+
+export function objectiveCounts(team: unknown): TeamObjectiveCounts | null {
+  const t = team as RiotTeam | null | undefined;
+  if (!t || typeof t.teamId !== 'number') return null;
+  const out: TeamObjectiveCounts = { teamId: t.teamId };
+  const o = t.objectives;
+  if (!o || typeof o !== 'object') return out;
+  for (const k of OBJECTIVE_KEYS) {
+    const kills = o[k]?.kills;
+    if (typeof kills === 'number') out[k] = kills;
+  }
+  for (const [k, f] of FIRST_KEYS) {
+    const first = o[k]?.first;
+    if (typeof first === 'boolean') out[f] = first;
+  }
+  return out;
+}
+
+/** Ziele beider Teams eines Roh-Spiels (fuer die aufgeklappte Spielansicht). */
+export function extractTeamObjectives(rawMatch: unknown): TeamObjectiveCounts[] {
+  const teams = (rawMatch as { info?: { teams?: unknown } } | null | undefined)?.info?.teams;
+  if (!Array.isArray(teams)) return [];
+  return teams.map(objectiveCounts).filter((t): t is TeamObjectiveCounts => t !== null);
+}
+
 export function teamObjectivesFor(teams: unknown, teamId: number): TeamObjectives | null {
   if (!Array.isArray(teams) || !teamId) return null;
-  const own = teams.find((t: any) => t?.teamId === teamId);
-  const enemy = teams.find((t: any) => t?.teamId && t.teamId !== teamId);
-  const d = own?.objectives?.dragon;
-  const e = enemy?.objectives?.dragon;
-  if (typeof d?.kills !== 'number' || typeof e?.kills !== 'number') return null;
-  return { dragons: d.kills, enemyDragons: e.kills, firstDragon: d.first === true };
+  const own = objectiveCounts(teams.find((t: any) => t?.teamId === teamId));
+  const enemy = objectiveCounts(teams.find((t: any) => t?.teamId && t.teamId !== teamId));
+  if (own?.dragon === undefined || enemy?.dragon === undefined) return null;
+  return { dragons: own.dragon, enemyDragons: enemy.dragon, firstDragon: own.firstDragon === true };
 }
 
 export interface ExtendedMatchData {
@@ -236,11 +281,37 @@ export interface ExtendedMatchData {
     gameLength: number;
     hadAfkTeammate: boolean;
   };
+
+  /**
+   * Werte, die Riot nur in manchen Spielen liefert. Fehlt das Feld, bleibt es
+   * undefined — nie 0, sonst zaehlt ein fehlender Wert als echter (gemessen 08.11.2026,
+   * Solo-Queue ab 16.15): earliestDragonTakedown nur bei eigener Drachen-Beteiligung,
+   * junglerKillsEarlyJungle nur wenn Riot den Spieler als Jungler fuehrt (= Kills auf den
+   * gegnerischen Jungler vor Minute 10, an 3 Spielverlaeufen nachgezaehlt).
+   * Optional, weil zwischengespeicherte Auswertungen aelter sein koennen.
+   */
+  extra?: {
+    teamBaronKills?: number;
+    /** Sekunden bis zur ersten eigenen Drachen-Beteiligung. */
+    earliestDragonTakedown?: number;
+    /** Krabben beim ersten Erscheinen (0–2). */
+    initialCrabCount?: number;
+    junglerKillsEarlyJungle?: number;
+    /** 0 auch bei Champions, fuer die Riot keine Skillshots zaehlt (z. B. Garen, Darius). */
+    skillshotsHit?: number;
+    enemyChampionImmobilizations?: number;
+  };
 }
 
 /** Safely read a numeric challenge field, defaulting to 0 */
 function ch(participant: any, field: string): number {
   return participant?.challenges?.[field] ?? 0;
+}
+
+/** Challenge-Wert oder undefined, wenn Riot das Feld nicht liefert (kein Ersatz-0). */
+function chOpt(participant: unknown, field: string): number | undefined {
+  const v = (participant as { challenges?: Record<string, unknown> } | null | undefined)?.challenges?.[field];
+  return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
 /** Safely read a boolean challenge field, defaulting to false */
@@ -497,6 +568,15 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
       abilityUses: ch(p, 'abilityUses'),
       gameLength: ch(p, 'gameLength'),
       hadAfkTeammate: chBool(p, 'hadAfkTeammate'),
+    },
+
+    extra: {
+      teamBaronKills: chOpt(p, 'teamBaronKills'),
+      earliestDragonTakedown: chOpt(p, 'earliestDragonTakedown'),
+      initialCrabCount: chOpt(p, 'initialCrabCount'),
+      junglerKillsEarlyJungle: chOpt(p, 'junglerKillsEarlyJungle'),
+      skillshotsHit: chOpt(p, 'skillshotsHit'),
+      enemyChampionImmobilizations: chOpt(p, 'enemyChampionImmobilizations'),
     },
   };
 }

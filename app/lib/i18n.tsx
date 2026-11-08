@@ -1415,6 +1415,12 @@ const translations = {
   'lolStat.assistStreak12': t6('Assist-Serie 12+', 'Assist Streak 12+', '\uC5F0\uC18D \uC5B4\uC2DC\uC2A4\uD2B8 12+', '\u8FDE\u7EED\u52A9\u653B 12+', 'Racha de asistencias 12+', 'S\u00E9rie d\'assists 12+'),
   'lolStat.teamDragonShare': t6('Drachen-Anteil Team', 'Team Dragon Share', '\uD300 \uB4DC\uB798\uACE4 \uC810\uC720\uC728', '\u56E2\u961F\u5C0F\u9F99\u5360\u6BD4', 'Cuota de dragones del equipo', 'Part des dragons de l\'\u00E9quipe'),
   'lolStat.firstDragonTeam': t6('Erster Drache', 'First Dragon', '\uCCAB \uB4DC\uB798\uACE4', '\u9996\u6761\u5C0F\u9F99', 'Primer drag\u00F3n', 'Premier dragon'),
+  'lolStat.teamBaronRate': t6('Baron-Quote Team', 'Team Baron Rate', '\uD300 \uBC14\uB860 \uD68D\uB4DD\uB960', '\u56E2\u961F\u7537\u7235\u7387', 'Tasa de Bar\u00F3n del equipo', 'Taux de Baron de l\'\u00E9quipe'),
+  'lolStat.firstDragonTimeJGL': t6('Zeit bis 1. Drache (JGL)', 'Time to 1st Dragon (JGL)', '\uCCAB \uB4DC\uB798\uACE4\uAE4C\uC9C0 \uC2DC\uAC04 (\uC815\uAE00)', '\u9996\u6761\u5C0F\u9F99\u65F6\u95F4\uFF08\u6253\u91CE\uFF09', 'Tiempo hasta el 1.er drag\u00F3n (JGL)', 'Temps jusqu\'au 1er dragon (JGL)'),
+  'lolStat.junglerKillsBefore10': t6('Jungler-Kills vor 10 Min', 'Jungler Kills Before 10 Min', '10\uBD84 \uC804 \uC815\uAE00\uB7EC \uCC98\uCE58', '10\u5206\u949F\u524D\u51FB\u6740\u6253\u91CE', 'Asesinatos al jungla antes de 10 min', 'Kills sur le jungler avant 10 min'),
+  'lolStat.initialScuttles': t6('Erste Krabben', 'First Scuttles', '\uCCAB \uBC14\uC704\uAC8C', '\u9996\u8F6E\u6CB3\u87F9', 'Primeros cangrejos', 'Premiers carapateurs'),
+  'lolStat.skillshotsHit': t6('Skillshots getroffen', 'Skillshots Hit', '\uC2A4\uD0AC\uC0F7 \uC801\uC911', '\u6280\u80FD\u547D\u4E2D', 'Habilidades acertadas', 'Skillshots touch\u00E9s'),
+  'lolStat.enemyImmobilizations': t6('CC auf Gegner', 'CC on Enemies', '\uC801 \uAD70\uC911 \uC81C\uC5B4', '\u63A7\u5236\u654C\u4EBA', 'CC a enemigos', 'CC sur les ennemis'),
   'lolStat.spendingRate': t6('Ausgabenquote', 'Spending Rate', '\uACE8\uB4DC \uC0AC\uC6A9\uB960', '\u82B1\u8D39\u7387', 'Tasa de gasto', 'Taux de d\u00E9pense'),
   'lolStat.baronParticipation': t6('Baron-Beteiligung', 'Baron Participation', '\uBC14\uB860 \uAD00\uC5EC', '\u5927\u9F99\u53C2\u4E0E', 'Participaci\u00F3n en barones', 'Participation aux barons'),
   'lolStat.bountyGold': t6('Bounty-Gold', 'Bounty Gold', '\uD604\uC0C1\uAE08 \uACE8\uB4DC', '\u8D4F\u91D1', 'Oro de recompensa', 'Or de prime'),
@@ -1548,6 +1554,10 @@ const translations = {
   'match.triple': t6('Triple', 'Triple', '\uD2B8\uB9AC\uD50C\uD0AC', '\u4E09\u6740', 'Triple', 'Triple'),
   'match.quadra': t6('Quadra', 'Quadra', '\uCFFC\uB4DC\uB77C\uD0AC', '\u56DB\u6740', 'Cu\u00E1druple', 'Quadra'),
   'match.turrets': t6('Turrets', 'Turrets', '\uD0C0\uC6CC', '\u9632\u5FA1\u5854', 'Torretas', 'Tourelles'),
+  'match.inhibitors': t6('Inhibitoren', 'Inhibitors', '\uC5B5\uC81C\uAE30', '\u6C34\u6676', 'Inhibidores', 'Inhibiteurs'),
+  'match.firstTower': t6('Erster Turm', 'First Tower', '\uCCAB \uD3EC\uD0D1', '\u4E00\u5854', 'Primera torre', 'Premi\u00E8re tourelle'),
+  'match.firstDragon': t6('Erster Drache', 'First Dragon', '\uCCAB \uB4DC\uB798\uACE4', '\u9996\u6761\u5C0F\u9F99', 'Primer drag\u00F3n', 'Premier dragon'),
+  'match.firstBaron': t6('Erster Baron', 'First Baron', '\uCCAB \uBC14\uB860', '\u9996\u4E2A\u7537\u7235', 'Primer Bar\u00F3n', 'Premier Baron'),
 
   // Radar Profile
   'radar.title': t6('Spieler-Profil', 'Player Profile', '\uD50C\uB808\uC774\uC5B4 \uD504\uB85C\uD544', '\u73A9\u5BB6\u8D44\u6599', 'Perfil del Jugador', 'Profil du Joueur'),

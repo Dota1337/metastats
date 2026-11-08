@@ -1,4 +1,8 @@
 interface MatchData {
+  /** Riot: per Remake beendet — zaehlt nicht fuer den Marktwert (marketValueGames). */
+  gameEndedInEarlySurrender?: boolean;
+  /** Wie der Spieler an die Rolle kam (match-processor parseRoleAssignment); AUTOFILL zaehlt nicht. */
+  roleAssignment?: string | null;
   kills: number;
   deaths: number;
   assists: number;
@@ -318,7 +322,7 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
     // Patch 16.15+, Gegenprobe auf getrennten Spielen): mit den alten Boni lagen Supports bei
     // 1,33 / 1,64 / 1,80 (p10/p50/p90) gegen 1,21 / 1,47 / 1,75 der anderen Rollen, weil Sicht hier viermal
     // zaehlt (Vision Score, Wards, Vision/Min, Dominanz). Mit diesen Boni 1,21 / 1,47 / 1,61.
-    // Grenzen und Strafen sind unveraendert. Rechnungsstand: SUPPORT_FORMULA_REV.
+    // Grenzen und Strafen sind unveraendert. Rechnungsstand: MV_FORMULA_REV.
     const assistsPerGame = totalAssists / matches.length;
     if (assistsPerGame > 18) { multiplier += 0.12; add('Support', 'Assists/Spiel', +0.12, `${assistsPerGame.toFixed(1)} (>18)`); }
     else if (assistsPerGame > 12) { multiplier += 0.07; add('Support', 'Assists/Spiel', +0.07, `${assistsPerGame.toFixed(1)} (>12)`); }
@@ -463,20 +467,29 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
 
 /**
  * Stand der Rechnung, den market_value_history.formula_rev je Zeile mitschreibt (Migration 0120).
- * null = Ursprung. Nur Rollen, deren Rechnung sich geaendert hat, bekommen einen Stand; Vergleiche im
- * Verlauf laufen nur innerhalb gleichen Stands (marketvalue-history.ts). Neue Aenderung an einem Zweig:
+ * null = Ursprung (bis 08.11.2026). 2 = Support-Zweig fuer UTILITY, ohne Remakes, ohne Autofill —
+ * gilt fuer alle Rollen, weil sich mit dem Spiel-Filter jede Rolle bewegt. Vergleiche im Verlauf
+ * laufen nur innerhalb gleichen Stands (marketvalue-history.ts). Neue Aenderung an der Rechnung:
  * Zahl erhoehen, sonst meldet die Seite den Sprung als echte Veraenderung.
  */
-export const SUPPORT_FORMULA_REV = 2;
-export function formulaRevFor(role: string): number | null {
-  return role === 'SUPPORT' || role === 'UTILITY' ? SUPPORT_FORMULA_REV : null;
+export const MV_FORMULA_REV = 2;
+
+/**
+ * Spiele, die fuer den Marktwert zaehlen: keine Remakes und keine Spiele auf einer vom
+ * Matchmaking zugeteilten Rolle (AUTOFILL). Selbst gewaehltes Auffuellen (FILL) und
+ * Spiele ohne Rollen-Angabe zaehlen. Gemessen 08.11.2026 (249 Spieler ab Diamond):
+ * die erkannte Hauptrolle kippt bei keinem.
+ */
+export function marketValueGames<T extends MatchData>(matches: T[]): T[] {
+  return matches.filter(m => !m.gameEndedInEarlySurrender && m.roleAssignment !== 'AUTOFILL');
 }
 
 export function calculateMarketValue(
   ranked: RankedData | null,
-  matches: MatchData[],
+  allMatches: MatchData[],
   playerRank?: number
 ): MarketValueResult {
+  const matches = marketValueGames(allMatches);
   const emptyStats = { winrate: 0, kda: 0, csPerMin: 0, damagePerMin: 0, visionScore: 0, killParticipation: null, gamesAnalyzed: 0 };
 
   if (!ranked) {

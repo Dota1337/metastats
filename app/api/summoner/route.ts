@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin as supabase } from '../../lib/supabase';
-import { calculateMarketValue, formulaRevFor } from '../../lib/marketvalue';
-import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
+import { calculateMarketValue, MV_FORMULA_REV } from '../../lib/marketvalue';
+import { processMatch, toLegacyMatchData, extractParticipants, extractBans, extractTeamObjectives, type ExtendedMatchData, type TeamObjectiveCounts } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getAccountRouting, getRegionalRouting, parseRegion } from '../../lib/regions';
@@ -381,10 +381,12 @@ export async function GET(request: NextRequest) {
     // Extract participant data for detailed match view
     const participantsMap: Record<string, any> = {};
     const bansMap: Record<string, any> = {};
+    const objectivesMap: Record<string, TeamObjectiveCounts[]> = {};
     for (const raw of matchDetails) {
       if (!raw?.metadata?.matchId) continue;
       participantsMap[raw.metadata.matchId] = extractParticipants(raw);
       bansMap[raw.metadata.matchId] = extractBans(raw);
+      objectivesMap[raw.metadata.matchId] = extractTeamObjectives(raw);
     }
 
     // Helper: convert extended matches to legacy format
@@ -392,6 +394,7 @@ export async function GET(request: NextRequest) {
       ...toLegacyMatchData(m),
       participants: participantsMap[m.matchId] || [],
       bans: bansMap[m.matchId] || [],
+      teamObjectives: objectivesMap[m.matchId] || [],
       damagePerMinute: m.challenges.damagePerMinute,
       goldPerMinute: m.challenges.goldPerMinute,
       teamDamagePercentage: m.challenges.teamDamagePercentage,
@@ -478,8 +481,9 @@ export async function GET(request: NextRequest) {
     );
 
     // Zu wenige Partien im Split (z. B. kurz nach Split-Start): alten Wert
-    // behalten statt eines Werts aus einer Handvoll Spiele.
-    const writeValue = matchFetchComplete && marketValue.rated && !!split && splitRankedMatches.length >= MIN_SPLIT_GAMES;
+    // behalten statt eines Werts aus einer Handvoll Spiele. Gezaehlt wird, was
+    // die Rechnung tatsaechlich nutzt (ohne Remakes und Autofill).
+    const writeValue = matchFetchComplete && marketValue.rated && !!split && marketValue.stats.gamesAnalyzed >= MIN_SPLIT_GAMES;
 
     const winrate = primaryQueue
       ? Math.round((primaryQueue.wins / (primaryQueue.wins + primaryQueue.losses)) * 100)
@@ -531,11 +535,11 @@ export async function GET(request: NextRequest) {
           market_value: marketValue.value,
           recorded_at: new Date().toISOString(),
           split_id: split.id,
-          games_analyzed: splitRankedMatches.length,
+          games_analyzed: marketValue.stats.gamesAnalyzed,
           base_value: marketValue.baseValue,
           multiplier: Math.round(marketValue.multiplier * 1000) / 1000,
           // Rechnungsstand (0120): Verlaufs-Vergleiche nur innerhalb gleichen Stands.
-          formula_rev: formulaRevFor(marketValue.role),
+          formula_rev: MV_FORMULA_REV,
         });
       if (historyError) console.error('market_value_history insert error:', historyError);
     }

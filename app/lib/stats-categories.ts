@@ -12,7 +12,8 @@ import { isRiftGame, isLaneRole, MIN_RIFT_GAMES } from './lol-queue';
 
 export interface StatDetail {
   name: string;
-  value: number;
+  /** Zahl, oder fertiger Text wie „10:51" (Zeitangaben). */
+  value: number | string;
   unit: string;
   description: string;
 }
@@ -42,6 +43,39 @@ export interface StatsOverview {
 
 /** Ab so vielen Spielen mit Team-Teil zeigt die Objektiv-Kontrolle die Team-Drachen. */
 const MIN_TEAM_GAMES = 10;
+
+/**
+ * Ab so vielen Spielen mit Wert zeigt eine Zusatzzeile ihr Mittel, darunter gar keine
+ * Zeile. Zusatzzeilen fliessen nie in den Punktwert einer Kategorie.
+ */
+const MIN_VALUE_GAMES = 10;
+
+/** Mittel nur ueber Spiele, fuer die pick() einen Wert liefert; null unter MIN_VALUE_GAMES. */
+function avgPresent(matches: ExtendedMatchData[], pick: (m: ExtendedMatchData) => number | undefined): number | null {
+  let sum = 0;
+  let n = 0;
+  for (const m of matches) {
+    const v = pick(m);
+    if (typeof v === 'number') { sum += v; n++; }
+  }
+  return n >= MIN_VALUE_GAMES ? sum / n : null;
+}
+
+/** Sekunden als m:ss. */
+function minSec(seconds: number): string {
+  const s = Math.round(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Spiele, in denen Riot den Spieler als Jungler fuehrt: nur dort liefert Riot
+ * junglerKillsEarlyJungle. Die Rolle allein reicht nicht — in 364 von 9.985
+ * Jungle-Spielen (Solo-Queue ab 16.15) fehlt das Feld, weil Riot eine andere
+ * Position fuehrt; ein Ersatz-0 waere dort falsch.
+ */
+function isRiotJungleGame(m: ExtendedMatchData): boolean {
+  return m.role === 'JUNGLE' && m.extra?.junglerKillsEarlyJungle !== undefined;
+}
 
 function avg(matches: ExtendedMatchData[], getter: (m: ExtendedMatchData) => number): number {
   if (matches.length === 0) return 0;
@@ -348,6 +382,25 @@ function calcObjectiveControl(matches: ExtendedMatchData[]): CategoryScore {
     { name: 'Erster Drache', value: +firstDragonRate.toFixed(0), unit: '%', description: 'Spiele, in denen das eigene Team den ersten Drachen holte' },
   ] : [];
 
+  // Baron als Quote statt Ø-Zeit: Riot liefert die Baron-Zeit nur, wenn das Team ihn
+  // holte (dann 81 % Siege gegen 31 %), und die Mittel je Spieler liegen nur ~47 s
+  // auseinander — weniger als der Zufall bei 10 Spielen.
+  const teamBaronRate = avgPresent(matches, m => {
+    const b = m.extra?.teamBaronKills;
+    return b === undefined ? undefined : (b > 0 ? 100 : 0);
+  });
+  // Drachen-Zeit nur als Jungler: bei Top fehlt sie in 79 % der Spiele, und die
+  // Rollen liegen 11 Minuten auseinander — ein Mittel ueber Rollen waere Mischmasch.
+  const firstDragonJungle = avgPresent(matches.filter(isRiotJungleGame), m => m.extra?.earliestDragonTakedown);
+  const extraDetails: StatDetail[] = [
+    ...(teamBaronRate !== null ? [
+      { name: 'Baron-Quote Team', value: +teamBaronRate.toFixed(0), unit: '%', description: 'Spiele, in denen das eigene Team mindestens einen Baron holte' },
+    ] : []),
+    ...(firstDragonJungle !== null ? [
+      { name: 'Zeit bis 1. Drache (JGL)', value: minSec(firstDragonJungle), unit: '', description: 'Ø Zeit bis zur ersten eigenen Drachen-Beteiligung, nur Jungle-Spiele' },
+    ] : []),
+  ];
+
   const objScore = avgDragons * 15 + avgBarons * 25 + avgHeralds * 10 + avgPlates * 5 + avgTurrets * 8;
   const score = clamp(scoreFromThresholds(objScore, 15, 35, 60, 90));
   const t = trend(matches, m => m.challenges.dragonTakedowns + m.challenges.baronTakedowns * 2);
@@ -369,6 +422,7 @@ function calcObjectiveControl(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Objective Steals', value: +avgSteals.toFixed(2), unit: '/Spiel', description: 'Objectives gestohlen' },
       { name: 'Objective DMG', value: +(avgObjDmg / 1000).toFixed(1), unit: 'k/Spiel', description: 'Schaden an Objectives' },
       ...teamDetails,
+      ...extraDetails,
     ],
   };
 }
@@ -411,6 +465,8 @@ function calcTeamplay(matches: ExtendedMatchData[]): CategoryScore {
   const avgEffHS = avg(matches, m => m.challenges.effectiveHealAndShielding);
   const avgPicks = avg(matches, m => m.challenges.pickKillWithAlly);
   const avgImmobilize = avg(matches, m => m.challenges.immobilizeAndKillWithAlly);
+  // 0 ist hier ein echter Wert (Champion ohne Kontrolleffekt), also alle Spiele mit Feld.
+  const enemyCC = avgPresent(matches, m => m.extra?.enemyChampionImmobilizations);
 
   const score = clamp(scoreFromThresholds(avgKP, 35, 50, 65, 80));
   const t = trend(matches, m => m.teamKills > 0 ? (m.kills + m.assists) / m.teamKills : 0);
@@ -431,6 +487,9 @@ function calcTeamplay(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Pick-Kills', value: +avgPicks.toFixed(1), unit: '/Spiel', description: 'Kills mit Verbündetem in der Nähe' },
       { name: 'CC + Kill', value: +avgImmobilize.toFixed(1), unit: '/Spiel', description: 'CC-Ziel von Verbündetem getötet' },
       { name: 'Assist-Serie 12+', value: +assistStreakRate.toFixed(0), unit: '%', description: 'Spiele mit 12+ Assists ohne Tod' },
+      ...(enemyCC !== null ? [
+        { name: 'CC auf Gegner', value: +enemyCC.toFixed(1), unit: '/Spiel', description: 'Gegnerische Champions festgesetzt' },
+      ] : []),
     ],
   };
 }
@@ -500,6 +559,9 @@ function calcEarlyGameImpact(matches: ExtendedMatchData[]): CategoryScore {
   const avgRoamKills = avg(matches, m => m.challenges.killsOnOtherLanesEarlyJungleAsLaner);
   const avgGankKills = avg(matches, m => m.challenges.killsOnLanersEarlyJungleAsJungler);
   const avgFirstTurret = rate(matches, m => m.challenges.firstTurretKilled > 0) * 100;
+  const jungleGames = matches.filter(isRiotJungleGame);
+  const junglerKills10 = avgPresent(jungleGames, m => m.extra?.junglerKillsEarlyJungle);
+  const initialCrabs = avgPresent(jungleGames, m => m.extra?.initialCrabCount);
 
   const earlyScore = fbRate * 0.3 + avgPlates * 8 + avgTakedowns15 * 3;
   const score = clamp(scoreFromThresholds(earlyScore, 10, 25, 45, 70));
@@ -519,6 +581,12 @@ function calcEarlyGameImpact(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Roam-Kills', value: +avgRoamKills.toFixed(1), unit: '/Spiel', description: 'Kills auf anderen Lanes (Laner)' },
       { name: 'Gank-Kills', value: +avgGankKills.toFixed(1), unit: '/Spiel', description: 'Lane-Kills als Jungler' },
       { name: 'First Turret', value: +avgFirstTurret.toFixed(0), unit: '%', description: 'Ersten Turm zerstört' },
+      ...(junglerKills10 !== null ? [
+        { name: 'Jungler-Kills vor 10 Min', value: +junglerKills10.toFixed(2), unit: '/Spiel', description: 'Kills auf den gegnerischen Jungler vor Minute 10, nur Jungle-Spiele' },
+      ] : []),
+      ...(initialCrabs !== null ? [
+        { name: 'Erste Krabben', value: +initialCrabs.toFixed(2), unit: '/Spiel', description: 'Krabben beim ersten Erscheinen (0–2), nur Jungle-Spiele' },
+      ] : []),
     ],
   };
 }
@@ -531,6 +599,13 @@ function calcMechanics(matches: ExtendedMatchData[]): CategoryScore {
   const avgLargestSpree = avg(matches, m => m.largestKillingSpree);
   const avgSkillshots = avg(matches, m => m.challenges.landSkillShotsEarlyGame);
   const avgFlashMulti = avg(matches, m => m.challenges.multikillsAfterAggressiveFlash);
+  // Riot zaehlt Skillshots nicht fuer jeden Champion (Garen, Darius, Teemo … immer 0).
+  // Bei Champions, fuer die gezaehlt wird, ist 0 fast nie echt (75 von 36.019 Spielen,
+  // gemessen 08.11.2026) — deshalb nur Spiele mit mindestens einem Treffer.
+  const skillshotsHit = avgPresent(matches, m => {
+    const v = m.extra?.skillshotsHit;
+    return v !== undefined && v > 0 ? v : undefined;
+  });
 
   const mechPoints = avgDodged * 0.5 + avgDodgedTight * 2 + avgMultikills * 10 + avgLegendary * 20 + avgLargestSpree * 3;
   const score = clamp(scoreFromThresholds(mechPoints, 10, 30, 55, 85));
@@ -551,6 +626,9 @@ function calcMechanics(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Größte Killserie', value: +avgLargestSpree.toFixed(1), unit: '', description: 'Durchschnittliche größte Killserie' },
       { name: 'Skillshots (early)', value: +avgSkillshots.toFixed(0), unit: '/Spiel', description: 'Skillshots im Early Game getroffen' },
       { name: 'Flash-Multikills', value: +avgFlashMulti.toFixed(2), unit: '/Spiel', description: 'Multikills nach aggressivem Flash' },
+      ...(skillshotsHit !== null ? [
+        { name: 'Skillshots getroffen', value: +skillshotsHit.toFixed(0), unit: '/Spiel', description: 'Getroffene Skillshots, nur Spiele mit Champions, fuer die Riot sie zaehlt' },
+      ] : []),
     ],
   };
 }

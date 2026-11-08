@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { processMatch, toLegacyMatchData, extractParticipants, extractBans, type ExtendedMatchData } from '../../lib/match-processor';
+import { processMatch, toLegacyMatchData, extractParticipants, extractBans, extractTeamObjectives, type ExtendedMatchData, type TeamObjectiveCounts } from '../../lib/match-processor';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 
 import { getRegionalRouting, parseRegion } from '../../lib/regions';
@@ -71,10 +71,12 @@ export async function GET(request: NextRequest) {
     // Build participant + ban maps for detailed match view
     const participantsMap: Record<string, any> = {};
     const bansMap: Record<string, any> = {};
+    const objectivesMap: Record<string, TeamObjectiveCounts[]> = {};
     for (const raw of rawMatches.filter(Boolean)) {
       if (!raw?.metadata?.matchId) continue;
       participantsMap[raw.metadata.matchId] = extractParticipants(raw);
       bansMap[raw.metadata.matchId] = extractBans(raw);
+      objectivesMap[raw.metadata.matchId] = extractTeamObjectives(raw);
     }
 
     // Return both extended data and legacy format for backwards compatibility
@@ -85,6 +87,7 @@ export async function GET(request: NextRequest) {
       damageDealtToBuildings: m!.damageDealtToBuildings,
       participants: participantsMap[m!.matchId] || [],
       bans: bansMap[m!.matchId] || [],
+      teamObjectives: objectivesMap[m!.matchId] || [],
     }));
     const statsOverview = calculateStatsOverview(extended as ExtendedMatchData[], null);
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useI18n } from '../lib/i18n';
+import { useI18n, type TranslationKey } from '../lib/i18n';
 import { loadRuneIndex, loadSummonerIndex, RUNE_IMG_BASE, type RuneInfo, type SummonerInfo } from '../lib/dd-assets';
 
 interface Participant {
@@ -32,6 +32,47 @@ interface Participant {
     secondarySelections: number[];
     statPerks: { off: number; flex: number; def: number };
   };
+}
+
+/** Team-Ziele wie von extractTeamObjectives geliefert (fehlender Schluessel = Feld fehlt). */
+interface TeamObjectives {
+  teamId: number;
+  tower?: number;
+  dragon?: number;
+  baron?: number;
+  riftHerald?: number;
+  horde?: number;
+  inhibitor?: number;
+  firstTower?: boolean;
+  firstDragon?: boolean;
+  firstBaron?: boolean;
+}
+
+const OBJECTIVE_LABELS = [
+  ['tower', 'lolStat.towers'],
+  ['inhibitor', 'match.inhibitors'],
+  ['dragon', 'compare.drakes'],
+  ['baron', 'compare.baron'],
+  ['riftHerald', 'lolStat.riftHerald'],
+  ['horde', 'lolStat.voidgrubs'],
+] as const;
+
+const FIRST_LABELS = [
+  ['firstTower', 'match.firstTower'],
+  ['firstDragon', 'match.firstDragon'],
+  ['firstBaron', 'match.firstBaron'],
+] as const;
+
+function teamObjectiveItems(o: TeamObjectives, t: (key: TranslationKey) => string) {
+  const items: { key: string; label: string; value?: number }[] = [];
+  for (const [k, label] of OBJECTIVE_LABELS) {
+    const v = o[k];
+    if (typeof v === 'number') items.push({ key: k, label: t(label), value: v });
+  }
+  for (const [k, label] of FIRST_LABELS) {
+    if (o[k] === true) items.push({ key: k, label: t(label) });
+  }
+  return items;
 }
 
 interface Props {
@@ -175,10 +216,22 @@ export default function MatchDetail({ match, ddVersion, isExpanded, onToggle, fo
           {/* Team Tables */}
           {[team1, team2].map((team, ti) => {
             const teamWon = team[0]?.win;
+            const objectives: TeamObjectives | undefined = (match.teamObjectives as TeamObjectives[] | undefined)
+              ?.find(o => o.teamId === (ti === 0 ? 100 : 200));
+            const objectiveItems = objectives ? teamObjectiveItems(objectives, t) : [];
             return (
               <div key={ti} className={`mb-3 rounded overflow-hidden border ${teamWon ? 'border-green-500/20' : 'border-red-500/20'}`}>
-                <div className={`px-3 py-1.5 text-xs font-medium ${teamWon ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                  {teamWon ? t('match.win') : t('match.loss')} — Team {ti + 1}
+                <div className={`px-3 py-1.5 text-xs font-medium flex flex-wrap items-center gap-x-3 gap-y-0.5 ${teamWon ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                  <span>{teamWon ? t('match.win') : t('match.loss')} — Team {ti + 1}</span>
+                  {objectiveItems.length > 0 && (
+                    <span className="ml-auto flex flex-wrap gap-x-2.5 gap-y-0.5 font-normal text-fg-secondary">
+                      {objectiveItems.map(item => (
+                        <span key={item.key}>
+                          {item.label}{item.value !== undefined && <> <span className="text-white">{item.value}</span></>}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </div>
 
                 {activeTab === 'overview' && (

@@ -72,15 +72,19 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     { value: 'me1', label: 'ME' },
   ];
 
-  // „Alle" heisst nach dem niedrigsten gezaehlten Rang, wo es ihn als „X+" gibt
-  // (Box EUW: Emerald+). Wochendatei (= Master+) bleibt vorerst „Alle Raenge".
+  // „Alle" heisst nach dem niedrigsten gezaehlten Rang (Box EUW: Emerald+).
+  // Zaehlt es genau ab Master (Wochendatei), waere es derselbe Knopf wie
+  // „Master+" — dann gibt es nur den einen, und eine Master+-Auswahl markiert ihn.
+  const allIsMasterPlus = allTiersFrom === 'MASTER';
   const allLabelKey = allTiersFrom === 'EMERALD' ? 'tier.emeraldPlus'
-    : allTiersFrom === 'DIAMOND' ? 'tier.diamondPlus' : 'tier.all';
+    : allTiersFrom === 'DIAMOND' ? 'tier.diamondPlus'
+    : allIsMasterPlus ? 'tier.masterPlus' : 'tier.all';
+  const shownTier = allIsMasterPlus && tier === 'MASTER_PLUS' ? 'all' : tier;
   const TIERS = [
     { value: 'all', label: t(allLabelKey) },
     { value: 'CHALLENGER', label: t('tier.challenger') },
     { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
-    { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
+    ...(allIsMasterPlus ? [] : [{ value: 'MASTER_PLUS', label: t('tier.masterPlus') }]),
   ];
 
   const ROLES = [
@@ -179,7 +183,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     </button>
   );
 
-  const currentTierLabel = TIERS.find((tr) => tr.value === tier)?.label || t(allLabelKey);
+  const currentTierLabel = TIERS.find((tr) => tr.value === shownTier)?.label || t(allLabelKey);
   const currentRoleLabel = ROLES.find((r) => r.value === role)?.label || t('role.all');
 
   return (
@@ -201,11 +205,11 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
                     key={tr.value}
                     onClick={() => setTier(tr.value)}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors flex-shrink-0 ${
-                      tier === tr.value
+                      shownTier === tr.value
                         ? 'bg-accent text-surface-sunken'
                         : 'bg-surface-raised text-fg-secondary hover:text-white hover:bg-[#1a2438]'
                     }`}
-                    style={tier === tr.value && tr.value !== 'all' ? { backgroundColor: tierColors[tr.value] || '#c89b3c' } : {}}
+                    style={shownTier === tr.value && tr.value !== 'all' ? { backgroundColor: tierColors[tr.value] || '#c89b3c' } : {}}
                   >
                     {tr.label}
                   </button>
@@ -293,7 +297,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
           </div>
           <div className="bg-surface-base border border-border-subtle rounded p-3 text-center">
             <div className="text-fg-secondary text-xs">{t('champ.rank')}</div>
-            <div className="text-xl font-medium" style={{ color: tierColors[tier] || '#c89b3c' }}>
+            <div className="text-xl font-medium" style={{ color: tierColors[shownTier] || '#c89b3c' }}>
               {currentTierLabel}
             </div>
           </div>

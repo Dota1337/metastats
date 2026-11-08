@@ -85,3 +85,13 @@ test('unbekannter Rang oder leere Auswahl liefert nichts, Rang ohne Matches eben
   assert.equal(boxStatsForTiers(file(), []), null);
   assert.equal(boxStatsForTiers(null, null), null);
 });
+
+test('tiers: gezaehlte Raenge mit Matches im Fenster, aufsteigend', () => {
+  // Alle: Fenster nur 16.22 → Emerald + Master (Challenger liegt nur in 16.21).
+  assert.deepEqual(boxStatsForTiers(file(), null).tiers, ['EMERALD', 'MASTER']);
+  // Master+: beide Patches → Master + Challenger, Grandmaster fehlt.
+  assert.deepEqual(boxStatsForTiers(file(), ['CHALLENGER', 'MASTER', 'GRANDMASTER']).tiers, ['MASTER', 'CHALLENGER']);
+  // Emerald leer → niedrigster gezaehlter Rang ist Master (Knopf heisst dann nicht „Emerald+").
+  const noEmerald = file({ patches: [{ patch: '16.22', tiers: { EMERALD: tier(0, {}), MASTER: tier(16_000) } }] });
+  assert.deepEqual(boxStatsForTiers(noEmerald, null).tiers, ['MASTER']);
+});

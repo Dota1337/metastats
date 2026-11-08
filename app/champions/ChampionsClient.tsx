@@ -41,6 +41,8 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [version, setVersion] = useState(initial?.version ?? '');
   const [hasStats, setHasStats] = useState(initial?.hasStats ?? false);
+  // Ab welchem Rang „Alle" zaehlt (Antwortfeld, aeltere Edge-Antworten ohne Feld → null).
+  const [allTiersFrom, setAllTiersFrom] = useState<string | null>(initial?.allTiersFrom ?? null);
   const [search, setSearch] = useState('');
   const [region, setRegion] = useState(CHAMPION_LIST_DEFAULTS.region);
   // Zu welchen Filtern die gezeigte Liste gehoert. Gleich → kein Abruf (die
@@ -70,8 +72,12 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     { value: 'me1', label: 'ME' },
   ];
 
+  // „Alle" heisst nach dem niedrigsten gezaehlten Rang, wo es ihn als „X+" gibt
+  // (Box EUW: Emerald+). Wochendatei (= Master+) bleibt vorerst „Alle Raenge".
+  const allLabelKey = allTiersFrom === 'EMERALD' ? 'tier.emeraldPlus'
+    : allTiersFrom === 'DIAMOND' ? 'tier.diamondPlus' : 'tier.all';
   const TIERS = [
-    { value: 'all', label: t('tier.all') },
+    { value: 'all', label: t(allLabelKey) },
     { value: 'CHALLENGER', label: t('tier.challenger') },
     { value: 'GRANDMASTER_PLUS', label: t('tier.grandmasterPlus') },
     { value: 'MASTER_PLUS', label: t('tier.masterPlus') },
@@ -98,11 +104,13 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
       setChampions(data.champions);
       setVersion(data.version);
       setHasStats(data.hasStats);
+      setAllTiersFrom(data.allTiersFrom ?? null);
       shownKey.current = key;
     } catch {
       if (signal.aborted) return;
       // Sonst bliebe die Liste des vorigen Filters unter dem neuen Filter stehen.
       setChampions([]);
+      setAllTiersFrom(null);
       setFailed(true);
     }
     if (!signal.aborted) setLoading(false);
@@ -171,7 +179,7 @@ export default function ChampionsPage({ initial = null }: { initial?: ChampionLi
     </button>
   );
 
-  const currentTierLabel = TIERS.find((tr) => tr.value === tier)?.label || t('tier.all');
+  const currentTierLabel = TIERS.find((tr) => tr.value === tier)?.label || t(allLabelKey);
   const currentRoleLabel = ROLES.find((r) => r.value === role)?.label || t('role.all');
 
   return (

@@ -3,7 +3,7 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expandLolTier } from './rank-groups';
 import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from './ddragon-version-server';
-import { statsForTiers, type ChampionStatsFile, type TierStatsPick } from './champion-tier-stats';
+import { COLLECTED_TIERS, statsForTiers, type ChampionStatsFile, type TierStatsPick } from './champion-tier-stats';
 import { boxListReady, boxStatsForTiers, LOL_CHAMPION_STATS_REGION } from './lol-champion-stats-blob.mjs';
 import { loadLolChampionStats } from './lol-champion-stats-snapshot';
 import type { ChampionListFilters, ChampionListPayload, ChampionListRow } from './lol-champion-filters';
@@ -110,7 +110,15 @@ export async function loadChampionList(
   const box = boxPromise ? await boxPromise : null;
   const boxFile = box?.status === 'ok' && boxListReady(box.file) ? box.file : null;
   const boxMissing = box?.status === 'unavailable';
-  if (boxFile) picked = boxStatsForTiers(boxFile, fileTiers);
+  // Ab welchem Rang „Alle" zaehlt — aus der Quelle, nicht aus `picked`: der
+  // gewaehlte Rang darf leer sein, waehrend „Alle" Zahlen hat.
+  let allTiersFrom: string | null = null;
+  if (boxFile) {
+    const boxPick = boxStatsForTiers(boxFile, fileTiers);
+    picked = boxPick;
+    const allPick = fileTiers === null ? boxPick : boxStatsForTiers(boxFile, null);
+    allTiersFrom = allPick?.tiers[0] ?? null;
+  }
 
   // Sammel-Datei: nur die Raenge des Filters zaehlen
   // (app/lib/champion-tier-stats.ts). Gibt die Quelle fuer den Rang nichts
@@ -128,6 +136,7 @@ export async function loadChampionList(
       raw => JSON.parse(raw),
     );
     picked = collectData ? statsForTiers(collectData, fileTiers) : null;
+    if (statsForTiers(collectData, null)) allTiersFrom = COLLECTED_TIERS[COLLECTED_TIERS.length - 1];
   }
   if (picked) hasStats = true;
 
@@ -239,6 +248,7 @@ export async function loadChampionList(
       totalChampions: filtered.length,
       hasStats,
       region,
+      allTiersFrom,
     },
     degraded: !hasStats || filtered.length === 0 || boxMissing,
   };

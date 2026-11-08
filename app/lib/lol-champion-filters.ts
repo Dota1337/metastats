@@ -55,4 +55,10 @@ export interface ChampionListPayload {
   totalChampions: number;
   hasStats: boolean;
   region: string;
+  /**
+   * Niedrigster Rang, den die Ansicht „Alle" zaehlt (Box: EMERALD, Wochendatei:
+   * MASTER, keine Zahlen: null) — haengt an der Datenquelle, nicht am
+   * gewaehlten Rang. Der Knopf heisst danach „Emerald+" statt „Alle Raenge".
+   */
+  allTiersFrom: string | null;
 }

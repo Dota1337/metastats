@@ -92,7 +92,8 @@ export function isValidLolChampionStats(file, now = Date.now()) {
  * @param {any} file
  * @param {string[] | null} tiers
  * @returns {{ stats: Record<string, BoxChampStat>, totalGames: number, banMatches: number | null,
- *   kdaOk: boolean, matches: number, patches: string[] } | null}
+ *   kdaOk: boolean, matches: number, patches: string[], tiers: string[] } | null}
+ *   tiers = gezaehlte Raenge mit Matches im Fenster, aufsteigend (Emerald zuerst).
  */
 export function boxStatsForTiers(file, tiers) {
   if (!isObj(file) || !Array.isArray(file.patches) || !file.patches.length) return null;
@@ -128,6 +129,7 @@ export function boxStatsForTiers(file, tiers) {
     kdaOk: enough,
     matches,
     patches: window.map(p => p.patch),
+    tiers: LOL_STATS_TIERS.filter(t => wanted.includes(t) && window.some(p => (p.tiers[t]?.matches || 0) > 0)),
   };
 }
 

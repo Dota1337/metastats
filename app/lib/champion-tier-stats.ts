@@ -35,7 +35,8 @@ export interface ChampionStatsFile {
   totalParticipantGames?: number;
 }
 
-const COLLECTED_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
+/** Gesammelte Raenge der Wochendatei, absteigend — der letzte ist der niedrigste. */
+export const COLLECTED_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
 
 /**
  * tiers = null heisst „alle Raenge". Rueckgabe null = fuer diese Auswahl gibt

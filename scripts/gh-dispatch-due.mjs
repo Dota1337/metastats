@@ -14,6 +14,7 @@
  *
  *   node scripts/gh-dispatch-due.mjs              # echt (GH_DISPATCH_TOKEN oder GH_TOKEN mit Actions: write)
  *   node scripts/gh-dispatch-due.mjs --dry-run [--at 2026-11-08T02:17:30Z]
+ *   node scripts/gh-dispatch-due.mjs --probe     # prueft nur, ob der Schluessel anstossen darf
  *
  * Notaus: Datei /var/lib/metastats/gh-dispatch.off anlegen.
  */
@@ -129,7 +130,18 @@ async function main() {
     TOKEN = loadToken();
     if (!TOKEN) throw new Error('weder GH_DISPATCH_TOKEN noch GH_TOKEN gefunden');
   }
-  const state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {};
+  if (args.includes('--probe')) {
+    // Darf der Schluessel anstossen? Anstoss auf einen Zweig, den es nicht gibt:
+    // 422 = Recht vorhanden (Zweig fehlt), 403/404 = kein Recht. Startet nichts.
+    const res = await gh(`/repos/${REPO}/actions/workflows/tft-icon-mirror.yml/dispatches`, {
+      method: 'POST', body: { ref: `probe-gibt-es-nicht-${Date.now()}` },
+    });
+    if (res.status === 422) console.log('Schluessel darf anstossen (HTTP 422: Zweig fehlt, Recht vorhanden)');
+    else if (res.status === 403 || res.status === 404) { console.log(`Schluessel darf NICHT anstossen (HTTP ${res.status})`); process.exitCode = 1; }
+    else { console.log(`unklar: HTTP ${res.status}`); process.exitCode = 1; }
+    return;
+  }
+  const state =existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {};
   let changed = false;
   let failures = 0;
 

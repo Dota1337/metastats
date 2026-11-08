@@ -1008,6 +1008,7 @@
         "30 5 * * *"
       ],
       "scripts": [
+        "scripts/gh-dispatch-due.mjs",
         "scripts/refresh-metatft-comps.mjs",
         "scripts/refresh-metatft-cells.mjs"
       ],
@@ -1042,6 +1043,7 @@
       ],
       "scripts": [
         "scripts/relabel-tft-bpatch.mjs",
+        "scripts/gh-dispatch-due.mjs",
         "scripts/detect-tft-patch-schedule.mjs",
         "scripts/detect-tft-set.mjs",
         "scripts/detect-tft-bpatches.mjs"
@@ -1075,6 +1077,7 @@
       ],
       "scripts": [
         "scripts/lib/tft-data-freshness.mjs",
+        "scripts/gh-dispatch-due.mjs",
         "scripts/tft-data-refresh-check.mjs",
         "scripts/refresh-augment-tiers.mjs",
         "scripts/refresh-augment-stages.mjs",
@@ -1099,7 +1102,8 @@
         "40 3 * * 4"
       ],
       "scripts": [
-        "scripts/mirror-tft-icons.mjs"
+        "scripts/mirror-tft-icons.mjs",
+        "scripts/gh-dispatch-due.mjs"
       ],
       "manualDispatch": true,
       "onPush": false
@@ -1111,6 +1115,7 @@
         "0 6 * * *"
       ],
       "scripts": [
+        "scripts/gh-dispatch-due.mjs",
         "scripts/prewarm-tft-player-cache.mjs"
       ],
       "manualDispatch": true,
@@ -1147,6 +1152,7 @@
         "30 9 * * *"
       ],
       "scripts": [
+        "scripts/gh-dispatch-due.mjs",
         "scripts/warm-tft-stats-cache.mjs"
       ],
       "manualDispatch": true,

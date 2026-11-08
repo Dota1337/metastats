@@ -5,6 +5,12 @@
 
 import { getRegionalRouting } from './regions';
 import { riotFetch } from './riot-fetch';
+import { CURRENT_SET_STARTED_AT_MS } from './current-set';
+
+// Nur Spiele des laufenden Sets bei Riot abfragen (1 h Puffer vor dem Set-Wechsel). Gelesen wird die
+// Ablage nur fuers aktuelle Set (player-stats ohne ?set=, SeasonStats waehlt kein anderes); aeltere
+// Sets kosteten bis zu 1000 Riot-Abrufe je Erstbefuellung und blieben in Supabase liegen (08.11.2026).
+const SET_START_SEC = CURRENT_SET_STARTED_AT_MS != null ? Math.floor(CURRENT_SET_STARTED_AT_MS / 1000) - 3600 : null;
 
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -323,7 +329,7 @@ function supaHeaders() {
 /** null = Riot hat abgelehnt (Kennung unbekannt, Limit, Ausfall); [] = Spieler ohne Matches. */
 async function fetchIds(regional: string, puuid: string, apiKey: string, start: number, count: number): Promise<string[] | null> {
   const r = await riotFetch(
-    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${encodeURIComponent(puuid)}/ids?count=${count}&start=${start}`,
+    `https://${regional}.api.riotgames.com/tft/match/v1/matches/by-puuid/${encodeURIComponent(puuid)}/ids?count=${count}&start=${start}${SET_START_SEC != null ? `&startTime=${SET_START_SEC}` : ''}`,
     apiKey,
   );
   if (!r.ok) return null;

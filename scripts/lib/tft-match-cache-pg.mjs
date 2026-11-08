@@ -11,6 +11,7 @@
 
 import { buildSnapshotForPlayer } from './tft-marketvalue.mjs';
 import { timed } from './perf-timing.mjs';
+import { loadCurrentSet } from './current-set.mjs';
 import { buildLobbyRow, lobbyCaptureEnabled, lobbySet, noteLobbyFailure, saveLobbies } from './tft-match-lobby.mjs';
 
 // Match-V1 detail endpoint has a 200/10s method limit per routing cluster.
@@ -317,6 +318,15 @@ export async function syncPlayerCacheToSupabase(rows, opts = {}) {
   if (!supaUrl || !supaKey) {
     log('  [supabase] missing env, skipping match-cache sync');
     return { pushed: 0, skipped: rows.length };
+  }
+  // Nur das laufende Set nach Supabase: aeltere Sets liest dort niemand mehr (Vercel fragt nur das
+  // aktuelle Set ab), die Box raeumt sie woechentlich selbst ab (metastats-pg-prune.sh). Ohne Set-Angabe
+  // bleibt alles wie bisher.
+  const cur = loadCurrentSet();
+  if (Number.isFinite(cur)) {
+    const before = rows.length;
+    rows = rows.filter(r => Number(r.set_number) >= cur);
+    if (rows.length < before) log(`  [supabase] ${before - rows.length} Zeilen aelterer Sets nicht gespiegelt`);
   }
   if (rows.length === 0) return { pushed: 0, skipped: 0 };
 

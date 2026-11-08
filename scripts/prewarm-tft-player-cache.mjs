@@ -29,6 +29,7 @@ const SLEEP_BETWEEN_PLAYERS_MS = Number(arg('--sleep-ms', '50'));
 const LIMIT = Number(arg('--limit', '0'));   // 0 = no cap (process every player)
 
 import { getRegionalRouting } from './lib/regional-routing.mjs';
+import { loadSetStartDate } from './lib/current-set.mjs';
 const REGIONAL = getRegionalRouting(REGION);
 
 const API_KEY = process.env.RIOT_API_KEY_TFT;
@@ -99,9 +100,14 @@ async function discoverPlayers() {
 const WAVE_CONCURRENCY = 20;
 const WAVE_MS = 1050;
 
+// Nur Spiele des laufenden Sets (wie app/lib/tft-player-cache.ts): aeltere liest niemand mehr.
+const SET_START = loadSetStartDate();
+const SET_START_SEC = SET_START ? Math.floor(Date.parse(`${SET_START}T00:00:00Z`) / 1000) - 3600 : null;
+
 async function fetchIds(puuid, start, count) {
+  const since = SET_START_SEC != null ? `&startTime=${SET_START_SEC}` : '';
   const r = await riot.fetch(
-    `https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}`,
+    `https://${REGIONAL}.api.riotgames.com/tft/match/v1/matches/by-puuid/${puuid}/ids?count=${count}&start=${start}${since}`,
   );
   if (!r.ok) return [];
   const ids = await r.json();

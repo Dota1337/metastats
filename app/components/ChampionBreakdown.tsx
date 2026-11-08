@@ -7,6 +7,12 @@ interface Props {
   ddVersion: string;
 }
 
+// Handy (< 640 px): Bild, Name, Winrate, KDA. Die Spiele stehen dort in der W/L-Zeile unter der
+// Winrate; #, Spiele, CS/m und DMG/m kommen erst ab sm dazu. Kopf und Zeilen teilen die Vorlage.
+// Gemessen 08.11.2026: 320 px ohne Ueberlauf (Name 35 px, gekuerzt), 375 px Name ~90 px.
+const CHAMP_GRID = 'grid grid-cols-[1.75rem_minmax(0,1fr)_3.5rem_5rem] sm:grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2';
+const WIDE_ONLY = 'hidden sm:block';
+
 interface ChampStat {
   champion: string;
   games: number;
@@ -53,7 +59,7 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
   if (matches.length === 0) return null;
 
   return (
-    <div className="bg-surface-base border border-border-subtle rounded p-6 mb-4">
+    <div className="bg-surface-base border border-border-subtle rounded p-4 sm:p-6 mb-4">
       <div className="flex items-center justify-between mb-4">
         <div className="text-fg-secondary text-xs uppercase tracking-widest">
           {t('champBreakdown.title')}
@@ -75,15 +81,15 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1 text-fg-muted text-xs uppercase">
-        <div>#</div>
+      <div className={`${CHAMP_GRID} px-2 py-1 text-fg-muted text-xs uppercase`}>
+        <div className={WIDE_ONLY}>#</div>
         <div />
         <div>{t('champ.champion')}</div>
-        <div className="text-center">{t('player.games')}</div>
+        <div className={`${WIDE_ONLY} text-center`}>{t('player.games')}</div>
         <div className="text-center">{t('mv.winrate')}</div>
         <div className="text-center">KDA</div>
-        <div className="text-center">CS/m</div>
-        <div className="text-center">DMG/m</div>
+        <div className={`${WIDE_ONLY} text-center`}>CS/m</div>
+        <div className={`${WIDE_ONLY} text-center`}>DMG/m</div>
       </div>
 
       <div className="flex flex-col gap-0.5 mt-1">
@@ -97,15 +103,15 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
           const avgA = (s.assists / s.games).toFixed(1);
 
           return (
-            <div key={s.champion} className="grid grid-cols-[2.5rem_2.5rem_1fr_3.5rem_4.5rem_5rem_4rem_4rem] gap-2 px-2 py-1.5 rounded hover:bg-surface-raised items-center">
-              <div className="text-fg-muted text-sm">{i + 1}</div>
+            <div key={s.champion} className={`${CHAMP_GRID} px-2 py-1.5 rounded hover:bg-surface-raised items-center`}>
+              <div className={`${WIDE_ONLY} text-fg-muted text-sm`}>{i + 1}</div>
               <img
                 src={`https://ddragon.leagueoflegends.com/cdn/${ddVersion}/img/champion/${s.champion}.png`}
                 alt={s.champion}
                 className="w-7 h-7 rounded"
               />
               <div className="text-white text-sm font-medium truncate">{s.champion}</div>
-              <div className="text-white text-sm text-center">{s.games}</div>
+              <div className={`${WIDE_ONLY} text-white text-sm text-center`}>{s.games}</div>
               <div className="text-center">
                 <div className={`text-sm font-medium ${wr >= 60 ? 'text-green-400' : wr >= 50 ? 'text-blue-400' : 'text-red-400'}`}>
                   {wr}%
@@ -121,8 +127,8 @@ export default function ChampionBreakdown({ matches, ddVersion }: Props) {
                 </div>
                 <div className="text-fg-muted text-xs">{avgK}/{avgD}/{avgA}</div>
               </div>
-              <div className="text-fg-secondary text-sm text-center">{csMin.toFixed(1)}</div>
-              <div className="text-fg-secondary text-sm text-center">{dmgMin}</div>
+              <div className={`${WIDE_ONLY} text-fg-secondary text-sm text-center`}>{csMin.toFixed(1)}</div>
+              <div className={`${WIDE_ONLY} text-fg-secondary text-sm text-center`}>{dmgMin}</div>
             </div>
           );
         })}

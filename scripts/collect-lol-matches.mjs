@@ -35,6 +35,8 @@
  *
  * Laufzeit: Riot erlaubt 100 Anfragen pro 2 Minuten fuer den ganzen Key; der
  * Sammler nimmt sich davon 35 (LOL_DEV_KEY_BATCH), der Rest bleibt der Live-Seite.
+ * Seit 08.11.2026 fuellt er in den letzten 8 s jedes Riot-Fensters bis 85 auf,
+ * solange niemand sonst den Key nutzt (LOL_RIOT_FILL_MAX, riot-limits.mjs).
  * Ein Spieler mit ~950 Spielen dauert damit rund 55 Minuten — mehr als etwa 25
  * Spieler am Tag sind nicht drin. Bei 1.431 Zeilen in `players` (gemessen
  * 2026-09-11) brauchte der erste volle Durchlauf bei 95 rund drei Wochen, bei 35
@@ -46,7 +48,7 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 
 import { createRiotClient } from './lib/riot-client.mjs';
-import { LOL_DEV_KEY_BATCH } from './lib/riot-limits.mjs';
+import { LOL_DEV_KEY_BATCH, lolFillOptions } from './lib/riot-limits.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
 import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
 import { recentPatches } from './lib/lol-items.mjs';
@@ -211,7 +213,20 @@ if (!riotKey && !SHOW_STATUS && !SEED_ONLY) {
   console.error('RIOT_API_KEY nicht gesetzt — ohne Key gibt es nichts zu holen.');
   process.exit(1);
 }
-let riot = riotKey ? createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: riotKey, log: (m) => log(m) }) : null;
+// Freies Kontingent auffuellen (riot-client.mjs `fill`, lolFillOptions): Wert
+// LOL_RIOT_FILL_MAX aus der Env-Datei, leer = 85, 35 oder weniger = aus. Steht die
+// Datei da, zaehlt nur sie — vor jedem Rang-Zyklus frisch gelesen, damit Senken
+// keinen Neustart braucht.
+function fillFromEnv() {
+  for (const path of ['/etc/metastats-crawler/env', resolve(process.cwd(), '.env.local')]) {
+    if (!existsSync(path)) continue;
+    const line = readFileSync(path, 'utf8').split(/\r?\n/).find((l) => l.startsWith('LOL_RIOT_FILL_MAX='));
+    return lolFillOptions(line ? line.slice('LOL_RIOT_FILL_MAX='.length) : undefined);
+  }
+  return lolFillOptions(process.env.LOL_RIOT_FILL_MAX);
+}
+const makeRiot = (key) => createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: key, log: (m) => log(m), fill: fillFromEnv() });
+let riot = riotKey ? makeRiot(riotKey) : null;
 let riotCalls = 0;
 
 // Ein abgelaufener Key ist der haeufigste Fehlerfall (LoL-Dev-Key laeuft taeglich
@@ -232,7 +247,7 @@ function reloadRiotKey() {
     const key = line ? line.slice('RIOT_API_KEY='.length).trim() : null;
     if (key && key !== riotKey) {
       riotKey = key;
-      riot = createRiotClient({ ...LOL_DEV_KEY_BATCH, apiKey: key, log: (m) => log(m) });
+      riot = makeRiot(key);
       return true;
     }
     return false;
@@ -753,6 +768,10 @@ async function unclaimRank(ids, msg) {
 // Ein Zyklus: hoechstens `budget` Riot-Anfragen. Wirft RiotAuthError weiter.
 async function rankCycle(budget) {
   const stop = riotCalls + budget;
+  const fillCfg = fillFromEnv();
+  riot.setFill(fillCfg);
+  const fillClient = riot;
+  const fill0 = riot.fillStats();
   await reclaimRankClaims();
   let fetched = 0, stored = 0, failed = 0, seeded = 0;
   while (riotCalls < stop) {
@@ -784,8 +803,12 @@ async function rankCycle(budget) {
   }
   const { rows } = await rawPool.query(
     `select status, count(*)::int as n from lol_rank_match_queue group by status order by status`);
+  // Neuer Schluessel mitten im Zyklus = neuer Client mit eigenen Zaehlern.
+  const f1 = riot.fillStats();
+  const fill = riot === fillClient ? { calls: f1.calls - fill0.calls, busy: f1.busy - fill0.busy } : f1;
   log(`Rang: ${fetched} Matches geholt, ${stored} abgelegt, ${failed} verworfen, ${seeded} neu eingereiht — `
-    + rows.map((r) => `${r.status}=${r.n}`).join(' '));
+    + rows.map((r) => `${r.status}=${r.n}`).join(' ')
+    + (fillCfg ? ` — Auffuellen bis ${fillCfg.maxRequests}: ${fill.calls} Zusatz-Abrufe, ${fill.busy}× belegt` : ' — Auffuellen aus'));
 }
 
 // Kurze DB-Aussetzer abwarten statt den Lauf zu beenden — die Unit startet

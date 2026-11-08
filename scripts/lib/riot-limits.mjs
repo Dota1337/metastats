@@ -76,6 +76,33 @@ const SAFETY = 0.9;
 // und 12 pro Sekunde. Gilt fuer jeden Box-Prozess mit dem LoL-Key.
 export const LOL_DEV_KEY_BATCH = { shortWindowRequests: 8, longWindowRequests: 35 };
 
+// Freies Kontingent auffuellen (riot-client.mjs `fill`, nur collect-lol-matches.mjs,
+// User-Freigabe 08.11.2026): je Riot-Fenster 35 wie oben, in den letzten 8 s bis
+// `maxRequests`, solange niemand sonst den Key nutzt. Gesteuert ueber
+// LOL_RIOT_FILL_MAX in /etc/metastats-crawler/env — leer = 85, 35 oder weniger = aus.
+// Der Sammler liest den Wert vor jedem Rang-Zyklus neu: senken ohne Neustart.
+//   - 85 laesst immer 15 frei: die ersten Abrufe der Spielerseite (Konto, Liste,
+//     Summoner, ohne Wiederholung) finden stets Platz.
+//   - 8 s Zone: die Spielerseite wiederholt Details 2× nach Retry-After (je ≤5 s),
+//     „mehr laden" 1× — in den ersten 3 s der Zone schafft der Sammler hoechstens
+//     8/1,1 s × 3 = 24 Abrufe, es bleiben ≥ 41 frei (Test riot-limits-lol.test.mjs).
+export const LOL_FILL_HARD_MAX = 85;
+
+/** Optionen fuer createRiotClient({ fill }) aus dem Env-Wert, null = aus. */
+export function lolFillOptions(raw) {
+  const text = raw === undefined || raw === null ? '' : String(raw).trim();
+  const v = text === '' ? LOL_FILL_HARD_MAX : Number(text);
+  if (!Number.isInteger(v) || v <= LOL_DEV_KEY_BATCH.longWindowRequests) return null;
+  return {
+    maxRequests: Math.min(v, LOL_FILL_HARD_MAX),
+    baseRequests: LOL_DEV_KEY_BATCH.longWindowRequests,
+    endZoneMs: 8_000,
+    windowMs: 120_000,
+    foreignMax: 3,
+    quietMs: 240_000,
+  };
+}
+
 // Woechentlicher EUW-Champion-Sammler (collect-highelo.mjs, GitHub-Job mit
 // 360-min-Grenze). ~6085 Abrufe: mit 35 waeren es ~354 min, zu knapp. 50 sind
 // ~247 min (gemessen vorher 138 min mit 95) und lassen der Live-Seite 50 pro

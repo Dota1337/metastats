@@ -12,7 +12,7 @@
  * existiert. Kommt GitHubs eigener Zeitplan spaeter hinterher, ueberspringt ihn
  * der gate-Job im Workflow.
  *
- *   node scripts/gh-dispatch-due.mjs              # echt (braucht GH_TOKEN mit Actions: write)
+ *   node scripts/gh-dispatch-due.mjs              # echt (GH_DISPATCH_TOKEN oder GH_TOKEN mit Actions: write)
  *   node scripts/gh-dispatch-due.mjs --dry-run [--at 2026-11-08T02:17:30Z]
  *
  * Notaus: Datei /var/lib/metastats/gh-dispatch.off anlegen.
@@ -90,8 +90,25 @@ export function dueSlot(expr, now, lookbackMin = LOOKBACK_MIN) {
   return null;
 }
 
+// Schluessel: GH_DISPATCH_TOKEN (eigener, Actions: write) vor GH_TOKEN; ohne
+// Umgebung aus der Env-Datei der Box gelesen, damit die cron-Zeile nichts
+// sourcen muss. Der Wert wird nie ausgegeben.
+export function loadToken() {
+  const fromEnv = process.env.GH_DISPATCH_TOKEN || process.env.GH_TOKEN;
+  if (fromEnv) return fromEnv;
+  const f = process.env.GH_DISPATCH_ENV_FILE || '/etc/metastats-crawler/env';
+  if (!existsSync(f)) return null;
+  const env = {};
+  for (const line of readFileSync(f, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    if (m) env[m[1]] = m[2].replace(/^(['"])(.*)\1$/, '$2');
+  }
+  return env.GH_DISPATCH_TOKEN || env.GH_TOKEN || null;
+}
+let TOKEN = null;
+
 async function gh(path, { method = 'GET', body } = {}) {
-  const token = process.env.GH_TOKEN;
+  const token = TOKEN;
   const res = await fetch(`https://api.github.com${path}`, {
     method,
     headers: {
@@ -108,7 +125,10 @@ async function gh(path, { method = 'GET', body } = {}) {
 
 async function main() {
   if (existsSync(join(STATE_DIR, 'gh-dispatch.off'))) { console.log('Notaus gesetzt, Ende'); return; }
-  if (!DRY && !process.env.GH_TOKEN) throw new Error('GH_TOKEN fehlt');
+  if (!DRY) {
+    TOKEN = loadToken();
+    if (!TOKEN) throw new Error('weder GH_DISPATCH_TOKEN noch GH_TOKEN gefunden');
+  }
   const state = existsSync(STATE_FILE) ? JSON.parse(readFileSync(STATE_FILE, 'utf8')) : {};
   let changed = false;
   let failures = 0;
@@ -152,5 +172,5 @@ async function main() {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main().catch((e) => { console.error('Fehler:', String(e?.message || e).split(process.env.GH_TOKEN || '\u0000').join('***')); process.exit(1); });
+  main().catch((e) => { console.error('Fehler:', String(e?.message || e).split(TOKEN || '\u0000').join('***')); process.exit(1); });
 }

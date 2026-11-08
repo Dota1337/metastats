@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { cronsOf, cronMatches, dueSlot, DISPATCH } from './gh-dispatch-due.mjs';
+import { cronsOf, cronMatches, dueSlot, DISPATCH, loadToken } from './gh-dispatch-due.mjs';
+import { tmpdir } from 'node:os';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const at = (s) => new Date(s);
@@ -51,4 +52,26 @@ test('5-Minuten-Takt verpasst keinen Termin der echten Zeitplaene', () => {
 test('unbekannte Syntax wirft statt still nichts zu tun', () => {
   assert.throws(() => cronMatches('0 3 * * MON', at('2026-11-09T03:00:00Z')));
   assert.throws(() => cronMatches('0 3 * *', at('2026-11-09T03:00:00Z')));
+});
+
+test('Schluessel: eigener vor allgemeinem, aus der Env-Datei, fehlende Datei = null', () => {
+  const saved = { a: process.env.GH_DISPATCH_TOKEN, b: process.env.GH_TOKEN, f: process.env.GH_DISPATCH_ENV_FILE };
+  delete process.env.GH_DISPATCH_TOKEN; delete process.env.GH_TOKEN;
+  const dir = mkdtempSync(join(tmpdir(), 'ghd-'));
+  try {
+    const f = join(dir, 'env');
+    process.env.GH_DISPATCH_ENV_FILE = f;
+    assert.equal(loadToken(), null);
+    writeFileSync(f, 'FOO=1\r\nexport GH_TOKEN="allgemein"\n# GH_DISPATCH_TOKEN=auskommentiert\n');
+    assert.equal(loadToken(), 'allgemein');
+    writeFileSync(f, "GH_TOKEN=allgemein\nGH_DISPATCH_TOKEN='eigen'\n");
+    assert.equal(loadToken(), 'eigen');
+    process.env.GH_TOKEN = 'umgebung';
+    assert.equal(loadToken(), 'umgebung');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    for (const [k, v] of [['GH_DISPATCH_TOKEN', saved.a], ['GH_TOKEN', saved.b], ['GH_DISPATCH_ENV_FILE', saved.f]]) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  }
 });

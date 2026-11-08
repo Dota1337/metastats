@@ -855,7 +855,29 @@
       "repeatAlarmHours": 72,
       "minBytes": 300000000,
       "minShareOfLargest": 0.7,
-      "note": "Taegliche Sicherung der Box-Datenbank. Das Skript laeuft per Root-Crontab, steht also nicht in der Systemkarte, und sein Log ist leer. 30 h: um 23:00 UTC ist die heutige Datei ~18 h alt, nach einem ausgefallenen Tag ~42 h. Ab 72 h anderer Wortlaut = zweite Mail, weil sich sonst bei gleichem Grund nichts mehr meldet. Die Aufraeumregel laeuft auch dann, wenn der Dump scheitert, behaelt aber immer die 2 neuesten Dateien. Gelb unter 70 % der groessten vorhandenen Datei: echt nach einem Setwechsel, weil metastats-pg-prune.sh dann tft_player_match_cache und tft_match_lobby leert (03.11.: 56 von ~64 GB Tabellendaten); bleibt dann bis zu 4 Tage gelb. Untergrenze 0,3 GB faengt nur 'praktisch leer', nach einem Setwechsel sind 0,4 bis 0,9 GB zu erwarten (geschaetzt). Rot: ls -la in der Ablage, und das Skript von Hand starten. Nie mit systemctl start metastats-contracts pruefen, das ueberschreibt die Statusdatei; node scripts/check-contracts.mjs --id box/datenbank-sicherung reicht."
+      "maxFiles": 3,
+      "note": "Taegliche Sicherung der Box-Datenbank. Das Skript laeuft per Root-Crontab, steht also nicht in der Systemkarte, und sein Log ist leer. 30 h: um 23:00 UTC ist die heutige Datei ~18 h alt, nach einem ausgefallenen Tag ~42 h. Ab 72 h anderer Wortlaut = zweite Mail, weil sich sonst bei gleichem Grund nichts mehr meldet. Aufraeumen seit 08.11.2026 nach Anzahl: vor dem Dump bleiben die 2 neuesten Tagesdateien (die von heute zaehlt nicht mit), nach dem Dump also 3; scheitert der Dump, bleiben 2, egal wie alt. Ist die neueste Tagesdatei unter minBytes, loescht das Skript nichts (MIN_BYTES im Skript = minBytes, Test pg-backup-script.test.mjs). Gelb ueber maxFiles 3 Dateien: Aufraeumen gescheitert (bleibt im Skript still) oder diese Sperre greift. Gelb unter 70 % der groessten vorhandenen Datei: echt nach einem Setwechsel, weil metastats-pg-prune.sh dann tft_player_match_cache und tft_match_lobby leert (03.11.: 56 von ~64 GB Tabellendaten); bleibt dann 2 bis 3 Abende gelb. Folge der 3 Dateien: ein grosser, aber inhaltlich kaputter Dump verdraengt die letzte gute Kopie nach ~29 h (vorher ~77 h), und ein Schwund unter ~16 % je Tag bleibt gruen. Untergrenze 0,3 GB faengt nur 'praktisch leer', nach einem Setwechsel sind 0,4 bis 0,9 GB zu erwarten (geschaetzt). Rot: ls -la in der Ablage, und das Skript von Hand starten (eine Sperre verhindert zwei Laeufe gleichzeitig). Nie mit systemctl start metastats-contracts pruefen, das ueberschreibt die Statusdatei; node scripts/check-contracts.mjs --id box/datenbank-sicherung reicht."
+    },
+    {
+      "id": "box/platz-datenplatte",
+      "owner": "infra/hetzner/metastats-pg-backup.sh",
+      "type": "disk-free",
+      "label": "Datenplatte",
+      "path": "/mnt/HC_Volume_105869432",
+      "mountpoint": true,
+      "warnFreeBytes": 40000000000,
+      "minFreeBytes": 15000000000,
+      "note": "Freier Platz des Hetzner-Volumes (tft_cold mit tft_player_match_cache und seit 08.11.2026 tft_match_lobby, Sicherungen, Data Explorer). Gemessen bavail (ohne die 9,26 GB root-Reserve, Postgres sieht nur diesen Wert). Rot unter 15 GB: ein Dump braucht ~9 GB (08.11.: 9,05 GB, +0,3 GB/Tag) plus ~2 Tage Zuwachs. Gelb unter 40 GB: der taegliche Explorer-Teilaufbau braucht ~24 GB, Vorlauf ~5 Tage. Zuwachs nach dem Lobby-Umzug ~3,2 GB/Tag (geschaetzt: Explorer-Journal 04.-08.11. 2,95 GB/Tag + Lobbys 0,93 - 2 Dumps weniger 0,66). Der Sonntags-Vollaufbau des Explorers braucht ~77-81 GB; darunter meldet sich zuerst explorer/datei-frische, nicht dieser Vertrag. Die Set-Loeschung (metastats-pg-prune.sh, VACUUM ohne FULL) gibt der Platte keinen Platz zurueck, nur die kleineren Dumps danach. Rot 'nicht eingehaengt': Geraetenummer gleich der von /mnt, das Volume fehlt (fstab nofail). Gemessen um 23:00 UTC; der Vollaufbau ist sonntags meist bis ~22:00 fertig. Rot/gelb: df -h, ls -la in der Ablage, groesste Tabellen in tft_cold; Volume vergroessern geht ohne Abschalten (Hetzner + resize2fs). Pruefen: node scripts/check-contracts.mjs --id box/platz-datenplatte."
+    },
+    {
+      "id": "box/platz-systemplatte",
+      "owner": "infra/hetzner/metastats-pg-prune.sh",
+      "type": "disk-free",
+      "label": "Systemplatte",
+      "path": "/",
+      "warnFreeBytes": 8000000000,
+      "minFreeBytes": 4000000000,
+      "note": "Freier Platz von / auf der Box (bavail). Dort liegen das Postgres-Grundverzeichnis (pg_default ~9,9 GB) und das Aenderungsprotokoll pg_wal (max_wal_size 1 GB; Spitze beim Lobby-Umzug 08.11. 769 MB). Rot unter 4 GB = ~4 x max_wal_size, darunter droht ein Stillstand der Datenbank (Vorfall 08.11.: 3,0 GB frei, Lobby-Tabelle wuchs 0,9 GB/Tag auf /, nach tft_cold verschoben). Gelb unter 8 GB. Die Tagesrate nach dem Umzug ist noch nicht gemessen (Stand 08.11.: 16,1 GB frei) — Grenzen nach einer Woche nachmessen. Owner ist das Prune-Skript, weil es die grossen Tabellen klein haelt. Rot/gelb: df -h /, du -sm /var/lib/postgresql/16/main/pg_wal, groesste Tabellen in pg_default, journalctl --disk-usage. Pruefen: node scripts/check-contracts.mjs --id box/platz-systemplatte."
     }
   ]
 }

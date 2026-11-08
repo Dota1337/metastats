@@ -1662,7 +1662,11 @@
       "box/tls-zertifikat"
     ],
     "infra/hetzner/metastats-pg-backup.sh": [
-      "box/datenbank-sicherung"
+      "box/datenbank-sicherung",
+      "box/platz-datenplatte"
+    ],
+    "infra/hetzner/metastats-pg-prune.sh": [
+      "box/platz-systemplatte"
     ]
   }
 }

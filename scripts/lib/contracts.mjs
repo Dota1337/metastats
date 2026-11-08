@@ -16,7 +16,7 @@
  * Box sind. Sonst würden wir lokal Supabase messen und Hetzner draufschreiben.
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, statSync, statfsSync } from 'node:fs';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
@@ -574,6 +574,7 @@ async function runCheck(c) {
     if (c.type === 'comp-catalog-days') return await checkCompCatalogDays(c, r);
     if (c.type === 'tls-cert') return await checkTlsCert(c, r);
     if (c.type === 'backup-file') return checkBackupFile(c, r);
+    if (c.type === 'disk-free') return checkDiskFree(c, r);
 
     if (c.backend === 'hetzner' && !isOnBox()) {
       return r('skipped', 'nur auf der Hetzner-Box prüfbar');
@@ -1367,7 +1368,7 @@ function checkTlsCert(c, r) {
  * gestern: sonst waere ein Abfall am Folgetag wieder gruen (3 GB gegen 3 GB)
  * und ein Schwund von 25 % je Tag bliebe ganz unbemerkt.
  */
-export function evaluateBackupFile({ files, now = Date.now(), maxAgeHours, repeatAlarmHours, minBytes, minShareOfLargest }) {
+export function evaluateBackupFile({ files, now = Date.now(), maxAgeHours, repeatAlarmHours, minBytes, minShareOfLargest, maxFiles }) {
   if (!files.length) return { status: 'broken', detail: 'Keine Sicherung vorhanden' };
   const gb = (n) => `${(n / 1e9).toFixed(2)} GB`;
   const newest = files.reduce((a, b) => (b.mtimeMs > a.mtimeMs ? b : a));
@@ -1382,6 +1383,12 @@ export function evaluateBackupFile({ files, now = Date.now(), maxAgeHours, repea
       status: 'warn',
       detail: `Neueste Sicherung ${gb(newest.bytes)}, die groesste vorhandene hat ${gb(largest)} (min ${Math.round(minShareOfLargest * 100)} % davon)`,
     };
+  }
+  // Mehr Dateien als die Aufraeumregel stehen laesst = Aufraeumen gescheitert
+  // (es bleibt im Skript bewusst still) oder die Sperre gegen kaputte Dumps
+  // greift. Faellt so auf, bevor die Platte knapp wird.
+  if (maxFiles > 0 && files.length > maxFiles) {
+    return { status: 'warn', detail: `${files.length} Sicherungen liegen in der Ablage (erwartet hoechstens ${maxFiles})` };
   }
   return { status: 'ok', detail: `${age}, ${gb(newest.bytes)}, ${files.length} Dateien` };
 }
@@ -1402,6 +1409,50 @@ function checkBackupFile(c, r) {
     repeatAlarmHours: c.repeatAlarmHours,
     minBytes: c.minBytes,
     minShareOfLargest: c.minShareOfLargest,
+    maxFiles: c.maxFiles,
+  });
+  return r(res.status, res.detail);
+}
+
+/**
+ * Freier Platz einer Platte auf der Box (Art disk-free). Reine Bewertung,
+ * getrennt vom Lesen testbar.
+ *
+ * Gemessen wird, was Nicht-root-Prozesse (Postgres) nutzen koennen: bavail,
+ * ohne die fuer root reservierten Bloecke. Der Text steht im oeffentlichen
+ * Issue: Name aus `label`, nie der Pfad; immer GB = 10^9 mit einer
+ * Nachkommastelle, weil reasonKey nur Ziffern ausblendet — eine wechselnde
+ * Einheit waere ein neuer Grund, also eine Extra-Mail. Innerhalb einer Stufe
+ * bleibt der Wortlaut deshalb gleich.
+ */
+export function evaluateDiskFree({ label, freeBytes, totalBytes, warnFreeBytes, minFreeBytes, mounted = true }) {
+  if (!(minFreeBytes > 0 && warnFreeBytes > minFreeBytes)) return { status: 'error', detail: 'Vertrag ohne gueltige Grenzen' };
+  if (!mounted) return { status: 'broken', detail: `${label} nicht eingehaengt` };
+  const gb = (n) => `${(n / 1e9).toFixed(1)} GB`;
+  if (freeBytes < minFreeBytes) {
+    return { status: 'broken', detail: `${label}: nur noch ${gb(freeBytes)} frei (rot unter ${gb(minFreeBytes)})` };
+  }
+  if (freeBytes < warnFreeBytes) {
+    return { status: 'warn', detail: `${label}: nur noch ${gb(freeBytes)} frei (gelb unter ${gb(warnFreeBytes)}, rot unter ${gb(minFreeBytes)})` };
+  }
+  return { status: 'ok', detail: `${label}: ${gb(freeBytes)} frei von ${gb(totalBytes)}` };
+}
+
+// Fehlt ein mit `nofail` eingehaengtes Volume, liefert statfs auf dem leeren
+// Einhaengeordner still die Werte der Systemplatte. `mountpoint: true`
+// vergleicht deshalb die Geraetenummer mit dem Elternordner. Lesefehler gehen
+// als `error` raus, redactReport ersetzt den Text (Pfad bleibt auf der Box).
+function checkDiskFree(c, r) {
+  if (!isOnBox()) return r('skipped', 'nur auf der Hetzner-Box prüfbar');
+  const s = statfsSync(c.path);
+  const mounted = c.mountpoint ? statSync(c.path).dev !== statSync(dirname(c.path)).dev : true;
+  const res = evaluateDiskFree({
+    label: c.label,
+    freeBytes: Number(s.bavail) * Number(s.bsize),
+    totalBytes: Number(s.blocks) * Number(s.bsize),
+    warnFreeBytes: c.warnFreeBytes,
+    minFreeBytes: c.minFreeBytes,
+    mounted,
   });
   return r(res.status, res.detail);
 }

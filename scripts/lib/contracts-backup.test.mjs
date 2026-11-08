@@ -86,6 +86,19 @@ test('Wachstum um gemessene 6 % je Tag ist gruen', () => {
   assert.equal(check([file(7.44, 18), file(7.06, 42), file(5.91, 114)]).status, 'ok');
 });
 
+test('mehr als maxFiles Dateien ist gelb, genau maxFiles gruen (08.11.: Aufraeumen nach Anzahl)', () => {
+  const three = [file(9.05, 18), file(8.74, 42), file(8.43, 66)];
+  assert.equal(check(three).status, 'ok');
+  assert.equal(evaluateBackupFile({ files: three, ...RULES, maxFiles: 3 }).status, 'ok');
+  const four = [...three, file(8.1, 90)];
+  const r = evaluateBackupFile({ files: four, ...RULES, maxFiles: 3 });
+  assert.equal(r.status, 'warn');
+  assert.equal(r.detail, '4 Sicherungen liegen in der Ablage (erwartet hoechstens 3)');
+  assert.equal(mailKey(r.detail), mailKey(evaluateBackupFile({ files: [...four, file(7.7, 114)], ...RULES, maxFiles: 3 }).detail));
+  // rot schlaegt gelb: ein ausgefallener Tag bleibt rot, auch bei zu vielen Dateien
+  assert.equal(evaluateBackupFile({ files: four.map((f) => ({ ...f, mtimeMs: f.mtimeMs - 30 * H })), ...RULES, maxFiles: 3 }).status, 'broken');
+});
+
 test('Text nennt weder Pfad noch Dateinamen und bleibt bei h und GB', () => {
   const cases = [
     check(MEASURED), check([]), check([file(7, 42)]), check([file(7, 90)]),

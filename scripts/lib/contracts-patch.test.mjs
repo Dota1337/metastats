@@ -54,7 +54,7 @@ test('armed:false macht jedes Ergebnis zu skipped, Befund bleibt lesbar', () => 
 });
 
 test('Box-Vertraege ausserhalb der Box: skipped, ohne DB oder Netz', async () => {
-  for (const type of ['lol-patch-shift', 'box-main', 'backup-file']) {
+  for (const type of ['lol-patch-shift', 'box-main', 'backup-file', 'disk-free']) {
     const r = await checkContract({ id: `t/${type}`, owner: 'o', type, backend: 'hetzner', repo: 'a/b' });
     assert.equal(r.status, 'skipped', type);
   }

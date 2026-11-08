@@ -49,6 +49,7 @@ import pg from 'pg';
 
 import { createRiotClient } from './lib/riot-client.mjs';
 import { LOL_DEV_KEY_BATCH, lolFillOptions } from './lib/riot-limits.mjs';
+import { pickRankWindow } from './lib/lol-rank-window.mjs';
 import { getRegionalRouting, normalizeRegion, isValidRegion } from './lib/regional-routing.mjs';
 import { tryAcquire, releaseLock, wantPending } from './lib/advisory-lock.mjs';
 import { recentPatches } from './lib/lol-items.mjs';
@@ -76,7 +77,8 @@ const NO_RANK = hasFlag('--no-rank');
 const RANK_CALLS = Number(getArg('--rank-calls', RANK_ONLY ? '900' : '0'));
 const RANK_REGION = 'euw1';              // User-Entscheid: vorerst nur EUW
 const RANK_PENDING_MAX = 2000;           // darueber keine neuen Stichproben-Spieler
-const RANK_IDS_PER_PLAYER = 20;
+// Leere Nachfuell-Runde: so lange warten, bevor der naechste Zyklus anfaengt.
+const RANK_STARVED_PAUSE_MS = 10 * 60_000;
 const RANK_CLAIM_BATCH = 20;
 // Spieler je Stufe und Nachfuell-Runde.
 const RANK_QUOTA = [
@@ -480,10 +482,12 @@ async function insertRows(rows) {
 // Rohablage fuer die Champion-Builds (Box-Postgres)
 // --------------------------------------------------------------------------
 let rawPatchFloor = null;                   // {major, minor} des vorigen Patches
+let rawPatchNewest = null;                  // {major, minor} des neuesten Patches (DDragon)
 async function loadRawPatchFloor() {
   if (!rawPool || rawPatchFloor) return;
-  const [, prev] = await recentPatches(2);
+  const [newest, prev] = await recentPatches(2);
   rawPatchFloor = prev;
+  rawPatchNewest = newest || null;
   log(`Rohablage: nimmt Ranked Solo ab Patch ${prev.major}.${prev.minor}.`);
 }
 const patchAtLeast = (p, floor) => p.major > floor.major || (p.major === floor.major && p.minor >= floor.minor);
@@ -701,25 +705,42 @@ async function leaguePuuids(tier) {
   return (Array.isArray(l) ? l : []).map((e) => e.puuid).filter(Boolean);
 }
 
-// Beginn des vorigen Patches, damit Riot keine Spiele aelterer Patches nennt.
-// Aus der eigenen Ablage; wenn die noch leer ist, 28 Tage (zwei Patches).
-let rankStartTime = null;
-async function loadRankStartTime() {
-  if (rankStartTime) return;
+// Zeitfenster und Menge je Spieler (lol-rank-window.mjs): ab 24 h Patch-Alter nur
+// der neueste Patch und 100 Spiele, vorher ab Vorpatch und 20. Vor JEDEM Zyklus
+// neu (eine Abfrage, ~0,24 s), damit der Wechsel nicht auf den naechsten Lauf
+// wartet. Der Vorpatch-Beginn aendert sich nicht mehr und wird je Lauf gemerkt.
+let rankWindow = null;
+let prevPatchStart;                         // undefined = noch nicht gelesen
+async function firstGameOf(p) {
   const r = await rawPool.query(
     `select extract(epoch from min(game_creation))::bigint as t from lol_match_participant_raw
-      where patch_major = $1 and patch_minor = $2`, [rawPatchFloor.major, rawPatchFloor.minor]);
-  rankStartTime = Number(r.rows[0]?.t) || Math.floor(Date.now() / 1000) - 28 * 86400;
+      where patch_major = $1 and patch_minor = $2`, [p.major, p.minor]);
+  return Number(r.rows[0]?.t) || null;
+}
+async function loadRankWindow() {
+  const newestStart = rawPatchNewest ? await firstGameOf(rawPatchNewest) : null;
+  const nowSec = Math.floor(Date.now() / 1000);
+  const pickWith = (prevStart) => pickRankWindow({
+    newest: rawPatchNewest, prev: rawPatchFloor, newestStart, prevStart, nowSec,
+  });
+  let next = pickWith(null);
+  if (!next.onlyNewest) {
+    if (prevPatchStart === undefined) prevPatchStart = await firstGameOf(rawPatchFloor);
+    next = pickWith(prevPatchStart);
+  }
+  if (!rankWindow || rankWindow.onlyNewest !== next.onlyNewest || rankWindow.patch !== next.patch) {
+    log(`Rang-Stichprobe: ${next.onlyNewest ? 'nur' : 'ab'} Patch ${next.patch}, bis ${next.count} Spiele je Spieler.`);
+  }
+  rankWindow = next;
 }
 
 async function seedRankQueue() {
-  await loadRankStartTime();
   let queued = 0;
   for (const [tier, n] of RANK_QUOTA) {
     const puuids = pick(await leaguePuuids(tier), n);
     for (const puuid of puuids) {
       const ids = await riotJson(
-        `https://${RANK_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&startTime=${rankStartTime}&count=${RANK_IDS_PER_PLAYER}`);
+        `https://${RANK_ROUTING}.api.riotgames.com/lol/match/v5/matches/by-puuid/${puuid}/ids?queue=420&startTime=${rankWindow.startTime}&count=${rankWindow.count}`);
       if (!Array.isArray(ids) || ids.length === 0) continue;
       // Neu: pending mit Rang. Schon bekannt ohne Rang (kam ueber die
       // Spieler-Historie): nur den Rang nachtragen, nicht neu abrufen.
@@ -768,21 +789,24 @@ async function unclaimRank(ids, msg) {
 // Ein Zyklus: hoechstens `budget` Riot-Anfragen. Wirft RiotAuthError weiter.
 async function rankCycle(budget) {
   const stop = riotCalls + budget;
+  await loadRankWindow();
   const fillCfg = fillFromEnv();
   riot.setFill(fillCfg);
   const fillClient = riot;
   const fill0 = riot.fillStats();
   await reclaimRankClaims();
-  let fetched = 0, stored = 0, failed = 0, seeded = 0;
+  let fetched = 0, stored = 0, failed = 0, seeded = 0, seedCalls = 0, starved = false;
   while (riotCalls < stop) {
     let batch = await claimRankBatch(Math.min(RANK_CLAIM_BATCH, stop - riotCalls));
     if (!batch.length) {
       const { rows } = await rawPool.query(
         `select count(*)::int as n from lol_rank_match_queue where status = 'pending'`);
       if (rows[0].n >= RANK_PENDING_MAX) break;
+      const before = riotCalls;
       const q = await seedRankQueue();
+      seedCalls += riotCalls - before;
       seeded += q;
-      if (!q) break;                        // Rangliste liefert nichts Neues
+      if (!q) { starved = true; break; }    // Rangliste liefert nichts Neues
       continue;
     }
     const open = batch.map((b) => b.match_id);
@@ -806,9 +830,11 @@ async function rankCycle(budget) {
   // Neuer Schluessel mitten im Zyklus = neuer Client mit eigenen Zaehlern.
   const f1 = riot.fillStats();
   const fill = riot === fillClient ? { calls: f1.calls - fill0.calls, busy: f1.busy - fill0.busy } : f1;
-  log(`Rang: ${fetched} Matches geholt, ${stored} abgelegt, ${failed} verworfen, ${seeded} neu eingereiht — `
+  log(`Rang: ${fetched} Matches geholt, ${stored} abgelegt, ${failed} verworfen, ${seeded} neu eingereiht `
+    + `(${seedCalls} Nachfuell-Abrufe, ${rankWindow.onlyNewest ? 'nur' : 'ab'} ${rankWindow.patch}, ${rankWindow.count} je Spieler) — `
     + rows.map((r) => `${r.status}=${r.n}`).join(' ')
     + (fillCfg ? ` — Auffuellen bis ${fillCfg.maxRequests}: ${fill.calls} Zusatz-Abrufe, ${fill.busy}× belegt` : ' — Auffuellen aus'));
+  return starved ? 'starved' : 'ok';
 }
 
 // Kurze DB-Aussetzer abwarten statt den Lauf zu beenden — die Unit startet
@@ -822,7 +848,14 @@ async function runRankCycle() {
     return 'stop';
   }
   try {
-    await rankCycle(RANK_CALLS);
+    if ((await rankCycle(RANK_CALLS)) === 'starved') {
+      // Nicht sofort den naechsten Zyklus: jeder kostet ~13 Abrufe und eine der
+      // --players-Runden — sonst endet der Lauf in Minuten und steht bis zur
+      // naechsten Key-Rotation still. Sperre waehrenddessen frei.
+      release();
+      log(`Rang: Nachfuellen ohne neue Matches — ${RANK_STARVED_PAUSE_MS / 60_000} min Pause.`);
+      await new Promise((r) => setTimeout(r, RANK_STARVED_PAUSE_MS));
+    }
     return 'ok';
   } catch (err) {
     if (err instanceof RiotAuthError) { log(`ABBRUCH: ${err.message}`); return 'auth'; }

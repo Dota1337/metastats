@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useI18n, LANGUAGES } from '../lib/i18n';
 import { detectGameFromPath, lolHome, TFT_HOME } from '../lib/games';
 import { stripLangPrefix } from '../lib/lang-path';
-import { TFT_COACH_ENABLED, TFT_PROS_ENABLED, TFT_WHAT_TO_BUILD_ENABLED } from '../lib/feature-flags';
+import { TFT_PROS_ENABLED, TFT_WHAT_TO_BUILD_ENABLED } from '../lib/feature-flags';
 import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
 import DdragonImg from './DdragonImg';
@@ -16,7 +16,7 @@ interface NavProps {
   active?:
     | 'search' | 'leaderboard' | 'champions' | 'marktwert' | 'analyse' | 'teams' | 'ligen'
     | 'units' | 'items' | 'augments' | 'comps' | 'traits' | 'tournaments' | 'saved' | 'builder' | 'pros' | 'regions'
-    | 'onetricks' | 'rising' | 'patch' | 'community' | 'coach' | 'explorer' | 'tools';
+    | 'onetricks' | 'rising' | 'patch' | 'community' | 'explorer' | 'tools';
 }
 
 interface SearchResult {
@@ -340,9 +340,6 @@ export default function Nav({ active }: NavProps) {
               <a href={withLang("/tft/compare")} className={linkClass('analyse')}>{t('nav.analyse')}</a>
               <a href={withLang("/tft/builder")} className={linkClass('builder')}>{t('tft.builderTitle')}</a>
               <a href={withLang("/tft/comps/community")} className={linkClass('community')}>{t('nav.community')}</a>
-              {TFT_COACH_ENABLED && (
-                <a href={withLang("/tft/coach")} className={linkClass('coach')}>{t('nav.coach')}</a>
-              )}
               <a href={withLang("/tft/saved")} className={linkClass('saved')} title={t('tft.savedTitle')}>★</a>
             </>
           ) : (

@@ -23,7 +23,7 @@ import { cacheHeaders } from '../../lib/api-cache';
 // Hochzaehlen, sobald sich an der Bewertung etwas aendert
 // (stats-categories.ts, match-processor.ts) — dann rechnet jede Zeile beim
 // naechsten Aufruf neu.
-const CALC_VERSION = 3; // 2: summaryVals fuer uebersetzte Kategorie-Texte; 3: Remakes per Spieldauer
+const CALC_VERSION = 4; // 2: summaryVals fuer uebersetzte Kategorie-Texte; 3: Remakes per Spieldauer; 4: Assist-Serie 12+, Takedowns @15, ohne First-Blood-Opfer, Team-Drachen (08.11.2026)
 // Darunter keine Bewertung: bei weniger Spielen schwanken die Kategorien so
 // stark, dass die Zahl mehr Zufall als Leistung zeigt.
 const MIN_GAMES = 20;
@@ -52,6 +52,11 @@ interface FullRow {
   team_damage: number;
   team_gold: number;
   participant: any;
+  /**
+   * Riots info.teams. Kommt erst mit Migration 0117 + Sammler-Umbau in die Ablage; bis dahin
+   * fehlt die Spalte und `teams` steht NICHT im select (sonst scheitert die Abfrage).
+   */
+  teams?: unknown;
 }
 
 async function readAll<T>(build: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message?: string } | null }>): Promise<T[]> {
@@ -78,6 +83,7 @@ function toMatch(r: FullRow): ExtendedMatchData {
     teamKills: r.team_kills,
     teamDamage: r.team_damage,
     teamGold: r.team_gold,
+    teams: r.teams,
   });
 }
 

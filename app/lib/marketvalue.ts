@@ -11,7 +11,6 @@ interface MatchData {
   wardsPlaced: number;
   firstBloodKill: boolean;
   firstBloodAssist: boolean;
-  firstBloodVictim: boolean;
   dragonKills: number;
   baronKills: number;
   turretKills: number;
@@ -184,7 +183,6 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
 
   const firstBloods = matches.filter(m => m.firstBloodKill || m.firstBloodAssist).length;
   const firstBloodRate = firstBloods / matches.length;
-  const firstBloodVictimRate = matches.filter(m => m.firstBloodVictim).length / matches.length;
 
   const avgDragons = matches.reduce((s, m) => s + m.dragonKills, 0) / matches.length;
   const avgBarons = matches.reduce((s, m) => s + m.baronKills, 0) / matches.length;
@@ -243,7 +241,6 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
   if (surrenderRate > 0.40) { multiplier -= 0.08; add('Allgemein', 'Surrender-Rate', -0.08, `${(surrenderRate * 100).toFixed(0)}% (>40%)`); }
 
   if (firstBloodRate > 0.30) { multiplier += 0.08; add('Aggression', 'First Blood', +0.08, `${(firstBloodRate * 100).toFixed(0)}% (>30%)`); }
-  if (firstBloodVictimRate > 0.30) { multiplier -= 0.05; add('Aggression', 'First Blood Opfer', -0.05, `${(firstBloodVictimRate * 100).toFixed(0)}% (>30%)`); }
 
   if (avgKillParticipation != null) {
     if (avgKillParticipation > 0.70) { multiplier += 0.06; add('Teamplay', 'Kill Participation', +0.06, `${(avgKillParticipation * 100).toFixed(0)}% (>70%)`); }
@@ -270,6 +267,9 @@ function calculateMultiplierWithBreakdown(matches: MatchData[], role: string): {
   const avgCsAdv = avgOptional(matches, m => m.maxCsAdvantageOnLaneOpponent);
   const avgLegendary = avgOptional(matches, m => m.legendaryCount);
   const avgMaxDeficit = avgOptional(matches, m => m.maxKillDeficit);
+  // Wird nicht befuellt: Riot liefert kein takedownsFirst25Minutes (0/7962 Spiele, 08.11.2026), nur
+  // takedownsFirstXMinutes = vor Minute 15. Ob der Bonus mit dem 15-Minuten-Wert greifen soll, ist eine
+  // Marktwert-Entscheidung des Users und bewusst noch nicht umgestellt.
   const avgTakedowns25 = avgOptional(matches, m => m.takedownsFirst25Minutes);
   const avgObjDmg = avgOptional(matches, m => m.damageDealtToObjectives);
   const avgBuildingDmg = avgOptional(matches, m => m.damageDealtToBuildings);

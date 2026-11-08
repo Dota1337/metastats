@@ -19,6 +19,7 @@ import { regionLabel } from '../../lib/regions';
 import { calculateStatsOverview } from '../../lib/stats-categories';
 import { parseLolPlayerSlug } from '../../lib/og/slugs';
 import type { ExtendedMatchData } from '../../lib/match-processor';
+import { roleShares } from '../../lib/lol-role-assignment';
 import type { PlayerHead } from '../../lib/player-lookup';
 
 const PerformanceCharts = dynamic(() => import('../../components/PerformanceCharts'), { ssr: false });
@@ -413,6 +414,8 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
 
   // Arena und Swarm sind nicht mit 5-gegen-5 vergleichbar (lol-queue.ts).
   const headerMatches = matches.filter(m => !isNonStandardMode(m));
+  // Primaer-/Sekundaerrolle/Autofill der geladenen Ranked-Solo-Spiele, null unter 10 Spielen.
+  const roleSplit = roleShares(matches);
   // Coach vergleicht mit Ranglisten-Schwellen: nur Spiele auf der Kluft.
   // Gemerkt, sonst haelt AICoach jedes Neuzeichnen fuer neue Spiele und fragt neu an.
   const riftMatches = useMemo(() => matches.filter(isRiftGame), [matches]);
@@ -635,6 +638,13 @@ export default function PlayerPage({ head = null }: { head?: Promise<PlayerHead>
                 <div className="bg-surface-raised rounded p-4 text-center">
                   <div className="text-fg-secondary text-xs mb-1">{t('player.mainRole')}</div>
                   <div className="text-white font-medium text-sm">{roleLabels[marketValue.role] || '-'}</div>
+                  {roleSplit && (
+                    <div className="text-fg-muted text-xs mt-1 leading-snug">
+                      <div>{t('player.rolePrimary')} {roleSplit.primary}%</div>
+                      <div>{t('player.roleSecondary')} {roleSplit.secondary}%</div>
+                      <div>{t('player.roleAutofill')} {roleSplit.autofill}%</div>
+                    </div>
+                  )}
                 </div>
                 {headerMatches.length > 0 && (
                   <div className="bg-surface-raised rounded p-4 text-center">

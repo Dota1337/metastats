@@ -40,6 +40,9 @@ export interface StatsOverview {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Ab so vielen Spielen mit Team-Teil zeigt die Objektiv-Kontrolle die Team-Drachen. */
+const MIN_TEAM_GAMES = 10;
+
 function avg(matches: ExtendedMatchData[], getter: (m: ExtendedMatchData) => number): number {
   if (matches.length === 0) return 0;
   return matches.reduce((s, m) => s + getter(m), 0) / matches.length;
@@ -332,6 +335,19 @@ function calcObjectiveControl(matches: ExtendedMatchData[]): CategoryScore {
   const avgSteals = avg(matches, m => m.challenges.epicMonsterSteals);
   const avgObjDmg = avg(matches, m => m.damageDealtToObjectives);
 
+  // Team-Ziele aus Riots info.teams (live immer, gespeichert ab 08.11.2026). Nur Spiele mit
+  // mindestens einem Drachen; unter MIN_TEAM_GAMES keine Zeile statt einer erfundenen 0.
+  // Fliesst nicht in den Punktwert der Kategorie.
+  const withTeam = matches.filter(m => m.team && m.team.dragons + m.team.enemyDragons > 0);
+  const ownDragons = withTeam.reduce((s, m) => s + m.team!.dragons, 0);
+  const allDragons = withTeam.reduce((s, m) => s + m.team!.dragons + m.team!.enemyDragons, 0);
+  const teamDragonShare = allDragons > 0 ? (ownDragons / allDragons) * 100 : 0;
+  const firstDragonRate = rate(withTeam, m => m.team!.firstDragon) * 100;
+  const teamDetails = withTeam.length >= MIN_TEAM_GAMES ? [
+    { name: 'Drachen-Anteil Team', value: +teamDragonShare.toFixed(0), unit: '%', description: 'Anteil aller Drachen, den das eigene Team holte' },
+    { name: 'Erster Drache', value: +firstDragonRate.toFixed(0), unit: '%', description: 'Spiele, in denen das eigene Team den ersten Drachen holte' },
+  ] : [];
+
   const objScore = avgDragons * 15 + avgBarons * 25 + avgHeralds * 10 + avgPlates * 5 + avgTurrets * 8;
   const score = clamp(scoreFromThresholds(objScore, 15, 35, 60, 90));
   const t = trend(matches, m => m.challenges.dragonTakedowns + m.challenges.baronTakedowns * 2);
@@ -352,6 +368,7 @@ function calcObjectiveControl(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Türme', value: +avgTurrets.toFixed(1), unit: '/Spiel', description: 'Türme zerstört' },
       { name: 'Objective Steals', value: +avgSteals.toFixed(2), unit: '/Spiel', description: 'Objectives gestohlen' },
       { name: 'Objective DMG', value: +(avgObjDmg / 1000).toFixed(1), unit: 'k/Spiel', description: 'Schaden an Objectives' },
+      ...teamDetails,
     ],
   };
 }
@@ -389,7 +406,8 @@ function calcTeamplay(matches: ExtendedMatchData[]): CategoryScore {
   const avgHeals = avg(matches, m => m.totalHealsOnTeammates);
   const avgShields = avg(matches, m => m.totalDamageShieldedOnTeammates);
   const avgSaves = avg(matches, m => m.challenges.saveAllyFromDeath);
-  const avgAssistStreak = avg(matches, m => m.challenges.assistStreakCount);
+  // Riot zaehlt 12er-Assist-Serien ohne Tod; gezeigt wird der Anteil der Spiele mit mindestens einer.
+  const assistStreakRate = rate(matches, m => (m.challenges.assistStreak12Count ?? 0) >= 1) * 100;
   const avgEffHS = avg(matches, m => m.challenges.effectiveHealAndShielding);
   const avgPicks = avg(matches, m => m.challenges.pickKillWithAlly);
   const avgImmobilize = avg(matches, m => m.challenges.immobilizeAndKillWithAlly);
@@ -412,7 +430,7 @@ function calcTeamplay(matches: ExtendedMatchData[]): CategoryScore {
       { name: 'Rettungen', value: +avgSaves.toFixed(1), unit: '/Spiel', description: 'Verbündete vor dem Tod bewahrt' },
       { name: 'Pick-Kills', value: +avgPicks.toFixed(1), unit: '/Spiel', description: 'Kills mit Verbündetem in der Nähe' },
       { name: 'CC + Kill', value: +avgImmobilize.toFixed(1), unit: '/Spiel', description: 'CC-Ziel von Verbündetem getötet' },
-      { name: 'Assist-Streak', value: +avgAssistStreak.toFixed(0), unit: '', description: 'Längste Assist-Serie' },
+      { name: 'Assist-Serie 12+', value: +assistStreakRate.toFixed(0), unit: '%', description: 'Spiele mit 12+ Assists ohne Tod' },
     ],
   };
 }
@@ -476,30 +494,28 @@ function calcComebackStrength(matches: ExtendedMatchData[]): CategoryScore {
 
 function calcEarlyGameImpact(matches: ExtendedMatchData[]): CategoryScore {
   const fbRate = rate(matches, m => m.firstBloodKill || m.firstBloodAssist) * 100;
-  const fbVictimRate = rate(matches, m => m.firstBloodVictim) * 100;
   const avgPlates = avg(matches, m => m.challenges.turretPlatesTaken);
-  const avgTakedowns25 = avg(matches, m => m.challenges.takedownsFirst25Minutes);
+  const avgTakedowns15 = avg(matches, m => m.challenges.takedownsFirst15Minutes ?? 0);
   const avgCs10 = avg(matches, m => m.challenges.laneMinionsFirst10Minutes);
   const avgRoamKills = avg(matches, m => m.challenges.killsOnOtherLanesEarlyJungleAsLaner);
   const avgGankKills = avg(matches, m => m.challenges.killsOnLanersEarlyJungleAsJungler);
   const avgFirstTurret = rate(matches, m => m.challenges.firstTurretKilled > 0) * 100;
 
-  const earlyScore = fbRate * 0.3 + avgPlates * 8 + avgTakedowns25 * 3 - fbVictimRate * 0.2;
+  const earlyScore = fbRate * 0.3 + avgPlates * 8 + avgTakedowns15 * 3;
   const score = clamp(scoreFromThresholds(earlyScore, 10, 25, 45, 70));
-  const t = trend(matches, m => m.challenges.takedownsFirst25Minutes);
+  const t = trend(matches, m => m.challenges.takedownsFirst15Minutes ?? 0);
 
   return {
     id: 'early_game', name: 'Frühspiel-Einfluss', nameEn: 'Early Game Impact', icon: '⚡',
     score, trend: t,
     impact: (score - 50) / 250,
-    summary: `${fbRate.toFixed(0)}% First Blood, Ø ${avgPlates.toFixed(1)} Plates, ${avgTakedowns25.toFixed(1)} Takedowns@25`,
-    summaryEn: `${fbRate.toFixed(0)}% first blood, avg ${avgPlates.toFixed(1)} plates, ${avgTakedowns25.toFixed(1)} takedowns@25`,
-    summaryVals: [fbRate.toFixed(0), avgPlates.toFixed(1), avgTakedowns25.toFixed(1)],
+    summary: `${fbRate.toFixed(0)}% First Blood, Ø ${avgPlates.toFixed(1)} Plates, ${avgTakedowns15.toFixed(1)} Takedowns@15`,
+    summaryEn: `${fbRate.toFixed(0)}% first blood, avg ${avgPlates.toFixed(1)} plates, ${avgTakedowns15.toFixed(1)} takedowns@15`,
+    summaryVals: [fbRate.toFixed(0), avgPlates.toFixed(1), avgTakedowns15.toFixed(1)],
     details: [
       { name: 'First Blood Rate', value: +fbRate.toFixed(0), unit: '%', description: 'Beteiligung am First Blood' },
-      { name: 'First Blood Opfer', value: +fbVictimRate.toFixed(0), unit: '%', description: 'Rate als First-Blood-Opfer' },
       { name: 'Turret Plates', value: +avgPlates.toFixed(1), unit: '/Spiel', description: 'Turm-Platten zerstört' },
-      { name: 'Takedowns @25min', value: +avgTakedowns25.toFixed(1), unit: '/Spiel', description: 'Kills+Assists in den ersten 25 Min' },
+      { name: 'Takedowns @15min', value: +avgTakedowns15.toFixed(1), unit: '/Spiel', description: 'Kills+Assists in den ersten 15 Min' },
       { name: 'Roam-Kills', value: +avgRoamKills.toFixed(1), unit: '/Spiel', description: 'Kills auf anderen Lanes (Laner)' },
       { name: 'Gank-Kills', value: +avgGankKills.toFixed(1), unit: '/Spiel', description: 'Lane-Kills als Jungler' },
       { name: 'First Turret', value: +avgFirstTurret.toFixed(0), unit: '%', description: 'Ersten Turm zerstört' },

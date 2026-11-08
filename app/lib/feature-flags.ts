@@ -10,22 +10,6 @@
 // weiterhin in Env-Vars — siehe `INTERNAL_DASHBOARD_ENABLED` in internal-auth.ts.
 
 /**
- * TFT-Chat-Coach (`/tft/coach` + `POST /api/coach/chat`).
- *
- * Deaktiviert am 2026-08-04: ungenutztes Feature, aber ein öffentlicher
- * POST-Endpoint mit kostenpflichtiger Anthropic-Inferenz dahinter. Das
- * In-Memory-Rate-Limit greift nur pro Lambda-Instanz und ist damit nicht dicht.
- *
- * Zum Reaktivieren: auf `true` setzen und deployen. Es hängen drei Stellen
- * daran — Route (404-Guard), Nav-Link, Page (notFound). Die i18n-Keys
- * `nav.coach` / `tft.coach.*` sind absichtlich stehen geblieben.
- *
- * Voraussetzung fürs Wiedereinschalten: `ANTHROPIC_API_KEY` in Vercel gesetzt,
- * sonst antwortet die Route mit 503.
- */
-export const TFT_COACH_ENABLED = false;
-
-/**
  * TFT-Pro-Spieler-Verzeichnis (`/tft/pros`).
  *
  * Deaktiviert am 2026-08-27: die Quellen hinter dem Verzeichnis (Liquipedia,

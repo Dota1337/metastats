@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import type { OpsTopology } from '../../lib/ops-topology';
 
-// 3D-Bundle isoliert vom Public-Bundle — r3f/drei/d3-force-3d landen NUR in
+// 3D-Bundle isoliert vom Public-Bundle — r3f/drei landen NUR in
 // dem on-demand geladenen Chunk für diese Page, nicht im Hauptbundle der
 // /tft/* und /lol/* Pages. ssr:false weil r3f auf window/canvas zugreift.
 const OpsGraph = dynamic(() => import('../../components/internal/OpsGraph'), {

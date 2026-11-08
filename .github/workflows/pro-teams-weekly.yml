@@ -1,8 +1,7 @@
 name: Pro-Teams weekly
 
 # Haelt public/pro-teams.json aktuell. Die Datei speist live /teams,
-# /teams/[id], /ligen, /api/homepage-stats, /api/knowledge-graph und
-# /api/transfer-predictions.
+# /teams/[id], /ligen, /api/homepage-stats und /api/transfer-predictions.
 #
 # Warum es diesen Workflow gibt: der Crawler existierte, hatte aber keinerlei
 # Scheduler — weder Unit noch Workflow. Die Datei stand deshalb vom 21.05. bis

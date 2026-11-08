@@ -1,8 +1,8 @@
 // Hetzner-routed reads for the Set-17 per-match cache + peer baselines.
 // The match-cache jsonb only lives on the Hetzner box (Supabase only has
 // the marketvalue snapshots replicated, plus Set-15-era leftovers).
-// Every endpoint that needs per-match jsonb (onetricks / coach / specialty
-// / econ-score) routes through here instead of querying Supabase directly.
+// Every endpoint that needs per-match jsonb (onetricks / specialty /
+// companion lobby) routes through here instead of querying Supabase directly.
 //
 // On Hetzner the queries use the (puuid, set_number, queue_id, game_datetime)
 // btree index + a ROW_NUMBER() window so each puuid gets up to limit_per_puuid
@@ -49,7 +49,7 @@ interface PlayerMatchesOpts {
 // gemessen 96,3 MB pro Aufruf, und genau daran ist /api/tft/onetricks
 // haengengeblieben. Wer ein Aggregat ueber viele Spieler braucht, nimmt
 // fetchHetznerPlayerCompHistogram: dort rechnet die Box und schickt nur das
-// Ergebnis. Die verbleibenden Aufrufer (coach, econ-score, pros/specialty)
+// Ergebnis. Die verbleibenden Aufrufer (companion/lobby, pros/specialty)
 // fragen jeweils genau einen Spieler ab.
 const PLAYER_MATCHES_MAX_PUUIDS = 25;
 
@@ -233,33 +233,6 @@ export async function fetchHetznerProsByComp(opts: ProsByCompOpts): Promise<{ pr
     pros: Array.isArray(data?.pros) ? data.pros : [],
     totalGames: Number(data?.totalGames) || 0,
   };
-}
-
-interface PeerBaselineOpts {
-  setNumber?: number;
-  minPlacement?: number;
-  limit?: number;
-  signalTimeoutMs?: number;
-}
-
-export async function fetchHetznerPeerBaseline(opts: PeerBaselineOpts = {}): Promise<{ avgGoldLeft: number | null; sample: number }> {
-  if (!HETZNER_URL || !TOKEN) throw new Error('hetzner_disabled');
-  const res = await boxFetch(`${HETZNER_URL}/peer-baseline`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
-    body: JSON.stringify({
-      set_number: opts.setNumber,
-      min_placement: opts.minPlacement ?? 5,
-      limit: opts.limit ?? 2000,
-    }),
-    signal: AbortSignal.timeout(opts.signalTimeoutMs ?? 15_000),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`hetzner_peer_baseline ${res.status}: ${text.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  return { avgGoldLeft: data?.avgGoldLeft ?? null, sample: data?.sample ?? 0 };
 }
 
 // Aufsteiger (/tft/rising): die Box rechnet aus der taeglichen Ranglisten-

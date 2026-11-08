@@ -6,30 +6,30 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 91,
-    "groups": 30,
+    "routes": 86,
+    "groups": 27,
     "tables": 46,
-    "rpcs": 39,
+    "rpcs": 38,
     "files": 13,
-    "edges": 532,
-    "unused": 7,
+    "edges": 517,
+    "unused": 2,
     "unresolved": 1
   },
   "groups": [
     {
       "name": "tft",
-      "count": 27
+      "count": 26
     },
     {
       "name": "tft/comps",
       "count": 9
     },
     {
-      "name": "tft/marktwert",
-      "count": 9
+      "name": "companion/v1",
+      "count": 8
     },
     {
-      "name": "companion/v1",
+      "name": "tft/marktwert",
       "count": 8
     },
     {
@@ -77,10 +77,6 @@
       "count": 1
     },
     {
-      "name": "coach",
-      "count": 1
-    },
-    {
       "name": "feed",
       "count": 1
     },
@@ -90,10 +86,6 @@
     },
     {
       "name": "img",
-      "count": 1
-    },
-    {
-      "name": "knowledge-graph",
       "count": 1
     },
     {
@@ -126,10 +118,6 @@
     },
     {
       "name": "transfer-predictions",
-      "count": 1
-    },
-    {
-      "name": "twitch",
       "count": 1
     },
     {
@@ -200,22 +188,6 @@
         "app/components/ChampionBuildsSection.tsx",
         "scripts/publish-lol-builds.mjs"
       ]
-    },
-    {
-      "id": "api:/api/coach/chat",
-      "kind": "route",
-      "label": "/api/coach/chat",
-      "group": "coach",
-      "file": "app/api/coach/chat/route.ts",
-      "via": [
-        "app/lib/box-tls.mjs",
-        "app/lib/tft-hetzner-matches.ts"
-      ],
-      "used": false,
-      "usedBy": [
-        "app/tft/coach/page.tsx"
-      ],
-      "disabledBy": "TFT_COACH_ENABLED"
     },
     {
       "id": "api:/api/companion/v1/comp",
@@ -514,16 +486,6 @@
       "usedBy": [
         "app/components/internal/OpsGraph.tsx"
       ]
-    },
-    {
-      "id": "api:/api/knowledge-graph",
-      "kind": "route",
-      "label": "/api/knowledge-graph",
-      "group": "knowledge-graph",
-      "file": "app/api/knowledge-graph/route.ts",
-      "via": [],
-      "used": false,
-      "usedBy": []
     },
     {
       "id": "api:/api/leaderboard",
@@ -967,23 +929,6 @@
       ]
     },
     {
-      "id": "api:/api/tft/econ-score",
-      "kind": "route",
-      "label": "/api/tft/econ-score",
-      "group": "tft",
-      "file": "app/api/tft/econ-score/route.ts",
-      "via": [
-        "app/lib/box-tls.mjs",
-        "app/lib/current-set.ts",
-        "app/lib/snapshot-lookup.ts",
-        "app/lib/tft-hetzner-matches.ts",
-        "app/lib/tft-supabase-reader.ts",
-        "public/tft-set.json"
-      ],
-      "used": false,
-      "usedBy": []
-    },
-    {
       "id": "api:/api/tft/explorer",
       "kind": "route",
       "label": "/api/tft/explorer",
@@ -1184,18 +1129,6 @@
       "usedBy": [
         "app/tft/marktwert/TftMarktwertClient.tsx"
       ]
-    },
-    {
-      "id": "api:/api/tft/marktwert/teams",
-      "kind": "route",
-      "label": "/api/tft/marktwert/teams",
-      "group": "tft/marktwert",
-      "file": "app/api/tft/marktwert/teams/route.ts",
-      "via": [
-        "app/lib/api-cache.ts"
-      ],
-      "used": false,
-      "usedBy": []
     },
     {
       "id": "api:/api/tft/matches",
@@ -1717,16 +1650,6 @@
       ]
     },
     {
-      "id": "api:/api/twitch/tft-live",
-      "kind": "route",
-      "label": "/api/twitch/tft-live",
-      "group": "twitch",
-      "file": "app/api/twitch/tft-live/route.ts",
-      "via": [],
-      "used": false,
-      "usedBy": []
-    },
-    {
       "id": "api:/api/version",
       "kind": "route",
       "label": "/api/version",
@@ -2078,11 +2001,6 @@
       "label": "Riot Web"
     },
     {
-      "id": "ext:twitch",
-      "kind": "external",
-      "label": "Twitch"
-    },
-    {
       "id": "file:champion-builds-*.json",
       "kind": "file",
       "label": "champion-builds-*.json"
@@ -2316,12 +2234,6 @@
       "declared": true
     },
     {
-      "id": "fn:get_tft_team_marketvalues",
-      "kind": "rpc",
-      "label": "get_tft_team_marketvalues",
-      "declared": true
-    },
-    {
       "id": "fn:get_tft_tournament_detail",
       "kind": "rpc",
       "label": "get_tft_tournament_detail",
@@ -2447,11 +2359,6 @@
       "from": "api:/api/champions/[id]/builds",
       "to": "file:tft-assets.json",
       "kind": "reads"
-    },
-    {
-      "from": "api:/api/coach/chat",
-      "to": "box:hetzner",
-      "kind": "fetches"
     },
     {
       "from": "api:/api/companion/v1/comp",
@@ -2912,16 +2819,6 @@
       "from": "api:/api/internal/riot-status",
       "to": "ext:riot-api",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/knowledge-graph",
-      "to": "file:pro-players.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/knowledge-graph",
-      "to": "file:pro-teams.json",
-      "kind": "reads"
     },
     {
       "from": "api:/api/leaderboard",
@@ -3589,41 +3486,6 @@
       "kind": "calls"
     },
     {
-      "from": "api:/api/tft/econ-score",
-      "to": "blob:manifest",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "box:hetzner",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "db:tft_daily_crawl_meta",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "ext:riot-web",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "file:tft-set.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "fn:get_tft_available_patches",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/econ-score",
-      "to": "fn:get_tft_set_bucket_coverage",
-      "kind": "calls"
-    },
-    {
       "from": "api:/api/tft/explorer",
       "to": "box:hetzner",
       "kind": "fetches"
@@ -3916,16 +3778,6 @@
     {
       "from": "api:/api/tft/marktwert/sparklines",
       "to": "fn:get_tft_marketvalue_sparklines",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/marktwert/teams",
-      "to": "file:tft-assets.json",
-      "kind": "reads"
-    },
-    {
-      "from": "api:/api/tft/marktwert/teams",
-      "to": "fn:get_tft_team_marketvalues",
       "kind": "calls"
     },
     {
@@ -4754,11 +4606,6 @@
       "kind": "reads"
     },
     {
-      "from": "api:/api/twitch/tft-live",
-      "to": "ext:twitch",
-      "kind": "fetches"
-    },
-    {
       "from": "api:/api/version",
       "to": "ext:ddragon",
       "kind": "fetches"
@@ -4946,16 +4793,6 @@
     {
       "from": "fn:get_tft_set_bucket_coverage",
       "to": "db:tft_daily_comp_stats",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_team_marketvalues",
-      "to": "db:tft_player_marketvalue_snapshots",
-      "kind": "reads"
-    },
-    {
-      "from": "fn:get_tft_team_marketvalues",
-      "to": "db:tft_pro_players",
       "kind": "reads"
     },
     {

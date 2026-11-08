@@ -410,7 +410,6 @@ export async function GET(request: NextRequest) {
       damageDealtToObjectives: m.damageDealtToObjectives,
       damageDealtToBuildings: m.damageDealtToBuildings,
       legendaryCount: m.challenges.legendaryCount,
-      takedownsFirst25Minutes: m.challenges.takedownsFirst25Minutes,
       saveAllyFromDeath: m.challenges.saveAllyFromDeath,
       effectiveHealAndShielding: m.challenges.effectiveHealAndShielding,
       epicMonsterSteals: m.challenges.epicMonsterSteals,

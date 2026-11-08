@@ -3,6 +3,41 @@
  * Used by both /api/summoner and /api/matches routes.
  */
 
+/**
+ * Wie der Spieler im Ranked-Spiel an seine Rolle kam: Teil 2 von Riots
+ * `selectedRolePreferences` (`<Rolle>.<ART>.<Wunsch1>.<Wunsch2>…`, ab Patch 16.11).
+ * Bewusst NICHT `positionAssignedByMatchmaking`: das nennt nur die Position und
+ * weicht nach Tauschen in der Champion-Auswahl ab (gemessen 08.11.2026: AUTOFILL
+ * 877/877 ohne Wunschrolle gespielt, PRIMARY 6047/6048 = Wunsch 1).
+ * FILL = selbst „Auffuellen" gewaehlt (FILL_PRIMARY/FILL_SECONDARY).
+ */
+export type RoleAssignment = 'PRIMARY' | 'SECONDARY' | 'AUTOFILL' | 'FILL';
+
+export function parseRoleAssignment(prefs: unknown): RoleAssignment | null {
+  if (typeof prefs !== 'string') return null;
+  const kind = prefs.split('.')[1];
+  if (kind === 'PRIMARY' || kind === 'SECONDARY' || kind === 'AUTOFILL') return kind;
+  if (kind === 'FILL_PRIMARY' || kind === 'FILL_SECONDARY') return 'FILL';
+  return null;
+}
+
+/** Drachen des eigenen und des gegnerischen Teams aus Riots `info.teams[].objectives`. */
+export interface TeamObjectives {
+  dragons: number;
+  enemyDragons: number;
+  firstDragon: boolean;
+}
+
+export function teamObjectivesFor(teams: unknown, teamId: number): TeamObjectives | null {
+  if (!Array.isArray(teams) || !teamId) return null;
+  const own = teams.find((t: any) => t?.teamId === teamId);
+  const enemy = teams.find((t: any) => t?.teamId && t.teamId !== teamId);
+  const d = own?.objectives?.dragon;
+  const e = enemy?.objectives?.dragon;
+  if (typeof d?.kills !== 'number' || typeof e?.kills !== 'number') return null;
+  return { dragons: d.kills, enemyDragons: e.kills, firstDragon: d.first === true };
+}
+
 export interface ExtendedMatchData {
   // === Identity ===
   matchId: string;
@@ -10,6 +45,9 @@ export interface ExtendedMatchData {
   championId: number;
   champLevel: number;
   role: string;
+  roleAssignment: RoleAssignment | null;
+  /** null, wenn die Quelle keinen Team-Teil hat (gespeicherte Spiele vor dem 08.11.2026). */
+  team: TeamObjectives | null;
   gameMode: string;
   queueId: number;
   gameCreation: number;
@@ -32,7 +70,6 @@ export interface ExtendedMatchData {
   largestMultiKill: number;
   firstBloodKill: boolean;
   firstBloodAssist: boolean;
-  firstBloodVictim: boolean;
 
   // === Damage Dealt ===
   damageDealt: number; // totalDamageDealtToChampions
@@ -135,7 +172,8 @@ export interface ExtendedMatchData {
     killsOnOtherLanesEarlyJungleAsLaner: number;
     killsOnLanersEarlyJungleAsJungler: number;
     takedowns: number;
-    takedownsFirst25Minutes: number;
+    /** Riot `takedownsFirstXMinutes`: Kills + Assists vor Minute 15 (an Timeline EUW1_8039501777 gegengeprueft). */
+    takedownsFirst15Minutes: number;
     takedownsInAlcove: number;
     pickKillWithAlly: number;
     knockEnemyIntoTeamAndKill: number;
@@ -185,7 +223,8 @@ export interface ExtendedMatchData {
 
     // Teamfight
     saveAllyFromDeath: number;
-    assistStreakCount: number;
+    /** Riot `12AssistStreakCount`: wie oft im Spiel 12+ Assists ohne eigenen Tod gelangen (Zaehler, keine Serienlaenge). */
+    assistStreak12Count: number;
     fullTeamTakedown: number;
     killAfterHiddenWithAlly: number;
     flawlessAces: number;
@@ -196,23 +235,6 @@ export interface ExtendedMatchData {
     abilityUses: number;
     gameLength: number;
     hadAfkTeammate: boolean;
-
-    // Pings
-    allInPings: number;
-    assistMePings: number;
-    dangerPings: number;
-    enemyMissingPings: number;
-    onMyWayPings: number;
-    getBackPings: number;
-    needVisionPings: number;
-    commandPings: number;
-    holdPings: number;
-    pushPings: number;
-    enemyVisionPings: number;
-    visionClearedPings: number;
-    baitPings: number;
-    retreatPings: number;
-    basicPings: number;
   };
 }
 
@@ -241,6 +263,8 @@ export interface ParticipantContext {
   teamKills: number;
   teamDamage: number;
   teamGold: number;
+  /** Riots `info.teams` (live immer, gespeichert ab 08.11.2026). */
+  teams?: unknown;
 }
 
 /**
@@ -267,6 +291,7 @@ export function processMatch(rawMatch: any, puuid: string): ExtendedMatchData | 
     teamKills,
     teamDamage,
     teamGold,
+    teams: rawMatch.info.teams,
   });
 }
 
@@ -285,6 +310,8 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
     championId: p.championId || 0,
     champLevel: p.champLevel || 0,
     role: p.individualPosition || p.teamPosition || 'UNKNOWN',
+    roleAssignment: parseRoleAssignment(p.selectedRolePreferences),
+    team: teamObjectivesFor(ctx.teams, p.teamId),
     gameMode: ctx.gameMode,
     queueId: ctx.queueId,
     gameCreation: ctx.gameCreation,
@@ -307,7 +334,6 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
     largestMultiKill: p.largestMultiKill || 0,
     firstBloodKill: p.firstBloodKill || false,
     firstBloodAssist: p.firstBloodAssist || false,
-    firstBloodVictim: p.firstBloodVictim || false,
 
     // Damage Dealt
     damageDealt: p.totalDamageDealtToChampions || 0,
@@ -410,7 +436,7 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
       killsOnOtherLanesEarlyJungleAsLaner: ch(p, 'killsOnOtherLanesEarlyJungleAsLaner'),
       killsOnLanersEarlyJungleAsJungler: ch(p, 'killsOnLanersEarlyJungleAsJungler'),
       takedowns: ch(p, 'takedowns'),
-      takedownsFirst25Minutes: ch(p, 'takedownsFirst25Minutes'),
+      takedownsFirst15Minutes: ch(p, 'takedownsFirstXMinutes'),
       takedownsInAlcove: ch(p, 'takedownsInAlcove'),
       pickKillWithAlly: ch(p, 'pickKillWithAlly'),
       knockEnemyIntoTeamAndKill: ch(p, 'knockEnemyIntoTeamAndKill'),
@@ -460,7 +486,7 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
 
       // Teamfight
       saveAllyFromDeath: ch(p, 'saveAllyFromDeath'),
-      assistStreakCount: ch(p, 'assistStreakCount'),
+      assistStreak12Count: ch(p, '12AssistStreakCount'),
       fullTeamTakedown: ch(p, 'fullTeamTakedown'),
       killAfterHiddenWithAlly: ch(p, 'killAfterHiddenWithAlly'),
       flawlessAces: ch(p, 'flawlessAces'),
@@ -471,23 +497,6 @@ export function processParticipant(p: any, ctx: ParticipantContext): ExtendedMat
       abilityUses: ch(p, 'abilityUses'),
       gameLength: ch(p, 'gameLength'),
       hadAfkTeammate: chBool(p, 'hadAfkTeammate'),
-
-      // Pings
-      allInPings: ch(p, 'allInPings'),
-      assistMePings: ch(p, 'assistMePings'),
-      dangerPings: ch(p, 'dangerPings'),
-      enemyMissingPings: ch(p, 'enemyMissingPings'),
-      onMyWayPings: ch(p, 'onMyWayPings'),
-      getBackPings: ch(p, 'getBackPings'),
-      needVisionPings: ch(p, 'needVisionPings'),
-      commandPings: ch(p, 'commandPings'),
-      holdPings: ch(p, 'holdPings'),
-      pushPings: ch(p, 'pushPings'),
-      enemyVisionPings: ch(p, 'enemyVisionPings'),
-      visionClearedPings: ch(p, 'visionClearedPings'),
-      baitPings: ch(p, 'baitPings'),
-      retreatPings: ch(p, 'retreatPings'),
-      basicPings: ch(p, 'basicPings'),
     },
   };
 }
@@ -606,6 +615,7 @@ export function toLegacyMatchData(m: ExtendedMatchData) {
     gameCreation: m.gameCreation,
     cs: m.cs,
     role: m.role,
+    roleAssignment: m.roleAssignment ?? null,
     damageDealt: m.damageDealt,
     physicalDamageDealtToChampions: m.physicalDamageDealtToChampions,
     magicDamageDealtToChampions: m.magicDamageDealtToChampions,
@@ -614,7 +624,6 @@ export function toLegacyMatchData(m: ExtendedMatchData) {
     wardsPlaced: m.wardsPlaced,
     firstBloodKill: m.firstBloodKill,
     firstBloodAssist: m.firstBloodAssist,
-    firstBloodVictim: m.firstBloodVictim,
     dragonKills: m.dragonKills,
     baronKills: m.baronKills,
     turretKills: m.turretKills,

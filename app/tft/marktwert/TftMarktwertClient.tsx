@@ -30,7 +30,8 @@ const TIER_COLORS: Record<string, string> = {
 
 // 'teams' tab removed 2026-05-23: TFT is single-player, sum-of-roster
 // ranking by team has no gameplay relevance. The /api/tft/marktwert/teams
-// endpoint stays for potential future use (e.g. org tournament views).
+// endpoint followed on 2026-11-08 (no caller); the Supabase function
+// get_tft_team_marketvalues is still there if an org view ever comes back.
 const TABS = ['top', 'movers', 'distribution'] as const;
 type Tab = typeof TABS[number];
 

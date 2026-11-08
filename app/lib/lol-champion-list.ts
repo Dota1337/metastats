@@ -3,14 +3,18 @@ import { readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { expandLolTier } from './rank-groups';
 import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from './ddragon-version-server';
-import { statsForTiers, type ChampionStatsFile } from './champion-tier-stats';
+import { statsForTiers, type ChampionStatsFile, type TierStatsPick } from './champion-tier-stats';
+import { boxListReady, boxStatsForTiers, LOL_CHAMPION_STATS_REGION } from './lol-champion-stats-blob.mjs';
+import { loadLolChampionStats } from './lol-champion-stats-snapshot';
 import type { ChampionListFilters, ChampionListPayload, ChampionListRow } from './lol-champion-filters';
 
-// LoL-Champion-Liste: Data Dragon (Namen, Rollen-Tags) + Sammel-Dateien des
-// Wochen-Crawls (public/champion-stats-*.json, Rollen aus
-// public/champion-builds-*.json). Eine Funktion fuer /api/champions und die
-// Server-Huelle der Liste (SEO-Plan Schritt 6) — die Startdaten sind damit
-// genau die Antwort der API.
+// LoL-Champion-Liste: Data Dragon (Namen, Rollen-Tags) + Zahlen. EUW: zuerst
+// die Box-Datei (Rang-Stichprobe Emerald bis Challenger, neuester Patch bzw.
+// zwei Patches, lol-champion-stats-blob.mjs); sonst und fuer alle anderen
+// Regionen die Sammel-Dateien des Wochen-Crawls (public/champion-stats-*.json,
+// Rollen aus public/champion-builds-*.json). Eine Funktion fuer /api/champions
+// und die Server-Huelle der Liste (SEO-Plan Schritt 6) — die Startdaten sind
+// damit genau die Antwort der API.
 
 interface ChampionInfo {
   id: string;
@@ -89,17 +93,24 @@ async function ddragonChampions(version: string): Promise<ChampionInfo[] | null>
 export async function loadChampionList(
   { tier, role, region }: ChampionListFilters,
 ): Promise<{ payload: ChampionListPayload; degraded: boolean } | null> {
+  // Box-Datei parallel zu Data Dragon holen (meist aus dem Gedaechtnis).
+  const boxPromise = region === LOL_CHAMPION_STATS_REGION ? loadLolChampionStats() : null;
   const version = await getLatestDdragonVersion();
   const champions = version ? await ddragonChampions(version) : null;
   if (!version || !champions) return null;
 
-  // Zahlen kommen aus den Sammel-Dateien des Wochen-Crawls (public/champion-stats-*.json).
-  const statsMap: Record<string, {
-    wins: number; games: number;
-    kills: number; deaths: number; assists: number;
-    bans: number; totalGames: number;
-  }> = {};
   let hasStats = false;
+  let picked: TierStatsPick | null = null;
+  const fileTiers = tier === 'all' ? null : expandLolTier(tier);
+
+  // EUW: Box-Datei, sobald „Alle Raenge" Bannrate und KDA zeigen kann
+  // (boxListReady). Kam sie nicht, obwohl sie da sein sollte, laeuft die Liste
+  // auf der Wochendatei weiter, aber als degradiert — sonst hielte die Edge
+  // 30 min lang Master+-Zahlen fest.
+  const box = boxPromise ? await boxPromise : null;
+  const boxFile = box?.status === 'ok' && boxListReady(box.file) ? box.file : null;
+  const boxMissing = box?.status === 'unavailable';
+  if (boxFile) picked = boxStatsForTiers(boxFile, fileTiers);
 
   // Sammel-Datei: nur die Raenge des Filters zaehlen
   // (app/lib/champion-tier-stats.ts). Gibt die Quelle fuer den Rang nichts
@@ -111,22 +122,18 @@ export async function loadChampionList(
   //
   // Die Pfade stehen ausgeschrieben im join(): daran erkennt die Build-Spur,
   // welche Dateien die Funktion braucht.
-  const fileTiers = tier === 'all' ? null : expandLolTier(tier);
-  const collectData = readMemo<ChampionStatsFile>(
-    join(process.cwd(), 'public', `champion-stats-${region.replace('1', '')}.json`),
-    raw => JSON.parse(raw),
-  );
-  const picked = collectData ? statsForTiers(collectData, fileTiers) : null;
-  if (picked) {
-    hasStats = true;
-    for (const [key, s] of Object.entries(picked.stats)) {
-      statsMap[key] = { ...s, totalGames: picked.totalGames };
-    }
+  if (!boxFile) {
+    const collectData = readMemo<ChampionStatsFile>(
+      join(process.cwd(), 'public', `champion-stats-${region.replace('1', '')}.json`),
+      raw => JSON.parse(raw),
+    );
+    picked = collectData ? statsForTiers(collectData, fileTiers) : null;
   }
+  if (picked) hasStats = true;
 
-  // Match-based role data from champion-builds-{region}.json (preferred over Data Dragon tags).
-  // Falls back to tag heuristic when builds JSON is not yet available.
-  const roleGames = readMemo<RoleGames>(
+  // Match-based role data (preferred over Data Dragon tags): Box-Datei bzw.
+  // champion-builds-{region}.json. Falls back to tag heuristic when neither is available.
+  const roleGames: RoleGames = boxFile?.roles || readMemo<RoleGames>(
     join(process.cwd(), 'public', `champion-builds-${region.replace('1', '')}.json`),
     roleGamesOf,
   ) || {};
@@ -165,7 +172,9 @@ export async function loadChampionList(
 
   // Merge champion info with stats
   const result: ChampionListRow[] = champions.map((champ) => {
-    const stats = statsMap[champ.key];
+    const stats = picked?.stats[champ.key];
+    const totalGames = picked?.totalGames || 0;
+    const banMatches = picked?.banMatches || 0;
     const { primary, significant } = resolveRoles(champ.key, champ.tags);
 
     return {
@@ -178,12 +187,14 @@ export async function loadChampionList(
       role: primary,
       significantRoles: [...significant],
       winRate: stats && stats.games > 0 ? Math.round((stats.wins / stats.games) * 1000) / 10 : null,
-      // totalGames zaehlt Teilnehmer (Spiele x 10). Pick-/Bannrate sind Anteile
-      // an Spielen, deshalb x 10: ein Champion steht hoechstens einmal je Spiel.
-      pickRate: stats && stats.totalGames > 0 ? Math.round((stats.games * 10 / stats.totalGames) * 1000) / 10 : null,
-      banRate: stats && stats.totalGames > 0 ? Math.round((stats.bans * 10 / stats.totalGames) * 1000) / 10 : null,
+      // totalGames zaehlt Teilnehmer-Plaetze (Wochendatei 10, Box 9 je Spiel).
+      // Die Pickrate ist ein Anteil an Spielen, deshalb x 10: ein Champion steht
+      // hoechstens einmal je Spiel. Die Bannrate hat ihren eigenen Nenner
+      // (Spiele mit Ban-Daten), Bans sind je Spiel schon einmal gezaehlt.
+      pickRate: stats && totalGames > 0 ? Math.round((stats.games * 10 / totalGames) * 1000) / 10 : null,
+      banRate: stats && banMatches > 0 ? Math.round((stats.bans / banMatches) * 1000) / 10 : null,
       games: stats?.games || 0,
-      avgKDA: stats && stats.games > 0 && stats.deaths > 0
+      avgKDA: stats && picked?.kdaOk && stats.games > 0 && stats.deaths > 0
         ? Math.round(((stats.kills + stats.assists) / stats.deaths) * 100) / 100
         : null,
     };
@@ -229,6 +240,6 @@ export async function loadChampionList(
       hasStats,
       region,
     },
-    degraded: !hasStats || filtered.length === 0,
+    degraded: !hasStats || filtered.length === 0 || boxMissing,
   };
 }

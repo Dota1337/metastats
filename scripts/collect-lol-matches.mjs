@@ -473,6 +473,22 @@ async function loadRawPatchFloor() {
 }
 const patchAtLeast = (p, floor) => p.major > floor.major || (p.major === floor.major && p.minor >= floor.minor);
 
+// K/D/A-Spalten und Ban-Tabelle (Migration 0121) — nur schreiben, wenn es sie
+// gibt. Ohne diese Probe wuerde neuer Code auf einer Box ohne Migration jeden
+// Rohablage-Schreibvorgang scheitern lassen, und der Spieler-Pfad setzt den
+// Spieler dann dauerhaft auf failed (nichts holt failed zurueck).
+let rawExtras = false;
+async function probeRawExtras() {
+  try {
+    await rawPool.query('select kills, deaths, assists from lol_match_participant_raw limit 0');
+    await rawPool.query('select match_id, bans from lol_match_raw_bans limit 0');
+    rawExtras = true;
+  } catch (err) {
+    rawExtras = false;
+    log(`Rohablage ohne K/D/A und Bans (Migration 0121 fehlt?): ${err.message}`);
+  }
+}
+
 // Reihenfolge der Runen: primary, keystone, p1, p2, p3, secondary, s1, s2, offense, flex, defense
 function runeTuple(perks) {
   const [pri, sec] = perks?.styles || [];
@@ -482,20 +498,40 @@ function runeTuple(perks) {
     sec?.style ?? 0, sel(sec, 0), sel(sec, 1), sp.offense ?? 0, sp.flex ?? 0, sp.defense ?? 0];
 }
 
-const RAW_COLS = [
+const RAW_COLS_BASE = [
   'match_id', 'participant_id', 'puuid', 'region', 'queue_id', 'game_creation', 'game_duration',
   'early_surrender', 'patch_major', 'patch_minor', 'champion_id', 'team_id', 'team_position',
   'win', 'items', 'runes', 'summoners',
 ];
+// Stehen am Ende jeder Zeile; ohne Migration 0121 schneidet writeRaw sie ab.
+const RAW_COLS_EXTRA = ['kills', 'deaths', 'assists'];
+
+const statOrNull = (v) => (Number.isInteger(v) && v >= 0 && v <= 32767 ? v : null);
+
+// Bans beider Teams, je Match entdoppelt (beide Teams koennen denselben
+// Champion bannen). null = Riot hat keinen Team-Teil geschickt (unbekannt),
+// [] = Match ohne Bans.
+function rawBans(info) {
+  if (!Array.isArray(info?.teams)) return null;
+  const ids = new Set();
+  for (const team of info.teams) {
+    for (const b of team?.bans || []) {
+      const id = Number(b?.championId);
+      if (Number.isInteger(id) && id > 0 && id <= 32767) ids.add(id);
+    }
+  }
+  return [...ids];
+}
 
 // null = gehoert nicht in die Rohablage (anderer Modus, zu alter Patch, kaputt).
+// Sonst { rows, bans }.
 function buildRawRows(raw, region) {
   const info = raw?.info;
   if (!info || info.queueId !== 420 || !Array.isArray(info.participants) || info.participants.length !== 10) return null;
   const patch = parsePatch(info.gameVersion);
   if (!patch || !rawPatchFloor || !patchAtLeast(patch, rawPatchFloor)) return null;
   const created = new Date(info.gameCreation || info.gameStartTimestamp || 0);
-  return info.participants.map((p, i) => [
+  const rows = info.participants.map((p, i) => [
     raw.metadata.matchId,
     p.participantId || i + 1,
     p.puuid,
@@ -513,27 +549,41 @@ function buildRawRows(raw, region) {
     [p.item0, p.item1, p.item2, p.item3, p.item4, p.item5].map((x) => Number(x) || 0),
     runeTuple(p.perks),
     [p.summoner1Id || 0, p.summoner2Id || 0],
+    statOrNull(p.kills),
+    statOrNull(p.deaths),
+    statOrNull(p.assists),
   ]);
+  return { rows, bans: rawBans(info) };
 }
 
-// Rohzeilen schreiben und die Match-Zeile der Rang-Warteschlange auf `done`
-// setzen — in EINER Transaktion, damit ein Abbruch nie "done ohne Zeilen"
-// hinterlaesst. Ein Match, das die Rang-Stichprobe schon kennt, behaelt dabei
-// seinen Rang (seed_tier) — nur der Status wird gesetzt.
-async function writeRaw(matchId, region, rows) {
+// Rohzeilen (+ Bans) schreiben und die Match-Zeile der Rang-Warteschlange auf
+// `done` setzen — in EINER Transaktion, damit ein Abbruch nie "done ohne
+// Zeilen" hinterlaesst und Teilnehmer und Bans immer zusammen da sind (die
+// Champion-Liste teilt durch "Matches mit Bans"). Ein Match, das die
+// Rang-Stichprobe schon kennt, behaelt dabei seinen Rang (seed_tier) — nur der
+// Status wird gesetzt. built = Ergebnis von buildRawRows oder null.
+async function writeRaw(matchId, region, built) {
+  const rows = built?.rows || null;
+  const cols = rawExtras ? [...RAW_COLS_BASE, ...RAW_COLS_EXTRA] : RAW_COLS_BASE;
   const client = await rawPool.connect();
   try {
     await client.query('begin');
     if (rows) {
       const values = [];
       const params = [];
-      rows.forEach((row, r) => {
-        values.push('(' + row.map((_, c) => `$${r * RAW_COLS.length + c + 1}`).join(',') + ')');
+      rows.forEach((full, r) => {
+        const row = full.slice(0, cols.length);
+        values.push('(' + row.map((_, c) => `$${r * cols.length + c + 1}`).join(',') + ')');
         params.push(...row);
       });
       await client.query(
-        `insert into lol_match_participant_raw (${RAW_COLS.join(',')}) values ${values.join(',')}
+        `insert into lol_match_participant_raw (${cols.join(',')}) values ${values.join(',')}
          on conflict (match_id, participant_id) do nothing`, params);
+      if (rawExtras && built.bans) {
+        await client.query(
+          `insert into lol_match_raw_bans (match_id, bans) values ($1, $2::smallint[])
+           on conflict (match_id) do nothing`, [matchId, built.bans]);
+      }
     }
     await client.query(`
       insert into lol_rank_match_queue (match_id, region, status, last_error)
@@ -580,8 +630,8 @@ async function fillPlayer(puuid, region) {
       const row = buildRow(raw, puuid, norm);
       if (!row) { skipped++; continue; }
       if (keepRaw) {
-        const rawRows = buildRawRows(raw, norm);
-        if (rawRows) { await writeRaw(id, norm, rawRows); rawWritten++; }
+        const built = buildRawRows(raw, norm);
+        if (built) { await writeRaw(id, norm, built); rawWritten++; }
       }
       batch.push(row);
       if (batch.length >= INSERT_BATCH) {
@@ -722,10 +772,10 @@ async function rankCycle(budget) {
         if (riotCalls >= stop) break;
         const raw = await riotJson(`https://${RANK_ROUTING}.api.riotgames.com/lol/match/v5/matches/${id}`);
         fetched++;
-        const rows = raw ? buildRawRows(raw, region) : null;
-        await writeRaw(id, region, rows);
+        const built = raw ? buildRawRows(raw, region) : null;
+        await writeRaw(id, region, built);
         open.splice(open.indexOf(id), 1);
-        if (rows) stored++; else failed++;
+        if (built) stored++; else failed++;
       }
     } finally {
       // Budget erschoepft, Key weg oder Riot ueberlastet: Rest zurueck auf pending.
@@ -780,6 +830,7 @@ async function main() {
   // trotzdem weiter — nur ohne Rohablage und Rang-Stichprobe.
   if (rawPool) {
     try { await loadRawPatchFloor(); } catch (err) { log(`Rohablage aus: ${err.message}`); }
+    if (rawPatchFloor) await probeRawExtras();
   } else if (RANK_ONLY || RANK_CALLS > 0) {
     log('Keine Rohablage konfiguriert (DATABASE_URL lokal / LOL_RAW_DB_URL) — Rang-Stichprobe aus.');
   }

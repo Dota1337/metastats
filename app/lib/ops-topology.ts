@@ -60,6 +60,8 @@ export const HAND_WRITES: OpsWrite[] = [
   { unit: 'metastats-companion-backfill.service', table: 'tft_position_observations', backend: 'supabase', source: 'scripts/backfill-companion-placements.mjs' },
   { unit: 'metastats-position-aggregator.service', table: 'tft_position_observations', backend: 'supabase', source: 'scripts/aggregate-position-observations.mjs' },
   { unit: 'metastats-position-aggregator.service', table: 'tft_position_comp_cell', backend: 'supabase', source: 'scripts/aggregate-position-observations.mjs' },
+  // Bans je Match (Migration 0121), im selben Schreibvorgang wie die Rohzeilen.
+  { unit: 'metastats-lol-matchfill.service', table: 'lol_match_raw_bans', backend: 'hetzner', source: 'scripts/collect-lol-matches.mjs (writeRaw)' },
 ];
 
 // Lesewege der Dienste, die im Bild wichtig sind (Daten fliessen sonst scheinbar
@@ -70,6 +72,7 @@ export const HAND_READS: OpsWrite[] = [
   { unit: 'metastats-position-aggregator.service', table: 'tft_player_match_cache', backend: 'supabase', source: 'scripts/aggregate-position-observations.mjs' },
   { unit: 'metastats-snapshot-publisher.service', table: 'tft_daily_comp_stats', backend: 'supabase', source: 'scripts/publish-snapshot-bundle.mjs (ueber die Statistik-Routen)' },
   { unit: 'metastats-lol-builds.service', table: 'lol_match_participant_raw', backend: 'hetzner', source: 'scripts/aggregate-lol-builds.mjs' },
+  { unit: 'metastats-lol-builds.service', table: 'lol_match_raw_bans', backend: 'hetzner', source: 'scripts/aggregate-lol-builds.mjs' },
 ];
 
 interface MapUnit {

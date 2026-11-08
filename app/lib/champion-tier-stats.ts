@@ -8,9 +8,25 @@
 // Einzelraenge stehen in `statsByTier` (seit 2026-09-13). Fehlen sie, gibt es
 // keine Zahlen statt der falschen.
 //
+// Fuer EUW kommen die Zahlen seit 08.11.2026 zuerst aus der Box-Datei
+// (lol-champion-stats-blob.mjs, boxStatsForTiers) — gleiche Rueckgabe-Form,
+// damit die Liste eine Formel behaelt.
+//
 // Keine Importe: der Test laedt die Datei direkt mit node.
 
 export type ChampStat = { wins: number; games: number; kills: number; deaths: number; assists: number; bans: number };
+
+/**
+ * totalGames = Teilnehmer-Plaetze (Pickrate = Spiele * 10 / totalGames),
+ * banMatches = Matches mit Ban-Daten (Bannrate = Bans / banMatches, null = zu wenig),
+ * kdaOk = K/D/A-Summen sind belastbar.
+ */
+export interface TierStatsPick {
+  stats: Record<string, ChampStat>;
+  totalGames: number;
+  banMatches: number | null;
+  kdaOk: boolean;
+}
 
 export interface ChampionStatsFile {
   stats?: Record<string, ChampStat>;
@@ -28,12 +44,12 @@ const COLLECTED_TIERS = ['CHALLENGER', 'GRANDMASTER', 'MASTER'];
 export function statsForTiers(
   file: ChampionStatsFile | null | undefined,
   tiers: string[] | null,
-): { stats: Record<string, ChampStat>; totalGames: number } | null {
+): TierStatsPick | null {
+  // Die Wochendatei zaehlt alle zehn Teilnehmer je Spiel: Ban-Nenner = Spiele.
+  const pick = (stats: Record<string, ChampStat>, totalGames: number): TierStatsPick | null =>
+    totalGames > 0 ? { stats, totalGames, banMatches: totalGames / 10, kdaOk: true } : null;
   if (!file?.stats) return null;
-  if (tiers === null) {
-    const totalGames = file.totalParticipantGames || 0;
-    return totalGames > 0 ? { stats: file.stats, totalGames } : null;
-  }
+  if (tiers === null) return pick(file.stats, file.totalParticipantGames || 0);
   const wanted = [...new Set(tiers.map(t => t.toUpperCase()))];
   if (file.statsByTier && wanted.every(t => file.statsByTier![t])) {
     const stats: Record<string, ChampStat> = {};
@@ -46,7 +62,7 @@ export function statsForTiers(
         acc.deaths += s.deaths; acc.assists += s.assists; acc.bans += s.bans;
       }
     }
-    return totalGames > 0 ? { stats, totalGames } : null;
+    return pick(stats, totalGames);
   }
   // Ohne Einzelraenge: die Summe passt nur, wenn genau die gesammelten Raenge gemeint sind (Master+).
   const same = wanted.length === COLLECTED_TIERS.length && COLLECTED_TIERS.every(t => wanted.includes(t));

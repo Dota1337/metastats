@@ -14,21 +14,38 @@
  * ersetzt sie auf Supabase in einer Transaktion (loeschen + einfuegen) — die
  * Seite sieht also nie einen halben Stand.
  *
+ * Im selben Lesezeiger entstehen die Champion-Zahlen der Liste /champions und
+ * der LoL-Startseite (EUW): Spiele, Siege, K/D/A, Bans je Patch + Rang, Rollen.
+ * Sie gehen als eine Datei in den Vercel Blob (lol/champion-stats/euw1.json,
+ * app/lib/lol-champion-stats-blob.mjs) — auch dann, wenn ein Supabase-Schreiben
+ * scheitert, denn die Datei braucht Supabase nicht. Scheitert der Blob, steht es
+ * laut im Protokoll, der Exit-Code bleibt (sonst risse die OnSuccess-Kette zu
+ * publish-lol-builds ab); den Ausfall faengt der Vertrag lol-champion-stats/blob-frische.
+ *
  * Aufruf:
  *   node scripts/aggregate-lol-builds.mjs            # zwei neueste Patches
  *   node scripts/aggregate-lol-builds.mjs --dry-run  # nur zaehlen, nichts schreiben
+ *   node scripts/aggregate-lol-builds.mjs --dry-run --out=/tmp/x.json  # Champion-Datei nur lokal ablegen
  *
  * Keine Riot-Anfragen, deshalb keine Riot-Sperre.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { put } from '@vercel/blob';
 
 import { bootIds, fetchItemData, finishedItemIds, latestDdragonVersion, classifyInventory, stratumOf } from './lib/lol-items.mjs';
+import {
+  addMatchBans, addParticipant, buildChampionStatsFile, createPatchStats, describeChampionStatsFile,
+} from './lib/lol-champion-stats-file.mjs';
+import {
+  isValidLolChampionStats, LOL_CHAMPION_STATS_PATH, LOL_CHAMPION_STATS_REGION,
+} from '../app/lib/lol-champion-stats-blob.mjs';
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes('--dry-run');
+const OUT_FILE = (args.find((a) => a.startsWith('--out=')) || '').slice(6) || null;
 const PATCHES = 2;
 const FETCH = 20_000;
 const INSERT_BATCH = 1000;
@@ -137,10 +154,25 @@ function prune(map) {
   return out;
 }
 
-async function aggregatePatch(region, major, minor, runStart, finishedSet, bootSet) {
+// K/D/A-Spalten und Ban-Tabelle (Migration 0121). Fehlen sie, laeuft die
+// Verdichtung ohne — die Champion-Datei zeigt dann keine Bannrate/KDA.
+async function hasRawExtras() {
+  try {
+    await rawPool.query('select kills, deaths, assists from lol_match_participant_raw limit 0');
+    await rawPool.query('select match_id, bans from lol_match_raw_bans limit 0');
+    return true;
+  } catch (err) {
+    log(`Rohablage ohne K/D/A und Bans (Migration 0121 fehlt?): ${err.message}`);
+    return false;
+  }
+}
+
+// champ: Sammler der Champion-Datei (createPatchStats) oder null.
+async function aggregatePatch(region, major, minor, runStart, finishedSet, bootSet, champ, extras) {
   const map = new Map();
   const client = await rawPool.connect();
   let n = 0;
+  const kda = extras ? 'r.kills, r.deaths, r.assists' : 'null::smallint as kills, null::smallint as deaths, null::smallint as assists';
   try {
     await client.query('begin');
     // Gegner derselben Rolle ueber den Selbst-Join; der Stichproben-Spieler
@@ -148,7 +180,7 @@ async function aggregatePatch(region, major, minor, runStart, finishedSet, bootS
     await client.query(`
       declare c no scroll cursor for
       select r.champion_id, r.team_position, r.win, r.items, r.runes, r.summoners,
-             r.game_duration, q.seed_tier,
+             r.game_duration, q.seed_tier, r.match_id, r.game_creation, ${kda},
              (select o.champion_id from lol_match_participant_raw o
                where o.match_id = r.match_id and o.team_id <> r.team_id
                  and o.team_position = r.team_position limit 1) as opp_champion
@@ -167,6 +199,7 @@ async function aggregatePatch(region, major, minor, runStart, finishedSet, bootS
       for (const r of rows) {
         if (!ROLES.has(r.team_position) || !TIERS.has(r.seed_tier)) continue;
         countParticipant(map, r, finishedSet, bootSet);
+        if (champ) addParticipant(champ, r);
         n++;
       }
     }
@@ -177,7 +210,58 @@ async function aggregatePatch(region, major, minor, runStart, finishedSet, bootS
   } finally {
     client.release();
   }
+  // Bans der Matches dieses Patches. Die Ban-Tabelle ist klein (nur Matches ab
+  // Migration 0121) und treibt den Join; addMatchBans zaehlt nur Matches, die
+  // oben mitgezaehlt wurden.
+  if (champ && extras) {
+    const { rows: bans } = await rawPool.query(`
+      select b.match_id, b.bans
+        from lol_match_raw_bans b
+        join lol_match_participant_raw r on r.match_id = b.match_id and r.participant_id = 1
+       where r.patch_major = $1 and r.patch_minor = $2 and r.region = $3`, [major, minor, region]);
+    for (const b of bans) addMatchBans(champ, b.match_id, b.bans);
+  }
   return { rows: prune(map), participants: n };
+}
+
+// Alle gezaehlten Stichproben-Matches seit Sammelbeginn (Startseite
+// „Analysierte Partien"). Gleiche Filter wie der Lesezeiger, je Match einmal.
+async function countAllMatches(region) {
+  const { rows } = await rawPool.query(`
+    select count(distinct r.match_id)::int as n
+      from lol_match_participant_raw r
+      join lol_rank_match_queue q on q.match_id = r.match_id
+     where r.region = $1
+       and q.seed_tier = any($2::text[])
+       and r.puuid is distinct from q.seed_puuid
+       and r.game_duration >= ${MIN_REMAKE_SEC}
+       and not r.early_surrender
+       and r.team_position = any($3::text[])`, [region, [...TIERS], [...ROLES]]);
+  return rows[0].n;
+}
+
+async function publishChampionStats(champPatches, region) {
+  const t0 = Date.now();
+  const matchesAnalyzed = await countAllMatches(region);
+  const file = buildChampionStatsFile({ builtAt: new Date().toISOString(), matchesAnalyzed, patches: champPatches });
+  const body = JSON.stringify(file);
+  log(`Champion-Datei: ${describeChampionStatsFile(file)}; seit Sammelbeginn ${matchesAnalyzed} Matches, `
+    + `${Math.round(body.length / 1024)} KB (${Math.round((Date.now() - t0) / 1000)} s)`);
+  if (!isValidLolChampionStats(file)) throw new Error('Champion-Datei faellt durch die Pruefung');
+  if (OUT_FILE) { writeFileSync(OUT_FILE, body); log(`Champion-Datei nach ${OUT_FILE} geschrieben.`); }
+  if (DRY_RUN) return;
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (!token) throw new Error('BLOB_READ_WRITE_TOKEN fehlt');
+  await put(LOL_CHAMPION_STATS_PATH, body, {
+    access: 'public',
+    contentType: 'application/json',
+    token,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
+    abortSignal: AbortSignal.timeout(60_000),
+  });
+  log(`Champion-Datei ${LOL_CHAMPION_STATS_PATH} geschrieben.`);
 }
 
 async function writePatch(region, patch, rows) {
@@ -223,17 +307,37 @@ async function main() {
         group by 1, 2 order by 1 desc, 2 desc limit ${PATCHES})`);
   if (!patches.length) { log('Rohablage leer — nichts zu tun.'); return 0; }
 
+  const extras = await hasRawExtras();
+  const champPatches = [];
+  let writeFailed = false;
   for (const p of patches) {
     const patch = `${p.patch_major}.${p.patch_minor}`;
     const t0 = Date.now();
-    const { rows, participants } = await aggregatePatch(p.region, p.patch_major, p.patch_minor, runStart, finishedSet, bootSet);
+    const champ = p.region === LOL_CHAMPION_STATS_REGION ? createPatchStats(patch) : null;
+    const { rows, participants } = await aggregatePatch(p.region, p.patch_major, p.patch_minor, runStart, finishedSet, bootSet, champ, extras);
+    if (champ) champPatches.push(champ);
     const games = rows.filter((r) => r[3] === 'total').reduce((s, r) => s + r[6], 0);
     log(`${p.region} ${patch}: ${participants} Teilnehmer, ${games} gezaehlt, ${rows.length} Zeilen (${Math.round((Date.now() - t0) / 1000)} s)`);
     if (DRY_RUN || !rows.length) continue;
-    await writePatch(p.region, patch, rows);
-    log(`${p.region} ${patch}: auf Supabase ersetzt.`);
+    // Ein Supabase-Fehler stoppt weder den naechsten Patch noch die
+    // Champion-Datei; der Exit-Code meldet ihn trotzdem (kein OnSuccess).
+    try {
+      await writePatch(p.region, patch, rows);
+      log(`${p.region} ${patch}: auf Supabase ersetzt.`);
+    } catch (err) {
+      writeFailed = true;
+      log(`FEHLER ${p.region} ${patch}: Supabase-Schreiben gescheitert: ${err.message}`);
+    }
   }
-  return 0;
+
+  if (champPatches.length) {
+    try {
+      await publishChampionStats(champPatches, LOL_CHAMPION_STATS_REGION);
+    } catch (err) {
+      log(`FEHLER Champion-Datei nicht geschrieben: ${err.message}`);
+    }
+  }
+  return writeFailed ? 1 : 0;
 }
 
 const endPools = () => Promise.all([rawPool.end(), supa.end()]).catch(() => {});

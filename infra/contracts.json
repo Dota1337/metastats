@@ -380,6 +380,17 @@
       "note": "Builds der LoL-Champion-Standardansicht (euw1 + EMERALD_PLUS) als Datei je Champion, Startdaten der Seite /champions/<id> und erste Quelle der Builds-Route (app/lib/lol-builds-snapshot.ts). Geschrieben von scripts/publish-lol-builds.mjs nach jedem Verdichtungslauf (alle 6 h, OnSuccess= aus metastats-lol-builds.service); index.json nur bei hoechstens 10 % Fehlern. Rot heisst: Seite zeigt die Builds wieder erst im Browser, Route rechnet live — kein Datenverlust. Dateien aelter als 48 h nimmt niemand mehr. Kein urlEnv: SNAPSHOT_MANIFEST_URL ist die volle Manifest-Adresse, nicht der Speicher. minEntries 150 von 173 Champions (15.10.2026: alle 173 mit Datenbank-Antwort bei EMERALD+); zum Saisonstart fallen viele unter 200, dann ist Rot ehrlich. Rot: journalctl -u metastats-lol-builds -u metastats-lol-builds-publish."
     },
     {
+      "id": "lol-champion-stats/blob-frische",
+      "owner": "metastats-lol-builds.service",
+      "type": "endpoint",
+      "url": "https://unyv1wum3kbegjer.public.blob.vercel-storage.com/lol/champion-stats/euw1.json",
+      "dateField": "dataNewest",
+      "entriesField": "roles",
+      "minEntries": 150,
+      "maxAgeDays": 2,
+      "note": "Champion-Zahlen der LoL-Liste /champions und der LoL-Startseite fuer EUW (Sieg-/Pick-/Bannrate, KDA, Top 3, Analysierte Partien), geschrieben von scripts/aggregate-lol-builds.mjs im selben Lauf wie die Rang-Summen (alle 6 h), auch wenn Supabase scheitert. Geprueft wird dataNewest = neuestes gezaehltes Spiel, nicht builtAt: die Verdichtung schreibt die Datei auch dann frisch, wenn der Sammler steht (Key abgelaufen, 06.11.2026 ein ganzer Tag ohne Zulauf). 2 Tage, damit ein Tag ohne Key-Tausch nicht doppelt zu lol-builds/rohdaten-zulauf meldet. Rot heisst: Liste und Startseite zeigen alte Zahlen; nach 7 Tagen nehmen die Leser wieder die Master+-Wochendatei (app/lib/lol-champion-stats-blob.mjs). minEntries 150 von 173 Champions mit Rollen. Rot: journalctl -u metastats-lol-builds | grep Champion-Datei; Notschalter LOL_CHAMPION_STATS_BOX=0 in Vercel."
+    },
+    {
       "id": "meta-pulse/patch-diff-frische",
       "owner": "metastats-meta-pulse-diffs.service",
       "type": "endpoint",

@@ -3,6 +3,28 @@ import { getLatestDdragonVersion, DDRAGON_TIMEOUT_MS } from '../../lib/ddragon-v
 import { cachedJson, ASSET_CACHE_CONTROL } from '../../lib/api-cache';
 import { trustedSelfOrigin } from '../../lib/self-origin';
 import { readRouteMirror, withSnapshotHeader } from '../../lib/route-mirror-read';
+import { loadLolChampionStats } from '../../lib/lol-champion-stats-snapshot';
+import { boxStatsForTiers } from '../../lib/lol-champion-stats-blob.mjs';
+
+type ChampTotals = Record<string, { games: number; wins: number }>;
+
+// Champion-Zahlen der Startseite: zuerst die Box-Datei (EUW-Rang-Stichprobe,
+// lol-champion-stats-blob.mjs) — Top 3 aus dem Fenster von „Alle Raenge",
+// „Analysierte Partien" = alle ausgewerteten Stichproben-Matches seit
+// Sammelbeginn. Sonst die Wochendatei wie bisher. boxMissing = sollte da sein,
+// kam aber nicht → Antwort degradiert.
+async function championTotals(origin: string): Promise<{ stats: ChampTotals; matchesAnalyzed: number; boxMissing: boolean }> {
+  const box = await loadLolChampionStats();
+  if (box.status === 'ok') {
+    const view = boxStatsForTiers(box.file, null);
+    if (view) return { stats: view.stats, matchesAnalyzed: box.file.matchesAnalyzed, boxMissing: false };
+  }
+  const boxMissing = box.status !== 'off';
+  const statsRes = await fetch(`${origin}/champion-stats-euw.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
+  if (!statsRes.ok) return { stats: {}, matchesAnalyzed: 0, boxMissing };
+  const statsData = await statsRes.json();
+  return { stats: statsData.stats || {}, matchesAnalyzed: statsData.matchesAnalyzed || 0, boxMissing };
+}
 
 export async function GET(request: NextRequest) {
   // Fertige Datei der Box (route-mirror.mjs lolHome), sonst live.
@@ -15,12 +37,13 @@ export async function GET(request: NextRequest) {
     // Load champion stats
     let topChampions: { id: string; name: string; games: number; winRate: number; role: string }[] = [];
     let matchesAnalyzed = 0;
+    let boxMissing = false;
     try {
-      const statsRes = await fetch(`${origin}/champion-stats-euw.json`, { signal: AbortSignal.timeout(DDRAGON_TIMEOUT_MS) });
-      if (statsRes.ok) {
-        const statsData = await statsRes.json();
-        const stats = statsData.stats || {};
-        matchesAnalyzed = statsData.matchesAnalyzed || 0;
+      const totals = await championTotals(origin);
+      boxMissing = totals.boxMissing;
+      if (totals.matchesAnalyzed > 0) {
+        const stats = totals.stats;
+        matchesAnalyzed = totals.matchesAnalyzed;
 
         // Get Data Dragon champion mapping
         const version = await getLatestDdragonVersion();
@@ -90,7 +113,7 @@ export async function GET(request: NextRequest) {
       },
     }, {
       cache: ASSET_CACHE_CONTROL,
-      degraded: topChampions.length === 0 || matchesAnalyzed === 0,
+      degraded: topChampions.length === 0 || matchesAnalyzed === 0 || boxMissing,
     }), 'lolHome', false);
   } catch {
     return NextResponse.json({ topChampions: [], stats: {} }, { status: 500 });

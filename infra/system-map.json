@@ -1590,6 +1590,10 @@
     "metastats-lol-builds-publish.service": [
       "lol-builds/blob-frische"
     ],
+    "metastats-lol-builds.service": [
+      "lol-champion-stats/blob-frische",
+      "lol-builds/rang-summen"
+    ],
     "metastats-meta-pulse-diffs.service": [
       "meta-pulse/patch-diff-frische"
     ],
@@ -1653,9 +1657,6 @@
     ],
     "supabase/migrations/0104_revoke_anon_writes.sql": [
       "sicherheit/anon-lockout"
-    ],
-    "metastats-lol-builds.service": [
-      "lol-builds/rang-summen"
     ],
     ".github/workflows/tft-bpatch-detect.yml": [
       "tft-patch/lol-verschiebung"

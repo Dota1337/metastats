@@ -9,19 +9,21 @@ const file = {
   perTier: { CHALLENGER: { matches: 1 }, GRANDMASTER: { matches: 2 }, MASTER: { matches: 3 } },
   statsByTier: { CHALLENGER: { 1: s(2, 1) }, GRANDMASTER: { 1: s(3, 1) }, MASTER: { 1: s(4, 2) } },
 };
+// Wochendatei: zehn Teilnehmer je Spiel, Ban-Nenner = Spiele.
+const pick = (stats, totalGames) => ({ stats, totalGames, banMatches: totalGames / 10, kdaOk: true });
 
 test('Einzelrang und Gruppe summieren nur ihre Raenge', () => {
-  assert.deepEqual(statsForTiers(file, ['CHALLENGER']), { stats: { 1: s(2, 1) }, totalGames: 10 });
-  assert.deepEqual(statsForTiers(file, ['GRANDMASTER', 'CHALLENGER']), { stats: { 1: s(5, 2) }, totalGames: 30 });
+  assert.deepEqual(statsForTiers(file, ['CHALLENGER']), pick({ 1: s(2, 1) }, 10));
+  assert.deepEqual(statsForTiers(file, ['GRANDMASTER', 'CHALLENGER']), pick({ 1: s(5, 2) }, 30));
 });
 
 test('alle Raenge = Gesamtsumme', () => {
-  assert.deepEqual(statsForTiers(file, null), { stats: file.stats, totalGames: 60 });
+  assert.deepEqual(statsForTiers(file, null), pick(file.stats, 60));
 });
 
 test('alte Datei ohne Einzelraenge: nur Master+ bekommt Zahlen', () => {
   const old = { ...file, statsByTier: undefined };
-  assert.deepEqual(statsForTiers(old, ['MASTER', 'GRANDMASTER', 'CHALLENGER']), { stats: file.stats, totalGames: 60 });
+  assert.deepEqual(statsForTiers(old, ['MASTER', 'GRANDMASTER', 'CHALLENGER']), pick(file.stats, 60));
   assert.equal(statsForTiers(old, ['CHALLENGER']), null);
   assert.equal(statsForTiers(old, ['DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER']), null);
 });

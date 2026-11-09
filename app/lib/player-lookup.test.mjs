@@ -11,28 +11,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickTftAccount, combineLookups, nameKey, riotIdKey, splitRiotId, toHead, playerCanonicalName, DIRECTORY_LIMIT } from './player-lookup.ts';
+import { pickAccount, combineLookups, nameKey, riotIdKey, splitRiotId, toHead, playerCanonicalName, DIRECTORY_LIMIT } from './player-lookup.ts';
 
 const acc = (gameName, tagLine, region = 'euw1') => ({ puuid: `${gameName}-${tagLine}`, gameName, tagLine, region, tier: null, division: null, lp: null });
 
 test('TFT: Tag ohne Gross/Klein und Leerraum am Rand trifft', () => {
   const hits = [acc('Faker', 'KR1', 'kr'), acc('Faker', 'EUW')];
-  assert.deepEqual(pickTftAccount(hits, 'euw'), { known: true, value: hits[1] });
-  assert.deepEqual(pickTftAccount([acc('Faker', 'EUW ')], ' euw'), { known: true, value: acc('Faker', 'EUW ') });
+  assert.deepEqual(pickAccount(hits, 'euw'), { known: true, value: hits[1] });
+  assert.deepEqual(pickAccount([acc('Faker', 'EUW ')], ' euw'), { known: true, value: acc('Faker', 'EUW ') });
 });
 
 test('TFT: Name bekannt, Tag nicht → unbekannt; keine Treffer → unbekannt', () => {
-  assert.deepEqual(pickTftAccount([acc('Faker', 'KR1')], 'NA1'), { known: false });
-  assert.deepEqual(pickTftAccount([], 'EUW'), { known: false });
+  assert.deepEqual(pickAccount([acc('Faker', 'KR1')], 'NA1'), { known: false });
+  assert.deepEqual(pickAccount([], 'EUW'), { known: false });
 });
 
 test('TFT: Zweifel → keine Entscheidung (Fehler, kein Tag, volle Liste)', () => {
-  assert.equal(pickTftAccount(null, 'EUW'), null, 'Abfrage gescheitert');
-  assert.equal(pickTftAccount([acc('Faker', 'EUW')], ''), null, 'kein Tag');
-  assert.equal(pickTftAccount([acc('Faker', 'EUW')], '   '), null, 'Tag nur Leerraum');
+  assert.equal(pickAccount(null, 'EUW'), null, 'Abfrage gescheitert');
+  assert.equal(pickAccount([acc('Faker', 'EUW')], ''), null, 'kein Tag');
+  assert.equal(pickAccount([acc('Faker', 'EUW')], '   '), null, 'Tag nur Leerraum');
   const full = Array.from({ length: DIRECTORY_LIMIT }, (_, i) => acc('karmaaaz', `T${i}`));
-  assert.equal(pickTftAccount(full, 'GESUCHT'), null, 'Liste voll: das Konto kann dahinter liegen');
-  assert.deepEqual(pickTftAccount(full, 't5'), { known: true, value: full[5] }, 'Treffer in voller Liste zaehlt');
+  assert.equal(pickAccount(full, 'GESUCHT'), null, 'Liste voll: das Konto kann dahinter liegen');
+  assert.deepEqual(pickAccount(full, 't5'), { known: true, value: full[5] }, 'Treffer in voller Liste zaehlt');
 });
 
 test('LoL: eine Quelle kennt ihn → bekannt, egal was die anderen sagen', () => {
@@ -57,7 +57,7 @@ test('Schluessel wie tft_name_norm: Gross/Klein und Leerraum egal, NFKC', () => 
 test('Schluessel: „KR 1“ und „KR1“ sind zwei Konten (Speicher, Profi-Liste), Rand egal', () => {
   assert.notEqual(riotIdKey('Faker', 'KR 1'), riotIdKey('Faker', 'KR1'));
   assert.equal(riotIdKey('Faker', ' kr 1 '), riotIdKey('faker', 'KR 1'));
-  assert.deepEqual(pickTftAccount([acc('Faker', 'KR1'), acc('Faker', 'KR 1')], 'kr 1'), { known: true, value: acc('Faker', 'KR 1') });
+  assert.deepEqual(pickAccount([acc('Faker', 'KR1'), acc('Faker', 'KR 1')], 'kr 1'), { known: true, value: acc('Faker', 'KR 1') });
 });
 
 test('canonical-Schreibweise: Quelle nur bei sicher gleicher Riot-ID, sonst Adresse', () => {
@@ -90,14 +90,18 @@ test('Kopf fuer den Client: nur Name + Tag, keine weiteren Felder', () => {
   assert.equal(toHead(null), null);
 });
 
-test('DIRECTORY_LIMIT passt zum Deckel der Namens-RPC (sonst wird „Liste voll“ nie erkannt → falsches noindex)', async () => {
+test('DIRECTORY_LIMIT passt zum Deckel beider Namens-RPCs (sonst wird „Liste voll“ nie erkannt → falsches noindex)', async () => {
   const { readdirSync, readFileSync } = await import('node:fs');
   const dir = new URL('../../supabase/migrations/', import.meta.url);
-  const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
-    .filter(f => /function public\.search_tft_player_names_exact\s*\(/.test(readFileSync(new URL(f, dir), 'utf8')));
-  assert.ok(files.length > 0, 'keine Migration definiert search_tft_player_names_exact');
-  const sql = readFileSync(new URL(files.at(-1), dir), 'utf8');
-  const cap = /limit\s+least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)/.exec(sql)?.[1];
-  assert.ok(cap, `Deckel in ${files.at(-1)} nicht gefunden — Test an die neue Form anpassen`);
-  assert.equal(Number(cap), DIRECTORY_LIMIT, `${files.at(-1)}: Deckel ${cap}, Code fragt ${DIRECTORY_LIMIT}`);
+  for (const fn of ['search_tft_player_names_exact', 'search_lol_player_names_exact']) {
+    const files = readdirSync(dir).filter(f => f.endsWith('.sql')).sort()
+      .filter(f => new RegExp(`function public\\.${fn}\\s*\\(`).test(readFileSync(new URL(f, dir), 'utf8')));
+    assert.ok(files.length > 0, `keine Migration definiert ${fn}`);
+    const sql = readFileSync(new URL(files.at(-1), dir), 'utf8');
+    // Nur der Rumpf DIESER Funktion (0122 definiert mehrere).
+    const body = sql.slice(sql.search(new RegExp(`function public\\.${fn}\\s*\\(`)));
+    const cap = /limit\s+least\(greatest\(coalesce\(p_limit,\s*\d+\),\s*1\),\s*(\d+)\)/.exec(body)?.[1];
+    assert.ok(cap, `${fn}: Deckel in ${files.at(-1)} nicht gefunden — Test an die neue Form anpassen`);
+    assert.equal(Number(cap), DIRECTORY_LIMIT, `${fn} (${files.at(-1)}): Deckel ${cap}, Code fragt ${DIRECTORY_LIMIT}`);
+  }
 });

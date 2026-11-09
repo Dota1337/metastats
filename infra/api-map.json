@@ -465,6 +465,7 @@
       "group": "leaderboard",
       "file": "app/api/leaderboard/route.ts",
       "via": [
+        "app/lib/lol-player-names-write.ts",
         "app/lib/riot-fetch.ts"
       ],
       "used": true,
@@ -631,7 +632,7 @@
       "group": "summoner",
       "file": "app/api/summoner/route.ts",
       "via": [
-        "app/lib/lol-player-search-server.ts",
+        "app/lib/lol-player-names-write.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/seasons.ts"
       ],
@@ -785,6 +786,7 @@
         "app/lib/cdragon-base.ts",
         "app/lib/comp-detail-snapshot.ts",
         "app/lib/current-set.ts",
+        "app/lib/lol-player-search-server.ts",
         "app/lib/og/data.ts",
         "app/lib/player-lookup-server.ts",
         "app/lib/snapshot-lookup.ts",
@@ -2554,6 +2556,16 @@
       "kind": "fetches"
     },
     {
+      "from": "api:/api/leaderboard",
+      "to": "fn:delete_lol_player_name",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/leaderboard",
+      "to": "fn:upsert_lol_player_names",
+      "kind": "calls"
+    },
+    {
       "from": "api:/api/leaderboard/resolve",
       "to": "db:players",
       "kind": "reads"
@@ -2686,16 +2698,6 @@
     {
       "from": "api:/api/summoner",
       "to": "fn:delete_lol_player_name",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/summoner",
-      "to": "fn:search_lol_player_names",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/summoner",
-      "to": "fn:search_lol_player_names_exact",
       "kind": "calls"
     },
     {
@@ -2971,6 +2973,16 @@
     {
       "from": "api:/api/tft/comps/families",
       "to": "fn:get_tft_set_bucket_coverage",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:search_lol_player_names",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/comps/families",
+      "to": "fn:search_lol_player_names_exact",
       "kind": "calls"
     },
     {
@@ -3640,11 +3652,6 @@
     },
     {
       "from": "api:/api/tft/search-players",
-      "to": "fn:delete_lol_player_name",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/search-players",
       "to": "fn:search_lol_player_names",
       "kind": "calls"
     },
@@ -3656,11 +3663,6 @@
     {
       "from": "api:/api/tft/search-players",
       "to": "fn:search_tft_player_names",
-      "kind": "calls"
-    },
-    {
-      "from": "api:/api/tft/search-players",
-      "to": "fn:upsert_lol_player_names",
       "kind": "calls"
     },
     {

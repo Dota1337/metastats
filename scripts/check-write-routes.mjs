@@ -29,9 +29,8 @@ import { join, sep, basename } from 'node:path';
 const WURZEL = join('app', 'api');
 const BIBLIOTHEKEN = join('app', 'lib');
 
-// Schreib-Aufrufe auf dem Supabase-Client. .rpc() steht bewusst NICHT hier:
-// die allermeisten RPCs lesen nur, und jeden Aufruf einzeln zu begruenden waere
-// Laerm, der den Waechter unglaubwuerdig macht.
+// Schreib-Aufrufe auf dem Supabase-Client. Datenbank-Funktionen (.rpc / callRpc)
+// prueft schreibRpc() unten nach Namen.
 //
 // .delete zaehlt nur ohne Argument oder mit Options-Objekt — so ruft Supabase
 // es auf (`.delete()` / `.delete({ count })`). Ein Map-/Set-Zwischenspeicher
@@ -56,7 +55,19 @@ const REST_TABELLE = /\/rest\/v1\/(?!rpc\/)[a-z_]/;
 // aufruft, schreibt mittelbar.
 const BOX_SCHREIBT = /\/refresh-player\b/;
 
+// Datenbank-Funktionen: lesend sind nur get_* und search_*, jeder andere Name
+// zaehlt als Schreiben (seit 09.11.2026). Umgekehrt geprueft, damit eine neue
+// Funktion wie bump_… oder refresh_… nicht durchrutscht. Vorher zaehlte .rpc()
+// gar nicht — so blieb unbemerkt, dass /api/summoner ins LoL-Namensverzeichnis
+// schreibt (upsert_lol_player_names / delete_lol_player_name, damals die
+// einzigen Schreib-RPCs in app/; callRpc in tft-supabase-reader.ts ruft nur get_*).
+const RPC_NAME = /(?:\.rpc|\bcallRpc(?:<[^>]*>)?)\(\s*['"`]([A-Za-z0-9_]+)/g;
+function schreibRpc(src) {
+  return [...src.matchAll(RPC_NAME)].some((m) => !/^(get|search)_/.test(m[1]));
+}
+
 function bibliothekSchreibt(src) {
+  if (schreibRpc(src)) return true;
   if (NUTZT_CLIENT.test(src) && SCHREIBT.test(src)) return true;
   const zeilen = src.split('\n');
   return zeilen.some((z, i) => ROHE_METHODE.test(z)
@@ -86,6 +97,16 @@ const AUSNAHMEN = {
     'genau dieser Riot-ID (veraltete Namenszeile, ggf. eines anderen Kontos) und ' +
     'beim Eintragen aeltere Zeilen anderer puuids mit derselben Riot-ID. Sonst keine ' +
     'Zeilen anderer Spieler. Bremse je IP (checkRateLimit). Abschalter LOL_NAMES_WRITE=0.',
+  'app/api/leaderboard/route.ts':
+    'Oeffentliche LoL-Rangliste. Traegt die Riot-IDs, die Riot in DIESER Anfrage ' +
+    'per account-v1 zu puuids der gezeigten Seite aufgeloest hat (puuid, Name, Tag, ' +
+    'Server), ins LoL-Namensverzeichnis ein (lol_player_names, 0122, ueber ' +
+    'lol-player-names-write.ts) — damit die Spielerseiten der Rangliste nicht ' +
+    'noindex bekommen. Namen kommen nur von Riot, nie aus der Adresse oder aus ' +
+    'players; nichts wird ueber Anfragen hinweg gemerkt (sonst kaeme eine von ' +
+    '/api/summoner geloeschte Zeile wieder). Hoechstens 40 Zeilen je Anfrage ' +
+    '(NAME_RESOLVE_BATCH), nach der Antwort, 3 s Frist. Keine anderen Tabellen. ' +
+    'Abschalter LOL_NAMES_WRITE=0 (gilt auch fuer /api/summoner).',
   'app/api/player-season-stats/route.ts':
     'Legt die berechnete Saison-Zeile des angefragten Spielers ab. Gleiches ' +
     'Muster wie /api/summoner: Ergebnis-Cache, keine Fremddaten.',
@@ -156,7 +177,7 @@ const benutzteAusnahmen = new Set();
 
 for (const p of alle) {
   const src = readFileSync(p, 'utf8');
-  if (!SCHREIBT.test(src) && !bindetSchreibendeEin(src) && !BOX_SCHREIBT.test(src)) continue;
+  if (!SCHREIBT.test(src) && !schreibRpc(src) && !bindetSchreibendeEin(src) && !BOX_SCHREIBT.test(src)) continue;
 
   if (p.startsWith('app/api/internal/')) {
     gedeckt.push(`${p} — unter internal/`);

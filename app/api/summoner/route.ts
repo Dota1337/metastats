@@ -8,7 +8,7 @@ import { getAccountRouting, getRegionalRouting, parseRegion } from '../../lib/re
 import { riotFetch } from '../../lib/riot-fetch';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
-import { forgetLolName, rememberLolName } from '../../lib/lol-player-search-server';
+import { forgetLolName, rememberLolName } from '../../lib/lol-player-names-write';
 
 // Unter so vielen Partien im Split wird kein neuer Marktwert geschrieben; der
 // gespeicherte bleibt stehen. Die Formel liefert auch mit 0 Partien einen

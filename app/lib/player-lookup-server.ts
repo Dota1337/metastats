@@ -9,18 +9,24 @@ import 'server-only';
 //
 // Quellen:
 //   TFT  Namensverzeichnis tft_player_names (exakter Name, Tag hier verglichen).
-//   LoL  Profi-Liste (public/pro-teams/index.json) ODER Namensverzeichnis (Riot-ID
-//        gilt fuer beide Spiele) ODER Tabelle players (wer das Profil schon einmal
-//        geoeffnet hat). Das Verzeichnis allein kennt nur 95 von 712 Profis
-//        (gemessen 15.10.2026) — „unbekannt“ nur, wenn alle drei nein sagen.
+//   LoL  Profi-Liste (public/pro-teams/index.json) ODER TFT-Namensverzeichnis
+//        (Riot-ID gilt fuer beide Spiele) ODER Tabelle players (wer das Profil
+//        schon einmal geoeffnet hat) ODER LoL-Namensverzeichnis lol_player_names
+//        (Profil-Aufrufe und die Rangliste, 09.11.2026: 12 Spieler der Rangliste
+//        standen in keiner anderen Quelle und bekamen noindex). Das TFT-
+//        Verzeichnis allein kennt nur 95 von 712 Profis (gemessen 15.10.2026) —
+//        „unbekannt“ nur, wenn alle Quellen nein sagen. Notschalter
+//        LOL_NAMES_LOOKUP=0 laesst das LoL-Verzeichnis weg (nicht „keine
+//        Entscheidung“ — sonst gaebe es nie mehr noindex).
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { supabaseAdmin } from './supabase';
 import { searchExactNames } from './tft-player-search-server';
-import type { TftAccountHit } from './tft-player-search';
+import { searchLolExact } from './lol-player-search-server';
+import type { PlayerHit, TftAccountHit } from './tft-player-search';
 import { withTimeout } from './og/frame';
 import {
-  DIRECTORY_LIMIT, combineLookups, pickTftAccount, riotIdKey, splitRiotId,
+  DIRECTORY_LIMIT, combineLookups, pickAccount, riotIdKey, splitRiotId,
   type Lookup, type PlayerName,
 } from './player-lookup';
 
@@ -54,7 +60,15 @@ async function remembered<T>(key: string, load: () => Promise<Lookup<T>>): Promi
 export function tftDirectoryLookup(gameName: string, tagLine: string): Promise<Lookup<TftAccountHit>> {
   if (!gameName.trim() || !tagLine.trim()) return Promise.resolve(null);
   return remembered(`tft|${riotIdKey(gameName, tagLine)}`, async () =>
-    pickTftAccount(await withTimeout(searchExactNames(gameName, DIRECTORY_LIMIT), LOOKUP_TIMEOUT_MS), tagLine));
+    pickAccount(await withTimeout(searchExactNames(gameName, DIRECTORY_LIMIT), LOOKUP_TIMEOUT_MS), tagLine));
+}
+
+// ---------- LoL: Namensverzeichnis lol_player_names ----------
+
+export function lolDirectoryLookup(gameName: string, tagLine: string): Promise<Lookup<PlayerHit>> {
+  if (!gameName.trim() || !tagLine.trim()) return Promise.resolve(null);
+  return remembered(`lol|${riotIdKey(gameName, tagLine)}`, async () =>
+    pickAccount(await withTimeout(searchLolExact(gameName, DIRECTORY_LIMIT), LOOKUP_TIMEOUT_MS), tagLine));
 }
 
 // ---------- LoL: Tabelle players ----------
@@ -124,11 +138,20 @@ export async function lolPlayerLookup(name: string, tag: string): Promise<Lookup
   const pros = proRiotIds();
   const pro = pros?.get(riotIdKey(name, tag));
   if (pro) return { known: true, value: splitRiotId(pro)! };
-  const [tft, players] = await Promise.all([tftDirectoryLookup(name, tag), lolPlayersLookup(name, tag)]);
+  const useLolNames = process.env.LOL_NAMES_LOOKUP !== '0';
+  const [tft, players, lol] = await Promise.all([
+    tftDirectoryLookup(name, tag),
+    lolPlayersLookup(name, tag),
+    useLolNames ? lolDirectoryLookup(name, tag) : Promise.resolve(null),
+  ]);
   const fromPlayers = (row: LolPlayerRow): PlayerName => splitRiotId(row.summoner_name) ?? { gameName: name, tagLine: tag };
+  const riotId = (h: PlayerName): PlayerName => ({ gameName: h.gameName, tagLine: h.tagLine });
+  // Reihenfolge = Vorrang der Schreibweise. Das LoL-Verzeichnis steht hinten:
+  // fuer schon bekannte Spieler aendern sich Titel und canonical nicht.
   return combineLookups<PlayerName>([
     pros ? { known: false } : null,
-    tft && (tft.known ? { known: true, value: { gameName: tft.value.gameName, tagLine: tft.value.tagLine } } : tft),
+    tft && (tft.known ? { known: true, value: riotId(tft.value) } : tft),
     players && (players.known ? { known: true, value: fromPlayers(players.value) } : players),
+    ...(useLolNames ? [lol && (lol.known ? { known: true as const, value: riotId(lol.value) } : lol)] : []),
   ]);
 }

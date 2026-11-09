@@ -11,8 +11,6 @@
 //                            bisher; vor allem gibt es KEIN noindex.
 // „Unbekannt“ heisst nur „nicht in unseren Quellen“, nicht „gibt es bei Riot
 // nicht“ — deshalb faellt jeder Zweifel auf null.
-import type { TftAccountHit } from './tft-player-search';
-
 export type Lookup<T> = { known: true; value: T } | { known: false } | null;
 
 export interface PlayerName { gameName: string; tagLine: string }
@@ -20,7 +18,8 @@ export interface PlayerName { gameName: string; tagLine: string }
 /** Was der Client von der Huelle bekommt (serialisierbar). */
 export type PlayerHead = ({ known: true } & PlayerName) | { known: false } | null;
 
-/** Deckel der Namens-RPC (search_tft_player_names_exact, Migration 0073). */
+/** Deckel der Namens-RPCs search_tft_player_names_exact (0073) und
+ *  search_lol_player_names_exact (0122) — beide 100, Test prueft beide. */
 export const DIRECTORY_LIMIT = 100;
 
 /** Vergleichsschluessel wie tft_name_norm in der Datenbank: NFKC, ohne Leerraum, klein. */
@@ -69,15 +68,15 @@ export function splitRiotId(id: string): PlayerName | null {
 }
 
 /**
- * Konto mit diesem Tag unter den Namens-Treffern des Verzeichnisses. Die
- * Treffer kommen nach Rang sortiert und hoechstens `limit` Stueck: ist die
+ * Konto mit diesem Tag unter den Namens-Treffern eines Verzeichnisses (TFT oder
+ * LoL). Die Treffer kommen sortiert und hoechstens `limit` Stueck: ist die
  * Liste voll, kann das gesuchte Konto dahinter liegen → keine Entscheidung.
  */
-export function pickTftAccount(
-  hits: TftAccountHit[] | null,
+export function pickAccount<T extends { tagLine: string }>(
+  hits: T[] | null,
   tagLine: string,
   limit = DIRECTORY_LIMIT,
-): Lookup<TftAccountHit> {
+): Lookup<T> {
   if (!hits) return null;
   const tag = tagKey(tagLine);
   if (!tag) return null;

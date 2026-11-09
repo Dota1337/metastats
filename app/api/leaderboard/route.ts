@@ -5,6 +5,8 @@ import { getAccountRouting, parseRegion, REGION_ALL } from '../../lib/regions';
 import { riotFetch } from '../../lib/riot-fetch';
 import { cachedJson } from '../../lib/api-cache';
 import { APEX_ORDER, LOL_LADDER, isLolRankGroup, lolTiersTopDown } from '../../lib/rank-groups';
+import { lolNameRow, type LolNameRow } from '../../lib/lol-player-names';
+import { rememberLolNames } from '../../lib/lol-player-names-write';
 
 // Riot oder Datenbank nicht erreichbar: ehrlich 503 statt leerer oder
 // ersatzweise sortierter Liste. Die Seite zeigt dann „nicht erreichbar“.
@@ -262,6 +264,10 @@ export async function GET(request: NextRequest) {
 
         const toResolve = unresolvedPuuids.slice(0, NAME_RESOLVE_BATCH);
         const deadline = Date.now() + NAME_RESOLVE_BUDGET_MS;
+        // Riots Antworten DIESER Anfrage → LoL-Namensverzeichnis, damit die
+        // Spielerseite die Ranglisten-Spieler kennt (sonst noindex). Nur von hier,
+        // nie aus players oder nameCache: siehe lol-player-names-write.ts.
+        const confirmedRows: LolNameRow[] = [];
         if (toResolve.length > 0) {
           for (let i = 0; i < toResolve.length; i += 10) {
             const left = deadline - Date.now();
@@ -275,6 +281,8 @@ export async function GET(request: NextRequest) {
                     const acc = await accRes.json();
                     if (acc.gameName) {
                       nameCache[puuid] = `${acc.gameName}#${acc.tagLine || ''}`;
+                      const row = lolNameRow({ puuid, gameName: acc.gameName, tagLine: acc.tagLine }, riotRegion, new Date());
+                      if (row) confirmedRows.push(row);
                     }
                   }
                 } catch {}
@@ -309,6 +317,8 @@ export async function GET(request: NextRequest) {
             freshBlood: e.freshBlood,
           };
         });
+
+        rememberLolNames(confirmedRows);
 
         return cachedJson({
           entries,

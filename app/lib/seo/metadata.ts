@@ -10,7 +10,7 @@ import { buildMetadata, seoText, type PageKey } from './copy';
 //
 // `path` ist der Pfad OHNE Query: Filter-Varianten (?bucket=…) zeigen alle auf
 // dieselbe Adresse. Segmente muessen schon kodiert sein (encodeURIComponent).
-// null = kein canonical (Seiten, die ohne ?region= etwas anderes zeigen).
+// null = kein canonical (Match-Seiten: ohne ?region= etwas anderes).
 //
 // `name` darf eine Funktion der Sprache sein (Champion-Namen gibt es je
 // Sprache); sie bekommt die Sprache, die auch der Titel nutzt.

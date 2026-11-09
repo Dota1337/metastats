@@ -1735,31 +1735,46 @@ export function traitIdLinks(html) {
   return [...new Set([...visible.matchAll(/\shref="(?:\/[a-z]{2})?\/tft\/traits\/((?:DA|TFT\d*|Set\d+)_[^"?#]*)/g)].map(m => m[1]))];
 }
 
+/** Spieler-Links im sichtbaren HTML einer Liste: volle Adresse MIT Query
+ *  (?region=, &puuid=), so wie Google sie findet; &amp; aufgeloest. */
+export function playerLinks(html) {
+  const visible = html.replace(/<script[\s\S]*?<\/script>/g, ' ');
+  return [...new Set([...visible.matchAll(/\shref="((?:\/[a-z]{2})?\/(?:tft\/)?player\/[^"#]+)"/g)].map(m => m[1].replace(/&amp;/g, '&')))];
+}
+
 /**
- * Auswertung der abgerufenen Seiten: [{ path, kind: 'comp'|'page', status, html, error }].
+ * Auswertung der abgerufenen Seiten: [{ path, fetchPath?, kind: 'comp'|'player'|'page', status, html, error }].
+ * `path` ist der Pfad ohne Query, gegen den das canonical verglichen wird;
+ * `fetchPath` die abgerufene Adresse (Spieler-Links tragen ?region=).
  * Hart (sofort rot): kein 200, canonical/Titel fehlt oder steht im <body>,
  * Trait-Kennungs-Links, eine feste Seite mit fremdem canonical. Weich: Comp-
  * Seiten mit fremdem canonical — bis `maxMismatch` gruen (Katalog-Wechsel am
- * Tag kann einzelne Links kurz verschieben).
+ * Tag kann einzelne Links kurz verschieben); Spieler-Links, deren canonical
+ * eine andere Schreibweise nennt — bis `maxPlayerMismatch` (Liste und
+ * Namensverzeichnis koennen nach einer Umbenennung kurz auseinanderliegen).
  */
-export function evaluateCanonical(results, { maxMismatch = 0 } = {}) {
+export function evaluateCanonical(results, { maxMismatch = 0, maxPlayerMismatch = 0 } = {}) {
   const hard = [];
   const soft = [];
+  const playerSoft = [];
   const traitIds = new Set();
   for (const p of results) {
-    if (p.error || p.status !== 200) { hard.push(`${p.path} → ${p.error || `HTTP ${p.status}`}`); continue; }
+    if (p.error || p.status !== 200) { hard.push(`${p.fetchPath || p.path} → ${p.error || `HTTP ${p.status}`}`); continue; }
     const got = canonicalOf(p.html);
     if (!got.href) { hard.push(`${p.path}: kein canonical`); continue; }
     if (!got.inHead) hard.push(`${p.path}: canonical im <body>`);
     if (!got.titleInHead) hard.push(`${p.path}: <title> nicht im <head>`);
     let target;
     try { target = new URL(got.href, 'https://x').pathname; } catch { target = got.href; }
-    if (decodedPath(target) !== decodedPath(p.path)) (p.kind === 'comp' ? soft : hard).push(`${p.path} → canonical ${decodedPath(target)}`);
+    if (decodedPath(target) !== decodedPath(p.path)) {
+      (p.kind === 'comp' ? soft : p.kind === 'player' ? playerSoft : hard).push(`${p.path} → canonical ${decodedPath(target)}`);
+    }
     if (p.kind === 'comp') for (const id of traitIdLinks(p.html)) traitIds.add(id);
   }
   if (traitIds.size) hard.push(`${traitIds.size} Trait-Links mit Kennung (z.B. ${[...traitIds].slice(0, 3).join(', ')})`);
   if (soft.length > maxMismatch) hard.push(`${soft.length} Comp-Seiten mit fremdem canonical (erlaubt ${maxMismatch}, z.B. ${soft.slice(0, 3).join('; ')})`);
-  return { wrong: hard, mismatches: soft.length };
+  if (playerSoft.length > maxPlayerMismatch) hard.push(`${playerSoft.length} Spieler-Links mit fremdem canonical (erlaubt ${maxPlayerMismatch}, z.B. ${playerSoft.slice(0, 3).join('; ')})`);
+  return { wrong: hard, mismatches: soft.length, playerMismatches: playerSoft.length };
 }
 
 // Comp-Pfade (ohne Sprach-Vorsatz) aus Sitemap und Listen-HTML, ohne die
@@ -1792,11 +1807,22 @@ async function canonicalProbes(base, spec) {
   }
   const comps = compDetailPaths([...sitemap, ...linked]).slice(0, spec.maxComps || 150);
   if (comps.length === 0) return { error: 'keine Comp-Seiten in Sitemap und Listen' };
+  // Spieler: die ersten N Links je Liste, MIT ?region= abgerufen, verglichen
+  // wird nur der Pfad (canonical ohne Query, app/tft/player/[slug]/layout.tsx).
+  const players = [];
+  for (const [src, n] of Object.entries(spec.playerLinkSources || {})) {
+    const page = await fetch(base + src, { headers, signal: AbortSignal.timeout(20_000) });
+    if (!page.ok) return { error: `${src} antwortet HTTP ${page.status}` };
+    const found = playerLinks(await page.text()).slice(0, n);
+    if (found.length < n) return { error: `${src}: ${found.length} Spieler-Links im ersten HTML (soll ${n})` };
+    players.push(...found);
+  }
   const firsts = (spec.sitemapFirst || []).map(prefix => sitemap.find(p => p.startsWith(prefix) && p.length > prefix.length));
   const missing = (spec.sitemapFirst || []).filter((_, i) => !firsts[i]);
   if (missing.length) return { error: `Sitemap ohne Eintraege fuer ${missing.join(', ')}` };
   const todo = [
     ...comps.map(path => ({ path, kind: 'comp' })),
+    ...[...new Set(players)].map(href => ({ path: href.split('?')[0], fetchPath: href, kind: 'player' })),
     ...[...firsts, ...(spec.pages || [])].map(path => ({ path, kind: 'page' })),
   ];
   // 4 gleichzeitig: Googlebot wartet auf den Kopf, eine Comp-Seite braucht live ~0,5–2 s.
@@ -1806,14 +1832,14 @@ async function canonicalProbes(base, spec) {
     while (next < todo.length) {
       const p = todo[next++];
       try {
-        const page = await fetch(base + p.path, { headers, redirect: 'manual', signal: AbortSignal.timeout(30_000) });
+        const page = await fetch(base + (p.fetchPath || p.path), { headers, redirect: 'manual', signal: AbortSignal.timeout(30_000) });
         results.push({ ...p, status: page.status, html: await page.text() });
       } catch (e) {
         results.push({ ...p, error: e?.name === 'TimeoutError' ? 'Zeitlimit' : String(e?.message || e) });
       }
     }
   }));
-  return { results, comps: comps.length };
+  return { results, comps: comps.length, players: players.length };
 }
 
 async function checkHttpStatus(c, r) {
@@ -1876,9 +1902,9 @@ async function checkHttpStatus(c, r) {
   if (c.expectCanonical) {
     const got = await canonicalProbes(base, c.expectCanonical);
     if (got.error) return r('broken', got.error);
-    const ev = evaluateCanonical(got.results, { maxMismatch: c.expectCanonical.maxMismatch ?? 0 });
+    const ev = evaluateCanonical(got.results, { maxMismatch: c.expectCanonical.maxMismatch ?? 0, maxPlayerMismatch: c.expectCanonical.maxPlayerMismatch ?? 0 });
     wrong.push(...ev.wrong);
-    canonical = { pages: got.results.length, comps: got.comps, mismatches: ev.mismatches };
+    canonical = { pages: got.results.length, comps: got.comps, players: got.players, mismatches: ev.mismatches, playerMismatches: ev.playerMismatches };
   }
   // Adresse folgt der Sprache: Besucher wird umgeleitet, Bots und deutsche Wahl nicht.
   for (const p of langRedirects) {
@@ -1986,7 +2012,7 @@ async function checkHttpStatus(c, r) {
   if (canonical && probes.length + langLinks.length + startLinks.length + startText.length + localNames.length === 0) {
     return wrong.length
       ? r('broken', `${wrong.length} Fehler auf ${canonical.pages} Seiten: ${wrong.slice(0, 4).join('; ')}`)
-      : r('ok', `${canonical.pages} Seiten mit canonical im Kopf (${canonical.comps} Comps, ${canonical.mismatches} mit fremdem canonical)`);
+      : r('ok', `${canonical.pages} Seiten mit canonical im Kopf (${canonical.comps} Comps, ${canonical.mismatches} mit fremdem canonical; ${canonical.players} Spieler-Links, ${canonical.playerMismatches} mit anderer Schreibweise)`);
   }
   return wrong.length
     ? r('broken', `${wrong.length}/${total} falsch: ${wrong.slice(0, 4).join('; ')}`)

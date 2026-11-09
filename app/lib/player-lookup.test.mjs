@@ -11,7 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { pickTftAccount, combineLookups, nameKey, riotIdKey, splitRiotId, toHead, DIRECTORY_LIMIT } from './player-lookup.ts';
+import { pickTftAccount, combineLookups, nameKey, riotIdKey, splitRiotId, toHead, playerCanonicalName, DIRECTORY_LIMIT } from './player-lookup.ts';
 
 const acc = (gameName, tagLine, region = 'euw1') => ({ puuid: `${gameName}-${tagLine}`, gameName, tagLine, region, tier: null, division: null, lp: null });
 
@@ -52,6 +52,29 @@ test('Schluessel wie tft_name_norm: Gross/Klein und Leerraum egal, NFKC', () => 
   assert.equal(nameKey('Hide on bush'), 'hideonbush');
   assert.equal(nameKey('ＦＡＫＥＲ'), 'faker', 'Vollbreite → NFKC');
   assert.equal(riotIdKey('Hide On Bush', 'kr1'), riotIdKey('hideonbush', 'KR1'));
+});
+
+test('Schluessel: „KR 1“ und „KR1“ sind zwei Konten (Speicher, Profi-Liste), Rand egal', () => {
+  assert.notEqual(riotIdKey('Faker', 'KR 1'), riotIdKey('Faker', 'KR1'));
+  assert.equal(riotIdKey('Faker', ' kr 1 '), riotIdKey('faker', 'KR 1'));
+  assert.deepEqual(pickTftAccount([acc('Faker', 'KR1'), acc('Faker', 'KR 1')], 'kr 1'), { known: true, value: acc('Faker', 'KR 1') });
+});
+
+test('canonical-Schreibweise: Quelle nur bei sicher gleicher Riot-ID, sonst Adresse', () => {
+  const head = (gameName, tagLine) => ({ known: true, gameName, tagLine });
+  // Gross/Klein und Leerraum im Namen: Schreibweise der Quelle.
+  assert.deepEqual(playerCanonicalName(head('Hide on bush', 'KR1'), 'hideonbush', 'kr1'), { gameName: 'Hide on bush', tagLine: 'KR1' });
+  // Anderer Tag (Leerzeichen innen) oder Vollbreite: Adresse gewinnt.
+  assert.deepEqual(playerCanonicalName(head('Faker', 'KR1'), 'Faker', 'KR 1'), { gameName: 'Faker', tagLine: 'KR 1' });
+  assert.deepEqual(playerCanonicalName(head('Ｈｙｕｎｄａｉ', '9580'), 'Hyundai', '9580'), { gameName: 'Hyundai', tagLine: '9580' });
+  // Rand gekuerzt, auch in der Quelle.
+  assert.deepEqual(playerCanonicalName(head(' ViggoZe ', 'EUW '), 'viggoze', 'euw'), { gameName: 'ViggoZe', tagLine: 'EUW' });
+  assert.deepEqual(playerCanonicalName(null, ' ViggoZe', 'EUW '), { gameName: 'ViggoZe', tagLine: 'EUW' });
+  // Unbekannt (noindex) behaelt die eigene Adresse; ohne Tag oder Name kein canonical.
+  assert.deepEqual(playerCanonicalName({ known: false }, 'X', 'EUW'), { gameName: 'X', tagLine: 'EUW' });
+  assert.equal(playerCanonicalName(null, 'Faker', ''), null);
+  assert.equal(playerCanonicalName(head('Faker', 'KR1'), 'Faker', '  '), null);
+  assert.equal(playerCanonicalName(null, ' ', 'EUW'), null);
 });
 
 test('Riot-ID am letzten # getrennt, ohne Tag null', () => {

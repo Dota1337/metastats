@@ -81,4 +81,7 @@ test('Profil-Links: TFT mit puuid wie bisher, ohne puuid ohne leeren Parameter',
   assert.equal(tftProfileHref({ puuid: 'P', gameName: 'A', tagLine: 'EUW', region: null }), '/tft/player/A--EUW?puuid=P');
   assert.equal(tftProfileHref({ gameName: 'A', tagLine: 'EUW', region: null }), '/tft/player/A--EUW');
   assert.equal(lolProfileHref({ gameName: 'SQ Heimer Banga', tagLine: 'EUW', region: 'euw1' }), '/player/SQ%20Heimer%20Banga--EUW?region=euw1');
+  // Rand gekuerzt wie das canonical der Spielerseite (riotIdSlug).
+  assert.equal(tftProfileHref({ gameName: 'A ', tagLine: ' EUW', region: null }), '/tft/player/A--EUW');
+  assert.equal(lolProfileHref({ gameName: ' A', tagLine: 'KR 1 ', region: null }), '/player/A--KR%201');
 });

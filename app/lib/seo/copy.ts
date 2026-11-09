@@ -429,8 +429,7 @@ export function siteText(lang: Lang): SeoText {
 
 /**
  * Fertige Metadaten. `path` = Pfad ohne Query und ohne Sprach-Vorsatz; null, wenn
- * die Seite ohne Query nicht dasselbe zeigt (Spieler, Matches haengen an
- * ?region=). Ein eigenes openGraph ersetzt das geerbte als Ganzes — ohne
+ * die Seite ohne Query nicht dasselbe zeigt (Matches haengen an ?region=). Ein eigenes openGraph ersetzt das geerbte als Ganzes — ohne
  * `images` verschwaende das Vorschaubild (gemessen: /tft/rising hatte kein
  * og:image). Hat der Abschnitt eine eigene opengraph-image-Datei (Comp, Spieler),
  * gewinnt die Datei. twitter ohne images: X nimmt dann das og:image.

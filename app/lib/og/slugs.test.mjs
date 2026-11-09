@@ -11,7 +11,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { legacyTftPlayerSlug, parseTftPlayerSlug, decodeSlug } from './slugs.ts';
+import { legacyTftPlayerSlug, parseTftPlayerSlug, parseLolPlayerSlug, decodeSlug, riotIdSlug, tftPlayerPath, lolPlayerPath } from './slugs.ts';
+
+test('riotIdSlug: Hin und zurueck derselbe Spieler, nie eine Umleitung', () => {
+  for (const [gameName, tagLine] of [
+    ['ViggoZe', 'EUW'], ['Hide on bush', 'KR1'], ['Faker', 'KR 1'], ['고양이', '사랑해'],
+    ['100%', 'EUW'], ['Ｈｙｕｎｄａｉ', '9580'], ['Sebrej', 'BATTY EUW'], ['chumslog', 'L 9'],
+  ]) {
+    const slug = riotIdSlug(gameName, tagLine);
+    // TFT-Seite: Next uebergibt den Pfadteil, page/layout dekodieren einmal.
+    assert.deepEqual(parseTftPlayerSlug(decodeSlug(slug)), { gameName, tagLine }, slug);
+    // LoL-Seite dekodiert selbst.
+    assert.deepEqual(parseLolPlayerSlug(slug), { name: gameName, tag: tagLine }, slug);
+    assert.equal(legacyTftPlayerSlug(slug), null, `${slug} wuerde umgeleitet (308-Schleife)`);
+  }
+});
+
+test('riotIdSlug: Rand gekuerzt; Pfade ohne Query', () => {
+  assert.equal(riotIdSlug(' Hide on bush ', ' KR 1 '), 'Hide%20on%20bush--KR%201');
+  assert.equal(tftPlayerPath('A B', 'EUW'), '/tft/player/A%20B--EUW');
+  assert.equal(lolPlayerPath('A B', 'EUW'), '/player/A%20B--EUW');
+});
 
 test('Ein-Strich-Adresse wird kanonisch', () => {
   assert.equal(legacyTftPlayerSlug('ViggoZe-EUW'), 'ViggoZe--EUW');

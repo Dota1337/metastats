@@ -11,6 +11,23 @@ export function decodeSlug(raw: unknown): string {
   return decodeSafe(String(raw || ''));
 }
 
+/** Pfadteil einer Spieler-Adresse: `Name--Tag`, beide Teile am Rand gekuerzt
+ *  und kodiert. Eine Quelle fuer Links, canonical und die Umleitung alter
+ *  Adressen — weichen sie voneinander ab, zaehlt Google zwei Adressen. */
+export function riotIdSlug(gameName: string, tagLine: string): string {
+  return `${encodeURIComponent(gameName.trim())}--${encodeURIComponent(tagLine.trim())}`;
+}
+
+/** Pfad der TFT-Spielerseite ohne Query und ohne Sprach-Vorsatz. */
+export function tftPlayerPath(gameName: string, tagLine: string): string {
+  return `/tft/player/${riotIdSlug(gameName, tagLine)}`;
+}
+
+/** Pfad der LoL-Spielerseite ohne Query und ohne Sprach-Vorsatz. */
+export function lolPlayerPath(gameName: string, tagLine: string): string {
+  return `/player/${riotIdSlug(gameName, tagLine)}`;
+}
+
 /** TFT: `Name--Tag` (neu) oder `Name#Tag`. */
 export function parseTftPlayerSlug(slug: string): { gameName: string; tagLine: string } {
   const [gameName = '', tagLine = ''] = slug.includes('--')
@@ -33,7 +50,7 @@ export function legacyTftPlayerSlug(raw: string): string | null {
   const name = parts.slice(0, -1).join(' ').trim();
   const tagLength = [...tag].length;
   if (!name || !tag.trim() || tagLength > 5) return null;
-  return `${encodeURIComponent(name)}--${encodeURIComponent(tag)}`;
+  return riotIdSlug(name, tag);
 }
 
 /** LoL: `Name--Tag` (letztes `--`), alte Adressen `Name-Teile-Tag`. Erwartet den

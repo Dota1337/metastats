@@ -28,8 +28,37 @@ export function nameKey(s: string): string {
   return s.normalize('NFKC').replace(/\s/g, '').toLowerCase();
 }
 
+/** Tag-Vergleich: nur Gross/Klein und Rand egal. Leerzeichen INNEN zaehlen —
+ *  „KR 1“ und „KR1“ sind zwei Konten (Namensverzeichnis 09.11.2026: 17 Paare
+ *  mit verschiedener puuid). */
+export function tagKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+/** Schluessel einer Riot-ID (Speicher der Abfragen, Profi-Liste): Name wie
+ *  tft_name_norm, Tag nach tagKey. */
 export function riotIdKey(gameName: string, tagLine: string): string {
-  return `${nameKey(gameName)}#${nameKey(tagLine)}`;
+  return `${nameKey(gameName)}#${tagKey(tagLine)}`;
+}
+
+/**
+ * Schreibweise fuer die eigentliche Adresse (canonical) einer Spielerseite.
+ * Die Quelle gewinnt nur, wenn sie sicher dieselbe Riot-ID meint: Name gleich
+ * bis auf Gross/Klein und Leerraum, Tag gleich nach tagKey. Bewusst OHNE NFKC
+ * (anders als nameKey): ob Riot Vollbreite zusammenlegt, ist ungeprueft, und
+ * 2.116 Namen im Verzeichnis aendern sich dadurch. Sonst die Schreibweise der
+ * Adresse, am Rand gekuerzt. Ohne Name oder Tag: null (kein canonical).
+ */
+export function playerCanonicalName(head: PlayerHead, gameName: string, tagLine: string): PlayerName | null {
+  const name = gameName.trim();
+  const tag = tagLine.trim();
+  if (!name || !tag) return null;
+  const loose = (s: string) => s.replace(/\s/g, '').toLowerCase();
+  if (head?.known && head.gameName.trim() && head.tagLine.trim()
+    && loose(head.gameName) === loose(name) && tagKey(head.tagLine) === tagKey(tag)) {
+    return { gameName: head.gameName.trim(), tagLine: head.tagLine.trim() };
+  }
+  return { gameName: name, tagLine: tag };
 }
 
 /** `Name#Tag` am letzten `#` getrennt; null ohne Tag. */
@@ -50,9 +79,9 @@ export function pickTftAccount(
   limit = DIRECTORY_LIMIT,
 ): Lookup<TftAccountHit> {
   if (!hits) return null;
-  const tag = tagLine.trim().toLowerCase();
+  const tag = tagKey(tagLine);
   if (!tag) return null;
-  const hit = hits.find(h => h.tagLine.trim().toLowerCase() === tag);
+  const hit = hits.find(h => tagKey(h.tagLine) === tag);
   if (hit) return { known: true, value: hit };
   return hits.length >= limit ? null : { known: false };
 }

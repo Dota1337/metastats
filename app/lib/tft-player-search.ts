@@ -8,6 +8,7 @@
 // lol-player-search-server.ts und riot-name-probe.ts.
 
 import { REGIONS } from './regions';
+import { lolPlayerPath, tftPlayerPath } from './og/slugs';
 
 export interface TftAccountHit {
   puuid: string;
@@ -28,12 +29,12 @@ export const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 
 /** Profil-Link. Ohne Region sucht die Profilseite den Server selbst. */
 export function tftProfileHref(h: Pick<PlayerHit, 'puuid' | 'gameName' | 'tagLine' | 'region'>): string {
-  const slug = `${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}`;
+  const path = tftPlayerPath(h.gameName, h.tagLine);
   const qs = new URLSearchParams();
   if (h.region) qs.set('region', h.region);
   if (h.puuid) qs.set('puuid', h.puuid);
   const s = qs.toString();
-  return s ? `/tft/player/${slug}?${s}` : `/tft/player/${slug}`;
+  return s ? `${path}?${s}` : path;
 }
 
 /** Schluessel einer Riot-ID zum Zusammenfuehren zweier Trefferlisten: Name
@@ -64,8 +65,8 @@ export function mergeLolHits(lol: PlayerHit[], tft: PlayerHit[], limit: number):
 /** LoL-Profil zu einem Treffer aus dem Namensverzeichnis. Ohne puuid (die
  *  passt nicht zum LoL-Schluessel); ohne Server springt die Spielerseite selbst. */
 export function lolProfileHref(h: Pick<PlayerHit, 'gameName' | 'tagLine' | 'region'>): string {
-  const slug = `${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}`;
-  return h.region ? `/player/${slug}?region=${encodeURIComponent(h.region)}` : `/player/${slug}`;
+  const path = lolPlayerPath(h.gameName, h.tagLine);
+  return h.region ? `${path}?region=${encodeURIComponent(h.region)}` : path;
 }
 
 export function tftRegionLabel(region: string | null): string {

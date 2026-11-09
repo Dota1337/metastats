@@ -1,7 +1,9 @@
 'use client';
 // Spieler-Vorschlaege beim Tippen fuer die Eingabefelder ausserhalb der
 // Kopfleiste (LoL-Start, LoL-Vergleich, Mehrfachsuche, TFT-Vergleich). Quelle
-// wie Nav.tsx: /api/tft/search-players, 150 ms entprellt, ab SUGGEST_MIN_CHARS.
+// wie Nav.tsx: /api/tft/search-players (bei LoL mit game=lol: LoL- und
+// TFT-Verzeichnis, ohne puuid), 150 ms entprellt, ab SUGGEST_MIN_CHARS. Ohne
+// Riot-Probe — die gibt es nur in der Kopfleiste und bei Enter.
 //
 //   - Eine Instanz je Formular, nicht je Feld (Felder entstehen teils in einer
 //     Schleife): offen ist nur die Liste des Feldes, in dem zuletzt getippt
@@ -10,18 +12,18 @@
 //     aus der Adresse und das Einsetzen eines Vorschlags oeffnen nichts.
 //   - Bis die naechste Antwort da ist, bleibt die vorige Liste stehen, damit sie
 //     nicht bei jeder Taste kurz verschwindet. Fehler = keine Liste, das Feld
-//     bleibt normal benutzbar. Eine „keine Treffer"-Zeile gibt es nicht: das
-//     Verzeichnis kennt nur Spieler aus dem TFT-Crawl, getippte Namen gelten weiter.
+//     bleibt normal benutzbar. Eine „keine Treffer"-Zeile gibt es nicht: die
+//     Verzeichnisse kennen nicht jeden Spieler, getippte Namen gelten weiter.
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
-import { suggestQuery, type TftAccountHit } from './tft-player-search';
+import { suggestQuery, type PlayerHit } from './tft-player-search';
 
 export type PlayerSuggest = ReturnType<typeof usePlayerSuggest>;
 
-export function usePlayerSuggest(onPick: (hit: TftAccountHit, key: string) => void) {
+export function usePlayerSuggest(game: 'lol' | 'tft', onPick: (hit: PlayerHit, key: string) => void) {
   const listId = useId();
   // key = welches Feld, text = dessen Suchtext (Mehrfachsuche: die Zeile am Cursor)
   const [active, setActive] = useState<{ key: string; text: string } | null>(null);
-  const [res, setRes] = useState<{ q: string; hits: TftAccountHit[] } | null>(null);
+  const [res, setRes] = useState<{ q: string; hits: PlayerHit[] } | null>(null);
   const [hi, setHi] = useState<number | null>(null);
   // Element, unter dem die Liste steht (Feld oder ganze Suchleiste).
   const anchor = useRef<HTMLElement | null>(null);
@@ -31,9 +33,9 @@ export function usePlayerSuggest(onPick: (hit: TftAccountHit, key: string) => vo
     if (!q) return;
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+      fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}${game === 'lol' ? '&game=lol' : ''}`, { signal: ctrl.signal })
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-        .then((d: { players?: TftAccountHit[] }) => {
+        .then((d: { players?: PlayerHit[] }) => {
           if (ctrl.signal.aborted) return;
           setRes({ q, hits: d.players || [] });
           setHi(null);
@@ -41,7 +43,7 @@ export function usePlayerSuggest(onPick: (hit: TftAccountHit, key: string) => vo
         .catch(() => { if (!ctrl.signal.aborted) setRes(null); });
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
-  }, [q]);
+  }, [q, game]);
 
   const hits = q && res ? res.hits : [];
   const open = hits.length > 0;
@@ -57,7 +59,7 @@ export function usePlayerSuggest(onPick: (hit: TftAccountHit, key: string) => vo
     setActive({ key, text });
   };
 
-  const pick = (hit: TftAccountHit) => {
+  const pick = (hit: PlayerHit) => {
     const key = active?.key;
     close();
     if (key != null) onPick(hit, key);

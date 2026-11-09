@@ -1,8 +1,11 @@
 // Gemeinsame Bausteine der Spielersuche fuer Nav-Dropdown, /tft/search und
 // /search (LoL). Das Namensverzeichnis tft_player_names gilt fuer beide Spiele:
 // Riot-ID und Server sind dieselben, nur die puuid ist je Schluessel verschieden.
+// Die LoL-Suche liest zusaetzlich lol_player_names (0122) und gibt keine puuid
+// heraus (mergeLolHits).
 // Bewusst ohne Server-Importe: Nav.tsx ist eine Client-Komponente, die
-// Datenbank- und Riot-Abfragen liegen in tft-player-search-server.ts.
+// Datenbank- und Riot-Abfragen liegen in tft-player-search-server.ts,
+// lol-player-search-server.ts und riot-name-probe.ts.
 
 import { REGIONS } from './regions';
 
@@ -17,20 +20,50 @@ export interface TftAccountHit {
   lp: number | null;
 }
 
+/** Treffer fuer beide Spiele. LoL-Treffer tragen keine puuid: die aus den
+ *  Verzeichnissen und der Riot-Probe gehoert zum TFT-Schluessel. */
+export type PlayerHit = Omit<TftAccountHit, 'puuid'> & { puuid?: string };
+
 export const APEX_TIERS = new Set(['MASTER', 'GRANDMASTER', 'CHALLENGER']);
 
 /** Profil-Link. Ohne Region sucht die Profilseite den Server selbst. */
-export function tftProfileHref(h: Pick<TftAccountHit, 'puuid' | 'gameName' | 'tagLine' | 'region'>): string {
+export function tftProfileHref(h: Pick<PlayerHit, 'puuid' | 'gameName' | 'tagLine' | 'region'>): string {
   const slug = `${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}`;
   const qs = new URLSearchParams();
   if (h.region) qs.set('region', h.region);
-  qs.set('puuid', h.puuid);
-  return `/tft/player/${slug}?${qs.toString()}`;
+  if (h.puuid) qs.set('puuid', h.puuid);
+  const s = qs.toString();
+  return s ? `/tft/player/${slug}?${s}` : `/tft/player/${slug}`;
+}
+
+/** Schluessel einer Riot-ID zum Zusammenfuehren zweier Trefferlisten: Name
+ *  klein ohne Leerzeichen (so loest Riot auf), Tag nur klein — „KR 1“ und
+ *  „KR1“ sind zwei Konten. Immer aus den Rohnamen bilden, nie mit der
+ *  Datenbankspalte name_norm vergleichen (JS und Postgres schreiben z. B. „İ“
+ *  verschieden klein). */
+export function riotIdKey(gameName: string, tagLine: string): string {
+  return `${gameName.replace(/\s/g, '').toLowerCase()}#${tagLine.toLowerCase()}`;
+}
+
+/** LoL-Trefferliste: zuerst das LoL-Verzeichnis (vom LoL-Schluessel
+ *  bestaetigt), dann TFT-Treffer, deren Riot-ID dort fehlt. Ohne puuid und
+ *  ohne Rang — der TFT-Rang sagt fuer LoL nichts. */
+export function mergeLolHits(lol: PlayerHit[], tft: PlayerHit[], limit: number): PlayerHit[] {
+  const seen = new Set<string>();
+  const out: PlayerHit[] = [];
+  for (const h of [...lol, ...tft]) {
+    if (out.length >= limit) break;
+    const k = riotIdKey(h.gameName, h.tagLine);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({ gameName: h.gameName, tagLine: h.tagLine, region: h.region, tier: null, division: null, lp: null });
+  }
+  return out;
 }
 
 /** LoL-Profil zu einem Treffer aus dem Namensverzeichnis. Ohne puuid (die
  *  passt nicht zum LoL-Schluessel); ohne Server springt die Spielerseite selbst. */
-export function lolProfileHref(h: Pick<TftAccountHit, 'gameName' | 'tagLine' | 'region'>): string {
+export function lolProfileHref(h: Pick<PlayerHit, 'gameName' | 'tagLine' | 'region'>): string {
   const slug = `${encodeURIComponent(h.gameName)}--${encodeURIComponent(h.tagLine)}`;
   return h.region ? `/player/${slug}?region=${encodeURIComponent(h.region)}` : `/player/${slug}`;
 }

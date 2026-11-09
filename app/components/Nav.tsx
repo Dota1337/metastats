@@ -10,7 +10,7 @@ import { useAuth } from '../lib/auth-context';
 import { getDdragonVersion } from '../lib/ddragon-version';
 import DdragonImg from './DdragonImg';
 import ggMark from '../assets/brand/gg-64.png';
-import { lolProfileHref, tftProfileHref, tftRankLabel, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
+import { lolProfileHref, tftProfileHref, tftRankLabel, tftRegionLabel, type PlayerHit } from '../lib/tft-player-search';
 
 interface NavProps {
   active?:
@@ -20,14 +20,19 @@ interface NavProps {
 }
 
 interface SearchResult {
-  // 'account' = echter Treffer aus dem TFT-Namensverzeichnis (mit Region),
-  // 'none' = Name ohne Tag und kein Treffer. 'player' = freie Eingabe.
+  // 'account' = echter Treffer aus einem Namensverzeichnis oder der Riot-Probe
+  // (mit Region), 'none' = Name ohne Tag und kein Treffer. 'player' = freie Eingabe.
   type: 'player' | 'champion' | 'account' | 'none';
   name: string;
   id?: string;
   image?: string;
   href?: string;
   sub?: string;
+}
+
+/** LoL-Dropdown fragt Riot nur bei ganzem Namen ohne Tag (Riot: 3–16 Zeichen). */
+function lolRiotProbeApplies(game: string, q: string): boolean {
+  return game === 'lol' && !q.includes('#') && [...q].length >= 3 && [...q].length <= 16;
 }
 
 
@@ -162,7 +167,10 @@ export default function Nav({ active }: NavProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   // TFT: Treffer ueber alle Server. null = noch keine Antwort fuer die
   // aktuelle Eingabe (dann keine Spielerzeile, statt kurz "keine Treffer").
-  const [tftHits, setTftHits] = useState<{ q: string; hits: TftAccountHit[] } | null>(null);
+  const [tftHits, setTftHits] = useState<{ q: string; hits: PlayerHit[] } | null>(null);
+  // LoL: Riot-Probe, wenn die Verzeichnisse den Namen nicht kennen.
+  // complete=false = Riot nicht gefragt/nicht ueberall geantwortet.
+  const [riotHits, setRiotHits] = useState<{ q: string; hits: PlayerHit[]; complete: boolean } | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   // Eigene Markierung fuer die Handy-Suchleiste. Frueher hing searchRef an
   // beiden Bloecken; die (unsichtbare) Handy-Leiste ueberschrieb ihn, und ein
@@ -205,30 +213,60 @@ export default function Nav({ active }: NavProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Namenssuche ueber alle Server (LoL und TFT teilen das Verzeichnis), kurz
-  // entprellt. Ab 3 Zeichen im Namen (ohne Leerzeichen) — darunter antwortet
-  // die Route ohnehin leer.
+  // Namenssuche ueber alle Server, kurz entprellt. TFT: TFT-Verzeichnis; LoL
+  // (game=lol): LoL- und TFT-Verzeichnis. Ab 3 Zeichen im Namen (ohne
+  // Leerzeichen) — darunter antwortet die Route ohnehin leer.
   useEffect(() => {
     const q = searchQuery.trim();
     if (q.split('#')[0].replace(/\s/g, '').length < 3) { setTftHits(null); return; }
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+      fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}${game === 'lol' ? '&game=lol' : ''}`, { signal: ctrl.signal })
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-        .then((d: { players?: TftAccountHit[] }) => setTftHits({ q, hits: d.players || [] }))
+        .then((d: { players?: PlayerHit[] }) => setTftHits({ q, hits: d.players || [] }))
         .catch(() => { if (!ctrl.signal.aborted) setTftHits(null); });
     }, 150);
     return () => { clearTimeout(timer); ctrl.abort(); };
   }, [searchQuery, game]);
 
+  // LoL ohne Tag, Verzeichnisse leer: nach einer Sekunde Tipp-Pause bei Riot
+  // nach genau diesem Namen fragen (Standard-Tags, TFT-Schluessel). Riot
+  // findet nur ganze Namen, deshalb erst nach der Pause; Name 3–16 Zeichen.
+  const riotProbeFor = (q: string) => lolRiotProbeApplies(game, q);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!lolRiotProbeApplies(game, q) || !tftHits || tftHits.q !== q || tftHits.hits.length > 0) return;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => {
+      fetch(`/api/tft/search-riot?game=lol&src=suggest&q=${encodeURIComponent(q)}`, { signal: ctrl.signal })
+        .then(async r => {
+          const d: { players?: PlayerHit[]; complete?: boolean } = r.ok ? await r.json() : {};
+          setRiotHits({ q, hits: d.players || [], complete: r.ok && d.complete === true });
+        })
+        .catch(() => { if (!ctrl.signal.aborted) setRiotHits({ q, hits: [], complete: false }); });
+    }, 1000);
+    return () => { clearTimeout(timer); ctrl.abort(); };
+  }, [searchQuery, game, tftHits]);
+
   // Spielerzeilen: echte Treffer mit Region (TFT zusaetzlich mit TFT-Rang, der
   // fuer LoL nichts aussagt). Ohne Treffer:
   // mit Tag die freie Eingabe (Profil sucht den Server selbst), ohne Tag
-  // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile.
+  // "Keine Spieler gefunden". Solange die Antwort fehlt, keine Spielerzeile —
+  // bei LoL auch, solange Riot noch gefragt wird oder nicht antworten konnte.
   // Steht vor dem Effekt, der sie aufruft (react-hooks/immutability).
   const tftPlayerResults = (q: string): SearchResult[] => {
     const hasTag = q.includes('#') && q.split('#')[1].trim().length > 0;
     if (!tftHits || tftHits.q !== q) return hasTag ? [{ type: 'player', name: q }] : [];
+    if (tftHits.hits.length === 0 && !hasTag && riotProbeFor(q)) {
+      if (!riotHits || riotHits.q !== q || (riotHits.hits.length === 0 && !riotHits.complete)) return [];
+      if (riotHits.hits.length === 0) return [{ type: 'none', name: t('lb.noPlayers') }];
+      return riotHits.hits.map(h => ({
+        type: 'account' as const,
+        name: `${h.gameName}#${h.tagLine}`,
+        href: lolProfileHref(h),
+        sub: tftRegionLabel(h.region),
+      }));
+    }
     if (tftHits.hits.length > 0) {
       return tftHits.hits.map(h => {
         const regionLabel = tftRegionLabel(h.region);
@@ -258,7 +296,7 @@ export default function Nav({ active }: NavProps) {
     playerResults.push(...tftPlayerResults(searchQuery.trim()));
 
     setResults([...playerResults, ...champMatches]);
-  }, [searchQuery, champions, game, tftHits]);
+  }, [searchQuery, champions, game, tftHits, riotHits]);
 
   const playerHref = (raw: string) => {
     const parts = raw.split('#');

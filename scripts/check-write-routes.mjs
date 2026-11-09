@@ -81,7 +81,11 @@ const AUSNAHMEN = {
     'players-Zeile und ranked_stats dieses Spielers (alte Rang-Zeilen werden ' +
     'dabei ersetzt, delete + insert je player_id). Haengt die Besucher-UUID aus ' +
     'dem Cookie an searched_by — nur UUID-Format, hoechstens die juengsten 100. ' +
-    'Keine Zeilen anderer Spieler. Bremse je IP (checkRateLimit).',
+    'Traegt Name und Server ins LoL-Namensverzeichnis ein (lol_player_names, 0122), ' +
+    'nur mit Riots Antwort; loescht dort bei „Konto nicht gefunden“ die Zeile mit ' +
+    'genau dieser Riot-ID (veraltete Namenszeile, ggf. eines anderen Kontos) und ' +
+    'beim Eintragen aeltere Zeilen anderer puuids mit derselben Riot-ID. Sonst keine ' +
+    'Zeilen anderer Spieler. Bremse je IP (checkRateLimit). Abschalter LOL_NAMES_WRITE=0.',
   'app/api/player-season-stats/route.ts':
     'Legt die berechnete Saison-Zeile des angefragten Spielers ab. Gleiches ' +
     'Muster wie /api/summoner: Ergebnis-Cache, keine Fremddaten.',

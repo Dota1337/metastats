@@ -145,7 +145,7 @@ export default function Home({ initial = null }: {
 
   // Vorschlag gewaehlt: direkt zum Profil auf dem Server des Treffers, wie in
   // der Kopfleiste — die Server-Auswahl daneben gilt nur fuer Getipptes.
-  const suggest = usePlayerSuggest(hit => { window.location.href = withLang(lolProfileHref(hit)); });
+  const suggest = usePlayerSuggest('lol', hit => { window.location.href = withLang(lolProfileHref(hit)); });
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   const search = () => {

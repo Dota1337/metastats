@@ -217,7 +217,7 @@ function ComparePageInner() {
   }, []);
 
   // Vorschlag gewaehlt: Name + Server ins Feld (key = Feld-Index).
-  const suggest = usePlayerSuggest((hit, key) => {
+  const suggest = usePlayerSuggest('tft', (hit, key) => {
     const idx = Number(key);
     setFields(prev => prev.map((f, i) => (i === idx ? { text: `${hit.gameName}#${hit.tagLine}`, region: hit.region } : f)));
   });

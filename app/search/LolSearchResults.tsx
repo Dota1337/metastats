@@ -4,19 +4,21 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import ApiUnavailable from '../components/ApiUnavailable';
 import { useI18n } from '../lib/i18n';
-import { lolProfileHref, tftRegionLabel, type TftAccountHit } from '../lib/tft-player-search';
+import { lolProfileHref, tftRegionLabel, type PlayerHit } from '../lib/tft-player-search';
 
-// Liste fuer /search. initialHits kommen aus dem Namensverzeichnis (exakter
-// Name). Ist die Liste leer, zeigt die Seite Konten, deren Name mit der
-// Eingabe beginnt. Faellt die Abfrage aus, steht dort ein Fehlerhinweis mit
-// "Erneut versuchen" statt "Keine Spieler gefunden".
+// Liste fuer /search. initialHits kommen aus den Namensverzeichnissen (exakter
+// Name). Ist die Liste leer, fragt die Seite Riot ueber die Standard-Tags;
+// findet auch das nichts, zeigt sie Konten, deren Name mit der Eingabe
+// beginnt. Faellt eine Abfrage aus oder konnte Riot nicht gefragt werden und
+// sonst gibt es nichts, steht dort ein Fehlerhinweis mit "Erneut versuchen"
+// statt "Keine Spieler gefunden".
 
 type State = 'loading' | 'ready' | 'error';
 
-export default function LolSearchResults({ q, initialHits }: { q: string; initialHits: TftAccountHit[] }) {
+export default function LolSearchResults({ q, initialHits }: { q: string; initialHits: PlayerHit[] }) {
   const { t, withLang } = useI18n();
-  const [hits, setHits] = useState<TftAccountHit[]>(initialHits);
-  const needsFetch = initialHits.length === 0 && q.replace(/\s/g, '').length >= 3;
+  const [hits, setHits] = useState<PlayerHit[]>(initialHits);
+  const needsFetch = initialHits.length === 0 && q.length > 0;
   const [state, setState] = useState<State>(needsFetch ? 'loading' : 'ready');
   const [attempt, setAttempt] = useState(0);
 
@@ -25,12 +27,31 @@ export default function LolSearchResults({ q, initialHits }: { q: string; initia
     const ctrl = new AbortController();
     (async () => {
       try {
-        const r = await fetch(`/api/tft/search-players?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
-        if (!r.ok) throw new Error(String(r.status));
-        const d: { players?: TftAccountHit[] } = await r.json();
-        const list = d.players || [];
+        let riotComplete = false;
+        try {
+          const r = await fetch(`/api/tft/search-riot?game=lol&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+          const d: { players?: PlayerHit[]; complete?: boolean } = r.ok ? await r.json() : {};
+          const riot = d.players || [];
+          if (riot.length === 1) { window.location.replace(withLang(lolProfileHref(riot[0]))); return; }
+          if (riot.length > 1) { setHits(riot); setState('ready'); return; }
+          riotComplete = r.ok && d.complete === true;
+        } catch {
+          if (ctrl.signal.aborted) return;
+        }
+        if (q.replace(/\s/g, '').length < 3) {
+          if (!riotComplete) throw new Error('riot_incomplete');
+          setHits([]);
+          setState('ready');
+          return;
+        }
+        const p = await fetch(`/api/tft/search-players?game=lol&q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        if (!p.ok) throw new Error(String(p.status));
+        const pd: { players?: PlayerHit[] } = await p.json();
+        const list = pd.players || [];
         // Genau ein Konto beginnt mit dem Namen: direkt dorthin.
         if (list.length === 1) { window.location.replace(withLang(lolProfileHref(list[0]))); return; }
+        // Riot nicht gefragt und nichts gefunden: „keine Spieler" waere nicht belegt.
+        if (list.length === 0 && !riotComplete) throw new Error('riot_incomplete');
         setHits(list);
         setState('ready');
       } catch {

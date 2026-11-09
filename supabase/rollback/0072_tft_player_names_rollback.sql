@@ -1,6 +1,10 @@
 -- Rollback 0072: Namensverzeichnis komplett entfernen. Die Suche in der Nav
 -- faellt dann auf "Keine Spieler gefunden" zurueck, der Crawler protokolliert
 -- einen Schreibfehler und laeuft weiter (Exit-Code unberuehrt).
+--
+-- ACHTUNG seit 0122: die LoL-Suchfunktionen rufen tft_name_norm. Erst
+-- rollback/0122 fahren, sonst brechen sie still (language sql ohne
+-- „begin atomic“ vermerkt keine Abhaengigkeit, drop function schlaegt nicht an).
 
 set statement_timeout = 0;
 

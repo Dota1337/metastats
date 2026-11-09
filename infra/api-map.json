@@ -8,10 +8,10 @@
   "counts": {
     "routes": 86,
     "groups": 27,
-    "tables": 46,
-    "rpcs": 38,
+    "tables": 47,
+    "rpcs": 42,
     "files": 12,
-    "edges": 399,
+    "edges": 407,
     "unused": 2,
     "unresolved": 1
   },
@@ -631,6 +631,7 @@
       "group": "summoner",
       "file": "app/api/summoner/route.ts",
       "via": [
+        "app/lib/lol-player-search-server.ts",
         "app/lib/riot-fetch.ts",
         "app/lib/seasons.ts"
       ],
@@ -1287,7 +1288,9 @@
       "label": "/api/tft/search-players",
       "group": "tft",
       "file": "app/api/tft/search-players/route.ts",
-      "via": [],
+      "via": [
+        "app/lib/lol-player-search-server.ts"
+      ],
       "used": true,
       "usedBy": [
         "app/components/Nav.tsx",
@@ -1303,10 +1306,12 @@
       "group": "tft",
       "file": "app/api/tft/search-riot/route.ts",
       "via": [
-        "app/lib/tft-player-search-server.ts"
+        "app/lib/riot-name-probe.ts"
       ],
       "used": true,
       "usedBy": [
+        "app/components/Nav.tsx",
+        "app/search/LolSearchResults.tsx",
         "app/tft/search/TftSearchResults.tsx"
       ]
     },
@@ -1542,6 +1547,12 @@
       "id": "db:lol_player_match_cache",
       "kind": "table",
       "label": "lol_player_match_cache",
+      "declared": true
+    },
+    {
+      "id": "db:lol_player_names",
+      "kind": "table",
+      "label": "lol_player_names",
       "declared": true
     },
     {
@@ -1914,6 +1925,12 @@
       "label": "tft-stats-*.json"
     },
     {
+      "id": "fn:delete_lol_player_name",
+      "kind": "rpc",
+      "label": "delete_lol_player_name",
+      "declared": true
+    },
+    {
       "id": "fn:get_tft_available_patches",
       "kind": "rpc",
       "label": "get_tft_available_patches",
@@ -2130,6 +2147,18 @@
       "declared": true
     },
     {
+      "id": "fn:search_lol_player_names",
+      "kind": "rpc",
+      "label": "search_lol_player_names",
+      "declared": true
+    },
+    {
+      "id": "fn:search_lol_player_names_exact",
+      "kind": "rpc",
+      "label": "search_lol_player_names_exact",
+      "declared": true
+    },
+    {
       "id": "fn:search_tft_player_names",
       "kind": "rpc",
       "label": "search_tft_player_names",
@@ -2139,6 +2168,12 @@
       "id": "fn:search_tft_player_names_exact",
       "kind": "rpc",
       "label": "search_tft_player_names_exact",
+      "declared": true
+    },
+    {
+      "id": "fn:upsert_lol_player_names",
+      "kind": "rpc",
+      "label": "upsert_lol_player_names",
       "declared": true
     }
   ],
@@ -2305,11 +2340,6 @@
     },
     {
       "from": "api:/api/companion/v1/lobby",
-      "to": "ext:riot-api",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/lobby",
       "to": "file:tft-assets.json",
       "kind": "reads"
     },
@@ -2371,11 +2401,6 @@
     {
       "from": "api:/api/companion/v1/search",
       "to": "ext:cdragon",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/companion/v1/search",
-      "to": "ext:riot-api",
       "kind": "fetches"
     },
     {
@@ -2659,6 +2684,26 @@
       "kind": "reads"
     },
     {
+      "from": "api:/api/summoner",
+      "to": "fn:delete_lol_player_name",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "fn:search_lol_player_names",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "fn:search_lol_player_names_exact",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/summoner",
+      "to": "fn:upsert_lol_player_names",
+      "kind": "calls"
+    },
+    {
       "from": "api:/api/tft/available-patches",
       "to": "blob:manifest",
       "kind": "fetches"
@@ -2891,11 +2936,6 @@
     {
       "from": "api:/api/tft/comps/families",
       "to": "ext:cdragon",
-      "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/comps/families",
-      "to": "ext:riot-api",
       "kind": "fetches"
     },
     {
@@ -3600,18 +3640,33 @@
     },
     {
       "from": "api:/api/tft/search-players",
+      "to": "fn:delete_lol_player_name",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "fn:search_lol_player_names",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "fn:search_lol_player_names_exact",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/search-players",
       "to": "fn:search_tft_player_names",
+      "kind": "calls"
+    },
+    {
+      "from": "api:/api/tft/search-players",
+      "to": "fn:upsert_lol_player_names",
       "kind": "calls"
     },
     {
       "from": "api:/api/tft/search-riot",
       "to": "ext:riot-api",
       "kind": "fetches"
-    },
-    {
-      "from": "api:/api/tft/search-riot",
-      "to": "fn:search_tft_player_names_exact",
-      "kind": "calls"
     },
     {
       "from": "api:/api/tft/sets/current",
@@ -3874,6 +3929,11 @@
       "kind": "fetches"
     },
     {
+      "from": "fn:delete_lol_player_name",
+      "to": "db:lol_player_names",
+      "kind": "reads"
+    },
+    {
       "from": "fn:get_tft_available_patches",
       "to": "db:tft_daily_crawl_meta",
       "kind": "reads"
@@ -4129,6 +4189,16 @@
       "kind": "reads"
     },
     {
+      "from": "fn:search_lol_player_names",
+      "to": "db:lol_player_names",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:search_lol_player_names_exact",
+      "to": "db:lol_player_names",
+      "kind": "reads"
+    },
+    {
       "from": "fn:search_tft_player_names",
       "to": "db:tft_player_names",
       "kind": "reads"
@@ -4136,6 +4206,11 @@
     {
       "from": "fn:search_tft_player_names_exact",
       "to": "db:tft_player_names",
+      "kind": "reads"
+    },
+    {
+      "from": "fn:upsert_lol_player_names",
+      "to": "db:lol_player_names",
       "kind": "reads"
     }
   ],

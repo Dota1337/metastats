@@ -8,6 +8,7 @@ import { getAccountRouting, getRegionalRouting, parseRegion } from '../../lib/re
 import { riotFetch } from '../../lib/riot-fetch';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { currentSplit, isBeforeSplit, splitForPatch } from '../../lib/seasons';
+import { forgetLolName, rememberLolName } from '../../lib/lol-player-search-server';
 
 // Unter so vielen Partien im Split wird kein neuer Marktwert geschrieben; der
 // gespeicherte bleibt stehen. Die Formel liefert auch mit 0 Partien einen
@@ -231,6 +232,9 @@ export async function GET(request: NextRequest) {
         );
       }
       if (accountRes.status === 404) {
+        // Riot kennt Name#Tag nicht (mehr): aus dem LoL-Namensverzeichnis,
+        // sonst schlaegt die Suche ein umbenanntes Konto weiter vor.
+        forgetLolName(gameName, tagLine);
         return NextResponse.json(
           { error: 'Spieler nicht gefunden', code: 'not_found' },
           { status: 404 }
@@ -259,6 +263,9 @@ export async function GET(request: NextRequest) {
       // Riot bestaetigt den angefragten Server (Serverwechsel des Kontos).
       cached.region = region;
     }
+    // Name (Riots Schreibweise) und Server stehen fest: ins LoL-Namensverzeichnis
+    // fuer die Suche. Nach der Antwort, haelt die Route nie auf.
+    if (cached) rememberLolName(account, region);
 
     // === Step 3: Fetch match IDs ===
     // Recent 30 LoL matches (all queues) for display
@@ -294,6 +301,8 @@ export async function GET(request: NextRequest) {
         : NextResponse.json({ error: `Riot API Fehler (${summonerRes.status})`, code: 'riot_upstream' }, { status: 502 });
     }
     const summoner = await summonerRes.json();
+    // Neues Konto: erst hier steht fest, dass es auf diesem Server liegt.
+    if (!cached) rememberLolName(account, region);
 
     const rankedRes = await riotFetch(`https://${region}.api.riotgames.com/lol/league/v4/entries/by-puuid/${account.puuid}`, apiKey);
     // Bei Riot-Fehler sind die Raenge unbekannt, nicht leer: dann nichts

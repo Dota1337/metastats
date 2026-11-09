@@ -522,7 +522,7 @@ function MultiSearchTab({ region, setRegion, initialQuery }: { region: string; s
   // ganze Zeile: Tags koennen Leerzeichen haben („KR 1“), die parseMultiLine
   // als Lobby-Zusatz abschneiden wuerde.
   const picked = useRef(new Map<string, { name: string; tag: string; region: string | null }>());
-  const suggest = usePlayerSuggest(hit => {
+  const suggest = usePlayerSuggest('lol', hit => {
     const value = `${hit.gameName}#${hit.tagLine}`;
     const next = replaceLine(input, lineRef.current.start, lineRef.current.end, value);
     picked.current.set(value.trim(), { name: hit.gameName.trim(), tag: hit.tagLine.trim(), region: hit.region });
@@ -723,7 +723,7 @@ function CompareTab({ region, setRegion }: { region: string; setRegion: (r: stri
   const [error, setError] = useState('');
   const [player1, setPlayer1] = useState<any>(null);
   const [player2, setPlayer2] = useState<any>(null);
-  const suggest = usePlayerSuggest((hit, key) => {
+  const suggest = usePlayerSuggest('lol', (hit, key) => {
     const value = `${hit.gameName}#${hit.tagLine}`;
     if (key === 'p1') { setPlayer1Input(value); setPlayer1Region(hit.region); }
     else { setPlayer2Input(value); setPlayer2Region(hit.region); }

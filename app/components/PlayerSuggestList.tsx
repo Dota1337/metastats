@@ -75,7 +75,8 @@ export default function PlayerSuggestList({ s, game }: { s: PlayerSuggest; game:
         const rank = game === 'tft' ? tftRankLabel(h, l => t(`tier.${l}` as Parameters<typeof t>[0])) : '';
         return (
           <button
-            key={h.puuid}
+            // LoL-Treffer haben keine puuid; die Riot-ID ist je Server eindeutig.
+            key={h.puuid || `${h.gameName}#${h.tagLine}@${h.region}`}
             id={s.optionId(i)}
             type="button"
             role="option"

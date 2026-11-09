@@ -3,7 +3,7 @@
 // (Server: tft_name_norm, Migration 0072) — nur die Schreibweise darf sich aendern.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { SUGGEST_MIN_CHARS, suggestQuery, lineAt, replaceLine } from './tft-player-search.ts';
+import { SUGGEST_MIN_CHARS, suggestQuery, lineAt, replaceLine, riotIdKey, mergeLolHits, tftProfileHref, lolProfileHref } from './tft-player-search.ts';
 
 test('suggestQuery: unter der Schwelle null, Leerzeichen zaehlen nicht', () => {
   assert.equal(SUGGEST_MIN_CHARS, 3);
@@ -49,4 +49,36 @@ test('replaceLine: nur die eine Zeile, Cursor ans Ende', () => {
   });
   const last = lineAt('a\nbc', 4);
   assert.deepEqual(replaceLine('a\nbc', last.start, last.end, 'xyz'), { text: 'a\nxyz', caret: 5 });
+});
+
+test('riotIdKey: Name ohne Gross/Klein und Leerzeichen, Tag nur ohne Gross/Klein', () => {
+  assert.equal(riotIdKey('SQ Heimer Banga', 'EUW'), riotIdKey('sqheimerbanga', 'euw'));
+  assert.notEqual(riotIdKey('Dish', 'KR 1'), riotIdKey('Dish', 'KR1'));
+});
+
+test('mergeLolHits: LoL zuerst, gleiche Riot-ID einmal, ohne puuid und Rang, Grenze', () => {
+  const lol = [{ gameName: 'SQ Heimer Banga', tagLine: 'EUW', region: 'euw1', tier: null, division: null, lp: null }];
+  const tft = [
+    { puuid: 'T1', gameName: 'sq heimer banga', tagLine: 'euw', region: 'na1', tier: 'GOLD', division: 'I', lp: 10 },
+    { puuid: 'T2', gameName: 'SQ Heimer', tagLine: 'KR 1', region: 'kr', tier: 'MASTER', division: 'I', lp: 99 },
+    { puuid: 'T3', gameName: 'SQ Heimer', tagLine: 'KR1', region: 'kr', tier: null, division: null, lp: null },
+  ];
+  const out = mergeLolHits(lol, tft, 10);
+  assert.deepEqual(out.map(h => [h.gameName, h.tagLine, h.region]), [
+    ['SQ Heimer Banga', 'EUW', 'euw1'], ['SQ Heimer', 'KR 1', 'kr'], ['SQ Heimer', 'KR1', 'kr'],
+  ]);
+  for (const h of out) {
+    assert.equal('puuid' in h, false);
+    assert.equal(h.tier, null);
+    assert.equal(h.lp, null);
+  }
+  assert.equal(mergeLolHits(lol, tft, 2).length, 2);
+  assert.deepEqual(mergeLolHits([], [], 10), []);
+});
+
+test('Profil-Links: TFT mit puuid wie bisher, ohne puuid ohne leeren Parameter', () => {
+  assert.equal(tftProfileHref({ puuid: 'P', gameName: 'A B', tagLine: 'EUW', region: 'euw1' }), '/tft/player/A%20B--EUW?region=euw1&puuid=P');
+  assert.equal(tftProfileHref({ puuid: 'P', gameName: 'A', tagLine: 'EUW', region: null }), '/tft/player/A--EUW?puuid=P');
+  assert.equal(tftProfileHref({ gameName: 'A', tagLine: 'EUW', region: null }), '/tft/player/A--EUW');
+  assert.equal(lolProfileHref({ gameName: 'SQ Heimer Banga', tagLine: 'EUW', region: 'euw1' }), '/player/SQ%20Heimer%20Banga--EUW?region=euw1');
 });

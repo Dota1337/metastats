@@ -1778,7 +1778,13 @@ async function canonicalProbes(base, spec) {
   if (!res.ok) return { error: `sitemap.xml antwortet HTTP ${res.status}` };
   const sitemap = [...(await res.text()).matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => new URL(m[1]).pathname);
   const linked = [];
-  for (const src of spec.compLinkSources || []) {
+  // Feste Listen plus die ersten N Detailseiten je Sitemap-Praefix (Trait-
+  // Seiten verlinken Comps aus eigenen Startdaten, detail-data.ts).
+  const sources = [...(spec.compLinkSources || [])];
+  for (const [prefix, n] of Object.entries(spec.compLinkSitemap || {})) {
+    sources.push(...sitemap.filter(p => p.startsWith(prefix) && p.length > prefix.length).slice(0, n));
+  }
+  for (const src of sources) {
     const page = await fetch(base + src, { headers, signal: AbortSignal.timeout(20_000) });
     if (!page.ok) return { error: `${src} antwortet HTTP ${page.status}` };
     const html = (await page.text()).replace(/<script[\s\S]*?<\/script>/g, ' ');

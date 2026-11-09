@@ -30,6 +30,7 @@ import { tftAssets } from '../og/data';
 import { withTimeout } from '../og/frame';
 import { assetsForVisitor, subsetBundle } from './initial-data';
 import { dataEndOf, familyRowsFor, itemListFamilies, leanCompRow, unitListFamilies, type CompApiRow } from '../tft-comp-families';
+import { listPayloadWithCatalog } from '../tft-comp-catalog-resolver';
 
 const BUDGET_MS = 1500;
 // Vorgerechnete Staende je Filter, nicht je Seite: viele Detailseiten lesen
@@ -91,6 +92,8 @@ export interface CompRef {
   games: number;
   avgPlacement: number | null;
   top4Rate: number | null;
+  /** Katalog-Comp der Zeile (wie /api/tft/comps) — Link-Ziel ueber compLinkKey. */
+  compKey?: string | null;
 }
 
 export interface UnitDetailInitial {
@@ -175,8 +178,12 @@ function addCompRowAssets(rows: CompApiRow[] | null | undefined, champions: Set<
   }
 }
 
+// compKey mitgeben: ohne ihn verlinkte die Trait-Seite die klassische Familie,
+// deren Seite eine andere Comp als canonical nennt (64 Links, 09.11.2026).
 function compRef(c: Record<string, any>): CompRef {
-  return { slug: c.slug, clusterKey: c.clusterKey, games: c.games, avgPlacement: c.avgPlacement, top4Rate: c.top4Rate };
+  const ref: CompRef = { slug: c.slug, clusterKey: c.clusterKey, games: c.games, avgPlacement: c.avgPlacement, top4Rate: c.top4Rate };
+  if (typeof c.compKey === 'string' || c.compKey === null) ref.compKey = c.compKey;
+  return ref;
 }
 
 // ---------- Item ----------
@@ -266,7 +273,10 @@ export async function traitDetailStart(param: string, sp: URLSearchParams): Prom
   const [traitsSnap, unitsSnap, compsSnap] = await Promise.all([
     withTimeout(snapshotPayload('traits', r), left()),
     withTimeout(snapshotPayload('units', r), left()),
-    withTimeout(snapshotPayload('comps', r), left()),
+    // Comp-Katalog wie die Route (listPayloadForCatalog) und die Liste
+    // (initial-data.ts): jede Zeile bekommt ihre Comp (compKey). Keine Antwort
+    // rechtzeitig → keine Comps im ersten HTML, der Browser fragt die Route.
+    withTimeout(snapshotPayload('comps', r).then(p => (p ? listPayloadWithCatalog(p) : null)).catch(() => null), left()),
   ]);
   const idSet = new Set(ids);
   const match = new Set([...ids, display]);

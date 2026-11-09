@@ -164,4 +164,9 @@ test('Fristen: Tauschzeit, harte Grenze, Laufzeit-Alarm — kein Teilsummen-Budg
   assert.equal(maskDeadlineMs({ t0Ms: t1, capMs: t1 + 60_000 }), t1 + 60_000);
   assert.equal(maskHardMs({ t0Ms: t0 }), t0 + AGG_HARD_S * 1000);
   assert.equal(maskHardMs({ t0Ms: t0, capMs: t0 + 5 }), t0 + 5);
+  // Abend-Vollaufbau (hardS 13800, capMs = harte Grenze): Masken bis zur selben Grenze wie die Teilsummen.
+  const t2 = Date.UTC(2026, 10, 15, 17, 0);
+  assert.equal(maskHardMs({ t0Ms: t2, capMs: t2 + 13_800_000, hardS: 13800 }), t2 + 13_800_000);
+  assert.equal(maskDeadlineMs({ t0Ms: t2, capMs: t2 + 13_800_000, hardS: 13800 }), t2 + 13_800_000);
+  assert.equal(maskHardMs({ t0Ms: t2, hardS: 13800 }), t2 + 13_800_000);
 });

@@ -118,7 +118,11 @@ const DAY_MS = 86_400_000;
 const addDay = (day, n) => new Date(Date.parse(`${day}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
 
 export const AGG_BUDGET_DEFAULT_S = 1200;
-export const AGG_HARD_S = 8400;              // Unit-Zeitlimit 9000 s minus 600 s fuer Tausch + Pruefungen
+export const AGG_HARD_S = 8400;              // Nacht/Teil-Aufbau: altes Unit-Zeitlimit 9000 s minus 600 s fuer Tausch + Pruefungen
+// Abend-Vollaufbau (So 17:00 UTC, Plan 09.11.2026): Unit-Zeitlimit 14400 s
+// minus 600 s. Die tatsaechliche Grenze je Lauf rechnet runLimits in
+// build-explorer-store.mjs (Unit-Variable EXPLORER_TIMEOUT_S, naechstes 02:55).
+export const AGG_HARD_FULL_S = 13800;
 export const AGG_SWAP_UTC = [2, 55];         // Tausch + Vorwaermen vor Ende des Edge-Caches 03:30 UTC
 
 // Partie-Delta (Teilsummen) und Masken-Nachzug: neue Partien auf gedeckten
@@ -205,10 +209,11 @@ export function aggCoveredDays({ covered, w, f, patchChanged = [] }) {
 }
 
 // Frist und Reihenfolge. Frist = min(jetzt + Budget, naechstes 02:55 UTC nach
-// Laufbeginn, Laufbeginn + 8400 s). Tage des neuesten Patches sind Pflicht und
-// laufen bis zur harten Grenze; sie kommen zuerst, sonst neueste zuerst.
-export function planAgg({ nowMs, t0Ms, budgetS, days, covered, newestDays = [] }) {
-  const hardMs = t0Ms + AGG_HARD_S * 1000;
+// Laufbeginn, Laufbeginn + harte Grenze hardS — 8400 s, im Abend-Vollaufbau
+// laenger, s. runLimits). Tage des neuesten Patches sind Pflicht und laufen bis
+// zur harten Grenze; sie kommen zuerst, sonst neueste zuerst.
+export function planAgg({ nowMs, t0Ms, budgetS, days, covered, newestDays = [], hardS = AGG_HARD_S }) {
+  const hardMs = t0Ms + hardS * 1000;
   const deadlineMs = Math.min(nowMs + budgetS * 1000, nextUtc(t0Ms, AGG_SWAP_UTC), hardMs);
   const cov = new Set(covered);
   const must = new Set(newestDays);
@@ -243,7 +248,7 @@ export function aggCarryBlocked({ prevKind, prevTestRun, testRun, carryEnv, budg
 // Zeitgrenze der Uebernahme ist die harte Grenze, nicht die Tauschfrist.
 // Rest-Schaetzung: neuer Fingerabdruck wie der alte, dazu Partie-Delta und
 // Rang-Schritt (600 s).
-export const aggCarryLate = ({ nowMs, t0Ms, fpOldS }) => nowMs + (2 * fpOldS + 600) * 1000 > t0Ms + AGG_HARD_S * 1000;
+export const aggCarryLate = ({ nowMs, t0Ms, fpOldS, hardS = AGG_HARD_S }) => nowMs + (2 * fpOldS + 600) * 1000 > t0Ms + hardS * 1000;
 
 // Uebernommen wird ein Tag, der gedeckt war und dessen alte Boards in beiden
 // Dateien denselben Fingerabdruck haben.

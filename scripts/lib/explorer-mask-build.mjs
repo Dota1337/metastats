@@ -21,7 +21,7 @@
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { aggBudgetS, aggCopyEstS, aggPartCap, packDayParts, packDayPartsSql } from './explorer-agg.mjs';
+import { aggBudgetS, aggCopyEstS, aggPartCap, packDayParts, packDayPartsSql, AGG_HARD_S } from './explorer-agg.mjs';
 import { BLOCK_DAYS, lit, dLit, inList, cols, UNIT_COLS, TRAIT_COLS } from './explorer-agg-build.mjs';
 import {
   MASK_DATA_TABLES, MASK_TABLES, MASK_COLS, MASK_ORDER, MASK_SIG, MASK_FP_EMPTY, maskTablesDdl, maskSql, maskFp, maskFpAdd,
@@ -44,7 +44,7 @@ const DAY_TABLES = [...MASK_DATA_TABLES, 'mask_days'];
 export async function maskStep({
   exec, all, log, outdb: o, mode, win, newBoards = 'nb', t0Ms, files, compList, compHash, carry = null,
   budgetRaw = process.env.AGG_BUDGET_S, masksEnv = process.env.AGG_MASKS, partCapRaw = process.env.AGG_PART_CAP,
-  capMs = null, now = () => Date.now(),
+  capMs = null, now = () => Date.now(), hardS = AGG_HARD_S,
 }) {
   const t1 = now();
   const res = {
@@ -141,8 +141,8 @@ export async function maskStep({
   fs.writeFileSync(files.masktry, JSON.stringify({ pid: process.pid, startedAt: new Date(t1).toISOString() }));
   // Neue Tage, Uebernahme, ui: bis zur Tauschfrist. Nachziehen gedeckter Tage:
   // harte Grenze, sonst verliert der Tag seine Deckung.
-  const deadlineMs = maskDeadlineMs({ t0Ms, capMs });
-  const hardMs = maskHardMs({ t0Ms, capMs });
+  const deadlineMs = maskDeadlineMs({ t0Ms, capMs, hardS });
+  const hardMs = maskHardMs({ t0Ms, capMs, hardS });
   const covered = new Set();
   // Tage aus vielen Tabellen loeschen: erst die Deckung entziehen (mask_days,
   // ggf. mask_fail), dann jede Daten-Tabelle in eigener Transaktion mit

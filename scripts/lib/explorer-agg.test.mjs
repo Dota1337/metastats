@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   VARIANTS, keySelect, variantRowsSql, variantsForQuery, aggEligible, compListSql, AGG_SIG,
   aggBudgetS, nextUtc, aggCoveredDays, planAgg, aggDue, aggDaysFor, aggCopyEstS, aggDueForCopy,
-  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S, aggPartCap, packDayParts, packDayPartsSql,
+  aggCarryBlocked, aggCarryLate, aggCarryDays, AGG_HARD_S, AGG_HARD_FULL_S, aggPartCap, packDayParts, packDayPartsSql,
 } from './explorer-agg.mjs';
 
 const TABS = ['summary', 'units', 'items', 'traits', 'comps', 'level', 'round', 'gold', 'region', 'rank'];
@@ -77,6 +77,12 @@ test('Uebernahme: zu spaet, wenn 2 Fingerabdruecke + 600 s die harte Grenze reis
   assert.equal(aggCarryLate({ nowMs: edge, t0Ms, fpOldS: 60 }), false);
   assert.equal(aggCarryLate({ nowMs: edge + 1, t0Ms, fpOldS: 60 }), true);
   assert.equal(aggCarryLate({ nowMs: t0Ms + 4_200_000, t0Ms, fpOldS: 40 }), false);
+  // 08.11.2026: Kern fertig nach 7533 s, Fingerabdruck alt 429 s — mit 8400 s zu spaet,
+  // mit der Abend-Grenze 13800 s nicht (Plan 09.11.2026).
+  const t1 = Date.parse('2026-11-08T19:30:00Z');
+  assert.equal(aggCarryLate({ nowMs: t1 + 7_533_000, t0Ms: t1, fpOldS: 429 }), true);
+  assert.equal(aggCarryLate({ nowMs: t1 + 7_533_000, t0Ms: t1, fpOldS: 429, hardS: AGG_HARD_FULL_S }), false);
+  assert.equal(aggCarryLate({ nowMs: t1 + (AGG_HARD_FULL_S - 2 * 429 - 600) * 1000 + 1, t0Ms: t1, fpOldS: 429, hardS: AGG_HARD_FULL_S }), true);
 });
 
 test('Uebernahme: nur gedeckte Tage mit gleichem Fingerabdruck', () => {
@@ -206,6 +212,14 @@ test('Plan: Frist = kleinste der drei Grenzen, Pflicht-Tage zuerst, sonst neuest
   assert.equal(aggDue(q, q.todo[0], t0 + 120_000), true);
   assert.equal(aggDue(q, q.todo[1], t0 + 120_000), false);
   assert.equal(aggDue(q, q.todo[0], t0 + 8_400_000), false);
+  // Abend-Vollaufbau mit langer Grenze: harte Grenze und Frist ziehen mit.
+  const t2 = Date.parse('2026-11-15T17:00:00Z');
+  p = planAgg({ nowMs: t2 + 12_000_000, t0Ms: t2, budgetS: 99999, days, covered: [], hardS: AGG_HARD_FULL_S });
+  assert.equal(p.hardMs, t2 + 13_800_000);
+  assert.equal(p.deadlineMs, t2 + 13_800_000);
+  const r = planAgg({ nowMs: t2, t0Ms: t2, budgetS: 60, days, covered: [], newestDays: ['2026-10-08'], hardS: AGG_HARD_FULL_S });
+  assert.equal(aggDue(r, r.todo[0], t2 + 8_400_000), true);
+  assert.equal(aggDue(r, r.todo[0], t2 + 13_800_000), false);
 });
 
 test('Block-Kopie: Tag nur, wenn er nach der geschaetzten Kopie noch faellig ist', () => {

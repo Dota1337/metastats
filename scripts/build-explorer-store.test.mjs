@@ -5,7 +5,40 @@ import {
   SCRIPT_VERSION, inFullWindow, buildCodeHash, CODE_FILES,
   diskGate, spillCapBytes, CYCLE_REASON, DISK_FULL_FACTOR, DISK_DELTA_FACTOR, DISK_FIRST_BYTES, DISK_SPILL_MIN_BYTES,
   sliceKeys, sliceCond, DELETE_SLICE_ROWS, coverageAlarms,
+  runLimits, TOTAL_ALARM_S, TOTAL_ALARM_FULL_S,
 } from './build-explorer-store.mjs';
+
+test('runLimits: lange Grenze nur im Abend-Vollaufbau, nie ueber Zeitlimit − 600 s oder 02:55 UTC', () => {
+  const t17 = Date.parse('2026-11-15T17:00:00Z');
+  // So 17:00, Unit mit 14400 s: harte Grenze 13800, Masken bis dorthin, Alarm 11000.
+  assert.deepEqual(runLimits({ mode: 'full', hourUtc: 17, t0Ms: t17, timeoutRaw: '14400' }),
+    { long: true, timeoutS: 14400, hardS: 13800, alarmS: TOTAL_ALARM_FULL_S, capMs: t17 + 13_800_000 });
+  assert.equal(TOTAL_ALARM_FULL_S, 11000);
+  // Code vor der Unit live (keine EXPLORER_TIMEOUT_S): alte Grenze 8400, Alarm nicht darueber.
+  assert.deepEqual(runLimits({ mode: 'full', hourUtc: 17, t0Ms: t17, timeoutRaw: undefined }),
+    { long: true, timeoutS: 9000, hardS: 8400, alarmS: 8400, capMs: t17 + 8_400_000 });
+  assert.equal(runLimits({ mode: 'full', hourUtc: 17, t0Ms: t17, timeoutRaw: 'abc' }).hardS, 8400);
+  // Spaeter Nachhol-Start 23:30: harte Grenze endet um 02:55 (12300 s).
+  const t2330 = Date.parse('2026-11-15T23:30:00Z');
+  const late = runLimits({ mode: 'full', hourUtc: 23, t0Ms: t2330, timeoutRaw: '14400' });
+  assert.equal(late.hardS, 12300);
+  assert.equal(late.capMs, Date.parse('2026-11-16T02:55:00Z'));
+  assert.equal(late.alarmS, 11000);
+  // Nacht: Pflicht-Vollaufbau 01:35 und Teil-Aufbau — unveraendert.
+  const t0135 = Date.parse('2026-11-16T01:35:00Z');
+  assert.deepEqual(runLimits({ mode: 'full', hourUtc: 1, t0Ms: t0135, timeoutRaw: '14400' }),
+    { long: false, timeoutS: 14400, hardS: 8400, alarmS: TOTAL_ALARM_S, capMs: t0135 + 5_400_000 });
+  assert.deepEqual(runLimits({ mode: 'delta', hourUtc: 1, t0Ms: t0135, timeoutRaw: '14400' }),
+    { long: false, timeoutS: 14400, hardS: 8400, alarmS: 6000, capMs: null });
+  // Teil-Aufbau am Abend bleibt kurz.
+  assert.equal(runLimits({ mode: 'delta', hourUtc: 20, t0Ms: t17, timeoutRaw: '14400' }).long, false);
+  // --full von Hand tagsueber: lang (Rettung wiederholt nicht das Problem vom 01./08.11.).
+  const t10 = Date.parse('2026-11-16T10:00:00Z');
+  assert.equal(runLimits({ mode: 'full', hourUtc: 10, t0Ms: t10, timeoutRaw: '14400', forced: true }).hardS, 13800);
+  // --full nachts 01:00: bis 02:55.
+  const t0100 = Date.parse('2026-11-16T01:00:00Z');
+  assert.equal(runLimits({ mode: 'full', hourUtc: 1, t0Ms: t0100, timeoutRaw: '14400', forced: true }).hardS, 6900);
+});
 
 test('sliceKeys: Scheiben nach Zeilen, grosser Schluessel allein, Reihenfolge bleibt', () => {
   const g = [{ k: 'A', n: 3n }, { k: 'B', n: 4n }, { k: 'C', n: 12n }, { k: 'D', n: 1n }, { k: 'E', n: 9n }];

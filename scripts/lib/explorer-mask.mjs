@@ -282,13 +282,14 @@ export function maskQueue({ days, covered, skip = [] }) {
 // des Teilsummen-Budgets (1200 s ab Start der Teilsummen) — nach einem
 // Teilsummen-Neuaufbau blieb den Masken nichts (21.–23.10. 0/46 Tage), waehrend
 // bis 02:55 UTC noch ~45 min frei waren.
-export function maskDeadlineMs({ t0Ms, capMs = null }) {
-  return Math.min(nextUtc(t0Ms, AGG_SWAP_UTC), maskHardMs({ t0Ms, capMs }));
+export function maskDeadlineMs({ t0Ms, capMs = null, hardS = AGG_HARD_S }) {
+  return Math.min(nextUtc(t0Ms, AGG_SWAP_UTC), maskHardMs({ t0Ms, capMs, hardS }));
 }
 
 // Frist fuer das Nachziehen gedeckter Tage (neue Partien): harte Grenze —
-// sonst muesste der Tag seine Deckung verlieren.
-export const maskHardMs = ({ t0Ms, capMs = null }) => Math.min(t0Ms + AGG_HARD_S * 1000, capMs ?? Infinity);
+// sonst muesste der Tag seine Deckung verlieren. hardS wie bei den Teilsummen
+// (runLimits in build-explorer-store.mjs).
+export const maskHardMs = ({ t0Ms, capMs = null, hardS = AGG_HARD_S }) => Math.min(t0Ms + hardS * 1000, capMs ?? Infinity);
 
 // ─── Rechenweg-Kennung ─────────────────────────────────────────────────────
 

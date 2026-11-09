@@ -199,7 +199,7 @@ export async function aggChecks({ all, outdb: o }) {
 export async function aggStep({
   exec, all, log, outdb: o, mode, win, startBid, nextBid, patchChanged = [], t0Ms, files,
   compList, compHash, newBoards = 'nb', carry = null, budgetRaw = process.env.AGG_BUDGET_S,
-  partCapRaw = process.env.AGG_PART_CAP, now = () => Date.now(),
+  partCapRaw = process.env.AGG_PART_CAP, now = () => Date.now(), hardS = AGG_HARD_S,
 }) {
   const t1 = now();
   const res = {
@@ -306,7 +306,7 @@ export async function aggStep({
     if (parts.length) await exec(`CREATE OR REPLACE TABLE ag_pp AS ${packDayPartsSql('ag_pmd', parts, partCap)}`);
     // Frist wie beim Masken-Nachzug: harte Grenze. Gerissen → Tage aller
     // restlichen Portionen entdecken, auch einen halb nachgezogenen geteilten.
-    const hardMs = t0Ms + AGG_HARD_S * 1000;
+    const hardMs = t0Ms + hardS * 1000;
     for (let pi = 0; pi < parts.length; pi++) {
       if (now() >= hardMs) {
         const hit = [...new Set(parts.slice(pi).flatMap((p) => p.days))].sort();
@@ -386,7 +386,7 @@ export async function aggStep({
     const days = await col('SELECT DISTINCT day::VARCHAR AS v FROM ag_dp ORDER BY 1');
     res.newest = (await all(`SELECT patch AS v FROM ag_dp WHERE patch IS NOT NULL GROUP BY patch ORDER BY min(day) DESC, patch DESC LIMIT 1`))[0]?.v ?? null;
     const newestDays = res.newest == null ? [] : await col(`SELECT day::VARCHAR AS v FROM ag_dp WHERE patch = ${lit(res.newest)} ORDER BY 1`);
-    const plan = planAgg({ nowMs: now(), t0Ms, budgetS, days, covered: keep, newestDays });
+    const plan = planAgg({ nowMs: now(), t0Ms, budgetS, days, covered: keep, newestDays, hardS });
     const queue = [...plan.todo];
     const names = { b: 'ag_b', u: 'ag_u', t: 'ag_t', compList };
     const cl = 'SELECT * FROM ag_c';

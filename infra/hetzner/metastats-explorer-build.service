@@ -16,9 +16,12 @@ EnvironmentFile=/etc/metastats-crawler/env
 # Exit 2 = Vollaufbau noetig, aber mit diesem Code-Stand schon gescheitert
 # (alte Datei bleibt). Speichergrenze von DuckDB: EXPLORER_BUILD_MEM (900MB).
 ExecStart=/usr/bin/node scripts/build-explorer-store.mjs
-# Vollaufbau gemessen 2026-10-08: 3438 s. 9000 s ist Puffer fuer Tage, an
-# denen die Crawls die Platte belegen; ab 6000 s meldet status.json einen Alarm.
-TimeoutStartSec=9000
+# Abend-Vollaufbau (So 17:00 UTC) darf bis 4 h: harte Grenze fuer Teilsummen und
+# Masken = Zeitlimit − 600 s (runLimits in build-explorer-store.mjs liest es aus
+# EXPLORER_TIMEOUT_S — beide Werte gleich halten). Nacht und Teil-Aufbau bleiben
+# bei 8400 s / 02:55 UTC; Alarm ab 6000 s, im Abend-Vollaufbau ab 11000 s.
+TimeoutStartSec=14400
+Environment=EXPLORER_TIMEOUT_S=14400
 Nice=19
 IOSchedulingClass=idle
 CPUQuota=100%

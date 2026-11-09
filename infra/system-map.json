@@ -216,7 +216,7 @@
       "scripts": [],
       "onCalendar": [
         "*-*-* 01:35:00 UTC",
-        "Sun *-*-* 19:30:00 UTC"
+        "Sun *-*-* 17:00:00 UTC"
       ],
       "interval": [],
       "activates": "metastats-explorer-build.service",
@@ -810,7 +810,7 @@
       "activates": "metastats-explorer-build.service",
       "onCalendar": [
         "*-*-* 01:35:00 UTC",
-        "Sun *-*-* 19:30:00 UTC"
+        "Sun *-*-* 17:00:00 UTC"
       ]
     },
     {

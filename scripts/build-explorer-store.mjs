@@ -70,6 +70,7 @@ import { patchRanges } from './lib/tft-patch-day.mjs';
 import { currentWindowDay } from './lib/tft-crawl-window.mjs';
 import {
   AGG_SIG, compListSql, aggBudgetS, aggCarryBlocked, aggCarryLate,
+  AGG_HARD_S, AGG_HARD_FULL_S, AGG_SWAP_UTC, nextUtc,
 } from './lib/explorer-agg.mjs';
 import { aggStep, aggBindingReason, aggCarrySave, aggCarryMatch } from './lib/explorer-agg-build.mjs';
 import { MASK_SIG } from './lib/explorer-mask.mjs';
@@ -108,12 +109,18 @@ export const SCRIPT_VERSION = 3;
 export const FREEZE_DAYS = 7;      // Rang ab Stichtag − 7 wird neu bestimmt, davor eingefroren
 export const FULL_EVERY_DAYS = 7;  // spaetestens so oft alles neu (raeumt auch geloeschte Zeilen der Datei auf)
 // Wochen-Vollaufbau nur bei Start in diesem Fenster (Stunde UTC, Timer So
-// 19:30): nachts endet er nach 02:55 und laesst Teilsummen und Masken leer.
+// 17:00): nachts endet er nach 02:55 und laesst Teilsummen und Masken leer.
 export const FULL_WINDOW_UTC = [17, 24];
 const MARGIN_MS = 3 * 3_600_000;   // Teil-Aufbau liest ab Wasserstand − 3 h (spaet bestaetigte Schreibvorgaenge)
 const SCAN_ALARM_S = 600;          // nur Teil-Aufbau (Tabellen-Scan ~130 s); Vollaufbau ueber TOTAL_ALARM_S
-const TOTAL_ALARM_S = 6000;        // Unit-Zeitlimit 9000 s
-const TOTAL_ALARM_FULL_S = 8400;   // Vollaufbau im Abendfenster: Kern ~4400–5300 s, danach Summen + Masken
+export const TOTAL_ALARM_S = 6000;        // Nacht und Teil-Aufbau
+// Abend-Vollaufbau: Kern 08.11. ~7500 s, mit Uebernahme danach ~1400 s →
+// normal ~9000–9700 s. Alarm als Fruehwarnung, bevor die Uebernahme nicht mehr
+// in die harte Grenze passt (Plan 09.11.2026, perf-critic).
+export const TOTAL_ALARM_FULL_S = 11000;
+// Unit-Zeitlimit ohne EXPLORER_TIMEOUT_S (alte Unit mit TimeoutStartSec=9000):
+// dann gilt die kurze Grenze, damit systemd den Bau nie mitten im Schritt beendet.
+export const UNIT_TIMEOUT_DEFAULT_S = 9000;
 const BUILD_MEM_DEFAULT = '900MB';
 // Platz-Sperre (17.10.: Vollaufbau lief bei 27 GB frei in „No space left on
 // device"; Postgres und die Sicherungen liegen auf demselben Volume). Bedarf als
@@ -184,6 +191,28 @@ export function diffDayPatch(prevRows, curRows) {
 
 export const inFullWindow = (hourUtc) => Number.isInteger(hourUtc)
   && hourUtc >= FULL_WINDOW_UTC[0] && hourUtc < FULL_WINDOW_UTC[1];
+
+// Grenzen je Lauf (Plan 09.11.2026). Lang nur im Vollaufbau mit Start 17–24 UTC
+// oder per --full: harte Grenze fuer Teilsummen UND Masken = min(13800 s,
+// Unit-Zeitlimit − 600 s, Zeit bis zum naechsten 02:55 UTC). Das Zeitlimit kommt
+// aus EXPLORER_TIMEOUT_S der Unit; fehlt es, gilt 9000 s → 8400 s wie vorher.
+// Masken bekommen dieselbe Grenze wie die Teilsummen (vorher Alarm − 600 s, also
+// frueher als die Teilsummen). Alarm nie ueber der harten Grenze. Alle anderen
+// Laeufe: unveraendert 8400 s / Alarm 6000 s / Masken im Vollaufbau bis 5400 s.
+export function runLimits({ mode, hourUtc, t0Ms, timeoutRaw, forced = false }) {
+  const tRaw = Number(timeoutRaw);
+  const timeoutS = Number.isInteger(tRaw) && tRaw > 600 ? tRaw : UNIT_TIMEOUT_DEFAULT_S;
+  const long = mode === 'full' && (inFullWindow(hourUtc) || forced);
+  if (!long) {
+    return {
+      long, timeoutS, hardS: Math.min(AGG_HARD_S, timeoutS - 600), alarmS: TOTAL_ALARM_S,
+      capMs: mode === 'full' ? t0Ms + (TOTAL_ALARM_S - 600) * 1000 : null,
+    };
+  }
+  const untilSwapS = Math.floor((nextUtc(t0Ms, AGG_SWAP_UTC) - t0Ms) / 1000);
+  const hardS = Math.min(AGG_HARD_FULL_S, timeoutS - 600, untilSwapS);
+  return { long, timeoutS, hardS, alarmS: Math.min(TOTAL_ALARM_FULL_S, hardS), capMs: t0Ms + hardS * 1000 };
+}
 
 // Code-Stand der Bau-Skripte fuer die Versuchs-Sperre.
 export function buildCodeHash(read = (f) => fs.readFileSync(path.join(__dirname, f))) {
@@ -888,7 +917,9 @@ async function build({ t0, win, testRun, untilMs, files }) {
       cleanup();
       return 0;
     }
-    const totalAlarmS = mode === 'full' && inFullWindow(hourUtc) ? TOTAL_ALARM_FULL_S : TOTAL_ALARM_S;
+    const limits = runLimits({ mode, hourUtc, t0Ms: t0, timeoutRaw: process.env.EXPLORER_TIMEOUT_S, forced: FULL });
+    const totalAlarmS = limits.alarmS;
+    log(`Grenzen: hart ${limits.hardS} s, Alarm ${limits.alarmS} s, Zeitlimit ${limits.timeoutS} s${limits.long ? ' (Abend-Vollaufbau)' : ''}`);
     const alarms = [];
     if (modeDecision.blocked) alarms.push(`Vollaufbau gesperrt: mit Code ${code} schon gescheitert — Code aendern oder --full`);
     if (decision.diskAlarm) alarms.push(decision.diskAlarm);
@@ -1166,7 +1197,7 @@ async function build({ t0, win, testRun, untilMs, files }) {
     let maskCarry = null;
     if (carryPrep) {
       try {
-        if (aggCarryLate({ nowMs: Date.now(), t0Ms: t0, fpOldS: carryInfo.fpOldS })) {
+        if (aggCarryLate({ nowMs: Date.now(), t0Ms: t0, fpOldS: carryInfo.fpOldS, hardS: limits.hardS })) {
           carryInfo.reason = 'zu spaet fuer den Fingerabdruck';
         } else {
           const r = await aggCarryMatch({ exec: run, all, outdb, prevKeys: 'prev_rank', f: win.f, prep: carryPrep });
@@ -1192,18 +1223,18 @@ async function build({ t0, win, testRun, untilMs, files }) {
     // Datei gueltig — ohne Summen, der Dienst rechnet dann live.
     const agg = await aggStep({
       exec: stepExec, all: stepAll, log, outdb, mode, win, startBid, nextBid, patchChanged, t0Ms: t0, files,
-      compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry,
+      compList, compHash, newBoards: carry ? 'cv_nb' : 'nb', carry, hardS: limits.hardS,
     });
     alarms.push(...agg.alarms);
 
     // Platz-Masken fuer gefilterte Ansichten (Paket 6): bis zur Tauschfrist,
-    // im Vollaufbau nie ueber den Laufzeit-Alarm. Liest ebenfalls die alte
+    // im Vollaufbau bis zur Grenze aus runLimits. Liest ebenfalls die alte
     // meta. Scheitert er, bleibt die Datei gueltig — ohne Masken, der Dienst
     // rechnet dann wie bisher.
     const mask = await maskStep({
       exec: stepExec, all: stepAll, log, outdb, mode, win, newBoards: carry ? 'cv_nb' : 'nb', t0Ms: t0,
       files, compList, compHash, carry: carry ? maskCarry : null,
-      capMs: mode === 'full' ? t0 + (totalAlarmS - 600) * 1000 : null,
+      capMs: limits.capMs, hardS: limits.hardS,
     });
     alarms.push(...mask.alarms);
     alarms.push(...coverageAlarms({ mode, agg, mask }));

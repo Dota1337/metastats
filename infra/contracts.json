@@ -705,7 +705,7 @@
       "type": "http-status",
       "baseUrlEnv": "SITE_STATUS_BASE_URL",
       "baseUrl": "https://www.metastats.gg",
-      "expectStartLinks": { "/tft/comps/atlas": 15, "/tft/comps": 30 },
+      "expectStartLinks": { "/tft/comps/atlas": 15, "/tft/comps": 20 },
       "expectStartText": {
         "/teams": ["\\shref=\"(?:/[a-z]{2})?/teams/[^\"/?#]+", 200],
         "/ligen": ["static\\.lolesports\\.com/[^\"\\s?]+", 10],
@@ -730,7 +730,24 @@
         "/ko/tft/builder": ["ko", 3],
         "/tft/items": ["de", 3]
       },
-      "note": "Uebersetzte Namen (Plan 01.11.2026, reference_tft_localized_names): expectLocalNames zaehlt englische Item-, Unit- und Synergie-Namen im ersten HTML, die laut Bundle in der Sprache anders heissen; /ko/tft/items in expectStartText zaehlt Bilder mit koreanischem Namen. Rot: Bundle ohne `names` (Fetcher, Sprachdatei) oder eine Seite zeigt wieder `.name`. Bis zu 3 erlaubt, weil ein neuer Patch kurz neue Namen ohne Uebersetzung bringen kann. Startdaten der Comp-Seiten (Uebersicht = TFT-Startseite, Liste): ohne Cookie stehen Comp-Namen und Links im ersten HTML. Faellt der Lader still aus (kein vorgerechneter Stand, 1,5-s-Zeitlimit, Teilmengen-Pruefung in shownFamilyRows schlaegt an, weitergetragener Stand mit Endtag E-1 bei vollen Tagen), laedt die Seite im Browser nach und sieht fuer Besucher normal aus — nur Google sieht eine leere Seite. Schwellen: Uebersicht zeigt ~24 entdoppelte Familien, Liste 40 Familien (mehr Links durch Varianten); 15/30 lassen Platz fuer kleine Tage. Bis zu 3 Abrufe, der beste zaehlt. expectStartText (Soft-404-Plan 26.10.2026, app/lib/seo/page-start-*.ts): 13 Uebersichtsseiten, gezaehlt werden verschiedene Treffer im HTML ohne <script>/<style>. Gemessen 26.10.2026 live / mit SEO_PAGE_START=0: Teams 515/0, Ligen-Logos 51/0, Augments 259/0, Builder-Bilder 74/0, Patch-Links 18/1, Gewinner 24/0, Rising 20/0, TFT-Rangliste 50/0, TFT-Marktwert 100/0, LoL-Marktwert 40/0, LoL-Rangliste 100/0, TFT-Turniere 200/0, LoL-Start 3/0. Schwellen grob ein Drittel, LoL-Start genau 3 (immer die 3 meistgespielten). Rot: zuerst die Spiegel-Vertraege mirror/*/index-frische (Box-Datei alt) — sind die gruen, haengt der Seiten-Lader (Zeitlimit 1,5 s, page-start-mirror.ts) oder ein Notschalter SEO_PAGE_START=0 / SEO_START_DATA=0 / ROUTE_MIRRORS=0 ist gesetzt. LoL-Rangliste wird zusaetzlich rot, wenn der LoL-Dev-Key ueber 26 h tot ist."
+      "note": "Uebersetzte Namen (Plan 01.11.2026, reference_tft_localized_names): expectLocalNames zaehlt englische Item-, Unit- und Synergie-Namen im ersten HTML, die laut Bundle in der Sprache anders heissen; /ko/tft/items in expectStartText zaehlt Bilder mit koreanischem Namen. Rot: Bundle ohne `names` (Fetcher, Sprachdatei) oder eine Seite zeigt wieder `.name`. Bis zu 3 erlaubt, weil ein neuer Patch kurz neue Namen ohne Uebersetzung bringen kann. Startdaten der Comp-Seiten (Uebersicht = TFT-Startseite, Liste): ohne Cookie stehen Comp-Namen und Links im ersten HTML. Faellt der Lader still aus (kein vorgerechneter Stand, 1,5-s-Zeitlimit, Teilmengen-Pruefung in shownFamilyRows schlaegt an, weitergetragener Stand mit Endtag E-1 bei vollen Tagen), laedt die Seite im Browser nach und sieht fuer Besucher normal aus — nur Google sieht eine leere Seite. Schwellen: Uebersicht zeigt ~24 entdoppelte Familien, Liste 40 Familien; seit 09.11.2026 verlinken auch die Unterzeilen die Adresse ihrer Familie (familyLinkKey, eine Adresse je Comp), deshalb zaehlt die Liste nur noch ~40 verschiedene Links statt mehr durch Varianten — 15/20 lassen Platz fuer kleine Tage. Bis zu 3 Abrufe, der beste zaehlt. expectStartText (Soft-404-Plan 26.10.2026, app/lib/seo/page-start-*.ts): 13 Uebersichtsseiten, gezaehlt werden verschiedene Treffer im HTML ohne <script>/<style>. Gemessen 26.10.2026 live / mit SEO_PAGE_START=0: Teams 515/0, Ligen-Logos 51/0, Augments 259/0, Builder-Bilder 74/0, Patch-Links 18/1, Gewinner 24/0, Rising 20/0, TFT-Rangliste 50/0, TFT-Marktwert 100/0, LoL-Marktwert 40/0, LoL-Rangliste 100/0, TFT-Turniere 200/0, LoL-Start 3/0. Schwellen grob ein Drittel, LoL-Start genau 3 (immer die 3 meistgespielten). Rot: zuerst die Spiegel-Vertraege mirror/*/index-frische (Box-Datei alt) — sind die gruen, haengt der Seiten-Lader (Zeitlimit 1,5 s, page-start-mirror.ts) oder ein Notschalter SEO_PAGE_START=0 / SEO_START_DATA=0 / ROUTE_MIRRORS=0 ist gesetzt. LoL-Rangliste wird zusaetzlich rot, wenn der LoL-Dev-Key ueber 26 h tot ist."
+    },
+
+    {
+      "id": "seo/canonical-consistency",
+      "owner": "app/lib/tft-comp-path.ts",
+      "type": "http-status",
+      "baseUrlEnv": "SITE_STATUS_BASE_URL",
+      "baseUrl": "https://www.metastats.gg",
+      "expectCanonical": {
+        "userAgent": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "compLinkSources": ["/tft/comps", "/tft/comps/atlas"],
+        "sitemapFirst": ["/tft/traits/", "/tft/units/", "/tft/items/"],
+        "pages": ["/champions/Ahri"],
+        "maxComps": 150,
+        "maxMismatch": 2
+      },
+      "note": "Search Console meldete am 09.11.2026 „Duplikat – Google hat eine andere Seite als der Nutzer als kanonische Seite bestimmt“. Ursachen damals: 4 von 40 Sitemap-Comps und 89 Listen-Links fuehrten auf Comp-Seiten, die eine ANDERE Comp als eigentliche Adresse (canonical) nannten; Comp-Seiten verlinkten Traits per Kennung (DA_18_Elderwood), die Trait-Seite nennt den Namen; Googlebot bekam auf /champions/… und Spielerseiten Titel + canonical erst im <body> (Next streamt sie nach, Googlebot fehlt in Nexts Bot-Liste; das Pruefwerkzeug der Search Console steht drin und sah den Fehler nicht). Der Vertrag ruft mit Googlebot-Kennung alle Comp-Seiten aus Sitemap und den Links im ersten HTML von /tft/comps und der Uebersicht ab, dazu je die erste Trait-, Unit- und Item-Seite der Sitemap und /champions/Ahri. Rot: kein 200, canonical oder <title> fehlt oder steht im <body> (htmlLimitedBots in next.config.ts verloren?), Trait-Link mit Kennung (traitPath umgangen — ESLint TRAIT_PATH sollte das schon fangen), eine feste Seite mit fremdem canonical, oder mehr als 2 Comp-Seiten mit fremdem canonical (Liste/Sitemap verlinken nicht mehr familyLinkKey, oder compCanonicalKey und die Katalog-Zuordnung laufen auseinander). 2 erlaubt, weil der Katalog am Tag wechseln kann."
     },
 
     {

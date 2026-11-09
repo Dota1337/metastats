@@ -13,7 +13,7 @@ import type { CompFamily } from '../../../components/tft/CompFamilyRow';
 import { useI18n, type TranslationKey } from '../../../lib/i18n';
 import { tftChampionTileUrl, tftLabel, tftTraitDisplayName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { namedCarries } from '../../../lib/tft-comp-roles';
-import { dedupeByCarry, familyCost, visibleFamilies, familyLinkSlug, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
+import { dedupeByCarry, familyCost, visibleFamilies, familyLinkKey, type CompApiRow, type CompSortBy } from '../../../lib/tft-comp-families';
 import type { PatchDeltaPair, PatchDeltaStart } from '../../../lib/tft-patch-delta';
 import { deltaTooltip } from '../../../components/tft/PatchDeltaCell';
 import { compPath } from '../../../lib/tft-comp-path';
@@ -97,7 +97,7 @@ export default function AtlasClient({ initialFilters, initial, initialDelta = nu
   };
 
   const href = (f: CompFamily) =>
-    `${compPath(familyLinkSlug(f))}?bucket=${filters.bucket}&region=${filters.region}${filters.days ? `&days=${filters.days}` : ''}`;
+    `${compPath(familyLinkKey(f))}?bucket=${filters.bucket}&region=${filters.region}${filters.days ? `&days=${filters.days}` : ''}`;
 
   return (
     <main className="min-h-screen bg-surface-page">

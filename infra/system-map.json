@@ -1644,6 +1644,9 @@
     "app/lib/seo/initial-data.ts": [
       "seo/start-data"
     ],
+    "app/lib/tft-comp-path.ts": [
+      "seo/canonical-consistency"
+    ],
     "metastats-lol-marketvalue.service": [
       "lol-marketvalue/history",
       "lol-marketvalue/last-pass"

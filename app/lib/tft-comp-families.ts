@@ -9,6 +9,7 @@ import { computeRoles, componentCheckFromItems, coreFlexMap, jaccard, namedCarri
 import { sumDeltaKeys, type PatchDelta, type PatchDeltaIndex } from './tft-patch-delta';
 import { sumMinorRows, type MinorCompRow } from './tft-comp-minor-rows';
 import { boardGroups, boardJoinRule, sumBoardUnits, type BoardGroupOptions, type RestUnit } from './tft-comp-build-group';
+import { familyKeyOf } from './tft-comp-path';
 
 // 'velocity' = „Trending": nach dem Vorpatch-Vergleich der Familie
 // (attachPatchDeltas); die Familienbildung selbst rechnet dann wie bei 'avg'.
@@ -460,20 +461,45 @@ export function familyLinkSlug(f: { familyKey: string; mainComp: LinkVariant; va
   return own.length > 0 ? slugOf(own[0]) : main;
 }
 
+/**
+ * Link-Ziel einer Familie (Liste, Unterzeilen, Atlas, Unit-/Item-Seiten,
+ * Sitemap): ihr Gruppen-Schluessel — im Katalog-Modus die Comp (rowFamilyKey),
+ * sonst die Anker-Familie. Genau diese Kennung nennt die Seite als canonical
+ * (compCanonicalKey, tft-comp-path.ts). familyLinkSlug bleibt fuer den
+ * Publisher und den Waechter expectCompRedirect (braucht eine Kennung mit @),
+ * ist als Link-Ziel aber falsch: hat keine Zeile die Familie der Comp, zeigte
+ * er auf eine Seite, die eine ANDERE Comp als canonical nennt.
+ */
+export function familyLinkKey(f: { familyKey: string }): string {
+  return f.familyKey;
+}
+
+/**
+ * Link-Ziel einer einzelnen Zeile aus /api/tft/comps (Trait-Seite): ihre
+ * Katalog-Comp, sonst ihre Familie. Zeilen ohne Comp (compKey === null, Seite
+ * steht auf noindex) behalten ihren bisherigen Link.
+ */
+export function compLinkKey(c: { compKey?: string | null; slug?: string | null; clusterKey?: string | null }): string {
+  if (typeof c.compKey === 'string') return c.compKey;
+  const key = c.slug || c.clusterKey || '';
+  return c.compKey === null ? key : familyKeyOf(key) ?? key;
+}
+
 // Die Familien der Standardliste (laufendes Set, 40 meistgespielte, ohne Suche)
-// mit dem Slug, auf den die Liste verlinkt (familyLinkSlug). Sitemap und der
-// Detail-Vorrat des Publishers (/api/tft/comps/families) nutzen dieselbe Regel —
-// sonst verlinkt die Sitemap Seiten, fuer die nichts vorgerechnet ist.
+// mit dem Slug, den der Detail-Vorrat des Publishers abfragt (familyLinkSlug,
+// /api/tft/comps/families), und dem Link-Ziel (linkKey = familyLinkKey) fuer
+// die Sitemap. Beide aus derselben Auswahl — sonst verlinkt die Sitemap Seiten,
+// fuer die nichts vorgerechnet ist.
 // `familyKey` ist der Schluessel des Detail-Vorrats (familyKeyForMerge).
 export function listFamilyTargets(
   rows: CompApiRow[],
   assets: TftAssetsBundle | null,
-): { slug: string; familyKey: string }[] {
+): { slug: string; familyKey: string; linkKey: string }[] {
   // Vorrat-Schluessel = Gruppen-Schluessel (Katalog-Comp oder klassische
   // Familie), nicht die Familie des verlinkten Slugs — bei Katalog-Comps kann
   // der Slug aus einem anderen Trait stammen.
   return standardListFamilies(rows, assets)
-    .map(f => ({ slug: familyLinkSlug(f), familyKey: f.familyKey }))
+    .map(f => ({ slug: familyLinkSlug(f), familyKey: f.familyKey, linkKey: familyLinkKey(f) }))
     .filter(t => typeof t.slug === 'string' && t.slug.length > 0);
 }
 

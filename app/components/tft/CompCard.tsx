@@ -10,9 +10,11 @@ import { CURRENT_SET } from '../../lib/current-set';
 import { useI18n } from '../../lib/i18n';
 import { compDefiningAugmentApiNameFromSlug, shownAugmentSlug } from '../../lib/tft-comp-defining-augments';
 import PlanAheadButton from './PlanAheadButton';
-import { parseClusterKey, isThreeStarUnit } from '../../lib/tft-cluster';
+import { isThreeStarUnit } from '../../lib/tft-cluster';
+import { compCarryLabel, compHeading } from '../../lib/tft-comp-heading';
+import { traitPath } from '../../lib/tft-trait-path';
 import { loadCompGuidesBundle, findCompGuide, difficultyColor, guideStyleFromUnits } from '../../lib/tft-comp-guides';
-import { computeRoles, namedCarries, shownItems, componentCheckFromItems, coreFlexMap, forcedCoreIds, sortUnitsByImportance } from '../../lib/tft-comp-roles';
+import { shownItems, coreFlexMap, forcedCoreIds, sortUnitsByImportance } from '../../lib/tft-comp-roles';
 import CoreFlexGroups from './CoreFlexGroups';
 
 interface CompVelocity {
@@ -78,14 +80,12 @@ export default function CompCard({
 }) {
   const { t, withLang, lang } = useI18n();
   const router = useRouter();
-  const parts = parseClusterKey(comp.clusterKey);
   // Carries an den Items erkannt (tft-comp-roles), wie in der Liste — der
   // Key traegt nur eine Unit und lag bei Zwei-Carry-Comps oft daneben.
-  const isComponent = componentCheckFromItems(assets?.items);
-  const roles = computeRoles(comp.typicalUnits, comp.games, { set: assets?.set, isComponent, keyCarry: parts?.carry });
-  const named = namedCarries(roles, parts?.carry);
+  // Dieselbe Regel nennt der Seitentitel (compHeadingText, page.tsx).
+  const { parts, isComponent, roles, named } = compHeading(comp, assets);
   const carrySet = new Set(roles.carries.length > 0 ? roles.carries : named);
-  const carryNameOf = (cid: string) => tftLabel(assets?.champions[cid], lang) || prettyChar(cid);
+  const carryNameOf = (cid: string) => compCarryLabel(assets, cid, lang);
   const traitMeta = parts && assets ? assets.traits[parts.trait] : null;
   // Curated guide indicator: tiny difficulty badge in the header when this
   // comp has an editorial slug-map entry pointing at a tftacademy guide.
@@ -203,7 +203,7 @@ export default function CompCard({
             <h1 className="text-white text-sm font-medium truncate">
               {parts ? (
                 <a
-                  href={withLang(`/tft/traits/${encodeURIComponent(parts.trait)}`)}
+                  href={withLang(traitPath(assets?.traits, parts.trait))}
                   onClick={e => e.stopPropagation()}
                   className="hover:text-accent transition-colors"
                   title={traitTooltip || undefined}

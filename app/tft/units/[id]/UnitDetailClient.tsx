@@ -9,6 +9,7 @@ import type { UnitDetailInitial } from '../../../lib/seo/detail-data';
 import EmptyData from '../../../components/tft/EmptyData';
 import { useI18n } from '../../../lib/i18n';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftTraitDisplayName, tftTraitLabelByName, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { traitPath } from '../../../lib/tft-trait-path';
 import { buildExplorerUrl } from '../../../lib/tft-explorer-url';
 import { dataEndOf, unitListFamilies, type CompApiRow } from '../../../lib/tft-comp-families';
 import { loadUnitInfo, type UnitInfoFile } from '../../../lib/tft-unit-info';
@@ -177,7 +178,7 @@ export default function TftUnitDetailPage({ initial, info: initialInfo }: { init
                         return (
                           <a
                             key={tr}
-                            href={withLang(`/tft/traits/${encodeURIComponent(tr)}`)}
+                            href={withLang(traitPath(assets?.traits, tr))}
                             className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-surface-raised/80 border border-border-subtle text-[12px] text-fg-secondary hover:text-white hover:border-accent-a60 transition-colors"
                           >
                             {icon && <img src={icon} alt="" className="w-4 h-4" />}

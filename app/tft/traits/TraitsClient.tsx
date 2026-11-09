@@ -15,6 +15,7 @@ import { patchDeltaOf, traitDeltaKey } from '../../lib/tft-patch-delta';
 import PatchDeltaCell, { deltaHeader } from '../../components/tft/PatchDeltaCell';
 import { useI18n } from '../../lib/i18n';
 import { tftIconUrl, tftLabel, tftTraitLabelByName, traitTierMinUnits, type TftTraitTier } from '../../lib/tft-cdragon';
+import { traitPath } from '../../lib/tft-trait-path';
 import TftHero from '../../components/tft/TftHero';
 
 export interface TraitRow {
@@ -167,7 +168,7 @@ export default function TraitsClient({ initialFilters, initial }: {
               return (
                 <a
                   key={g.name}
-                  href={withLang(`/tft/traits/${encodeURIComponent(g.name)}`)}
+                  href={withLang(traitPath(assets?.traits, g.name))}
                   className={`block md:grid ${deltaOn ? 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem_4rem]' : 'md:grid-cols-[3rem_1fr_10rem_4rem_5rem_5rem_5rem_5rem]'} gap-3 px-4 py-2.5 md:items-center text-[13px] sm:text-sm border-t border-border-subtle hover:bg-white/5`}
                 >
                   <div className="flex items-center gap-3 md:contents">

@@ -5,7 +5,7 @@ import CompRow from './CompRow';
 import CompBoardPanel, { prefetchCompBoard, type CompBoardParams } from './CompBoardPanel';
 import { useI18n } from '../../lib/i18n';
 import { compPath } from '../../lib/tft-comp-path';
-import { familyLinkSlug } from '../../lib/tft-comp-families';
+import { familyLinkKey } from '../../lib/tft-comp-families';
 import type { PatchDelta } from '../../lib/tft-patch-delta';
 import type { DeltaView } from './CompRow';
 
@@ -55,9 +55,13 @@ export interface CompFamily {
   delta?: PatchDelta | null;
 }
 
-// Hauptzeile: familyLinkSlug (Anker-Haelfte, wie Sitemap und Vorrat); Unterzeilen: ihre Variante.
-function familyHref(slug: string, region: string, bucket: string, days?: number): string {
-  return `${compPath(slug)}?bucket=${bucket}&region=${region}${days ? `&days=${days}` : ''}`;
+// Haupt- UND Unterzeilen zeigen auf die Adresse, die die Comp-Seite als
+// canonical nennt (familyLinkKey, wie die Sitemap). Bis 09.11.2026 verlinkten
+// Unterzeilen ihre eigene Variante — deren Seite nannte eine andere Comp als
+// eigentliche Adresse (Search Console: „Duplikat – Google hat eine andere Seite
+// … bestimmt“). Inhalt gleich: die Seite der Variante zeigt ihre Comp.
+function familyHref(key: string, region: string, bucket: string, days?: number): string {
+  return `${compPath(key)}?bucket=${bucket}&region=${region}${days ? `&days=${days}` : ''}`;
 }
 
 export default function CompFamilyRow({
@@ -124,7 +128,7 @@ export default function CompFamilyRow({
           comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
           rank={rank}
           assets={assets}
-          href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
+          href={withLang(familyHref(familyLinkKey(family), region, bucket, days))}
           deltaView={deltaView}
           compareSelected={compareSelected}
           onCompareToggle={onCompareToggle}
@@ -158,7 +162,7 @@ export default function CompFamilyRow({
         comp={family.mainComp as Parameters<typeof CompRow>[0]['comp']}
         rank={rank}
         assets={assets}
-        href={withLang(familyHref(familyLinkSlug(family), region, bucket, days))}
+        href={withLang(familyHref(familyLinkKey(family), region, bucket, days))}
         deltaView={deltaView}
         expandToggle={{ expanded, onToggle: () => setExpanded(e => !e) }}
         compareSelected={compareSelected}
@@ -195,7 +199,7 @@ export default function CompFamilyRow({
                   comp={v as Parameters<typeof CompRow>[0]['comp']}
                   rank={0}
                   assets={assets}
-                  href={withLang(familyHref(v.slug, region, bucket, days))}
+                  href={withLang(familyHref(familyLinkKey(family), region, bucket, days))}
                   deltaView={deltaView}
                 />
               ))}

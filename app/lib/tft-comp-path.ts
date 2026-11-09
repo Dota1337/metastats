@@ -148,6 +148,21 @@ export function readableForKey(key: string, table: CompNameTable = TABLE): strin
   return back && back.current && back.familyKey === fk ? name : null;
 }
 
+/**
+ * Kennung, die eine Comp-Seite Google als ihre eigentliche Adresse nennt
+ * (canonical, app/tft/comps/[slug]/page.tsx). `catalogComp` = Comp des Katalogs
+ * fuer die Kennung der Adresse (compKeyForDefaultView): string = diese Comp,
+ * null/undefined = keine Zuordnung → die Familie der Adresse selbst.
+ *
+ * Links muessen GENAU auf diese Kennung zeigen (familyLinkKey/compLinkKey in
+ * tft-comp-families.ts), sonst meldet die Search Console „Duplikat – Google hat
+ * eine andere Seite als der Nutzer als kanonische Seite bestimmt“ (09.11.2026:
+ * 93 verlinkte Adressen nannten eine andere Comp).
+ */
+export function compCanonicalKey(key: string, catalogComp: string | null | undefined): string {
+  return catalogComp ?? familyKeyOf(key) ?? key;
+}
+
 /** Adresse der Detailseite ohne Sprach-Vorsatz und ohne Abfrage. */
 export function compPath(key: string, table: CompNameTable = TABLE): string {
   const name = compReadableEnabled() ? readableForKey(key, table) : null;

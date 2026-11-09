@@ -5,7 +5,9 @@ import { lookupSnapshot } from './lib/snapshot-lookup';
 import { tftAssets } from './lib/og/data';
 import { withTimeout } from './lib/og/frame';
 import { listFamilyTargets, type CompApiRow } from './lib/tft-comp-families';
-import { listPayloadWithCatalog } from './lib/tft-comp-catalog-resolver';
+import { compCatalogReadEnabled, listPayloadWithCatalog } from './lib/tft-comp-catalog-resolver';
+import { traitPath } from './lib/tft-trait-path';
+import { itemCanonicalId } from './lib/tft-item-path';
 import { compPath } from './lib/tft-comp-path';
 import { resolveDefaultBucket } from './lib/tft-supabase-reader';
 import { getLatestDdragonVersion } from './lib/ddragon-version-server';
@@ -66,10 +68,12 @@ function listSnapshot(endpoint: 'comps' | 'units' | 'items' | 'traits', bucket =
   }), SOURCE_TIMEOUT_MS);
 }
 
-// Die 40 Comp-Familien der Liste, verlinkt wie dort (familyLinkSlug, lesbare
-// Adresse ueber compPath) — dieselbe Regel und derselbe Rang (resolveDefaultBucket), nach
-// denen der Publisher den Detail-Vorrat anlegt (/api/tft/comps/families).
-async function compEntries(): Promise<Entry[]> {
+// Die 40 Comp-Familien der Liste, verlinkt wie dort (familyLinkKey = die
+// Adresse, die die Comp-Seite als canonical nennt) — dieselbe Auswahl und
+// derselbe Rang (resolveDefaultBucket), nach denen der Publisher den
+// Detail-Vorrat anlegt (/api/tft/comps/families). Bis 09.11.2026 stand hier
+// familyLinkSlug: 4 von 40 Eintraegen nannten als canonical eine andere Comp.
+async function compEntries(): Promise<Loaded> {
   const bucket = (await withTimeout(resolveDefaultBucket(), SOURCE_TIMEOUT_MS)) ?? 'diamond_plus';
   const hit = await listSnapshot('comps', bucket);
   // Comp-Katalog wie die Route, sonst verlinkte die Sitemap klassische Familien.
@@ -78,11 +82,16 @@ async function compEntries(): Promise<Entry[]> {
     : null;
   const rows = (payload as { comps?: CompApiRow[] } | null)?.comps;
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  return listFamilyTargets(rows, tftAssets()).map(t => ({
-    path: compPath(t.slug),
+  const entries = listFamilyTargets(rows, tftAssets()).map(t => ({
+    path: compPath(t.linkKey),
     priority: 0.7,
     changeFrequency: 'daily' as const,
   }));
+  // Katalog an, aber keine Zeile mit Comp: der Katalog fehlte gerade, das sind
+  // klassische Familien, deren Seiten auf eine andere Comp zeigen koennen. Nur
+  // fuer diesen Abruf nutzen, nicht 6 h merken.
+  const fallback = compCatalogReadEnabled() && !rows.some(r => typeof r.compKey === 'string');
+  return { entries, keep: !fallback };
 }
 
 async function unitEntries(): Promise<Entry[]> {
@@ -95,16 +104,20 @@ async function unitEntries(): Promise<Entry[]> {
     .map(u => ({ path: `/tft/units/${encodeURIComponent(u.characterId!)}`, priority: 0.6, changeFrequency: 'daily' as const }));
 }
 
-// Gespielte Items, die Riot im laufenden Set auch anbietet (active.items).
+// Gespielte Items, die Riot im laufenden Set auch anbietet (active.items),
+// unter ihrer eigentlichen Adresse (gleichnamige Augment-Variante → Grund-Item,
+// tft-item-path.ts), jede nur einmal.
 async function itemEntries(): Promise<Entry[]> {
   const hit = await listSnapshot('items');
   const items = (hit?.payload as { items?: Array<{ apiName?: string; games?: number }> } | undefined)?.items;
-  const active = tftAssets()?.active?.items;
+  const bundle = tftAssets();
+  const active = bundle?.active?.items;
   if (!Array.isArray(items) || !Array.isArray(active)) return [];
   const activeSet = new Set(active);
-  return items
+  const ids = new Set(items
     .filter(it => typeof it.apiName === 'string' && activeSet.has(it.apiName) && (it.games ?? 0) > 0)
-    .map(it => ({ path: `/tft/items/${encodeURIComponent(it.apiName!)}`, priority: 0.6, changeFrequency: 'daily' as const }));
+    .map(it => itemCanonicalId(bundle?.items, it.apiName!)));
+  return [...ids].map(id => ({ path: `/tft/items/${encodeURIComponent(id)}`, priority: 0.6, changeFrequency: 'daily' as const }));
 }
 
 // Gespielte Traits unter ihrem Anzeigenamen — so verlinken Trait-Liste und
@@ -114,12 +127,11 @@ async function traitEntries(): Promise<Entry[]> {
   const rows = (hit?.payload as { traits?: Array<{ name?: string; games?: number }> } | undefined)?.traits;
   const traits = tftAssets()?.traits;
   if (!Array.isArray(rows) || !traits) return [];
-  const names = new Set<string>();
+  const paths = new Set<string>();
   for (const r of rows) {
-    const display = typeof r.name === 'string' ? traits[r.name]?.name : undefined;
-    if (display && (r.games ?? 0) > 0) names.add(display);
+    if (typeof r.name === 'string' && traits[r.name] && (r.games ?? 0) > 0) paths.add(traitPath(traits, r.name));
   }
-  return [...names].map(n => ({ path: `/tft/traits/${encodeURIComponent(n)}`, priority: 0.5, changeFrequency: 'daily' as const }));
+  return [...paths].map(path => ({ path, priority: 0.5, changeFrequency: 'daily' as const }));
 }
 
 async function lolChampionEntries(): Promise<Entry[]> {
@@ -135,17 +147,20 @@ async function lolChampionEntries(): Promise<Entry[]> {
 }
 
 // Nur volle Ergebnisse merken: eine ausgefallene Quelle wird beim naechsten
-// Abruf neu versucht statt 6 Stunden leer zu bleiben.
+// Abruf neu versucht statt 6 Stunden leer zu bleiben. `keep: false` = Ersatz-
+// Ergebnis (Comps ohne Katalog), gilt nur fuer diesen Abruf.
+type Loaded = Entry[] | { entries: Entry[]; keep: boolean };
 const memo = new Map<string, { at: number; entries: Entry[] }>();
 
-async function remembered(name: string, load: () => Promise<Entry[]>): Promise<Entry[]> {
+async function remembered(name: string, load: () => Promise<Loaded>): Promise<Entry[]> {
   const hit = memo.get(name);
   if (hit && Date.now() - hit.at < SOURCE_TTL_MS) return hit.entries;
-  const entries = await load().catch((e: Error) => {
+  const loaded = await load().catch((e: Error) => {
     console.error(`[sitemap] ${name} failed:`, e?.message);
     return [] as Entry[];
   });
-  if (entries.length > 0) memo.set(name, { at: Date.now(), entries });
+  const { entries, keep } = Array.isArray(loaded) ? { entries: loaded, keep: true } : loaded;
+  if (entries.length > 0 && keep) memo.set(name, { at: Date.now(), entries });
   return entries.length > 0 ? entries : hit?.entries ?? [];
 }
 

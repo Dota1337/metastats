@@ -4,6 +4,7 @@ import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n, type Lang, type TranslationKey } from '../../../lib/i18n';
 import { loadTftAssets, tftChampionTileUrl, tftIconUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
+import { traitPath } from '../../../lib/tft-trait-path';
 import { dedupeByPrimaryCluster, primaryClusterKey, parseClusterKey } from '../../../lib/tft-cluster';
 import { shownAugmentSlug } from '../../../lib/tft-comp-defining-augments';
 import {
@@ -393,6 +394,6 @@ function renderEntity(key: string, entity: Entity, assets: TftAssetsBundle | nul
     icon: traitIcon
       ? <img src={traitIcon} alt="" className="w-7 h-7 rounded bg-surface-overlay" />
       : <div className="w-7 h-7 rounded bg-surface-overlay" />,
-    href: `/tft/traits/${encodeURIComponent(key)}`,
+    href: traitPath(assets?.traits, key),
   };
 }

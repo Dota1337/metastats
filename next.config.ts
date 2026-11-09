@@ -10,6 +10,7 @@ import { SECURITY_HEADERS } from "./app/lib/security-headers";
 import { PREFIX_LANGS } from "./app/lib/lang-path";
 import { TFT_IS_HOME } from "./app/lib/feature-flags";
 import { TFT_HOME } from "./app/lib/games";
+import { HTML_LIMITED_BOTS } from "./app/lib/seo/html-limited-bots";
 
 // Wochendateien, deren Kopf ein anderes Set als public/tft-set.json nennt
 // (die Dateien beginnen mit {"set":N, collect-tft-allranks.mjs). Kann der Kopf
@@ -35,6 +36,9 @@ function staleTftStatsFiles(): string[] {
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Titel + canonical fuer Googlebot im <head> statt nachgestreamt im <body>
+  // (app/lib/seo/html-limited-bots.ts). Besucher bleiben beim Nachstreamen.
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   turbopack: {
     root: path.resolve(__dirname),
   },

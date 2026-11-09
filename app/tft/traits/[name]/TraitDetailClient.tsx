@@ -23,6 +23,7 @@ import {
   ReferenceLine, Tooltip as RechartsTooltip,
 } from 'recharts';
 import { compPath } from '../../../lib/tft-comp-path';
+import { compLinkKey } from '../../../lib/tft-comp-families';
 
 // Per-trait detail page. Combines three data sources:
 //   1) /api/tft/traits — stat rows (1 per activation level)
@@ -528,7 +529,7 @@ export default function TftTraitDetailPage({ initial }: { initial: TraitDetailIn
                 return (
                   <a
                     key={c.slug}
-                    href={withLang(`${compPath(c.slug)}?bucket=${bucket}&region=${region}`)}
+                    href={withLang(`${compPath(compLinkKey(c))}?bucket=${bucket}&region=${region}`)}
                     className="flex items-center gap-3 bg-surface-raised border border-border-subtle rounded p-2.5 hover:border-accent-a40 transition-colors"
                   >
                     {carryUrl && (

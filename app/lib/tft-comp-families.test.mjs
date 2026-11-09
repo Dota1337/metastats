@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   attachPatchDeltas, topFamilyKeys, visibleFamilies, currentSetFamilies, TOP_FAMILY_LIMIT, buildCompFamilies, leanCompRow,
   familyShowsUnit, SHOWN_BOARD_UNITS, itemListFamilies, ITEM_COMP_LIMIT, ITEM_COMP_MIN_COPIES, compareFamilies,
+  familyLinkKey, compLinkKey, listFamilyTargets,
 } from './tft-comp-families.ts';
 import { compTraitFamilyKey } from './tft-cluster.ts';
 import { buildPatchDeltaIndex } from './tft-patch-delta.ts';
@@ -217,4 +218,29 @@ test('compareFamilies: Ø aufsteigend, Top 4 / Sieg / Pick / Spiele absteigend (
   assert.deepEqual(order('games'), ['c', 'a', 'b']);
   // Ohne Wert ans Ende (Ø) bzw. wie 0.
   assert.deepEqual([fam('x', null, null, null, null, null), ...list].sort(compareFamilies('avg')).at(-1).familyKey, 'x');
+});
+
+// Link-Ziele = canonical der Comp-Seite (compCanonicalKey). familyLinkSlug
+// bleibt fuer Publisher/Waechter, ist als Link aber falsch, wenn die Comp eine
+// Familie eines anderen Traits enthaelt (Executioner · Ezreal → Elderwood).
+test('familyLinkKey/compLinkKey: Gruppen-Schluessel bzw. Katalog-Comp, Zeilen ohne Comp behalten ihren Link', () => {
+  assert.equal(familyLinkKey({ familyKey: 'DA_18_Elderwood__DA_18_Kennen' }), 'DA_18_Elderwood__DA_18_Kennen');
+  assert.equal(compLinkKey({ compKey: 'DA_18_Elderwood__DA_18_Kennen', slug: 'DA_18_Executioner@4_DA_18_Ezreal' }),
+    'DA_18_Elderwood__DA_18_Kennen');
+  assert.equal(compLinkKey({ compKey: null, slug: 'DA_18_Executioner@4_DA_18_Ezreal' }), 'DA_18_Executioner@4_DA_18_Ezreal');
+  assert.equal(compLinkKey({ slug: 'DA_18_Executioner@4_DA_18_Ezreal' }), 'DA_18_Executioner__DA_18_Ezreal');
+  assert.equal(compLinkKey({ clusterKey: 'DA_18_Executioner@4_DA_18_Ezreal' }), 'DA_18_Executioner__DA_18_Ezreal');
+});
+
+test('listFamilyTargets: linkKey ist der Familien-Schluessel, slug bleibt fuer den Publisher', () => {
+  const k = 'DA_18_Executioner@4_DA_18_Ezreal';
+  const rows = Array.from({ length: 3 }, (_, i) => ({
+    slug: `${k}#${i}`, clusterKey: `${k}#${i}`, games: 100 + i, avgPlacement: 4, top4Rate: 0.5, winRate: 0.1,
+    pickRate: 0.01, typicalUnits: [],
+  }));
+  const targets = listFamilyTargets(rows, null);
+  assert.equal(targets.length, 1);
+  assert.equal(targets[0].linkKey, 'DA_18_Executioner__DA_18_Ezreal');
+  assert.equal(targets[0].linkKey, targets[0].familyKey);
+  assert.match(targets[0].slug, /^DA_18_Executioner@4_DA_18_Ezreal/);
 });

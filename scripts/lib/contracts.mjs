@@ -1703,6 +1703,113 @@ export function englishNamesIn(html, lang, bundle = JSON.parse(readFileSync(reso
   return [...seen];
 }
 
+/**
+ * `expectCanonical` (Search Console 09.11.2026, „Google hat eine andere Seite
+ * als der Nutzer als kanonische Seite bestimmt"): fuer Googlebot steht
+ * <title> und <link rel="canonical"> im <head>, und das canonical nennt die
+ * Seite selbst. Comp-Seiten kommen aus der Sitemap und aus den Comp-Links im
+ * ersten HTML der Listen — genau die Adressen, die Google findet. Bis zum Fix
+ * nannten 4 von 40 Sitemap-Comps eine andere Comp, 89 Listen-Links ebenso, und
+ * Googlebot bekam auf /champions/… Titel + canonical im <body>.
+ */
+export function canonicalOf(html) {
+  const headEnd = html.indexOf('</head>');
+  const link = /<link\b[^>]*\brel="canonical"[^>]*>/i.exec(html);
+  const title = /<title\b[^>]*>/i.exec(html);
+  return {
+    href: link ? (/\bhref="([^"]*)"/.exec(link[0])?.[1] ?? null) : null,
+    inHead: !!link && headEnd >= 0 && link.index < headEnd,
+    titleInHead: !!title && headEnd >= 0 && title.index < headEnd,
+  };
+}
+
+const decodedPath = p => {
+  let s = p.replace(/\/+$/, '') || '/';
+  try { s = decodeURIComponent(s); } catch { /* bleibt kodiert */ }
+  return s;
+};
+
+/** Trait-Links mit Kennung statt Anzeigename (die Seite nennt den Namen als canonical). */
+export function traitIdLinks(html) {
+  const visible = html.replace(/<script[\s\S]*?<\/script>/g, ' ');
+  return [...new Set([...visible.matchAll(/\shref="(?:\/[a-z]{2})?\/tft\/traits\/((?:DA|TFT\d*|Set\d+)_[^"?#]*)/g)].map(m => m[1]))];
+}
+
+/**
+ * Auswertung der abgerufenen Seiten: [{ path, kind: 'comp'|'page', status, html, error }].
+ * Hart (sofort rot): kein 200, canonical/Titel fehlt oder steht im <body>,
+ * Trait-Kennungs-Links, eine feste Seite mit fremdem canonical. Weich: Comp-
+ * Seiten mit fremdem canonical — bis `maxMismatch` gruen (Katalog-Wechsel am
+ * Tag kann einzelne Links kurz verschieben).
+ */
+export function evaluateCanonical(results, { maxMismatch = 0 } = {}) {
+  const hard = [];
+  const soft = [];
+  const traitIds = new Set();
+  for (const p of results) {
+    if (p.error || p.status !== 200) { hard.push(`${p.path} → ${p.error || `HTTP ${p.status}`}`); continue; }
+    const got = canonicalOf(p.html);
+    if (!got.href) { hard.push(`${p.path}: kein canonical`); continue; }
+    if (!got.inHead) hard.push(`${p.path}: canonical im <body>`);
+    if (!got.titleInHead) hard.push(`${p.path}: <title> nicht im <head>`);
+    let target;
+    try { target = new URL(got.href, 'https://x').pathname; } catch { target = got.href; }
+    if (decodedPath(target) !== decodedPath(p.path)) (p.kind === 'comp' ? soft : hard).push(`${p.path} → canonical ${decodedPath(target)}`);
+    if (p.kind === 'comp') for (const id of traitIdLinks(p.html)) traitIds.add(id);
+  }
+  if (traitIds.size) hard.push(`${traitIds.size} Trait-Links mit Kennung (z.B. ${[...traitIds].slice(0, 3).join(', ')})`);
+  if (soft.length > maxMismatch) hard.push(`${soft.length} Comp-Seiten mit fremdem canonical (erlaubt ${maxMismatch}, z.B. ${soft.slice(0, 3).join('; ')})`);
+  return { wrong: hard, mismatches: soft.length };
+}
+
+// Comp-Pfade (ohne Sprach-Vorsatz) aus Sitemap und Listen-HTML, ohne die
+// Uebersichten unter /tft/comps/.
+const COMP_NON_DETAIL = new Set(['atlas', 'community', 'compare']);
+export function compDetailPaths(paths) {
+  return [...new Set(paths.filter(p => {
+    const m = /^\/tft\/comps\/([^/?#]+)$/.exec(p);
+    return m && !COMP_NON_DETAIL.has(m[1]);
+  }))];
+}
+
+async function canonicalProbes(base, spec) {
+  const headers = { 'User-Agent': spec.userAgent };
+  const res = await fetch(`${base}/sitemap.xml`, { signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) return { error: `sitemap.xml antwortet HTTP ${res.status}` };
+  const sitemap = [...(await res.text()).matchAll(/<loc>([^<]*)<\/loc>/g)].map(m => new URL(m[1]).pathname);
+  const linked = [];
+  for (const src of spec.compLinkSources || []) {
+    const page = await fetch(base + src, { headers, signal: AbortSignal.timeout(20_000) });
+    if (!page.ok) return { error: `${src} antwortet HTTP ${page.status}` };
+    const html = (await page.text()).replace(/<script[\s\S]*?<\/script>/g, ' ');
+    for (const m of html.matchAll(/\shref="(\/tft\/comps\/[^"?#]+)/g)) linked.push(m[1]);
+  }
+  const comps = compDetailPaths([...sitemap, ...linked]).slice(0, spec.maxComps || 150);
+  if (comps.length === 0) return { error: 'keine Comp-Seiten in Sitemap und Listen' };
+  const firsts = (spec.sitemapFirst || []).map(prefix => sitemap.find(p => p.startsWith(prefix) && p.length > prefix.length));
+  const missing = (spec.sitemapFirst || []).filter((_, i) => !firsts[i]);
+  if (missing.length) return { error: `Sitemap ohne Eintraege fuer ${missing.join(', ')}` };
+  const todo = [
+    ...comps.map(path => ({ path, kind: 'comp' })),
+    ...[...firsts, ...(spec.pages || [])].map(path => ({ path, kind: 'page' })),
+  ];
+  // 4 gleichzeitig: Googlebot wartet auf den Kopf, eine Comp-Seite braucht live ~0,5–2 s.
+  const results = [];
+  let next = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (next < todo.length) {
+      const p = todo[next++];
+      try {
+        const page = await fetch(base + p.path, { headers, redirect: 'manual', signal: AbortSignal.timeout(30_000) });
+        results.push({ ...p, status: page.status, html: await page.text() });
+      } catch (e) {
+        results.push({ ...p, error: e?.name === 'TimeoutError' ? 'Zeitlimit' : String(e?.message || e) });
+      }
+    }
+  }));
+  return { results, comps: comps.length };
+}
+
 async function checkHttpStatus(c, r) {
   const base = (process.env[c.baseUrlEnv || ''] || c.baseUrl || '').replace(/\/$/, '');
   if (!base) return r('error', `keine Basis-URL (weder baseUrl noch ${c.baseUrlEnv})`);
@@ -1753,11 +1860,20 @@ async function checkHttpStatus(c, r) {
       return r('error', `expectStartText ${path}: erwartet [Muster, Mindestzahl]`);
     }
   }
-  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0 && startText.length === 0 && langRedirects.length === 0 && images.length === 0) {
-    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks, expectLangRedirect, expectImages, expectStartLinks und expectStartText leer)');
+  if (probes.length === 0 && langLinks.length === 0 && startLinks.length === 0 && startText.length === 0 && langRedirects.length === 0 && images.length === 0 && !c.expectCanonical) {
+    return r('error', 'keine Proben (expect404, expectRedirect, sitemapPrefixes, expectLangLinks, expectLangRedirect, expectImages, expectStartLinks, expectStartText und expectCanonical leer)');
   }
+  if (c.expectCanonical && !c.expectCanonical.userAgent) return r('error', 'expectCanonical ohne userAgent');
 
   const wrong = [];
+  let canonical = null;
+  if (c.expectCanonical) {
+    const got = await canonicalProbes(base, c.expectCanonical);
+    if (got.error) return r('broken', got.error);
+    const ev = evaluateCanonical(got.results, { maxMismatch: c.expectCanonical.maxMismatch ?? 0 });
+    wrong.push(...ev.wrong);
+    canonical = { pages: got.results.length, comps: got.comps, mismatches: ev.mismatches };
+  }
   // Adresse folgt der Sprache: Besucher wird umgeleitet, Bots und deutsche Wahl nicht.
   for (const p of langRedirects) {
     const headers = {};
@@ -1860,10 +1976,15 @@ async function checkHttpStatus(c, r) {
     }
   }
   const count = want => probes.filter(p => p.want === want).length;
-  const total = probes.length + langLinks.length + startLinks.length + startText.length + localNames.length;
+  const total = probes.length + langLinks.length + startLinks.length + startText.length + localNames.length + (canonical?.pages ?? 0);
+  if (canonical && probes.length + langLinks.length + startLinks.length + startText.length + localNames.length === 0) {
+    return wrong.length
+      ? r('broken', `${wrong.length} Fehler auf ${canonical.pages} Seiten: ${wrong.slice(0, 4).join('; ')}`)
+      : r('ok', `${canonical.pages} Seiten mit canonical im Kopf (${canonical.comps} Comps, ${canonical.mismatches} mit fremdem canonical)`);
+  }
   return wrong.length
     ? r('broken', `${wrong.length}/${total} falsch: ${wrong.slice(0, 4).join('; ')}`)
-    : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length + startText.length}× Startdaten)`);
+    : r('ok', `${total} Proben richtig (${count(200)}× 200, ${count(404)}× 404, ${count('redirect')}× Umleitung, ${count('readable')}× lesbare Comp-Adresse, ${langLinks.length}× Sprach-Links, ${startLinks.length + startText.length}× Startdaten${canonical ? `, ${canonical.pages}× canonical` : ''})`);
 }
 
 /**

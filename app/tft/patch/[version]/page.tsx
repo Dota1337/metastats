@@ -4,6 +4,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
+import { traitPath } from '../../../lib/tft-trait-path';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import { legacyTftBucket } from '../../../lib/rank-groups';
 import { loadPatchNotes, patchNotesFor, patchEntityHref, riotPatchNotesUrl, type PatchNoteOverride } from '../../../lib/tft-patch-notes';
@@ -345,7 +346,7 @@ function DiffRow({ entry, entity, assets }: { entry: DiffEntry; entity: Entity; 
       ? <img src={turl} alt={tftLabel(trait, lang) || ''} className="w-9 h-9 rounded" />
       : <div className="w-9 h-9 rounded bg-surface-overlay" />;
     displayName = `${tftLabel(trait, lang) || traitId.replace(/^(?:TFT\d*|Set\d+|DA)_(?:\d+_)?/, '')}${activation ? ` (${activation})` : ''}`;
-    href = `/tft/traits/${encodeURIComponent(traitId)}`;
+    href = traitPath(assets?.traits, traitId);
   }
 
   const deltaColor = entry.deltaAvgPlacement < 0 ? '#3ecf8e' : 'var(--pos-loss-text)';

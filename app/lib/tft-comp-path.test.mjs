@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
   compSlugName, resolveReadable, readableForKey, compPath, compRouteKey, compDetailTarget,
-  compRedirect, isKnownReadable, familyKeyOf, COMP_PERMANENT_FROM,
+  compRedirect, isKnownReadable, familyKeyOf, COMP_PERMANENT_FROM, compCanonicalKey,
 } from './tft-comp-path.ts';
 import { compNames, FIRST_READABLE_SET } from '../../scripts/build-known-ids.mjs';
 
@@ -195,4 +195,16 @@ test('Weiterleitung: Negativfaelle', () => {
     assert.equal(redirect(path, '', {}, t), null, `${path} (${why})`);
   }
   assert.equal(redirect(`/tft/comps/${encodeURIComponent('S19_Brawler@4_S19_Vi')}`, '', { enabled: false }, t), null, 'Notschalter');
+});
+
+// canonical der Comp-Seite (generateMetadata): Katalog-Comp, sonst Familie der
+// Kennung. Genau diese Kennung verlinken Liste, Atlas und Sitemap
+// (familyLinkKey) — Search Console 09.11.2026: 4 von 40 Sitemap-Comps nannten
+// eine andere Comp als canonical.
+test('compCanonicalKey: Katalog-Comp gewinnt, sonst Familie, sonst die Kennung selbst', () => {
+  assert.equal(compCanonicalKey('S19_Brawler@4_S19_Vi*3', 'S19_Bruiser__S19_Sett'), 'S19_Bruiser__S19_Sett');
+  assert.equal(compCanonicalKey('S19_Brawler@4_S19_Vi*3', null), 'S19_Brawler__S19_Vi');
+  assert.equal(compCanonicalKey('S19_Brawler@4_S19_Vi*3', undefined), 'S19_Brawler__S19_Vi');
+  assert.equal(compCanonicalKey('S19_Brawler__S19_Vi', null), 'S19_Brawler__S19_Vi');
+  assert.equal(compCanonicalKey('quatsch', null), 'quatsch');
 });

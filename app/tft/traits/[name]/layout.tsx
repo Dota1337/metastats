@@ -3,17 +3,17 @@ import { pageMetadata } from '../../../lib/seo/metadata';
 import { tftKnownInBundle, tftTraitName } from '../../../lib/seo/names';
 import { decodeSlug } from '../../../lib/og/slugs';
 import { tftAssets } from '../../../lib/og/data';
-import { traitIdsForParam } from '../../../lib/tft-detail-filters';
+import { traitPath } from '../../../lib/tft-trait-path';
 
-// Seitentitel mit dem Trait-Namen. Der Pfadteil ist je nach Herkunft der
-// Anzeigename (Trait-Liste, Unit-Seiten) oder die Kennung (Comp-Seiten); beide
-// zeigen dieselbe Seite (E4), canonical ist die Adresse mit dem Anzeigenamen
-// (so steht sie auch in der Sitemap).
+// Seitentitel mit dem Trait-Namen. Der Pfadteil ist der Anzeigename (alle
+// Links, traitPath) oder — aus alten Links — die Kennung; beide zeigen dieselbe
+// Seite (E4), canonical ist die Adresse mit dem Anzeigenamen. Dieselbe Funktion
+// baut Links und Sitemap-Eintraege, sonst nennt die Seite eine andere Adresse
+// als die, unter der sie verlinkt ist.
 export async function generateMetadata({ params }: { params: Promise<{ name: string }> }) {
   const name = decodeSlug((await params).name);
   // Wie die Trait-Liste: der Name aus dem Bundle, ohne Varianten-Zusatz.
-  const { display } = traitIdsForParam(tftAssets()?.traits, name);
-  return pageMetadata('tft.trait', `/tft/traits/${encodeURIComponent(display)}`, lang => tftTraitName(name, lang), {
+  return pageMetadata('tft.trait', traitPath(tftAssets()?.traits, name), lang => tftTraitName(name, lang), {
     noindex: tftKnownInBundle('trait', name) === false,
   });
 }

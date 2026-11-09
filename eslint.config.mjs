@@ -14,6 +14,11 @@ const LANG_LINK_MSG = 'Interner Link ohne Sprach-Adresse: withLang(...) aus useI
 // compPath(kennung) verlinken, sonst trifft jeder Klick die Weiterleitung.
 const COMP_PATH = '/^(?!.*api\\x2Ftft).*\\x2Ftft\\x2Fcomps\\x2F$/';
 const COMP_LINK_MSG = 'Comp-Detailseite ohne compPath(): lesbare Adresse aus app/lib/tft-comp-path.ts nutzen.';
+// Trait-Seiten nur ueber traitPath(traits, kennungOderName): die Seite nennt den
+// Anzeigenamen als canonical, ein Link mit der Kennung (DA_18_…) waere fuer
+// Google ein Duplikat (Search Console 09.11.2026).
+const TRAIT_PATH = '/^(?!.*api\\x2Ftft).*\\x2Ftft\\x2Ftraits\\x2F$/';
+const TRAIT_LINK_MSG = 'Trait-Detailseite ohne traitPath(): Adresse aus app/lib/tft-trait-path.ts nutzen.';
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -31,6 +36,8 @@ const eslintConfig = defineConfig([
         { selector: `AssignmentExpression[left.property.name='href'] > ${INTERNAL_VALUE}.right`, message: LANG_LINK_MSG },
         { selector: `TemplateElement[value.raw=${COMP_PATH}]`, message: COMP_LINK_MSG },
         { selector: `BinaryExpression > Literal[value=${COMP_PATH}]`, message: COMP_LINK_MSG },
+        { selector: `TemplateElement[value.raw=${TRAIT_PATH}]`, message: TRAIT_LINK_MSG },
+        { selector: `BinaryExpression > Literal[value=${TRAIT_PATH}]`, message: TRAIT_LINK_MSG },
       ],
     },
   },

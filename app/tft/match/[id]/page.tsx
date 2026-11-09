@@ -6,6 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import Nav from '../../../components/Nav';
 import Footer from '../../../components/Footer';
 import { useI18n } from '../../../lib/i18n';
+import { traitPath } from '../../../lib/tft-trait-path';
 import { tftPatchLabel } from '../../../lib/tft-patch-label';
 import { loadTftAssets, tftIconUrl, tftChampionTileUrl, tftLabel, tftAugmentLocalised, type TftAssetsBundle } from '../../../lib/tft-cdragon';
 import type { TftMatchSummary, TftParticipantSummary } from '../../../lib/tft-match-processor';
@@ -211,7 +212,7 @@ function ActivatedTraits({
         return (
           <a
             key={tr.name}
-            href={withLang(`/tft/traits/${encodeURIComponent(tr.name)}`)}
+            href={withLang(traitPath(assets?.traits, tr.name))}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] hover:brightness-125 transition"
             style={{ backgroundColor: `${withAlpha(styleColor, 0x25)}`, color: styleColor }}
           >

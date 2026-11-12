@@ -996,7 +996,8 @@
       "scripts": [
         "scripts/publish-route-mirrors.mjs",
         "scripts/lib/explorer-unit-warm.mjs",
-        "scripts/lib/tft-player-scoring.mjs"
+        "scripts/lib/tft-player-scoring.mjs",
+        "scripts/lib/tft-patch-day.mjs"
       ],
       "manualDispatch": true,
       "onPush": true
@@ -1060,7 +1061,8 @@
         "scripts/gh-dispatch-due.mjs",
         "scripts/detect-tft-patch-schedule.mjs",
         "scripts/detect-tft-set.mjs",
-        "scripts/detect-tft-bpatches.mjs"
+        "scripts/detect-tft-bpatches.mjs",
+        "scripts/lib/deploy-filter.test.mjs"
       ],
       "manualDispatch": true,
       "onPush": false

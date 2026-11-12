@@ -12,6 +12,8 @@
 // LoL-Rechnung lebt nur noch in scripts/lib/tft-patch-day.mjs.
 
 import tftSet from '../../public/tft-set.json';
+import { patchForDay, startsFor } from './tft-patch-day.mjs';
+import { currentWindowDay } from './tft-crawl-window.mjs';
 
 interface SetMeta {
   setNumber: number;
@@ -35,6 +37,27 @@ export function tftPatchLabel(rawPatch: string | undefined | null): string {
   const m = String(rawPatch).match(/^(\d+)\.(\d+)([a-z])?/i);
   if (!m || Number(m[1]) !== setNumber) return rawPatch;
   return `${Number(m[1])}.${Number(m[2])}${m[3] || ''}`;
+}
+
+/**
+ * Patch eines einzelnen Spiels, aus Spielzeit und Riots Terminplan.
+ *
+ * Riots game_version traegt seit Set 18 keine Nummer mehr, also gilt dieselbe
+ * Tagesregel wie bei den Sammlern: Sammeltag = Spielzeit − 5 h (Fenster ab
+ * 05:00 UTC), Name per patchForDay mit der Set des Spiels. Leer, wenn die Zeit
+ * oder Set fehlt, der Terminplan den Tag nicht kennt (Rueckfall) oder die Set
+ * an dem Tag schon abgeloest war (Revival-Spiele laufen nicht nach dem Plan).
+ */
+export function tftPatchForGame(gameMs: number | null | undefined, setNumber: number | null | undefined): string {
+  if (typeof gameMs !== 'number' || !Number.isFinite(gameMs) || gameMs <= 0) return '';
+  const set = Number(setNumber);
+  if (!Number.isInteger(set) || set <= 0) return '';
+  const day = currentWindowDay(new Date(gameMs));
+  const r = patchForDay(day, tftSet, set);
+  if (r.source === 'fallback' || !r.patch) return '';
+  const next = startsFor(tftSet, set + 1)[0];
+  if (next && next.from_day <= day) return '';
+  return r.patch;
 }
 
 /**

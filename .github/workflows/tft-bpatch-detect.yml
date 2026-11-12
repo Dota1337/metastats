@@ -142,9 +142,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Dieselben Pfade wie on.push.paths in deploy-hetzner.yml — dort mitpflegen.
-          paths=(scripts package.json package-lock.json 'public/tft-graph-*.json' public/tft-set.json
-                 infra/contracts.json infra/hetzner/remote-deploy.sh .github/workflows/deploy-hetzner.yml)
+          # Dieselben Pfade wie on.push.paths in deploy-hetzner.yml, direkt von dort
+          # gelesen (die fruehere Kopie hier hatte die app/lib-Eintraege verpasst).
+          # Gleiche Regel wie scripts/lib/deploy-filter.test.mjs: jede Zeile - '...'.
+          mapfile -t paths < <(sed -n "s/^[[:space:]]*-[[:space:]]*'\([^']*\)'[[:space:]]*$/\1/p" .github/workflows/deploy-hetzner.yml)
+          [ "${#paths[@]}" -ge 10 ] || { echo "Pfadliste aus deploy-hetzner.yml unvollstaendig (${#paths[@]})"; exit 1; }
           git fetch --quiet origin main
           target=$(git rev-parse FETCH_HEAD)
           last=$(gh run list --workflow deploy-hetzner.yml --branch main --status success --limit 1 \

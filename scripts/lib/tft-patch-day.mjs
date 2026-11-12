@@ -21,8 +21,8 @@
 //
 // Bewusst rein: liest keine Datei, wirft nie. Wer bestehende Zeilen umbenennt,
 // verlangt `trusted` — ein Name aus dem Rueckfall darf das nie.
-// Gegenstelle fuer alte LoL-foermige Labels: app/lib/tft-patch-label.ts
-// (Kreuztest in tft-patch-day.test.mjs).
+// Die LoL-Rechnung (lolPatchFor/tftBaseFromLol) lebt nur hier. Die App rechnet
+// seit 12.11.2026 nicht mehr um (app/lib/tft-patch-label.ts).
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const BASE_RE = /^(\d+)\.(\d+)$/;
@@ -30,8 +30,11 @@ const BASE_RE = /^(\d+)\.(\d+)$/;
 // LoL-Patch, an dem jede Set "Minor 0" hat: LoL anchor.N+k = TFT set.k.
 // Set 17 "Space Gods": TFT 17.1 = LoL 16.8 (Go-Live 2026-04-15).
 // Set 18 "Enchanted Wilds": TFT 18.1 = LoL 16.17 (Go-Live 2026-08-26).
-// Neue Set: Eintrag ERGAENZEN, alte nicht loeschen — Verlaufsseiten brauchen
-// sie. check-drift.mjs bricht ab, wenn das laufende Set fehlt.
+// Nur fuer Sets, deren Patches am selben Tag wie LoL kommen. Ab Set 19 nicht
+// mehr (Riot: TFT 19.1 am 01.12.2026, LoL 26.24 am 09.12.2026) — dort KEINEN
+// Wert raten; ohne Eintrag liefert lolPatchFor null und tft-set.json traegt
+// lolPatch null (nur Diagnose). Den Patch-Namen bestimmt der Terminplan.
+// Alte Eintraege nicht loeschen — Verlaufsseiten brauchen sie.
 export const SET_LAUNCH_LOL = {
   17: '16.7',
   18: '16.16',
@@ -275,6 +278,8 @@ export function crawlPatch(day, meta, opts = {}) {
   return { set, patch: own.patch, warnings, error: null };
 }
 
+const LOL_PATCHES_PER_YEAR = 24;
+
 /** TFT-Basis -> LoL-Patch derselben Woche ("18.3" -> "16.19"), sonst null. */
 export function lolPatchFor(tftBase) {
   const b = baseOf(tftBase);
@@ -284,8 +289,10 @@ export function lolPatchFor(tftBase) {
   if (!anchor || minor < 1) return null;
   const [aMaj, aMin] = anchor.split('.').map(Number);
   const total = aMin + minor;
-  // Dieselbe 25-Patches-je-Jahr-Naeherung wie tftBaseFromLol und tft-patch-label.ts.
-  return total <= 25 ? `${aMaj}.${total}` : `${aMaj + 1}.${total - 25}`;
+  // LoL hat 24 Patches je Jahr (ddragon: 2021 und 2023–2025 je 24, 2022 nur 23).
+  // Ueber die Jahresgrenze wird nicht geraten — den ersten Patch des neuen
+  // Jahres kennt erst Riots Terminplan.
+  return total <= LOL_PATCHES_PER_YEAR ? `${aMaj}.${total}` : null;
 }
 
 /** LoL-Version -> TFT-Basis der Set ("16.19.1", 18 -> "18.3"), sonst null. */
@@ -294,6 +301,8 @@ export function tftBaseFromLol(lolVersion, setNumber) {
   const m = String(lolVersion ?? '').match(/^(\d+)\.(\d+)/);
   if (!anchor || !m) return null;
   const [aMaj, aMin] = anchor.split('.').map(Number);
-  const minor = (Number(m[1]) - aMaj) * 25 + (Number(m[2]) - aMin);
-  return minor >= 1 ? `${setNumber}.${minor}` : null;
+  // Nur innerhalb des Anker-Jahres, Gegenstueck zu lolPatchFor.
+  if (Number(m[1]) !== aMaj) return null;
+  const minor = Number(m[2]) - aMin;
+  return minor >= 1 && Number(m[2]) <= LOL_PATCHES_PER_YEAR ? `${setNumber}.${minor}` : null;
 }

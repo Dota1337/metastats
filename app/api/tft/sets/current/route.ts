@@ -95,10 +95,8 @@ export async function GET() {
     patchMap.set(version, { version, date, isMajor: true, isHotfix: false });
   }
   for (const { patch, first_day } of dbPatches) {
-    // DB stores LoL patch labels (e.g. "16.10"); normalise to the TFT
-    // marketing label ("17.3") so the timeline shows what the user
-    // recognises. tftPatchLabel returns the input unchanged when it's
-    // already in TFT form (17.x) or a B-patch ("17.3b").
+    // Die DB traegt nur TFT-Namen ("18.5", "18.3b"); tftPatchLabel
+    // normalisiert nur die Schreibweise der laufenden Set.
     const tftPatch = tftPatchLabel(patch);
     if (!tftPatch) continue;
     const existing = patchMap.get(tftPatch);

@@ -5,7 +5,7 @@
 // watchdog false-positives) — this catches it mechanically before push.
 
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
-import { SET_LAUNCH_LOL, scheduleProblems, startsFor } from './lib/tft-patch-day.mjs';
+import { scheduleProblems, startsFor } from './lib/tft-patch-day.mjs';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 
 const norm = (arr) => [...new Set(arr)].sort().join(',');
@@ -173,9 +173,9 @@ function read(path) {
 //   c) die set-nummerierten Datenfiles existieren fuers aktuelle Set. Ohne
 //      tft-assets-{set}.json liefert loadCostMap eine leere Cost-Map und der
 //      Carry-Swap wird still zum No-Op.
-//   d) SET_LAUNCH_LOL (scripts/lib/tft-patch-day.mjs) kennt das aktuelle Set.
-//      Fehlt der Anker, bleibt lolPatch leer, und der ddragon-Rueckfall in
-//      detect-tft-set.mjs bricht ab.
+//   d) (entfallen 12.11.2026) SET_LAUNCH_LOL ist optional: ab Set 19 patchen
+//      TFT und LoL nicht mehr am selben Tag, ein Anker waere geraten. Der
+//      Schutz ist der Terminplan aus d2.
 //   d2) Riots Terminplan (patchStarts in tft-set.json) ist da und passt zu den
 //      B-Patches. Ohne ihn rechnet detect-tft-set mit ddragon — genau der Weg,
 //      der den 23. und 24.09.2026 als 18.2b beschriftet hat.
@@ -263,12 +263,6 @@ function read(path) {
       }
     }
 
-    // d) Patch-Anker.
-    if (!SET_LAUNCH_LOL[currentSet]) {
-      console.error(`✗ DRIFT: SET_LAUNCH_LOL in scripts/lib/tft-patch-day.mjs kennt Set ${currentSet} nicht`);
-      console.error('    → ohne Anker bleibt lolPatch leer, und ohne Terminplan bricht detect-tft-set ab.');
-      setDrift++;
-    }
 
     // d2) Riots Terminplan. Bewusst ohne Datumsvergleich mit "heute" — der
     //     Check soll morgen dasselbe sagen wie heute.

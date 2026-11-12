@@ -52,10 +52,9 @@ export async function GET() {
     // 180 days = roughly the lifetime of a TFT set; gives us all patches
     // of the current set plus the tail end of the previous one.
     const rows = await getAvailablePatches(180);
-    // The crawl_meta table stores Riot's raw game_version (LoL patch like
-    // "16.10"), not the TFT marketing label users actually see in-game
-    // and on the patch-notes page. Normalise here so the side-drawer
-    // header, the link URL, and the date list all match.
+    // crawl_meta traegt seit 06.10.2026 nur TFT-Namen (Tag-Regel aus Riots
+    // Terminplan). tftPatchLabel normalisiert nur noch die Schreibweise, so
+    // dass Kopfzeile, Link und Datumsliste dieselbe Bezeichnung tragen.
     const dedup = new Map<string, { date: string; raw: string }>();
     for (const r of rows) {
       const tftLabel = tftPatchLabel(r.patch);

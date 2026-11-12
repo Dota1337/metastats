@@ -1,83 +1,40 @@
-// Convert a raw match-extracted patch label (Riot's game_version, e.g. "16.10")
-// into the user-facing TFT patch label ("17.3"). The TFT crawler stores
-// whatever it parsed from the match data, which is usually the LoL patch
-// number — but the UI must show the TFT marketing patch users recognise
-// from the in-game popup + the patch-notes page.
+// User-facing TFT patch label for a stored patch name.
 //
-// The mapping is derived from tft-set.json:
-//   { lolPatch: "16.10.1", latestPatch: "17.3", setNumber: 17, … }
-// Given that anchor we can convert any LoL "X.Y" by offset arithmetic.
+// Seit 06.10.2026 benennen die Sammler jeden Tag nach Riots TFT-Terminplan
+// (patchForDay in scripts/lib/tft-patch-day.mjs), die Datenbank traegt also
+// nur noch TFT-Namen ("18.5c", "17.9"). Riots game_version hat seit Set 18
+// keine Nummer mehr ("TFT Unreal Version ?.?.?.?").
+//
+// Die fruehere Umrechnung LoL → TFT per Offset gegen lolPatch/latestPatch ist
+// am 12.11.2026 entfallen: kein Aufrufer lieferte mehr LoL-Nummern, zweiteilige
+// LoL- und TFT-Namen sind nicht unterscheidbar ("17.1" = LoL Januar 2027 oder
+// Set 17), und TFT und LoL patchen ab Set 19 nicht mehr am selben Tag. Die
+// LoL-Rechnung lebt nur noch in scripts/lib/tft-patch-day.mjs.
 
 import tftSet from '../../public/tft-set.json';
 
 interface SetMeta {
   setNumber: number;
   latestPatch?: string;
-  lolPatch?: string;
 }
 
 const META: SetMeta = tftSet;
 
-function parseBase(p: string | undefined | null): [number, number] | null {
-  if (!p) return null;
-  const m = String(p).match(/^(\d+)\.(\d+)/);
-  if (!m) return null;
-  return [Number(m[1]), Number(m[2])];
-}
-
 /**
- * Convert a stored patch label into the user-facing TFT label.
+ * Normalise a stored patch label for display.
  *
- * Rules:
- *   - Input already in TFT-form (major === setNumber) → return as-is so
- *     B-patches like "17.2b" survive untouched
- *   - Input looks like a LoL patch (major !== setNumber) → arithmetic
- *     offset against the (lolPatch, latestPatch) anchor in tft-set.json
- *   - Input outside set window → return as-is (probably a Set 16 trailing
- *     match that hasn't expired from the crawl window yet)
- *   - Missing anchor → return as-is (degrade gracefully)
+ *   - Label of the running set → "set.minor" plus a "b"/"c" hotfix suffix
+ *     ("18.5c" stays "18.5c")
+ *   - Everything else (earlier sets, "Unreal", LoL versions) → unchanged
  */
 export function tftPatchLabel(rawPatch: string | undefined | null): string {
   if (!rawPatch) return '';
   const setNumber = META.setNumber;
   if (!setNumber) return rawPatch;
 
-  const input = parseBase(rawPatch);
-  if (!input) return rawPatch;
-  const [inMajor, inMinor] = input;
-
-  // Already TFT-shaped — preserve any "b"/"c" hotfix suffix attached to the
-  // raw label (e.g. "17.2b" should display as "17.2b", not "17.2").
-  if (inMajor === setNumber) {
-    const suffix = String(rawPatch).match(/^\d+\.\d+([a-z])/i)?.[1] || '';
-    return `${inMajor}.${inMinor}${suffix}`;
-  }
-
-  // Ein Major, der weder die aktuelle Set-Nummer noch der LoL-Major des Ankers
-  // ist, ist bereits ein TFT-Label aus einem frueheren Set ("17.5"). Ohne diesen
-  // Riegel rechnete die Offset-Arithmetik solche Labels in Fantasie-Patches der
-  // laufenden Set um: 17.9 wurde zu 18.18. Nur LoL-foermige Majors duerfen rechnen.
-  const anchorLolForGuard = parseBase(META.lolPatch);
-  if (anchorLolForGuard && inMajor !== anchorLolForGuard[0] && inMajor !== anchorLolForGuard[0] - 1) {
-    return rawPatch;
-  }
-
-  // Need the anchor for the LoL→TFT offset
-  const anchorLol = parseBase(META.lolPatch);
-  const anchorTft = parseBase(META.latestPatch);
-  if (!anchorLol || !anchorTft) return rawPatch;
-  const [anchorLolMajor, anchorLolMinor] = anchorLol;
-  const [, anchorTftMinor] = anchorTft;
-
-  // LoL patches roll over at ~25 per major year, but in practice we only
-  // need to handle (a) same-major delta and (b) one major back. So just
-  // do straight arithmetic with a sanity bound.
-  const lolDelta = (inMajor - anchorLolMajor) * 25 + (inMinor - anchorLolMinor);
-  const tftMinor = anchorTftMinor + lolDelta;
-  if (tftMinor < 1) return rawPatch;     // pre-launch / set-trailer
-  if (tftMinor > 30) return rawPatch;    // implausible — keep raw rather than mislead
-
-  return `${setNumber}.${tftMinor}`;
+  const m = String(rawPatch).match(/^(\d+)\.(\d+)([a-z])?/i);
+  if (!m || Number(m[1]) !== setNumber) return rawPatch;
+  return `${Number(m[1])}.${Number(m[2])}${m[3] || ''}`;
 }
 
 /**

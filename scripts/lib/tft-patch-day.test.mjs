@@ -10,7 +10,6 @@ import {
   SET_LAUNCH_LOL, addDays, baseOf, crawlPatch, isDay, lolPatchFor, patchForDay, patchRanges,
   scheduleProblems, startsFor, tftBaseFromLol,
 } from './tft-patch-day.mjs';
-import { tftPatchLabel } from '../../app/lib/tft-patch-label.ts';
 
 const REAL = JSON.parse(readFileSync(new URL('../../public/tft-set.json', import.meta.url), 'utf8'));
 
@@ -219,12 +218,18 @@ test('LoL <-> TFT: Umrechnung in beide Richtungen', () => {
   assert.equal(lolPatchFor('18.3'), '16.19');
   assert.equal(lolPatchFor('18.3b'), '16.19');
   assert.equal(lolPatchFor('17.1'), '16.8');
-  // Jahreswechsel: LoL zaehlt bis x.25 und springt dann auf (x+1).1 — dieselbe
-  // Naeherung wie app/lib/tft-patch-label.ts.
-  assert.equal(lolPatchFor('18.9'), '16.25');
-  assert.equal(lolPatchFor('18.10'), '17.1');
-  assert.equal(tftBaseFromLol('16.25', 18), '18.9');
-  assert.equal(tftBaseFromLol('17.1', 18), '18.10');
+  // Jahreswechsel: LoL endet bei x.24, den ersten Patch des neuen Jahres kennt
+  // nur Riots Terminplan — darueber hinaus wird nicht geraten.
+  assert.equal(lolPatchFor('18.8'), '16.24');
+  assert.equal(lolPatchFor('18.9'), null);
+  assert.equal(lolPatchFor('18.10'), null);
+  assert.equal(tftBaseFromLol('16.24', 18), '18.8');
+  assert.equal(tftBaseFromLol('16.25', 18), null);
+  assert.equal(tftBaseFromLol('17.1', 18), null);
+  assert.equal(tftBaseFromLol('15.24', 18), null);
+  // Set ohne Anker (ab Set 19 patchen TFT und LoL nicht mehr am selben Tag).
+  assert.equal(lolPatchFor('19.1'), null);
+  assert.equal(tftBaseFromLol('16.24.1', 19), null);
   for (const bad of ['99.1', '18.0', '', null, undefined, 'abc']) assert.equal(lolPatchFor(bad), null, String(bad));
 
   assert.equal(tftBaseFromLol('16.19.1', 18), '18.3');
@@ -236,22 +241,15 @@ test('LoL <-> TFT: Umrechnung in beide Richtungen', () => {
 
   for (const set of Object.keys(SET_LAUNCH_LOL).map(Number)) {
     for (let minor = 1; minor <= 12; minor++) {
-      assert.equal(tftBaseFromLol(lolPatchFor(`${set}.${minor}`), set), `${set}.${minor}`, `${set}.${minor}`);
+      const lol = lolPatchFor(`${set}.${minor}`);
+      if (lol === null) continue; // jenseits des LoL-Jahres
+      assert.equal(tftBaseFromLol(lol, set), `${set}.${minor}`, `${set}.${minor}`);
     }
   }
 });
 
-test('Kreuztest: app/lib/tft-patch-label.ts rechnet LoL-Labels gleich um', () => {
-  const set = REAL.setNumber;
-  const latestMinor = Number(baseOf(REAL.latestPatch).split('.')[1]);
-  for (let minor = 1; minor <= latestMinor + 3; minor++) {
-    const base = `${set}.${minor}`;
-    assert.equal(tftPatchLabel(lolPatchFor(base)), base, base);
-  }
-});
-
-test('echte tft-set.json: Anker und Termine passen zusammen', () => {
-  assert.ok(SET_LAUNCH_LOL[REAL.setNumber], `SET_LAUNCH_LOL fehlt fuer Set ${REAL.setNumber}`);
+test('echte tft-set.json: Terminplan und Anker passen zusammen', () => {
+  assert.ok(startsFor(REAL, REAL.setNumber).length, `Terminplan fehlt fuer Set ${REAL.setNumber}`);
   assert.equal(baseOf(REAL.lolPatch), lolPatchFor(REAL.latestPatch));
   assert.deepEqual(scheduleProblems(REAL), []);
   const ranges = patchRanges(REAL);

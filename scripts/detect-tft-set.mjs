@@ -233,7 +233,7 @@ async function main() {
   }
   const latestPatch = override || base;
   const lolPatch = lolPatchFor(latestPatch);
-  if (!lolPatch) console.warn(`      WARN kein LoL-Anker fuer ${latestPatch} — SET_LAUNCH_LOL in scripts/lib/tft-patch-day.mjs ergaenzen, sonst bleibt lolPatch leer.`);
+  if (!lolPatch) console.warn(`      WARN kein LoL-Anker fuer ${latestPatch} — lolPatch bleibt leer (nur Diagnose; der Patch-Name kommt aus dem Terminplan).`);
   console.log(`      Sammeltag ${day}: TFT ${latestPatch}${override ? ' (override)' : ''} aus ${how}, LoL ${lolPatch ?? '—'}`);
   if (ddragonVersion && lolPatch && baseOf(ddragonVersion) !== lolPatch) {
     console.log(`      Hinweis: ddragon meldet ${ddragonVersion}, der Terminplan LoL ${lolPatch} — ddragon hinkt nach einem Go-Live bis zu zwei Tage hinterher.`);

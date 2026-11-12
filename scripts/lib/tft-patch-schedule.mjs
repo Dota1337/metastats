@@ -14,12 +14,15 @@
 //
 // Termin erst nach Bestaetigung (G2, Plan 12.11.2026): Riots Tabelle nannte
 // 18.7 ab 11.11.2026, der Patch kam nicht. Deshalb prueft confirmStarts den
-// juengsten gestarteten Termin der laufenden Set gegen drei Quellen (Riots
-// Notes, MetaTFT, CDragon-Stempel), je ja / nein / unbekannt:
+// juengsten gestarteten und den morgen beginnenden Termin der laufenden Set
+// gegen drei Quellen (Riots Notes, MetaTFT, CDragon-Stempel), je ja / nein /
+// unbekannt:
 //   >= 2 ja    `confirmed: true`; war er angehalten, gilt er ab dem
-//              Sammeltag aus MetaTFTs `start` (nie vor Riots Tag, nie nach heute)
+//              Sammeltag aus MetaTFTs `start` (nie vor Riots Tag, nie nach heute),
+//              ohne den ab dem naechsten Sammeltag
 //   >= 2 nein  `hold: { riot_from_day, since }`, from_day = laufender
-//              Sammeltag + 1 — alle Leser sehen so das wirksame Datum
+//              Sammeltag + 2 (der naechste Lauf faellt in Sammeltag + 1) — alle
+//              Leser sehen so das wirksame Datum
 //   sonst      nichts aendern, nur Hinweis
 // Ausgenommen: `pinned` (Hand hat Vorrang) und x.1 (Set-Start, den sichert
 // detect-tft-set: Wechsel erst, wenn CDragon die neue Set ausliefert).
@@ -333,6 +336,9 @@ function tally(votes, observations) {
  *  (a) jeder angehaltene Termin der laufenden Set
  *  (b) der juengste gestartete Termin der laufenden Set (from_day <= laufender
  *      Sammeltag), wenn er weder bestaetigt noch angehalten ist
+ *  (c) ebenso der Termin, der mit dem naechsten Sammeltag beginnt — der Lauf
+ *      um 02:17 UTC liegt 3 Stunden vor dem Tageswechsel, so wird ein nicht
+ *      erschienener Patch angehalten, bevor ihn ein Leser als live sieht
  * Nie `pinned` (Hand hat Vorrang), nie x.1 (Set-Start sichert detect-tft-set).
  */
 export function confirmCandidates(starts, set, now) {
@@ -340,11 +346,12 @@ export function confirmCandidates(starts, set, now) {
   const own = (Array.isArray(starts) ? starts : [])
     .filter((s) => s?.set === Number(set) && isDay(s?.from_day))
     .sort(byFromDay);
+  const open = (s) => s && !s.pinned && !s.confirmed && !s.hold && !isMinorOne(s.patch);
   const out = own.filter((s) => s.hold && !s.pinned && !isMinorOne(s.patch));
   const youngest = own.filter((s) => s.from_day <= W).at(-1);
-  if (youngest && !youngest.pinned && !youngest.confirmed && !youngest.hold && !isMinorOne(youngest.patch)) {
-    out.push(youngest);
-  }
+  if (open(youngest)) out.push(youngest);
+  const upcoming = own.find((s) => s.from_day === addDays(W, 1));
+  if (open(upcoming)) out.push(upcoming);
   return out.sort(byFromDay);
 }
 
@@ -438,8 +445,12 @@ export function confirmStarts(stored, { set, now, nowIso, observations = {} } = 
     // Angehalten bleibt angehalten, bis 2 Quellen bestaetigen — auch wenn die
     // Quellen gerade unklar sind (sonst wuerde der Termin unbestaetigt wirksam).
     if (no >= 2 || s.hold) {
-      const tomorrow = addDays(W, 1);
-      const target = s.hold && s.from_day > tomorrow ? s.from_day : tomorrow;
+      // Uebernaechster Sammeltag: der naechste Lauf faellt in den Sammeltag W+1,
+      // bis dahin muss auch der beim Vorgaenger bleiben — sonst saehen alle
+      // Leser des laufenden Patches (detect-tft-set, Einheiten-Zahlen,
+      // Spielseite) den unbestaetigten Patch einen Tag lang als live.
+      const earliest = addDays(W, 2);
+      const target = s.hold && s.from_day > earliest ? s.from_day : earliest;
       if (target === s.from_day) {
         notes.push(`${s.patch}: weiter angehalten (${why}), gilt fruehestens ab ${s.from_day}`);
         decide('hold-unchanged');
@@ -457,7 +468,8 @@ export function confirmStarts(stored, { set, now, nowIso, observations = {} } = 
         decide('hold-extended');
       } else {
         s.hold = { riot_from_day: s.from_day, since: stamp };
-        const kept = s.from_day < W ? `Sammeltage ${s.from_day} bis ${W} bleiben` : `Sammeltag ${W} bleibt`;
+        const lastKept = addDays(target, -1);
+        const kept = s.from_day < lastKept ? `Sammeltage ${s.from_day} bis ${lastKept} bleiben` : `Sammeltag ${lastKept} bleibt`;
         alerts.push(`${s.patch}: angehalten — Riot nannte ${s.from_day}, aber ${why}. Gilt fruehestens ab ${target}, `
           + `${kept} beim Vorgaenger`);
         decide('held');

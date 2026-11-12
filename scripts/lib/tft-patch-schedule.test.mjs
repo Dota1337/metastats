@@ -363,9 +363,16 @@ test('Stimmen je Quelle: ja / nein / unbekannt', () => {
 test('Kandidaten: juengster gestarteter Termin plus angehaltene, nie pinned / x.1 / bestaetigt', () => {
   const c = (list, now, set = RUNNING) => confirmCandidates(list, set, now).map((s) => s.patch);
   assert.deepEqual(c(S18, RUN), ['18.7']);
-  // Sammeltag wechselt um 05:00 UTC
-  assert.deepEqual(c(S18, '2026-11-11T04:59:59.000Z'), ['18.6']);
+  // Sammeltag wechselt um 05:00 UTC; der morgen beginnende Termin wird schon in der Nacht davor geprueft
+  assert.deepEqual(c(S18, '2026-11-10T04:59:59.000Z'), ['18.6']);
+  assert.deepEqual(c(S18, '2026-11-10T05:00:00.000Z'), ['18.6', '18.7']);
+  assert.deepEqual(c(S18, runAt('2026-11-11')), ['18.6', '18.7']);
   assert.deepEqual(c(S18, '2026-11-11T05:00:00.000Z'), ['18.7']);
+  assert.deepEqual(c(withEntry('18.6', { confirmed: true }), runAt('2026-11-11')), ['18.7']);
+  assert.deepEqual(c(withEntry('18.7', { pinned: true }), runAt('2026-11-11')), ['18.6']);
+  // x.1 auch nicht als morgen beginnender Termin
+  assert.deepEqual(c(S18, runAt('2026-12-01'), 19), []);
+  assert.deepEqual(c(S18, runAt('2026-12-01'), 18), ['18.7']);
   // nur der juengste — ist er erledigt, wird kein aelterer nachgeholt
   assert.deepEqual(c(withEntry('18.7', { pinned: true }), RUN), []);
   assert.deepEqual(c(withEntry('18.7', { confirmed: true }), RUN), []);
@@ -382,9 +389,9 @@ test('Kandidaten: juengster gestarteter Termin plus angehaltene, nie pinned / x.
 test('Entscheid fuer einen nicht angehaltenen Termin', () => {
   // [Stimmen, Ergebnis, from_day, angehalten, bestaetigt, Meldungen]
   const cases = [
-    [NONE, 'held', '2026-11-12', true, false, 1],
-    [votes('nein', MT('18.6'), null), 'held', '2026-11-12', true, false, 1],
-    [votes('ja', MT('18.6'), CD_OLD), 'held', '2026-11-12', true, false, 1],
+    [NONE, 'held', '2026-11-13', true, false, 1],
+    [votes('nein', MT('18.6'), null), 'held', '2026-11-13', true, false, 1],
+    [votes('ja', MT('18.6'), CD_OLD), 'held', '2026-11-13', true, false, 1],
     [votes('ja', MT('18.7'), CD_OLD), 'confirmed', '2026-11-11', false, true, 0],
     [votes(undefined, MT('18.7'), CD_NEW), 'confirmed', '2026-11-11', false, true, 0],
     [votes('ja', MT('18.6'), null), 'undecided', '2026-11-11', false, false, 0],
@@ -405,33 +412,49 @@ test('Entscheid fuer einen nicht angehaltenen Termin', () => {
   }
   const r = confirm(S18, RUN, NONE);
   assert.deepEqual(get(r.starts, '18.7').hold, { riot_from_day: '2026-11-11', since: RUN });
-  assert.match(r.alerts[0], /^18\.7: angehalten — Riot nannte 2026-11-11, aber Notes nein, MetaTFT nein \(18\.6\), CDragon nein \(2026-11-04\)\. Gilt fruehestens ab 2026-11-12, Sammeltag 2026-11-11 bleibt beim Vorgaenger$/);
-  // Laeufe ausgefallen: der Termin liegt schon Tage zurueck → trotzdem ab morgen
+  assert.match(r.alerts[0], /^18\.7: angehalten — Riot nannte 2026-11-11, aber Notes nein, MetaTFT nein \(18\.6\), CDragon nein \(2026-11-04\)\. Gilt fruehestens ab 2026-11-13, Sammeltage 2026-11-11 bis 2026-11-12 bleiben beim Vorgaenger$/);
+  // Laeufe ausgefallen: der Termin liegt schon Tage zurueck → trotzdem ab uebermorgen
   const late = confirm(S18, runAt('2026-11-15'), NONE);
-  assert.equal(get(late.starts, '18.7').from_day, '2026-11-15');
-  assert.match(late.alerts[0], /Sammeltage 2026-11-11 bis 2026-11-14 bleiben beim Vorgaenger$/);
+  assert.equal(get(late.starts, '18.7').from_day, '2026-11-16');
+  assert.match(late.alerts[0], /Sammeltage 2026-11-11 bis 2026-11-15 bleiben beim Vorgaenger$/);
   assert.deepEqual(get(late.starts, '18.7').hold, { riot_from_day: '2026-11-11', since: runAt('2026-11-15') });
 });
 
+test('Entscheid in der Nacht vor Riots Tag: Halt, bevor ein Leser den Patch als live sieht', () => {
+  const night = runAt('2026-11-11');   // laufender Sammeltag 10.11., 18.7 beginnt mit dem naechsten
+  let r = confirm(S18, night, NONE);
+  assert.equal(outcome(r, '18.7'), 'held');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-12');
+  assert.match(r.alerts.at(-1), /^18\.7: angehalten — Riot nannte 2026-11-11, .* Gilt fruehestens ab 2026-11-12, Sammeltag 2026-11-11 bleibt beim Vorgaenger$/);
+  // Notes + CDragon kommen meist am Vortag → bestaetigt, Riots Tag bleibt
+  r = confirm(S18, night, votes('ja', MT('18.6'), '2026-11-10T00:50:00.000Z'));
+  assert.equal(outcome(r, '18.7'), 'confirmed');
+  assert.deepEqual(get(r.starts, '18.7'), { ...get(S18, '18.7'), confirmed: true });
+  // unklar: bleibt wie Riot es nennt, naechste Nacht wieder geprueft
+  r = confirm(S18, night, votes('ja', null, null));
+  assert.equal(outcome(r, '18.7'), 'undecided');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-11');
+});
+
 test('angehaltener Termin rueckt mit dem Sammeltag, ohne neue Meldung', () => {
-  let r = confirm(held('2026-11-12'), runAt('2026-11-13'), NONE);
+  let r = confirm(held('2026-11-13'), runAt('2026-11-13'), NONE);
   assert.equal(outcome(r, '18.7'), 'hold-extended');
-  assert.equal(get(r.starts, '18.7').from_day, '2026-11-13');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-14');
   assert.deepEqual(get(r.starts, '18.7').hold, HOLD);
   assert.deepEqual(r.alerts, []);
-  // drei Laeufe ausgefallen: springt auf morgen
-  r = confirm(held('2026-11-12'), runAt('2026-11-16'), NONE);
-  assert.equal(get(r.starts, '18.7').from_day, '2026-11-16');
-  // schon morgen oder weiter hinten: bleibt
-  for (const day of ['2026-11-13', '2026-11-20']) {
+  // drei Laeufe ausgefallen: springt auf uebermorgen
+  r = confirm(held('2026-11-13'), runAt('2026-11-16'), NONE);
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-17');
+  // schon uebermorgen oder weiter hinten: bleibt
+  for (const day of ['2026-11-14', '2026-11-20']) {
     r = confirm(held(day), runAt('2026-11-13'), NONE);
     assert.equal(outcome(r, '18.7'), 'hold-unchanged', day);
     assert.equal(get(r.starts, '18.7').from_day, day);
   }
   // unklar (Quellen weg): bleibt angehalten und rueckt weiter — nie unbestaetigt wirksam
-  r = confirm(held('2026-11-12'), runAt('2026-11-13'), {});
+  r = confirm(held('2026-11-13'), runAt('2026-11-13'), {});
   assert.equal(outcome(r, '18.7'), 'hold-extended');
-  assert.equal(get(r.starts, '18.7').from_day, '2026-11-13');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-14');
   assert.deepEqual(get(r.starts, '18.7').hold, HOLD);
   assert.deepEqual(r.alerts, []);
 });
@@ -466,9 +489,11 @@ test('Freigabe nach Halt: Sammeltag aus MetaTFT-Start (begrenzt auf [Riots Tag, 
 
 test('Obergrenze: nie naeher als 6 Tage an den naechsten, nie mehr als 42 nach dem vorigen Termin', () => {
   // 19.1 am 01.12. → 18.7 spaetestens ab 25.11.
-  let r = confirm(held('2026-11-24'), runAt('2026-11-25'), NONE);
+  let r = confirm(held('2026-11-24'), runAt('2026-11-24'), NONE);
   assert.equal(outcome(r, '18.7'), 'hold-extended');
   assert.equal(get(r.starts, '18.7').from_day, '2026-11-25');
+  r = confirm(held('2026-11-25'), runAt('2026-11-25'), NONE);
+  assert.equal(outcome(r, '18.7'), 'capped');
   r = confirm(held('2026-11-25'), runAt('2026-11-26'), NONE);
   assert.equal(outcome(r, '18.7'), 'capped');
   assert.deepEqual(get(r.starts, '18.7'), get(held('2026-11-25'), '18.7'));
@@ -484,9 +509,9 @@ test('Obergrenze: nie naeher als 6 Tage an den naechsten, nie mehr als 42 nach d
   assert.deepEqual(get(r.starts, '18.7'), get(withEntry('18.7', { from_day: '2026-11-25' }), '18.7'));
   // ohne Nachfolger: hoechstens 42 Tage nach 18.6 (04.11. → 16.12.)
   const only18 = S18.filter((s) => s.set === 18);
-  r = confirm(withEntry('18.7', { from_day: '2026-12-15', hold: HOLD }, only18), runAt('2026-12-16'), NONE);
+  r = confirm(withEntry('18.7', { from_day: '2026-12-15', hold: HOLD }, only18), runAt('2026-12-15'), NONE);
   assert.equal(get(r.starts, '18.7').from_day, '2026-12-16');
-  r = confirm(withEntry('18.7', { from_day: '2026-12-16', hold: HOLD }, only18), runAt('2026-12-17'), NONE);
+  r = confirm(withEntry('18.7', { from_day: '2026-12-16', hold: HOLD }, only18), runAt('2026-12-16'), NONE);
   assert.equal(outcome(r, '18.7'), 'capped');
   assert.match(r.alerts[0], /mehr als 42 Tage nach 18\.6 \(2026-11-04\)/);
 });
@@ -571,14 +596,14 @@ test('Skript: Halt → weiter angehalten → Freigabe, Meldung nur bei Halt und 
   let r = box.run(RUN, NONE);
   assert.equal(r.status, 2, r.stderr);
   assert.match(r.stderr, /BEFUND 18\.7: angehalten — Riot nannte 2026-11-11/);
-  assert.deepEqual(box.entry('18.7'), { ...get(S18, '18.7'), from_day: '2026-11-12', hold: { riot_from_day: '2026-11-11', since: RUN } });
+  assert.deepEqual(box.entry('18.7'), { ...get(S18, '18.7'), from_day: '2026-11-13', hold: { riot_from_day: '2026-11-11', since: RUN } });
 
   // 17.11.: Riots Tag liegt 6 Tage zurueck — ohne Halt wuerde mergeSchedule werfen
-  for (const day of ['2026-11-13', '2026-11-17']) {
+  for (const [day, want] of [['2026-11-13', '2026-11-14'], ['2026-11-17', '2026-11-18']]) {
     r = box.run(runAt(day), NONE);
     assert.equal(r.status, 0, r.stderr);
     assert.doesNotMatch(r.stderr, /BEFUND/);
-    assert.equal(box.entry('18.7').from_day, day);
+    assert.equal(box.entry('18.7').from_day, want);
   }
 
   r = box.run(runAt('2026-11-19'), LIVE);

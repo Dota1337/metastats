@@ -239,25 +239,31 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
   const tooltip = `${name}${stars}${itemNames ? ` — ${itemNames}` : ''}`;
   const starColor = unit.tier === 3 ? '#f0c040' : 'var(--fg-primary)';
 
+  // Kein <a> im <a> (ungueltiges HTML, Hydration-Fehler): Der Unit-Link deckt
+  // per ::after die ganze Kachel ab, die Item-Links liegen mit z-10 darueber.
   return (
-    <a
-      href={withLang(`/tft/units/${encodeURIComponent(unit.characterId)}`)}
+    <div
       title={tooltip}
-      className="flex flex-col items-center gap-0.5 hover:scale-105 transition"
+      className="relative flex flex-col items-center gap-0.5 hover:scale-105 transition"
     >
-      <div className="relative w-12 h-12 rounded border-2 overflow-hidden" style={{ borderColor: costColor }}>
-        {url
-          ? <img src={url} alt={name} className="w-full h-full object-cover" />
-          : <div className="w-full h-full bg-surface-overlay" />}
-        {unit.tier > 1 && (
-          <div
-            className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
-            style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
-          >
-            {'★'.repeat(unit.tier)}
-          </div>
-        )}
-      </div>
+      <a
+        href={withLang(`/tft/units/${encodeURIComponent(unit.characterId)}`)}
+        className="after:absolute after:inset-0"
+      >
+        <div className="relative w-12 h-12 rounded border-2 overflow-hidden" style={{ borderColor: costColor }}>
+          {url
+            ? <img src={url} alt={name} className="w-full h-full object-cover" />
+            : <div className="w-full h-full bg-surface-overlay" />}
+          {unit.tier > 1 && (
+            <div
+              className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] leading-tight px-1 rounded-t bg-black/70 font-bold"
+              style={{ color: starColor, textShadow: '0 0 2px rgba(0,0,0,0.9)' }}
+            >
+              {'★'.repeat(unit.tier)}
+            </div>
+          )}
+        </div>
+      </a>
       {unit.items?.length > 0 && (
         <div className="flex gap-px">
           {unit.items.slice(0, 3).map((it: string, i: number) => {
@@ -268,9 +274,8 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
               <a
                 key={i}
                 href={withLang(`/tft/items/${encodeURIComponent(it)}`)}
-                onClick={e => e.stopPropagation()}
                 title={itemName}
-                className="hover:scale-125 transition-transform"
+                className="relative z-10 hover:scale-125 transition-transform"
               >
                 <img src={iurl} alt={itemName} className="w-4 h-4 rounded-sm" />
               </a>
@@ -280,7 +285,7 @@ function UnitTile({ unit, assets }: { unit: any; assets: TftAssetsBundle | null 
           })}
         </div>
       )}
-    </a>
+    </div>
   );
 }
 

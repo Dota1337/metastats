@@ -53,6 +53,7 @@ const FREEZE_AFTER_MS = 48 * 3_600_000;
 const RESOLVE_BATCH = 500;
 const PLAYER_BATCH = 50;
 const LOBBY_PAGE = 2000;
+const LOBBY_ID_PAGE = 5000; // nur Kennungen; groessere Seiten riskieren Seq-Scan + Top-N je Seite
 const RANKED_QUEUE = 1100;
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -130,25 +131,44 @@ async function loadLobbies(db, ctx) {
     [SET, S.KNOWN_MIN_RANKS],
   );
   const keep = Math.min(1, MAX_LOBBIES / Math.max(1, n));
-  const out = [];
+  // Zweistufig (12.11.2026): erst nur die Kennungen, Auswahl wie bisher per
+  // seedOf, dann die grossen Spalten nur fuer die Auswahl. Vorher wurden alle
+  // bekannten Lobbys (1,06 Mio.) samt participants gelesen und 92 % verworfen;
+  // die Phase wuchs von 7 auf 19 min. Die Reihenfolge ist Teil des Ergebnisses
+  // (fitLobbyModel zieht nach Position): Phase 2 liest die Auswahl in
+  // aufeinanderfolgenden Scheiben der Phase-1-Reihenfolge, je mit
+  // `order by match_id` — nie in JS sortieren (andere Sortierregel als die DB).
+  const picked = [];
   let last = '';
   for (;;) {
     const { rows } = await db.query(
-      `select match_id, region, game_datetime, participants, ranks from tft_match_lobby
+      `select match_id from tft_match_lobby
         where set_number = $1 and known_count >= $2 and match_id > $3
         order by match_id limit $4`,
-      [SET, S.KNOWN_MIN_RANKS, last, LOBBY_PAGE],
+      [SET, S.KNOWN_MIN_RANKS, last, LOBBY_ID_PAGE],
     );
     if (rows.length === 0) break;
     last = rows[rows.length - 1].match_id;
+    for (const { match_id } of rows) {
+      if (keep < 1 && S.seedOf(match_id) / 4294967296 >= keep) continue;
+      picked.push(match_id);
+    }
+  }
+  const out = [];
+  for (let i = 0; i < picked.length; i += LOBBY_PAGE) {
+    const { rows } = await db.query(
+      `select match_id, region, game_datetime, participants, ranks from tft_match_lobby
+        where match_id = any($1::text[]) and set_number = $2 and known_count >= $3
+        order by match_id`,
+      [picked.slice(i, i + LOBBY_PAGE), SET, S.KNOWN_MIN_RANKS],
+    );
     for (const row of rows) {
-      if (keep < 1 && S.seedOf(row.match_id) / 4294967296 >= keep) continue;
       const e = S.lobbyEntry(row, row.participants[0]?.p, ctx);
       if (!e || !e.lpts) continue;
       out.push({ region: row.region, patch: S.patchOfGame(Number(row.game_datetime), ctx), lpts: e.lpts, placements: e.placements, carries: e.carries });
     }
   }
-  log(`Lobby-Modell: ${out.length} von ${n} bekannten Lobbys (${mb()})`);
+  log(`Lobby-Modell: ${out.length} von ${n} bekannten Lobbys, ${picked.length} gezogen (${mb()})`);
   return out;
 }
 

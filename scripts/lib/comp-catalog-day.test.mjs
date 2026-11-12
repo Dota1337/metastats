@@ -15,13 +15,17 @@ const isUnit = () => true;
 const fam = (key, games, ids) => ({ fam: key, games, sumPlacement: games * 4, units: Object.fromEntries(ids.map(id => [id, { g: games, s3: 0 }])), top4ByLevel: { 8: Math.round(games / 2) } });
 const FAMS = [fam('T__a', 5000, ['a', 'b', 'c', 'd']), fam('U__e', 4000, ['e', 'f', 'g', 'h'])];
 
-function memStore({ days = [], versions = [], families = FAMS, later = false, fail = false } = {}) {
+function memStore({ days = [], versions = [], families = FAMS, later = false, fail = false, failLoad = false } = {}) {
   const st = { inserted: [], versions: [...versions] };
   const guard = () => { if (fail) throw new Error('db down'); };
   st.patchDays = async (set, family) => { guard(); return days.filter(d => patchFamily(d.patch) === family); };
   st.hasLaterDay = async () => { guard(); return later; };
   st.dayPatch = async () => null;
-  st.loadFamilies = async () => { guard(); return { families, totalGames: families.reduce((s, f) => s + f.games, 0) }; };
+  st.loadFamilies = async () => {
+    guard();
+    if (failLoad) throw new Error('canceling statement due to statement timeout');
+    return { families, totalGames: families.reduce((s, f) => s + f.games, 0) };
+  };
   st.version = async (set, family, day) => st.versions.find(v => v.family === family && v.day === day && v.scope === 'day') ?? null;
   st.latestVersion = async (set, { family = null, beforeDay, inclusive = false }) => st.versions
     .filter(v => (!family || v.family === family) && (inclusive ? v.day <= beforeDay : v.day < beforeDay))
@@ -100,6 +104,67 @@ test('Nachholtag: nie neue Version, nur vorhandene mit Tag ≤ D', async () => {
 
 test('Fehler im Store → klassisch, nie Abbruch', async () => {
   const d = await decideDay({ day: '2026-10-25', set: 18, patch: '18.5', switchOn: true, store: memStore({ fail: true }), isUnit });
+  assert.deepEqual([d.mode, d.reason], ['classic', 'error']);
+});
+
+// Ersatz nach Fehler (12.11.2026): Morgen-Entscheid lief 10./11.11. ins Zeitlimit.
+const ver = (catalogId, day, extra = {}) => ({
+  catalogId, hash: `h${catalogId}`, day, family: '18.5', scope: 'day',
+  catalog: { version: CATALOG_RULES.version, comps: [{ key: 'T__a' }] }, ...extra,
+});
+const decide27 = store => decideDay({ day: '2026-10-27', set: 18, patch: '18.5', switchOn: true, store, isUnit, log: () => {} });
+
+test('Fehler nach dem Anlauf → juengste Tages-Version der Familie (error-prev), keine neue Version', async () => {
+  const store = memStore({ days: days185(6), failLoad: true, versions: [ver(8, '2026-10-25'), ver(9, '2026-10-26')] });
+  const d = await decide27(store);
+  assert.deepEqual([d.mode, d.reason, d.catalogId, d.hash], ['catalog', 'error-prev', 9, 'h9']);
+  assert.equal(d.catalog.comps.length, 1);
+  assert.equal(store.inserted.length, 0);
+  // Am Ersatztag kein Neubau nach dem Lauf (wie an jedem Katalog-Tag).
+  assert.equal((await buildAfterLoop({ day: '2026-10-27', set: 18, patch: '18.5', decision: d, store, isUnit })).reason, 'catalog-day');
+});
+
+test('Fehler vor dem Anlauf-Check → klassisch, auch wenn eine Version da ist', async () => {
+  const d = await decide27(memStore({ days: days185(6), fail: true, versions: [ver(9, '2026-10-26')] }));
+  assert.deepEqual([d.mode, d.reason], ['classic', 'error']);
+});
+
+test('Ersatz nur mit passender Version: zu alt, andere Regeln, Patch-Version, andere Familie → klassisch', async () => {
+  const cases = {
+    'zu alt (D-4)': ver(9, '2026-10-23'),
+    'andere Regeln': ver(9, '2026-10-26', { catalog: { version: 'alt', comps: [{ key: 'T__a' }] } }),
+    'Patch-Version': ver(9, '2026-10-26', { scope: 'patch' }),
+    'ohne Comps': ver(9, '2026-10-26', { catalog: { version: CATALOG_RULES.version, comps: [] } }),
+    'andere Familie': ver(9, '2026-10-26', { family: '18.4' }),
+  };
+  for (const [name, v] of Object.entries(cases)) {
+    const d = await decide27(memStore({ days: days185(6), failLoad: true, versions: [v] }));
+    assert.deepEqual([d.mode, d.reason], ['classic', 'error'], name);
+  }
+  const edge = await decide27(memStore({ days: days185(6), failLoad: true, versions: [ver(9, '2026-10-24')] }));
+  assert.deepEqual([edge.mode, edge.catalogId], ['catalog', 9], 'genau D-3 gilt noch');
+});
+
+test('Ersatz: Version fuer Tag D selbst hat Vorrang; pg-Date wird als lokaler Tag gelesen', async () => {
+  const store = memStore({ days: days185(6), versions: [ver(9, '2026-10-26'), ver(10, '2026-10-27')] });
+  store.version = async () => { throw new Error('Connection terminated unexpectedly'); };
+  const d = await decide27(store);
+  assert.deepEqual([d.mode, d.reason, d.catalogId], ['catalog', 'error-prev', 10]);
+  // Echter Store: pg liefert `day` als Date um lokale Mitternacht (Filter macht dort die DB).
+  const s2 = memStore({ days: days185(6), failLoad: true });
+  s2.latestVersion = async () => ver(9, new Date(2026, 9, 26));
+  const asDate = await decide27(s2);
+  assert.deepEqual([asDate.mode, asDate.catalogId], ['catalog', 9]);
+  s2.latestVersion = async () => ver(9, new Date(2026, 9, 23));
+  assert.equal((await decide27(s2)).mode, 'classic', 'Date-Tag D-4 ist zu alt');
+});
+
+test('Ersatz-Suche selbst scheitert → klassisch, nie Abbruch', async () => {
+  const store = memStore({ days: days185(6), failLoad: true, versions: [ver(9, '2026-10-26')] });
+  let calls = 0;
+  const orig = store.latestVersion;
+  store.latestVersion = async (...a) => { calls++; if (calls > 1) throw new Error('db down'); return orig(...a); };
+  const d = await decide27(store);
   assert.deepEqual([d.mode, d.reason], ['classic', 'error']);
 });
 

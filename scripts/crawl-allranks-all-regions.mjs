@@ -328,6 +328,9 @@ async function withCatalogStore(fn) {
     ssl: { rejectUnauthorized: false },
     connectionTimeoutMillis: 15_000,
   });
+  // Ohne Listener beendet ein abgerissener Socket den ganzen Treiber; so
+  // scheitert nur die Abfrage und decideDay faellt auf Ersatz/klassisch zurueck.
+  client.on('error', err => console.error(`    [comp-catalog] Verbindung: ${err.message}`));
   await client.connect();
   try {
     await client.query('SET statement_timeout = 240000');

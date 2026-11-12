@@ -10,7 +10,11 @@
 //     fehlende Zielstufen werden nachgefuellt). Unveraendert → alte Kennung.
 //   * Nachholtag (im Set gibt es schon spaetere Tage): nie eine neue Version,
 //     nur eine vorhandene mit Tag ≤ D, sonst klassisch.
-//   Jeder Fehler → klassisch, nie Abbruch.
+//   Fehler nach bestandenem Anlauf → die juengste Tages-Version der Familie
+//   (Tag ≤ D, hoechstens FALLBACK_MAX_AGE_DAYS alt, gleiche Regeln), sonst
+//   klassisch; nie Abbruch. Grund: der Morgen-Entscheid lief 10./11.11.2026 ins
+//   Zeitlimit und hat dann den ganzen Tag klassisch gezaehlt, obwohl die Version
+//   vom Vorabend mit derselben Eingabe schon gespeichert war.
 // Nach der Schleife: buildAfterLoop — an klassischen Tagen (Anlauf oder Schalter
 // aus) Version D aus allen Tagen der Familie bis D neu, Mindestspiele skaliert;
 // nur fuer den neuesten Tag des Sets.
@@ -23,8 +27,34 @@ import { patchFamily } from './comp-catalog-store.mjs';
 
 export const CATALOG_FILE_PROTOCOL = 1;
 export const WARMUP_DAYS = 3;
+export const FALLBACK_MAX_AGE_DAYS = 3;
 
-const prevDay = d => new Date(Date.parse(`${d}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+const addDays = (d, n) => new Date(Date.parse(`${d}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const prevDay = d => addDays(d, -1);
+// pg liefert date-Spalten als Date um lokale Mitternacht → lokale Bestandteile.
+const pad2 = n => String(n).padStart(2, '0');
+const isoDay = d => (d instanceof Date
+  ? `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+  : String(d ?? '').slice(0, 10));
+
+/**
+ * Ersatz nach einem Fehler im Tagesentscheid: juengste Tages-Version der
+ * Familie bis einschliesslich D. Nie eine Patch-Version, nie aelter als
+ * FALLBACK_MAX_AGE_DAYS, nie vor dem ersten Tag der Familie. Wirft nie.
+ */
+async function fallbackVersion({ store, set, family, day, firstDay }) {
+  try {
+    if (!family || !firstDay) return null;
+    const v = await store.latestVersion(set, { family, beforeDay: day, inclusive: true });
+    if (!v || v.scope !== 'day' || !v.catalogId || !v.catalog?.comps?.length) return null;
+    if (v.catalog.version !== CATALOG_RULES.version) return null;
+    const vDay = isoDay(v.day);
+    if (vDay < firstDay || vDay < addDays(day, -FALLBACK_MAX_AGE_DAYS) || vDay > day) return null;
+    return { ...v, day: vDay };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Schalter fuer einen Zieltag aus der Box-Env (User 20.10.2026: je Brett ab 18.5).
@@ -57,10 +87,12 @@ export async function decideDay({ day, set, patch, switchOn, store, isUnit, log 
   const base = { set, patch };
   if (!switchOn) return { mode: 'classic', reason: 'switch-off', ...base };
   const family = patchFamily(patch);
+  let firstDay = null; // gesetzt erst nach bestandenem Anlauf — davor gibt es keinen Ersatz
   try {
     const rows = (await store.patchDays(set, family)).filter(r => r.day < day);
     const days = [...new Set(rows.map(r => r.day))];
     if (days.length < WARMUP_DAYS) return { mode: 'classic', reason: 'warmup', ...base };
+    firstDay = days.reduce((a, b) => (b < a ? b : a));
 
     let v = await store.version(set, family, day);
     if (!v && (await store.hasLaterDay(set, day))) {
@@ -71,7 +103,9 @@ export async function decideDay({ day, set, patch, switchOn, store, isUnit, log 
       const prev = await store.latestVersion(set, { family, beforeDay: day });
       const end = prevDay(day);
       const patches = [...new Set(rows.map(r => r.patch))];
+      const t0 = Date.now();
       const { families, totalGames } = await store.loadFamilies(set, patches, days[0], end);
+      log(`[comp-catalog] ${day}: Eingabe ${days[0]}..${end} in ${Math.round((Date.now() - t0) / 1000)} s gelesen`);
       const minGames = scaledMinGames(totalGames);
       const names = prev ? null : (await store.latestVersion(set, { beforeDay: day }))?.catalog ?? null;
       const catalog = prev
@@ -90,6 +124,11 @@ export async function decideDay({ day, set, patch, switchOn, store, isUnit, log 
     if (v.catalog.version !== CATALOG_RULES.version) return { mode: 'classic', reason: 'rules-version', ...base };
     return { mode: 'catalog', reason: 'catalog-day', catalogId: v.catalogId, hash: v.hash, catalog: v.catalog, ...base };
   } catch (err) {
+    const fb = await fallbackVersion({ store, set, family, day, firstDay });
+    if (fb) {
+      log(`[comp-catalog] WARNUNG Tagesentscheid fuer ${day} fehlgeschlagen, weiter mit Katalog ${fb.catalogId} vom ${fb.day}: ${err.message}`);
+      return { mode: 'catalog', reason: 'error-prev', catalogId: fb.catalogId, hash: fb.hash, catalog: fb.catalog, ...base };
+    }
     log(`[comp-catalog] Tagesentscheid fuer ${day} fehlgeschlagen, sammle klassisch: ${err.message}`);
     return { mode: 'classic', reason: 'error', ...base };
   }

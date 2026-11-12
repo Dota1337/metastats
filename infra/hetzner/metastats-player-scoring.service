@@ -13,7 +13,7 @@ EnvironmentFile=/etc/metastats-crawler/env
 Nice=19
 IOSchedulingClass=idle
 MemoryMax=500M
-TimeoutStartSec=40min
+TimeoutStartSec=60min
 ExecStart=/usr/bin/node --max-old-space-size=420 scripts/build-player-scoring-population.mjs
 StandardOutput=journal
 StandardError=journal

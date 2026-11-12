@@ -34,6 +34,39 @@ export function pgUrlHost(url) {
 const SUPABASE_HOST_RE = /(^|\.)supabase\.(co|com)$/;
 
 /**
+ * Zeitgrenze je Abfrage, die auch ueber den Supabase-Pooler ankommt.
+ *
+ * Warum nicht die pg-Option `statement_timeout`: pg schickt sie als
+ * Startparameter (node_modules/pg/lib/client.js), und Supavisor verwirft ihn.
+ * Gemessen 12.11.2026 ueber den Pooler (Port 5432) mit Option 600000:
+ * `current_setting('statement_timeout')` = 2min, der Server-Standard. Folge:
+ * freeze-marketvalue-peaks scheiterte jedes ~3. Mal nach 2 min, lol-builds
+ * bei langsamer Datenbank. Direkt an der Box-PG wirkt die Option, ein `SET`
+ * nach dem Verbinden wirkt ueberall — deshalb dieser Weg fuer beide.
+ *
+ * `pgStatementTimeout(ms)` liefert die Pool-Option `onConnect` (pg-pool wartet
+ * sie ab, bevor der Client herausgegeben wird; scheitert sie, bekommt der
+ * Aufrufer den Fehler statt still 2 min). Fuer einen einzelnen pg.Client:
+ * nach `connect()` `await applyStatementTimeout(client, ms)`.
+ */
+export function statementTimeoutValue(ms) {
+  if (!Number.isInteger(ms) || ms <= 0) {
+    throw new Error(`statement_timeout braucht eine positive ganze Zahl in ms, nicht ${ms}`);
+  }
+  return String(ms);
+}
+
+export async function applyStatementTimeout(client, ms) {
+  const value = statementTimeoutValue(ms);
+  await client.query("select set_config('statement_timeout', $1, false)", [value]);
+}
+
+export function pgStatementTimeout(ms) {
+  statementTimeoutValue(ms); // ungueltige Werte schon beim Bau des Pools melden
+  return { onConnect: (client) => applyStatementTimeout(client, ms) };
+}
+
+/**
  * Verbindung zur Supabase-Datenbank, in der die Tagesstatistik (tft_daily_*)
  * liegt. Auf der Box zeigt DATABASE_URL auf die Hetzner-PG (127.0.0.1), nur
  * SUPABASE_DB_URL auf Supabase — ein blindes `SUPABASE_DB_URL || DATABASE_URL`

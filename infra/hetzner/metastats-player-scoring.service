@@ -2,6 +2,11 @@
 Description=metastats Spieler-Bewertung: Lobby-Raenge nachtragen und Bezugswerte bauen (/tft/compare)
 Wants=network-online.target
 After=network-online.target
+# Wartet auf einen laufenden npm-ci-Nachholer (Timer 05:16:30), statt mitten in
+# einem geloeschten node_modules zu starten. Nur Reihenfolge, kein Wants: laeuft
+# der Nachholer nicht (oder ist schon fertig), startet diese Unit sofort. Die
+# Wartezeit zaehlt nicht gegen TimeoutStartSec (gemessen: JobTimeoutUSec=infinity).
+After=metastats-deps-catchup.service
 
 [Service]
 Type=oneshot

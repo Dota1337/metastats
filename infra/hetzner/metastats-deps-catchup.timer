@@ -2,15 +2,24 @@
 Description=metastats npm ci taeglich im Leerlauf nachholen
 
 [Timer]
-# 05:20 UTC (= 07:20 CEST) ist das einzige taegliche Leerlauf-Fenster der Box:
-# der Marktwert-Lauf endet per --stop-at 05:15 UTC (gemessen 06.10. 05:15:17,
-# 07.10. 05:15:09), der Tageslauf startet 05:45 UTC + bis zu 5 min Zufall
-# (gemessen 05:46-05:49). Ist doch noch ein Job aktiv, verschiebt
-# remote-deploy.sh --deps-only auf den naechsten Tag.
+# 05:16:30 UTC (= 06:16:30 MEZ) liegt im einzigen taeglichen Leerlauf-Fenster
+# der Box: der Marktwert-Lauf endet per --stop-at 05:15 UTC (gemessen
+# 03.–12.11. 05:15:09–05:15:29), der Tageslauf startet 05:45 UTC + bis zu
+# 5 min Zufall (gemessen 05:46-05:50). Ist doch noch ein Job aktiv,
+# verschiebt remote-deploy.sh --deps-only auf den naechsten Tag.
+# Bis 12.11.2026 stand hier 05:20 — da lief schon die Spieler-Bewertung
+# (Timer 05:17, steht in crawl_running), und npm ci blieb 09.–12.11. jeden
+# Tag aufgeschoben. Jetzt laeuft der Nachholer VOR ihr: Spieler-Bewertung und
+# Tageslauf haben After=metastats-deps-catchup.service und warten, solange
+# dieser Lauf noch einen Job hat (npm ci gemessen 52 s am 24.10., ~4:48 am
+# 08.10.).
+# AccuracySec=1s: Standard ist 1 min, dann feuerten 05:16:30 und 05:17 im
+# selben Wecker und die Reihenfolge hinge an systemd-Interna.
 # NICHT Persistent: ein nach einem Neustart nachgeholter Lauf landete
 # irgendwann am Tag, also mitten in einem Crawl — er wuerde dort nur
 # "Job laeuft" melden und nichts tun.
-OnCalendar=*-*-* 05:20:00 UTC
+OnCalendar=*-*-* 05:16:30 UTC
+AccuracySec=1s
 
 [Install]
 WantedBy=timers.target

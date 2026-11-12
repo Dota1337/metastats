@@ -158,6 +158,9 @@
       ],
       "Conflicts": [
         "metastats-crawler.service"
+      ],
+      "After": [
+        "metastats-deps-catchup.service"
       ]
     },
     {
@@ -184,7 +187,7 @@
       "description": "metastats npm ci taeglich im Leerlauf nachholen",
       "scripts": [],
       "onCalendar": [
-        "*-*-* 05:20:00 UTC"
+        "*-*-* 05:16:30 UTC"
       ],
       "interval": [],
       "activates": "metastats-deps-catchup.service",
@@ -579,6 +582,9 @@
       "description": "metastats Spieler-Bewertung: Lobby-Raenge nachtragen und Bezugswerte bauen (/tft/compare)",
       "scripts": [
         "scripts/build-player-scoring-population.mjs"
+      ],
+      "After": [
+        "metastats-deps-catchup.service"
       ]
     },
     {
@@ -802,7 +808,7 @@
       "timer": "metastats-deps-catchup.timer",
       "activates": "metastats-deps-catchup.service",
       "onCalendar": [
-        "*-*-* 05:20:00 UTC"
+        "*-*-* 05:16:30 UTC"
       ]
     },
     {

@@ -180,7 +180,7 @@ if active=$(crawl_running); then
   echo "crawl running ($active) — code-only sync (no clean / npm ci / restart)"
   sync_code
   if deps_outdated; then
-    echo "WARN: node_modules weicht von package-lock.json ab — npm ci aufgeschoben (unsafe mid-crawl). Nachgeholt durch metastats-deps-catchup.timer (05:20 UTC) oder den naechsten Deploy im Leerlauf."
+    echo "WARN: node_modules weicht von package-lock.json ab — npm ci aufgeschoben (unsafe mid-crawl). Nachgeholt durch metastats-deps-catchup.timer (05:16:30 UTC) oder den naechsten Deploy im Leerlauf."
   fi
   # Der Long-Running-API-Service ist KEIN Crawl: er haelt keinen Cursor und
   # keine Inflight-Arbeit, ein Neustart kostet Millisekunden. Er muss aber

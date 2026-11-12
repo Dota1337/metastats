@@ -20,7 +20,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { CURRENT_SET } from './lib/current-set.mjs';
-import { supabasePgUrl } from './lib/pg-url.mjs';
+import { applyStatementTimeout, supabasePgUrl } from './lib/pg-url.mjs';
 import { buildCatalog, catalogHash, aliasMap, CATALOG_RULES } from '../app/lib/tft-comp-catalog.mjs';
 import { createCatalogStore, unitCheckForSet } from './lib/comp-catalog-store.mjs';
 
@@ -105,8 +105,10 @@ async function main() {
     process.exit(2);
   }
   loadEnv();
-  const client = new pg.Client({ connectionString: supabasePgUrl(process.env), ssl: { rejectUnauthorized: false }, statement_timeout: 240_000 });
+  const client = new pg.Client({ connectionString: supabasePgUrl(process.env), ssl: { rejectUnauthorized: false } });
   await client.connect();
+  // 4 min per SET — die pg-Option verwirft der Supabase-Pooler (2 min), siehe pg-url.mjs.
+  await applyStatementTimeout(client, 240_000);
   try {
     const isUnit = unitCheckForSet(SET);
     const all = await patchesOf(client, SET);

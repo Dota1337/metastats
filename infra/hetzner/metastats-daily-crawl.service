@@ -2,6 +2,10 @@
 Description=metastats TFT daily stats crawl (all regions, all ranks)
 Wants=network-online.target
 After=network-online.target
+# Haengt der npm-ci-Nachholer (05:16:30, Grenze 30 min) bis in den Start um
+# 05:45, wartet der Lauf auf ihn statt ohne node_modules zu starten. Nur
+# Reihenfolge, kein Wants — ohne laufenden Nachholer keine Wirkung.
+After=metastats-deps-catchup.service
 # Conflicts= bidirektional: wenn daily-crawl um 05:45 UTC startet, wird ein
 # eventuell noch laufender Bootstrap-Crawler sauber via SIGTERM gestoppt
 # (Cursor in /etc/metastats-crawler/mv-region-cursor.json bleibt erhalten).

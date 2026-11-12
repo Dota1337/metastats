@@ -59,6 +59,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
+import { pgStatementTimeout } from './lib/pg-url.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -215,7 +216,10 @@ const pool = new pg.Pool({
   connectionString: encodePasswordInPgUrl(DB_URL),
   ssl: { rejectUnauthorized: false },
   max: 2,
-  statement_timeout: 600_000,
+  // 10 min je Abfrage per SET nach dem Verbinden — die pg-Option
+  // statement_timeout verwirft der Supabase-Pooler, dann galten 2 min und der
+  // Lauf scheiterte jedes ~3. Mal (Journal 07.–12.11.2026), siehe pg-url.mjs.
+  ...pgStatementTimeout(600_000),
 });
 // Ruhende Verbindungen, die der Server kappt (z. B. DB-Neustart), reissen sonst den Prozess.
 pool.on('error', (e) => console.error(`DB-Verbindung verworfen: ${e.message}`));

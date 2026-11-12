@@ -34,6 +34,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { put } from '@vercel/blob';
+import { pgStatementTimeout } from './lib/pg-url.mjs';
 
 import { bootIds, fetchItemData, finishedItemIds, latestDdragonVersion, classifyInventory, stratumOf } from './lib/lol-items.mjs';
 import {
@@ -99,7 +100,10 @@ const mkPool = (url) => new pg.Pool({
   connectionString: encodePasswordInPgUrl(url),
   ssl: isLocal(url) ? false : { rejectUnauthorized: false },
   max: 1,
-  statement_timeout: 300_000,
+  // 5 min je Abfrage per SET nach dem Verbinden (beide Pools): die pg-Option
+  // statement_timeout verwirft der Supabase-Pooler, dann galten 2 min
+  // (10./11.11.2026 morgens gescheitert), siehe pg-url.mjs.
+  ...pgStatementTimeout(300_000),
   query_timeout: 320_000,
   connectionTimeoutMillis: 15_000,
   keepAlive: true,

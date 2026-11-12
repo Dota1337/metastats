@@ -71,6 +71,19 @@ const log = (msg) => console.log(`${new Date().toISOString()} ${msg}`);
 const mb = () => `${Math.round(process.memoryUsage().rss / 1e6)} MB`;
 
 // Letzter Stand vor dem Spiel je Teilnehmer, hoechstens 48 h alt, gleiches Set.
+//
+// Die Grenze auf `day` aendert das Ergebnis nicht, sie laesst nur den
+// Primaerschluessel (puuid, region, day) die Tage eingrenzen: ohne sie las jede
+// Suche alle ~10 Tageszeilen des Spielers aus der Tabelle (zufaellige
+// Plattenzugriffe), auch fuer Lobbys vor der 10-Tage-Aufbewahrung, die gar
+// keinen Treffer haben koennen. Gemessen 12.11.2026 (Box, kalt, je 500 Lobbys):
+// alt Ø 5,75 s, neu Ø 2,70 s; 5/5 Stapel byte-gleich.
+// Traegt nur, solange `day` das UTC-Datum beim START des Ranglisten-Laufs ist
+// und `fetched_at` die Abrufzeit danach (collect-tft-ladder.mjs: `today` beim
+// Start, Upsert aendert `day` nie): day = UTC-Datum(fetched_at), bei einem Lauf
+// ueber Mitternacht einen Tag frueher — dafuer das `- 1` (gemessen 12.11.: alle
+// 6.486.540 Zeilen day = UTC-Datum(fetched_at)). Rechnet jemand `today` spaeter
+// je Region oder je Seite, muss diese Grenze mit.
 const RANK_SQL = `
   with p as (
     select l.match_id, l.set_number, (e.ord - 1)::int as idx, e.v->>'p' as puuid, l.region,
@@ -85,6 +98,8 @@ const RANK_SQL = `
       select t.tier, t.rank, t.lp from tft_ladder_daily t
        where t.puuid = p.puuid and t.region = p.region and t.set_number = p.set_number
          and t.fetched_at <= p.at and t.fetched_at >= p.at - interval '48 hours'
+         and t.day >= ((p.at - interval '48 hours') at time zone 'UTC')::date - 1
+         and t.day <= (p.at at time zone 'UTC')::date
        order by t.fetched_at desc limit 1
     ) d on true`;
 

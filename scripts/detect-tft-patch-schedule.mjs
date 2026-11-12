@@ -6,24 +6,45 @@
 // deploy-hetzner.yml auf die Box gebracht; dort bildet der Sammler daraus den
 // Patch-Namen je Sammeltag (scripts/lib/tft-patch-day.mjs).
 //
+// Danach: Termin erst nach Bestaetigung (G2, Regeln in
+// scripts/lib/tft-patch-schedule.mjs confirmStarts). Der juengste gestartete
+// Termin der laufenden Set und jeder angehaltene werden gegen Riots Notes,
+// MetaTFT und den CDragon-Stempel geprueft; nicht live → `hold`, from_day =
+// laufender Sammeltag + 1. PATCH_CONFIRM=0 schaltet die Pruefung ab (bestehende
+// Halte-Eintraege bleiben dann unveraendert).
+//
 // Exit 0  gelesen, bei Aenderung geschrieben
 // Exit 1  Fehler, NICHTS geschrieben (Seite unlesbar, Termine widerspruechlich,
 //         vergangener Termin geaendert, B-Patches passen nicht mehr dazu)
-// Exit 2  geschrieben, aber oben auf der Seite steht ein NEUER Hinweis auf eine
-//         Patch-Verschiebung. Riot verspricht ihn bis 48 h vor dem Termin —
-//         die Tabelle zieht womoeglich erst spaeter nach. Ein Mensch prueft und
-//         setzt den Termin notfalls mit `pinned: true`. Derselbe Hinweis loest
-//         nur einmal aus (gemerkt in patchScheduleAlerts).
+// Exit 2  geschrieben, aber mit Befund fuer einen Menschen:
+//         - oben auf der Seite steht ein NEUER Hinweis auf eine
+//           Patch-Verschiebung. Riot verspricht ihn bis 48 h vor dem Termin —
+//           die Tabelle zieht womoeglich erst spaeter nach. Ein Mensch prueft und
+//           setzt den Termin notfalls mit `pinned: true`. Derselbe Hinweis loest
+//           nur einmal aus (gemerkt in patchScheduleAlerts).
+//         - ein Termin wurde angehalten, nach einem Halt freigegeben, oder er
+//           muesste naeher als 6 Tage an den naechsten ruecken (von Hand
+//           entscheiden). Die Auswertung in tft-bpatch-detect.yml macht daraus
+//           das Befund-Issue (Zeilen mit BEFUND).
 //
 //   node scripts/detect-tft-patch-schedule.mjs                  # live
 //   node scripts/detect-tft-patch-schedule.mjs --dry-run        # nur anzeigen
-//   node scripts/detect-tft-patch-schedule.mjs --file seite.html --today 2026-10-05 --set-file x.json
+//   node scripts/detect-tft-patch-schedule.mjs --file seite.html --today 2026-10-05 --set-file x.json \
+//     --now 2026-10-05T02:17:00Z --votes-file stimmen.json      # ohne Netz
+//
+// --votes-file: eingespielte Quellen-Antworten statt der Abrufe, Aufbau wie
+// `observations` in patchVotes: { "notes": { "18.7": "nein" },
+// "metatft": { "patch": "18.6", "b_patch_version": "", "start": "…" },
+// "cdragon": "2026-11-04T00:47:00.000Z" }. Fehlende Teile zaehlen als unbekannt.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SCHEDULE_URL, parseScheduleHtml, mergeSchedule, isDelayAlert } from './lib/tft-patch-schedule.mjs';
+import { SCHEDULE_URL, parseScheduleHtml, mergeSchedule, isDelayAlert, confirmCandidates, confirmStarts } from './lib/tft-patch-schedule.mjs';
 import { scheduleProblems } from './lib/tft-patch-day.mjs';
+import { LISTING_URL, listingStamp } from './lib/tft-data-freshness.mjs';
+import { currentWindowDay } from './lib/tft-crawl-window.mjs';
+import { fetchMetatft, fetchNotes } from './detect-tft-bpatches.mjs';
 
 const UA = 'metastats-bot/1.0 (https://metastats.gg; info@metastats.gg)';
 
@@ -51,10 +72,37 @@ async function fetchPage() {
   }
 }
 
+// Quellen-Antworten fuer die Bestaetigung. Jeder Fehler macht nur seine Quelle
+// "unbekannt", nie den ganzen Lauf rot.
+async function observe(candidates) {
+  const [metatft, cdragon] = await Promise.all([
+    fetchMetatft().catch((e) => { console.warn(`  WARN MetaTFT nicht lesbar — ${e.message}`); return null; }),
+    (async () => {
+      const r = await fetch(LISTING_URL, { signal: AbortSignal.timeout(30_000) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return listingStamp(await r.text());
+    })().catch((e) => { console.warn(`  WARN CDragon-Listing nicht lesbar — ${e.message}`); return null; }),
+  ]);
+  const notes = {};
+  for (const c of candidates) {
+    try {
+      notes[c.patch] = (await fetchNotes(c.patch)) ? 'ja' : 'nein';
+    } catch (e) {
+      notes[c.patch] = 'unbekannt';
+      console.warn(`  WARN Notes ${c.patch} nicht lesbar — ${e.message}`);
+    }
+  }
+  return { notes, metatft, cdragon };
+}
+
 async function main() {
   const setFile = arg('--set-file') || 'public/tft-set.json';
   const file = arg('--file');
-  const today = arg('--today') || new Date().toISOString().slice(0, 10);
+  const votesFile = arg('--votes-file');
+  const now = arg('--now') ? new Date(arg('--now')) : new Date();
+  if (!Number.isFinite(now.getTime())) throw new Error(`--now ungueltig: ${arg('--now')}`);
+  const nowIso = now.toISOString();
+  const today = arg('--today') || nowIso.slice(0, 10);
   const dry = process.argv.includes('--dry-run');
 
   const html = file ? readFileSync(file, 'utf8') : await fetchPage();
@@ -64,12 +112,40 @@ async function main() {
   for (const a of alerts) console.log(`  Hinweis oben auf der Seite: ${a}`);
 
   const stored = JSON.parse(readFileSync(setFile, 'utf8'));
-  const { starts, changes, notes } = mergeSchedule(stored.patchStarts, rows, today, new Date().toISOString());
-  for (const c of changes) console.log(`  ${c}`);
-  for (const n of notes) console.warn(`  WARN ${n}`);
+  const merged = mergeSchedule(stored.patchStarts, rows, today, nowIso);
+  for (const c of merged.changes) console.log(`  ${c}`);
+  for (const n of merged.notes) console.warn(`  WARN ${n}`);
 
-  const problems = scheduleProblems({ ...stored, patchStarts: starts });
+  const problems = scheduleProblems({ ...stored, patchStarts: merged.starts });
   if (problems.length) throw new Error(`Terminplan passt nicht zu den gespeicherten Daten: ${problems.join(' | ')}`);
+
+  // Bestaetigung. Was sie aendert, wird gegen die B-Patches geprueft; passt es
+  // nicht, bleibt der Terminplan ohne sie stehen und ein Mensch sieht den Befund.
+  let starts = merged.starts;
+  const findings = [];
+  if (process.env.PATCH_CONFIRM === '0') {
+    console.log('Bestaetigung abgeschaltet (PATCH_CONFIRM=0) — Halte-Eintraege bleiben, wie sie sind');
+  } else {
+    const set = Number(stored.setNumber);
+    const candidates = confirmCandidates(starts, set, now);
+    if (!candidates.length) console.log('Bestaetigung: kein offener Termin');
+    else {
+      const observations = votesFile ? JSON.parse(readFileSync(votesFile, 'utf8')) : await observe(candidates);
+      try {
+        const c = confirmStarts(starts, { set, now, nowIso, observations });
+        const fresh = scheduleProblems({ ...stored, patchStarts: c.starts });
+        if (fresh.length) throw new Error(`passt nicht zu den B-Patches: ${fresh.join(' | ')}`);
+        console.log(`Bestaetigung (laufender Sammeltag ${currentWindowDay(now)}, geprueft: ${candidates.map((x) => x.patch).join(', ')}):`);
+        for (const x of c.changes) console.log(`  ${x}`);
+        for (const x of c.notes) console.log(`  Hinweis: ${x}`);
+        findings.push(...c.alerts);
+        starts = c.starts;
+      } catch (e) {
+        findings.push(`Bestaetigung nicht angewendet — ${e.message}`);
+      }
+    }
+  }
+  for (const f of findings) console.error(`  BEFUND ${f}`);
 
   const delays = alerts.filter(isDelayAlert);
   const known = Array.isArray(stored.patchScheduleAlerts) ? stored.patchScheduleAlerts : [];
@@ -87,8 +163,8 @@ async function main() {
   if (fresh.length) {
     console.error(`ACHTUNG: Riot meldet eine Patch-Verschiebung: ${fresh.join(' | ')}`);
     console.error('  Pruefen, ob die Tabelle das neue Datum schon traegt. Sonst den Termin in public/tft-set.json von Hand setzen (pinned: true).');
-    process.exitCode = 2;
   }
+  if (fresh.length || findings.length) process.exitCode = 2;
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);

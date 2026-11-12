@@ -11,8 +11,21 @@
 // Reine Funktionen, kein Netz, keine Dateien. Abruf und Schreiben macht
 // scripts/detect-tft-patch-schedule.mjs, die Tagesregel scripts/lib/tft-patch-day.mjs.
 // Alles Unerwartete wirft: lieber ein roter Lauf als ein still falscher Termin.
+//
+// Termin erst nach Bestaetigung (G2, Plan 12.11.2026): Riots Tabelle nannte
+// 18.7 ab 11.11.2026, der Patch kam nicht. Deshalb prueft confirmStarts den
+// juengsten gestarteten Termin der laufenden Set gegen drei Quellen (Riots
+// Notes, MetaTFT, CDragon-Stempel), je ja / nein / unbekannt:
+//   >= 2 ja    `confirmed: true`; war er angehalten, gilt er ab dem
+//              Sammeltag aus MetaTFTs `start` (nie vor Riots Tag, nie nach heute)
+//   >= 2 nein  `hold: { riot_from_day, since }`, from_day = laufender
+//              Sammeltag + 1 — alle Leser sehen so das wirksame Datum
+//   sonst      nichts aendern, nur Hinweis
+// Ausgenommen: `pinned` (Hand hat Vorrang) und x.1 (Set-Start, den sichert
+// detect-tft-set: Wechsel erst, wenn CDragon die neue Set ausliefert).
 
 import { isDay, addDays } from './tft-patch-day.mjs';
+import { currentWindowDay } from './tft-crawl-window.mjs';
 
 export const SCHEDULE_URL = 'https://support.riotgames.com/en-us/tft/events/patch-schedule-teamfight-tactics';
 
@@ -177,6 +190,9 @@ function checkSequence(list) {
     if (!m || Number(m[2]) < 1 || !isDay(s?.from_day) || s.set !== Number(m[1])) {
       throw new Error(`Terminplan-Eintrag ungueltig: ${JSON.stringify(s)}`);
     }
+    if (s.hold != null && (typeof s.hold !== 'object' || !isDay(s.hold.riot_from_day))) {
+      throw new Error(`Halte-Eintrag ungueltig (hold braucht riot_from_day): ${JSON.stringify(s)}`);
+    }
   }
   for (let i = 1; i < list.length; i++) {
     const a = list[i - 1];
@@ -198,6 +214,10 @@ function checkSequence(list) {
  *
  * - neuer Patch: aufnehmen
  * - `pinned`: bleibt, wie er ist (der einzige Hand-Eingriff)
+ * - `hold` / `confirmed`: bleibt ebenfalls (confirmStarts entscheidet). Sonst
+ *   setzte Riots altes Datum einen angehaltenen Termin zurueck oder wuerfe nach
+ *   drei Tagen als "vergangener Termin". Hinweis nur, wenn Riot ein Datum nennt,
+ *   das wir noch nicht kennen.
  * - anderes Datum: uebernehmen, solange keiner der beiden Termine laenger als
  *   PAST_GUARD_DAYS zurueckliegt; sonst werfen — ein Mensch soll entscheiden
  * - Patches, die von der Seite verschwinden (Jahreswechsel), bleiben stehen
@@ -227,6 +247,18 @@ export function mergeSchedule(stored, rows, today, nowIso) {
       notes.push(`${r.patch}: von Hand auf ${old.from_day} festgesetzt, Riot nennt ${r.from_day}`);
       continue;
     }
+    if (old.hold) {
+      if (r.from_day !== old.hold.riot_from_day) {
+        notes.push(`${r.patch}: angehalten (gilt fruehestens ab ${old.from_day}), Riot nennt jetzt ${r.from_day} statt ${old.hold.riot_from_day}`);
+      }
+      continue;
+    }
+    if (old.confirmed) {
+      if (r.from_day !== old.previous_from_day) {
+        notes.push(`${r.patch}: Go-Live ab ${old.from_day} bestaetigt, Riot nennt ${r.from_day}`);
+      }
+      continue;
+    }
     const earlier = old.from_day < r.from_day ? old.from_day : r.from_day;
     if (earlier <= guard) {
       throw new Error(`Riot aendert einen vergangenen Termin: ${r.patch} von ${old.from_day} auf ${r.from_day}. `
@@ -241,4 +273,204 @@ export function mergeSchedule(stored, rows, today, nowIso) {
   list.sort((a, b) => String(a?.from_day).localeCompare(String(b?.from_day)));
   checkSequence(list);
   return { starts: list, changes, notes };
+}
+
+// ---------------------------------------------------------------- Bestaetigung (G2)
+
+const YES = 'ja';
+const NO = 'nein';
+const UNKNOWN = 'unbekannt';
+// CDragon `latest` traegt die Daten des naechsten Patches 1–2 Tage vor dem
+// Go-Live (detect-tft-set.mjs, Bump-Gate). Ein Stempel ab Riots Tag − 2 zaehlt.
+export const CDRAGON_LEAD_DAYS = 2;
+
+const isMinorOne = (patch) => /^\d+\.1$/.test(String(patch));
+const riotDayOf = (s) => s.hold?.riot_from_day ?? s.from_day;
+const byFromDay = (a, b) => String(a?.from_day).localeCompare(String(b?.from_day));
+
+function toDate(now) {
+  const d = now instanceof Date ? now : new Date(now);
+  if (!Number.isFinite(d.getTime())) throw new Error(`Ungueltiger Zeitpunkt: ${JSON.stringify(now)}`);
+  return d;
+}
+
+/**
+ * Stimmen der drei Quellen fuer einen Termin, je 'ja' | 'nein' | 'unbekannt'.
+ *
+ * @param observations {
+ *   notes:   { "18.7": 'ja' | 'nein' | 'unbekannt' }   Riots Notes: 200 ja, 404 nein
+ *   metatft: { patch, b_patch_version, start } | null  Antwort von tft-stat-api/patch
+ *   cdragon: ISO-Zeit | null                           Stempel von en_us.json im Listing
+ * }
+ * Fehlt etwas oder ist es unlesbar: unbekannt.
+ */
+export function patchVotes(entry, observations = {}) {
+  const n = observations?.notes?.[entry.patch];
+  const notes = n === YES || n === NO ? n : UNKNOWN;
+
+  const mt = observations?.metatft;
+  const mtPatch = typeof mt?.patch === 'string' && /^\d+\.\d+$/.test(mt.patch) ? mt.patch : null;
+  const metatft = mtPatch ? (cmpPatch(mtPatch, entry.patch) >= 0 ? YES : NO) : UNKNOWN;
+
+  const cd = observations?.cdragon;
+  const cdMs = typeof cd === 'string' ? Date.parse(cd) : NaN;
+  const cdragon = Number.isFinite(cdMs)
+    ? (new Date(cdMs).toISOString().slice(0, 10) >= addDays(riotDayOf(entry), -CDRAGON_LEAD_DAYS) ? YES : NO)
+    : UNKNOWN;
+  return { notes, metatft, cdragon };
+}
+
+function tally(votes, observations) {
+  const mt = observations?.metatft;
+  const cd = observations?.cdragon;
+  const mtText = typeof mt?.patch === 'string' ? ` (${mt.patch}${String(mt.b_patch_version ?? '').trim()})` : '';
+  const cdText = typeof cd === 'string' && Number.isFinite(Date.parse(cd)) ? ` (${new Date(cd).toISOString().slice(0, 10)})` : '';
+  return `Notes ${votes.notes}, MetaTFT ${votes.metatft}${mtText}, CDragon ${votes.cdragon}${cdText}`;
+}
+
+/**
+ * Welche Termine heute geprueft werden (Reihenfolge nach Datum):
+ *  (a) jeder angehaltene Termin der laufenden Set
+ *  (b) der juengste gestartete Termin der laufenden Set (from_day <= laufender
+ *      Sammeltag), wenn er weder bestaetigt noch angehalten ist
+ * Nie `pinned` (Hand hat Vorrang), nie x.1 (Set-Start sichert detect-tft-set).
+ */
+export function confirmCandidates(starts, set, now) {
+  const W = currentWindowDay(toDate(now));
+  const own = (Array.isArray(starts) ? starts : [])
+    .filter((s) => s?.set === Number(set) && isDay(s?.from_day))
+    .sort(byFromDay);
+  const out = own.filter((s) => s.hold && !s.pinned && !isMinorOne(s.patch));
+  const youngest = own.filter((s) => s.from_day <= W).at(-1);
+  if (youngest && !youngest.pinned && !youngest.confirmed && !youngest.hold && !isMinorOne(youngest.patch)) {
+    out.push(youngest);
+  }
+  return out.sort(byFromDay);
+}
+
+// Spaetester Tag, auf den ein Termin ruecken darf: mindestens MIN_GAP_DAYS vor
+// dem naechsten Termin und hoechstens MAX_GAP_DAYS nach dem vorigen — sonst
+// verwirft checkSequence die ganze Liste.
+function upperLimit(list, s) {
+  const sorted = [...list].sort(byFromDay);
+  const i = sorted.indexOf(s);
+  const next = sorted[i + 1];
+  const prev = sorted[i - 1];
+  const limits = [];
+  if (next) limits.push({ day: addDays(next.from_day, -MIN_GAP_DAYS), why: `weniger als ${MIN_GAP_DAYS} Tage vor ${next.patch} (${next.from_day})` });
+  if (prev) limits.push({ day: addDays(prev.from_day, MAX_GAP_DAYS), why: `mehr als ${MAX_GAP_DAYS} Tage nach ${prev.patch} (${prev.from_day})` });
+  return limits.sort((a, b) => a.day.localeCompare(b.day))[0] ?? null;
+}
+
+// Go-Live nach einem Halt: Sammeltag aus MetaTFTs `start`, wenn MetaTFT genau
+// diesen Patch ohne B-Buchstaben meldet (sonst gehoert `start` zu einem anderen
+// Stand), begrenzt auf [Riots Tag, laufender Sammeltag]. Ohne diesen Start der
+// NAECHSTE Sammeltag: Notes und CDragon erscheinen meist einen Tag vor dem
+// Go-Live, eine Freigabe nur auf sie laege sonst einen Tag zu frueh. An der
+// Obergrenze bleibt der angehaltene Tag.
+function releaseDay(s, observations, W, limit) {
+  const mt = observations?.metatft;
+  let day;
+  let how;
+  if (mt?.patch === s.patch && !String(mt.b_patch_version ?? '').trim() && Number.isFinite(Date.parse(mt.start))) {
+    day = currentWindowDay(new Date(Date.parse(mt.start)));
+    how = `MetaTFT-Start ${mt.start}`;
+    if (day > W) day = W;
+  } else {
+    day = addDays(W, 1);
+    how = 'naechster Sammeltag, MetaTFT bestaetigt den Start noch nicht';
+    if (limit && day > limit.day) day = s.from_day;
+  }
+  if (day < s.hold.riot_from_day) day = s.hold.riot_from_day;
+  return { day, how };
+}
+
+/**
+ * Termine bestaetigen, anhalten oder freigeben (Regeln oben im Kopf).
+ *
+ * @param stored        patchStarts nach mergeSchedule
+ * @param set           laufende Set (tft-set.json setNumber)
+ * @param now           Zeitpunkt des Laufs (Date oder ISO); laufender Sammeltag
+ *                      W = currentWindowDay(now)
+ * @param observations  Quellen-Antworten, siehe patchVotes
+ * @returns {{ starts, changes, notes, alerts, decisions }}
+ *   alerts     Meldungen fuer den Menschen (Exit 2): neu angehalten, nach
+ *              Halt freigegeben, Obergrenze erreicht
+ *   decisions  je Kandidat { patch, votes, outcome }
+ */
+export function confirmStarts(stored, { set, now, nowIso, observations = {} } = {}) {
+  if (!Array.isArray(stored)) throw new Error('patchStarts ist keine Liste');
+  const at = toDate(now);
+  const W = currentWindowDay(at);
+  const stamp = nowIso ?? at.toISOString();
+  const list = stored.map((s) => (s?.hold && typeof s.hold === 'object' ? { ...s, hold: { ...s.hold } } : { ...s }));
+  checkSequence([...list].sort(byFromDay));
+  const changes = [];
+  const notes = [];
+  const alerts = [];
+  const decisions = [];
+
+  for (const s of confirmCandidates(list, set, at)) {
+    const votes = patchVotes(s, observations);
+    const yes = Object.values(votes).filter((v) => v === YES).length;
+    const no = Object.values(votes).filter((v) => v === NO).length;
+    const why = tally(votes, observations);
+    const decide = (outcome) => decisions.push({ patch: s.patch, votes, outcome });
+
+    if (yes >= 2) {
+      if (s.hold) {
+        const riot = s.hold.riot_from_day;
+        const { day, how } = releaseDay(s, observations, W, upperLimit(list, s));
+        delete s.hold;
+        s.confirmed = true;
+        s.previous_from_day = riot;
+        s.from_day = day;
+        alerts.push(`${s.patch}: nach Halt bestaetigt (${why}) — gilt ab ${day} (${how}; Riot nannte ${riot})`);
+        decide('released');
+      } else {
+        s.confirmed = true;
+        changes.push(`${s.patch}: Go-Live ab ${s.from_day} bestaetigt (${why})`);
+        decide('confirmed');
+      }
+      continue;
+    }
+
+    // Angehalten bleibt angehalten, bis 2 Quellen bestaetigen — auch wenn die
+    // Quellen gerade unklar sind (sonst wuerde der Termin unbestaetigt wirksam).
+    if (no >= 2 || s.hold) {
+      const tomorrow = addDays(W, 1);
+      const target = s.hold && s.from_day > tomorrow ? s.from_day : tomorrow;
+      if (target === s.from_day) {
+        notes.push(`${s.patch}: weiter angehalten (${why}), gilt fruehestens ab ${s.from_day}`);
+        decide('hold-unchanged');
+        continue;
+      }
+      const limit = upperLimit(list, s);
+      if (limit && target > limit.day) {
+        alerts.push(`${s.patch}: nicht bestaetigt (${why}), aber ab ${target} laege er ${limit.why} — nicht weiter verschoben, `
+          + `bleibt ab ${s.from_day}${s.hold ? ' (angehalten)' : ''}. Von Hand entscheiden (pinned setzen)`);
+        decide('capped');
+        continue;
+      }
+      if (s.hold) {
+        changes.push(`${s.patch}: weiter angehalten (${why}) — von ${s.from_day} auf ${target}`);
+        decide('hold-extended');
+      } else {
+        s.hold = { riot_from_day: s.from_day, since: stamp };
+        const kept = s.from_day < W ? `Sammeltage ${s.from_day} bis ${W} bleiben` : `Sammeltag ${W} bleibt`;
+        alerts.push(`${s.patch}: angehalten — Riot nannte ${s.from_day}, aber ${why}. Gilt fruehestens ab ${target}, `
+          + `${kept} beim Vorgaenger`);
+        decide('held');
+      }
+      s.from_day = target;
+      continue;
+    }
+
+    notes.push(`${s.patch}: nicht entschieden (${why}) — bleibt${s.hold ? ' angehalten' : ''} ab ${s.from_day}`);
+    decide('undecided');
+  }
+
+  list.sort(byFromDay);
+  checkSequence(list);
+  return { starts: list, changes, notes, alerts, decisions };
 }

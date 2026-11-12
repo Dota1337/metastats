@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { isDelayAlert, mergeSchedule, parseScheduleHtml } from './tft-patch-schedule.mjs';
+import { confirmCandidates, confirmStarts, isDelayAlert, mergeSchedule, parseScheduleHtml, patchVotes } from './tft-patch-schedule.mjs';
 
 const FIXTURE = readFileSync(new URL('../fixtures/tft-patch-schedule.html', import.meta.url), 'utf8');
 const SCRIPT = fileURLToPath(new URL('../detect-tft-patch-schedule.mjs', import.meta.url));
@@ -220,15 +220,21 @@ const CUTS = [
   { set: 18, patch: '18.3b', base: '18.3', from_day: '2026-09-24' },
 ];
 
+// Ohne Netz: --now und eine leere Stimmen-Datei (alle Quellen unbekannt →
+// die Bestaetigung aendert nichts). PATCH_CONFIRM fest auf an, damit eine
+// Umgebung mit PATCH_CONFIRM=0 die Tests nicht verfaelscht.
 function sandbox(t, { html = FIXTURE, meta = {} } = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'tft-schedule-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));
   const htmlFile = join(dir, 'seite.html');
   const setFile = join(dir, 'tft-set.json');
+  const votesFile = join(dir, 'stimmen.json');
   writeFileSync(htmlFile, html);
+  writeFileSync(votesFile, '{}');
   writeFileSync(setFile, JSON.stringify({ setNumber: 18, setName: 'X', latestPatch: '18.3', foo: { bar: 1 }, patchCuts: CUTS, ...meta }, null, 2) + '\n');
   const run = (...extra) => spawnSync(process.execPath,
-    [SCRIPT, '--file', htmlFile, '--today', '2026-10-05', '--set-file', setFile, ...extra], { encoding: 'utf8' });
+    [SCRIPT, '--file', htmlFile, '--today', '2026-10-05', '--now', '2026-10-05T02:17:00.000Z', '--votes-file', votesFile, '--set-file', setFile, ...extra],
+    { encoding: 'utf8', env: { ...process.env, PATCH_CONFIRM: '1' } });
   return { htmlFile, setFile, run, read: () => readFileSync(setFile, 'utf8') };
 }
 
@@ -302,4 +308,338 @@ test('Skript: neuer Verschiebungs-Hinweis → geschrieben, Exit 2, nur einmal', 
   const third = box.run();
   assert.equal(third.status, 0, third.stderr);
   assert.deepEqual(JSON.parse(box.read()).patchScheduleAlerts, []);
+});
+
+// ---------- Termin erst nach Bestaetigung (G2) ----------
+// Nachgestellt: Riot nannte 18.7 ab 11.11.2026, der Patch kam nicht (Notes 404,
+// MetaTFT 18.6, CDragon seit 04.11. unveraendert).
+
+const RUN = '2026-11-12T02:17:00.000Z';             // laufender Sammeltag 2026-11-11
+const runAt = (day) => `${day}T02:17:00.000Z`;      // Bot-Zeit, Sammeltag = day − 1
+const S18 = deepFreeze([
+  ['18.1', '2026-08-26'], ['18.2', '2026-09-10'], ['18.3', '2026-09-23'], ['18.4', '2026-10-07'], ['18.5', '2026-10-21'],
+  ['18.6', '2026-11-04'], ['18.7', '2026-11-11'], ['19.1', '2026-12-01'], ['19.2', '2026-12-15'],
+].map(([patch, from_day]) => ({ set: Number(patch.split('.')[0]), patch, from_day, seen_at: NOW })));
+const RIOT = S18.map(({ set, patch, from_day }) => ({ set, patch, from_day }));
+const HOLD = deepFreeze({ riot_from_day: '2026-11-11', since: RUN });
+const withEntry = (patch, extra, list = S18) => deepFreeze(list.map((s) => (s.patch === patch ? { ...s, ...extra } : s)));
+const held = (from_day, extra = {}) => withEntry('18.7', { from_day, hold: HOLD, ...extra });
+const get = (list, patch) => list.find((s) => s.patch === patch);
+const outcome = (r, patch) => r.decisions.find((x) => x.patch === patch)?.outcome;
+
+const MT = (patch, start = '2026-11-05T00:00:08.489Z', b = '') => ({ patch, b_patch_version: b, start });
+const CD_OLD = '2026-11-04T00:47:00.000Z';
+const CD_NEW = '2026-11-18T00:50:00.000Z';
+const votes = (notes, metatft, cdragon, patch = '18.7') => ({ notes: notes === undefined ? {} : { [patch]: notes }, metatft, cdragon });
+const NONE = votes('nein', MT('18.6'), CD_OLD);                            // 3× nein
+const LIVE = votes('ja', MT('18.7', '2026-11-19T00:00:05.000Z'), CD_NEW);  // 3× ja, MetaTFT-Start = Sammeltag 18.11.
+const RUNNING = get(S18, '18.7').set;               // laufende Set der Fixture
+const confirm = (starts, now, observations, set = RUNNING) => confirmStarts(starts, { set, now, nowIso: now, observations });
+
+test('Stimmen je Quelle: ja / nein / unbekannt', () => {
+  const e = { set: 18, patch: '18.7', from_day: '2026-11-11' };
+  const v = (obs) => patchVotes(e, obs);
+  const unknown = { notes: 'unbekannt', metatft: 'unbekannt', cdragon: 'unbekannt' };
+  assert.deepEqual(v(NONE), { notes: 'nein', metatft: 'nein', cdragon: 'nein' });
+  assert.deepEqual(v(LIVE), { notes: 'ja', metatft: 'ja', cdragon: 'ja' });
+  assert.deepEqual(v({}), unknown);
+  assert.deepEqual(v(undefined), unknown);
+  assert.equal(v(votes('vielleicht')).notes, 'unbekannt');
+  assert.equal(v({ notes: { '18.6': 'ja' } }).notes, 'unbekannt', 'Notes eines anderen Patches');
+  // MetaTFT: gleich oder hoeher = ja (Zahl, nicht Text: 18.10 > 18.7)
+  for (const p of ['18.7', '18.8', '18.10', '19.1']) assert.equal(v({ metatft: MT(p) }).metatft, 'ja', p);
+  for (const p of ['18.6', '17.9']) assert.equal(v({ metatft: MT(p) }).metatft, 'nein', p);
+  for (const mt of [null, { patch: 18.7 }, { patch: 'x' }, { patch: '18.7b' }, 'kaputt']) {
+    assert.equal(v({ metatft: mt }).metatft, 'unbekannt', JSON.stringify(mt));
+  }
+  // CDragon: Stempel ab Riots Tag − 2
+  assert.equal(v({ cdragon: '2026-11-09T00:00:00.000Z' }).cdragon, 'ja');
+  assert.equal(v({ cdragon: '2026-11-08T23:59:00.000Z' }).cdragon, 'nein');
+  for (const cd of [null, 'kaputt', 42]) assert.equal(v({ cdragon: cd }).cdragon, 'unbekannt', String(cd));
+  // angehalten: Riots Tag zaehlt, nicht das verschobene from_day (14.11. − 2 waere nein)
+  assert.equal(patchVotes({ set: 18, patch: '18.7', from_day: '2026-11-14', hold: HOLD }, { cdragon: '2026-11-10T00:00:00.000Z' }).cdragon, 'ja');
+});
+
+test('Kandidaten: juengster gestarteter Termin plus angehaltene, nie pinned / x.1 / bestaetigt', () => {
+  const c = (list, now, set = RUNNING) => confirmCandidates(list, set, now).map((s) => s.patch);
+  assert.deepEqual(c(S18, RUN), ['18.7']);
+  // Sammeltag wechselt um 05:00 UTC
+  assert.deepEqual(c(S18, '2026-11-11T04:59:59.000Z'), ['18.6']);
+  assert.deepEqual(c(S18, '2026-11-11T05:00:00.000Z'), ['18.7']);
+  // nur der juengste — ist er erledigt, wird kein aelterer nachgeholt
+  assert.deepEqual(c(withEntry('18.7', { pinned: true }), RUN), []);
+  assert.deepEqual(c(withEntry('18.7', { confirmed: true }), RUN), []);
+  // angehaltene immer, auch noch nicht gestartet; daneben der juengste gestartete
+  assert.deepEqual(c(held('2026-11-12'), RUN), ['18.6', '18.7']);
+  assert.deepEqual(c(held('2026-11-12', { pinned: true }), RUN), ['18.6']);
+  // x.1 nie (Set-Start), Termine anderer Sets nie
+  const in19 = runAt('2026-12-02');
+  assert.deepEqual(c(S18, in19, 19), []);
+  assert.deepEqual(c(withEntry('19.1', { from_day: '2026-12-02', hold: { riot_from_day: '2026-12-01' } }), in19, 19), []);
+  assert.deepEqual(c(S18, in19, 18), ['18.7']);
+});
+
+test('Entscheid fuer einen nicht angehaltenen Termin', () => {
+  // [Stimmen, Ergebnis, from_day, angehalten, bestaetigt, Meldungen]
+  const cases = [
+    [NONE, 'held', '2026-11-12', true, false, 1],
+    [votes('nein', MT('18.6'), null), 'held', '2026-11-12', true, false, 1],
+    [votes('ja', MT('18.6'), CD_OLD), 'held', '2026-11-12', true, false, 1],
+    [votes('ja', MT('18.7'), CD_OLD), 'confirmed', '2026-11-11', false, true, 0],
+    [votes(undefined, MT('18.7'), CD_NEW), 'confirmed', '2026-11-11', false, true, 0],
+    [votes('ja', MT('18.6'), null), 'undecided', '2026-11-11', false, false, 0],
+    [votes('nein', null, null), 'undecided', '2026-11-11', false, false, 0],
+    [{}, 'undecided', '2026-11-11', false, false, 0],
+  ];
+  for (const [obs, want, day, isHeld, isConfirmed, nAlerts] of cases) {
+    const label = JSON.stringify(obs);
+    const r = confirm(S18, RUN, obs);
+    const e = get(r.starts, '18.7');
+    assert.equal(r.decisions.length, 1, label);
+    assert.equal(outcome(r, '18.7'), want, label);
+    assert.equal(e.from_day, day, label);
+    assert.equal('hold' in e, isHeld, label);
+    assert.equal(e.confirmed === true, isConfirmed, label);
+    assert.equal(r.alerts.length, nAlerts, label);
+    assert.deepEqual(r.starts.filter((s) => s.patch !== '18.7'), S18.filter((s) => s.patch !== '18.7'), label);
+  }
+  const r = confirm(S18, RUN, NONE);
+  assert.deepEqual(get(r.starts, '18.7').hold, { riot_from_day: '2026-11-11', since: RUN });
+  assert.match(r.alerts[0], /^18\.7: angehalten — Riot nannte 2026-11-11, aber Notes nein, MetaTFT nein \(18\.6\), CDragon nein \(2026-11-04\)\. Gilt fruehestens ab 2026-11-12, Sammeltag 2026-11-11 bleibt beim Vorgaenger$/);
+  // Laeufe ausgefallen: der Termin liegt schon Tage zurueck → trotzdem ab morgen
+  const late = confirm(S18, runAt('2026-11-15'), NONE);
+  assert.equal(get(late.starts, '18.7').from_day, '2026-11-15');
+  assert.match(late.alerts[0], /Sammeltage 2026-11-11 bis 2026-11-14 bleiben beim Vorgaenger$/);
+  assert.deepEqual(get(late.starts, '18.7').hold, { riot_from_day: '2026-11-11', since: runAt('2026-11-15') });
+});
+
+test('angehaltener Termin rueckt mit dem Sammeltag, ohne neue Meldung', () => {
+  let r = confirm(held('2026-11-12'), runAt('2026-11-13'), NONE);
+  assert.equal(outcome(r, '18.7'), 'hold-extended');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-13');
+  assert.deepEqual(get(r.starts, '18.7').hold, HOLD);
+  assert.deepEqual(r.alerts, []);
+  // drei Laeufe ausgefallen: springt auf morgen
+  r = confirm(held('2026-11-12'), runAt('2026-11-16'), NONE);
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-16');
+  // schon morgen oder weiter hinten: bleibt
+  for (const day of ['2026-11-13', '2026-11-20']) {
+    r = confirm(held(day), runAt('2026-11-13'), NONE);
+    assert.equal(outcome(r, '18.7'), 'hold-unchanged', day);
+    assert.equal(get(r.starts, '18.7').from_day, day);
+  }
+  // unklar (Quellen weg): bleibt angehalten und rueckt weiter — nie unbestaetigt wirksam
+  r = confirm(held('2026-11-12'), runAt('2026-11-13'), {});
+  assert.equal(outcome(r, '18.7'), 'hold-extended');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-13');
+  assert.deepEqual(get(r.starts, '18.7').hold, HOLD);
+  assert.deepEqual(r.alerts, []);
+});
+
+test('Freigabe nach Halt: Sammeltag aus MetaTFT-Start (begrenzt auf [Riots Tag, heute]), sonst der naechste', () => {
+  const now = runAt('2026-11-20');   // laufender Sammeltag 2026-11-19
+  const cases = [
+    [LIVE, '2026-11-18', /MetaTFT-Start 2026-11-19T00:00:05/],
+    [votes('ja', MT('18.7', '2026-11-05T00:00:00.000Z'), CD_NEW), '2026-11-11', /MetaTFT-Start/],    // vor Riots Tag
+    [votes('ja', MT('18.7', '2026-11-25T00:00:00.000Z'), CD_NEW), '2026-11-19', /MetaTFT-Start/],    // nach heute
+    // Notes + CDragon kommen meist einen Tag vor dem Go-Live → ohne MetaTFT-Start erst der naechste Sammeltag
+    [votes('ja', MT('18.6'), CD_NEW), '2026-11-20', /naechster Sammeltag/],                           // MetaTFT nein
+    [votes('ja', null, CD_NEW), '2026-11-20', /naechster Sammeltag/],                                 // MetaTFT weg
+    [votes('ja', MT('18.7', '2026-11-19T00:00:05.000Z', 'b'), CD_NEW), '2026-11-20', /naechster Sammeltag/], // Start eines B-Patches
+    [votes('ja', MT('18.8', '2026-11-16T00:00:05.000Z'), CD_NEW), '2026-11-20', /naechster Sammeltag/], // Start eines spaeteren Patches
+    [votes('nein', MT('18.7', 'kaputt'), CD_NEW), '2026-11-20', /naechster Sammeltag/],
+  ];
+  for (const [obs, day, how] of cases) {
+    const label = JSON.stringify(obs);
+    const r = confirm(held('2026-11-19'), now, obs);
+    const e = get(r.starts, '18.7');
+    assert.equal(outcome(r, '18.7'), 'released', label);
+    assert.equal(e.from_day, day, label);
+    assert.equal(e.confirmed, true, label);
+    assert.equal('hold' in e, false, label);
+    assert.equal(e.previous_from_day, '2026-11-11', label);
+    assert.equal(r.alerts.length, 1, label);
+    assert.match(r.alerts[0], /^18\.7: nach Halt bestaetigt \(.*\) — gilt ab /, label);
+    assert.match(r.alerts[0], how, label);
+  }
+});
+
+test('Obergrenze: nie naeher als 6 Tage an den naechsten, nie mehr als 42 nach dem vorigen Termin', () => {
+  // 19.1 am 01.12. → 18.7 spaetestens ab 25.11.
+  let r = confirm(held('2026-11-24'), runAt('2026-11-25'), NONE);
+  assert.equal(outcome(r, '18.7'), 'hold-extended');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-25');
+  r = confirm(held('2026-11-25'), runAt('2026-11-26'), NONE);
+  assert.equal(outcome(r, '18.7'), 'capped');
+  assert.deepEqual(get(r.starts, '18.7'), get(held('2026-11-25'), '18.7'));
+  assert.equal(r.alerts.length, 1);
+  assert.match(r.alerts[0], /weniger als 6 Tage vor 19\.1 \(2026-12-01\).*Von Hand entscheiden \(pinned setzen\)/);
+  // Freigabe ohne MetaTFT-Start an der Obergrenze: bleibt am angehaltenen Tag statt am naechsten Sammeltag
+  r = confirm(held('2026-11-25'), runAt('2026-11-26'), votes('ja', MT('18.6'), CD_NEW));
+  assert.equal(outcome(r, '18.7'), 'released');
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-25');
+  // nicht angehalten: kein Halt, nur Meldung
+  r = confirm(withEntry('18.7', { from_day: '2026-11-25' }), runAt('2026-11-26'), NONE);
+  assert.equal(outcome(r, '18.7'), 'capped');
+  assert.deepEqual(get(r.starts, '18.7'), get(withEntry('18.7', { from_day: '2026-11-25' }), '18.7'));
+  // ohne Nachfolger: hoechstens 42 Tage nach 18.6 (04.11. → 16.12.)
+  const only18 = S18.filter((s) => s.set === 18);
+  r = confirm(withEntry('18.7', { from_day: '2026-12-15', hold: HOLD }, only18), runAt('2026-12-16'), NONE);
+  assert.equal(get(r.starts, '18.7').from_day, '2026-12-16');
+  r = confirm(withEntry('18.7', { from_day: '2026-12-16', hold: HOLD }, only18), runAt('2026-12-17'), NONE);
+  assert.equal(outcome(r, '18.7'), 'capped');
+  assert.match(r.alerts[0], /mehr als 42 Tage nach 18\.6 \(2026-11-04\)/);
+});
+
+test('pinned und x.1 bleiben unberuehrt, auch bei klarem Nein', () => {
+  const pinned = withEntry('18.7', { pinned: true });
+  let r = confirm(pinned, RUN, NONE);
+  assert.deepEqual(r.decisions, []);
+  assert.deepEqual(r.starts, pinned);
+  r = confirm(S18, runAt('2026-12-02'), votes('nein', MT('18.7'), CD_OLD, '19.1'), 19);
+  assert.deepEqual(r.decisions, []);
+  assert.deepEqual(r.starts, S18);
+});
+
+test('mergeSchedule: angehaltener Termin bleibt, auch wenn Riots Tag mehr als 3 Tage zurueckliegt', () => {
+  const list = held('2026-11-16');
+  for (const today of ['2026-11-12', '2026-11-15', '2026-11-20']) {
+    const r = mergeSchedule(list, RIOT, today, LATER);
+    assert.deepEqual(r.changes, [], today);
+    assert.deepEqual(r.notes, [], today);
+    assert.deepEqual(r.starts, list, today);
+  }
+  // Gegenprobe: ohne Halt wirft derselbe Stand (Sperre 3 Tage)
+  assert.throws(() => mergeSchedule(withEntry('18.7', { from_day: '2026-11-16' }), RIOT, '2026-11-15', LATER), /vergangenen Termin/);
+  // Riot nennt ein neues Datum: nur Hinweis
+  const moved18 = RIOT.map((r) => (r.patch === '18.7' ? { ...r, from_day: '2026-11-18' } : r));
+  const r = mergeSchedule(list, moved18, '2026-11-15', LATER);
+  assert.deepEqual(r.changes, []);
+  assert.deepEqual(r.notes, ['18.7: angehalten (gilt fruehestens ab 2026-11-16), Riot nennt jetzt 2026-11-18 statt 2026-11-11']);
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-16');
+});
+
+test('mergeSchedule: bestaetigter Termin bleibt, Riots alter Tag ohne Hinweis', () => {
+  const done = withEntry('18.7', { from_day: '2026-11-18', confirmed: true, previous_from_day: '2026-11-11' });
+  let r = mergeSchedule(done, RIOT, '2026-11-25', LATER);
+  assert.deepEqual(r.changes, []);
+  assert.deepEqual(r.notes, []);
+  assert.deepEqual(r.starts, done);
+  const other = RIOT.map((x) => (x.patch === '18.7' ? { ...x, from_day: '2026-11-20' } : x));
+  r = mergeSchedule(done, other, '2026-11-25', LATER);
+  assert.deepEqual(r.notes, ['18.7: Go-Live ab 2026-11-18 bestaetigt, Riot nennt 2026-11-20']);
+  assert.equal(get(r.starts, '18.7').from_day, '2026-11-18');
+  // Gegenprobe: ohne confirmed wirft derselbe Stand
+  assert.throws(() => mergeSchedule(withEntry('18.7', { from_day: '2026-11-18', previous_from_day: '2026-11-11' }), RIOT, '2026-11-25', LATER), /vergangenen Termin/);
+});
+
+test('kaputte Eingaben der Bestaetigung werfen', () => {
+  for (const hold of [{ since: RUN }, { riot_from_day: '11.11.2026' }, 'ja']) {
+    const list = withEntry('18.7', { from_day: '2026-11-12', hold });
+    assert.throws(() => confirm(list, RUN, NONE), /Halte-Eintrag ungueltig/, JSON.stringify(hold));
+    assert.throws(() => mergeSchedule(list, RIOT, '2026-11-12', LATER), /Halte-Eintrag ungueltig/, JSON.stringify(hold));
+  }
+  assert.throws(() => confirm(S18, 'gestern', NONE), /Ungueltiger Zeitpunkt/);
+  assert.throws(() => confirmStarts({}, { set: 18, now: RUN }), /keine Liste/);
+});
+
+// ---------- Das Skript mit Bestaetigung (ohne Netz, --votes-file) ----------
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const longDate = (d) => `${MONTH_NAMES[Number(d.slice(5, 7)) - 1]} ${Number(d.slice(8))}, ${d.slice(0, 4)}`;
+const PAGE18 = page(RIOT.map((r) => [`TFT ${r.patch}`, longDate(r.from_day)]));
+
+function confirmBox(t, starts, { cuts = [] } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'tft-confirm-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const htmlFile = join(dir, 'seite.html');
+  const setFile = join(dir, 'tft-set.json');
+  const votesFile = join(dir, 'stimmen.json');
+  writeFileSync(htmlFile, PAGE18);
+  writeFileSync(setFile, JSON.stringify({ setNumber: 18, latestPatch: '18.6', patchCuts: cuts, patchStarts: starts }, null, 2) + '\n');
+  const read = () => readFileSync(setFile, 'utf8');
+  const run = (now, observations, { env = {}, extra = [] } = {}) => {
+    writeFileSync(votesFile, JSON.stringify(observations));
+    return spawnSync(process.execPath, [SCRIPT, '--file', htmlFile, '--now', now, '--votes-file', votesFile, '--set-file', setFile, ...extra],
+      { encoding: 'utf8', env: { ...process.env, PATCH_CONFIRM: '1', ...env } });
+  };
+  return { run, read, entry: (patch) => get(JSON.parse(read()).patchStarts, patch) };
+}
+
+test('Skript: Halt → weiter angehalten → Freigabe, Meldung nur bei Halt und Freigabe', (t) => {
+  const box = confirmBox(t, S18);
+  let r = box.run(RUN, NONE);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /BEFUND 18\.7: angehalten — Riot nannte 2026-11-11/);
+  assert.deepEqual(box.entry('18.7'), { ...get(S18, '18.7'), from_day: '2026-11-12', hold: { riot_from_day: '2026-11-11', since: RUN } });
+
+  // 17.11.: Riots Tag liegt 6 Tage zurueck — ohne Halt wuerde mergeSchedule werfen
+  for (const day of ['2026-11-13', '2026-11-17']) {
+    r = box.run(runAt(day), NONE);
+    assert.equal(r.status, 0, r.stderr);
+    assert.doesNotMatch(r.stderr, /BEFUND/);
+    assert.equal(box.entry('18.7').from_day, day);
+  }
+
+  r = box.run(runAt('2026-11-19'), LIVE);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /BEFUND 18\.7: nach Halt bestaetigt .* gilt ab 2026-11-18/);
+  assert.deepEqual(box.entry('18.7'), { ...get(S18, '18.7'), from_day: '2026-11-18', confirmed: true, previous_from_day: '2026-11-11' });
+
+  const before = box.read();
+  r = box.run(runAt('2026-11-20'), LIVE);
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /kein offener Termin/);
+  assert.match(r.stdout, /unveraendert/);
+  assert.equal(box.read(), before);
+});
+
+test('Skript: Go-Live bestaetigt ohne Halt → Exit 0, keine Meldung', (t) => {
+  const box = confirmBox(t, S18);
+  const r = box.run(RUN, votes('ja', MT('18.7', '2026-11-12T00:00:05.000Z'), '2026-11-11T00:50:00.000Z'));
+  assert.equal(r.status, 0, r.stderr);
+  assert.doesNotMatch(r.stderr, /BEFUND/);
+  assert.match(r.stdout, /18\.7: Go-Live ab 2026-11-11 bestaetigt/);
+  assert.deepEqual(box.entry('18.7'), { ...get(S18, '18.7'), confirmed: true });
+});
+
+test('Skript: PATCH_CONFIRM=0 → keine Pruefung, Halte-Eintrag und Termine bleiben', (t) => {
+  for (const [starts, now] of [[held('2026-11-12'), runAt('2026-11-15')], [S18, RUN]]) {
+    const box = confirmBox(t, starts);
+    const before = box.read();
+    const r = box.run(now, NONE, { env: { PATCH_CONFIRM: '0' } });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /abgeschaltet \(PATCH_CONFIRM=0\)/);
+    assert.match(r.stdout, /unveraendert/);
+    assert.equal(box.read(), before);
+  }
+});
+
+test('Skript: Obergrenze → Exit 2 "von Hand entscheiden", nichts verschoben', (t) => {
+  const box = confirmBox(t, held('2026-11-25'));
+  const before = box.read();
+  const r = box.run(runAt('2026-11-26'), NONE);
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /BEFUND 18\.7: .*Von Hand entscheiden \(pinned setzen\)/);
+  assert.equal(box.read(), before);
+});
+
+test('Skript: --dry-run meldet den Halt, schreibt aber nichts', (t) => {
+  const box = confirmBox(t, S18);
+  const before = box.read();
+  const r = box.run(RUN, NONE, { extra: ['--dry-run'] });
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /BEFUND 18\.7: angehalten/);
+  assert.match(r.stdout, /--dry-run: nichts geschrieben/);
+  assert.equal(box.read(), before);
+});
+
+test('Skript: Freigabe, die einen B-Patch ueberholt, wird verworfen — Exit 2, Halt bleibt', (t) => {
+  const cut = { set: 18, patch: '18.6b', base: '18.6', from_day: '2026-11-15' };
+  const box = confirmBox(t, held('2026-11-19'), { cuts: [cut] });
+  const before = box.read();
+  const r = box.run(runAt('2026-11-20'), votes('ja', MT('18.7', '2026-11-13T00:00:05.000Z'), CD_NEW));
+  assert.equal(r.status, 2, r.stderr);
+  assert.match(r.stderr, /BEFUND Bestaetigung nicht angewendet — passt nicht zu den B-Patches: B-Patch 18\.6b ab 2026-11-15 liegt nach dem Go-Live von 18\.7 \(2026-11-12\)/);
+  assert.equal(box.read(), before);
 });

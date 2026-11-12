@@ -451,7 +451,8 @@ export async function run({ meta, today, nowIso, fetchNotes: fetcher, fetchMetat
   return { cuts, changed, exitCode: findings.length ? 2 : 0, findings, conflicts, perBase };
 }
 
-async function fetchMetatft() {
+// Auch von detect-tft-patch-schedule.mjs genutzt (Bestaetigung eines Termins).
+export async function fetchMetatft() {
   const r = await fetch(METATFT_URL, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(20_000) });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();

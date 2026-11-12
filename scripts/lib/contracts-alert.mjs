@@ -21,6 +21,7 @@
 // die Anfrage traegt einen Zeitstempel und dessen HMAC.
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
+import { assignOwner, sameLogin } from './gh-issues.mjs';
 
 export const LABEL = 'contract-broken';
 export const BUNDLE_AT = 6;          // ab so vielen roten: eine Sammel-Aufgabe
@@ -207,7 +208,9 @@ export function decide(input, issues) {
 
 // ---- Zustaendigkeit --------------------------------------------------------
 
-const sameLogin = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
+// Zuweisung und Login-Vergleich stehen in gh-issues.mjs (gemeinsam mit dem
+// Fehler-Melder failure-watch.mjs); hier nur weitergereicht.
+export { assignOwner };
 
 // Offene und in diesem Lauf wiedergeoeffnete Aufgaben, in denen der Besitzer
 // fehlt. Was dieser Lauf schliesst, bleibt draussen, sonst kaeme zu einer
@@ -222,17 +225,4 @@ export function assignTargets(ops, issues, owner) {
     .filter((i) => (i.state === 'open' && !closing.has(i.number)) || reopening.has(i.number))
     .filter((i) => !(i.assignees ?? []).some((login) => sameLogin(login, owner)))
     .map((i) => i.number);
-}
-
-// Einziger Weg zur Zuweisung. Wirft nie, damit eine Panne hier nicht die Alarme
-// der Nacht stoppt. GitHub verwirft eine Zuweisung ohne Rechte still, deshalb
-// zaehlt nur, was die Antwort zeigt. Rueckgabe: null oder der Grund.
-export async function assignOwner(gh, number, owner) {
-  try {
-    const issue = await gh('POST', `/issues/${number}/assignees`, { assignees: [owner] });
-    const assigned = (issue?.assignees ?? []).some((a) => sameLogin(a?.login, owner));
-    return assigned ? null : 'GitHub hat die Zuweisung verworfen';
-  } catch (err) {
-    return err?.message || 'unbekannter Fehler';
-  }
 }

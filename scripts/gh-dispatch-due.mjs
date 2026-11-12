@@ -37,6 +37,9 @@ export const DISPATCH = {
   'tft-icon-mirror.yml': { '40 3 * * 4': { refresh: true } },
   'tft-player-cache-prewarm.yml': {},
   'tft-stats-cache-warm.yml': {},
+  // Fehler-Melder, alle 15 min: faengt verlorene workflow_run-Ereignisse auf.
+  // Sein Totmann ist der Vertrag github/fehler-melder (infra/contracts.json).
+  'failure-watch.yml': {},
 };
 
 const args = process.argv.slice(2);

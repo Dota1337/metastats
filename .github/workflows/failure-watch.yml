@@ -1,0 +1,111 @@
+name: Fehler-Melder
+
+# Meldet rote GitHub-Laeufe, die sich nicht selbst geloest haben: ein Issue je
+# Ursache, dem Besitzer zugewiesen (= genau eine Mail). Netz-Aussetzer in der
+# Vorbereitung (checkout, setup-node, npm ci) werden einmal wiederholt statt
+# gemeldet. Geschlossen wird still nach zwei echten gruenen Laeufen.
+# Logik und Regeln: scripts/lib/failure-watch.mjs.
+#
+# Entschieden wird nach Zustand (juengste Laeufe aller Workflows auf main),
+# nicht nach Ereignis: workflow_run weckt nur, der Abgleich alle 15 min (von
+# der Box angestossen, scripts/gh-dispatch-due.mjs) faengt verlorene
+# Ereignisse auf. Schwelle je Workflow: env FAILURE_WATCH_AFTER in dessen Datei.
+#
+# Die Liste unter workflow_run muss jeden `name:` der anderen Workflow-Dateien
+# enthalten — ein Test prueft das (failure-watch-drift.test.mjs).
+#
+# Sicherheit: nie den Stand eines Pull Requests auschecken. Laeufe aus PRs und
+# Forks starten den Abgleich gar nicht erst (if: am gate).
+#
+# Notaus: gh workflow disable failure-watch.yml
+
+on:
+  workflow_run:
+    workflows:
+      - 'CI'
+      - 'Contracts alert daily'
+      - 'Deploy crawler to Hetzner'
+      - 'Geheimnis-Suche'
+      - 'MetaTFT-Comps daily'
+      - 'Pro-Teams weekly'
+      - 'TFT-Bilder-Kopie'
+      - 'TFT Daily Crawl'
+      - 'TFT Data Refresh'
+      - 'TFT Patch-Erkennung daily'
+      - 'TFT Player Cache Pre-Warm'
+      - 'TFT Pro Player Weekly Crawl'
+      - 'TFT Spectator probe daily'
+      - 'TFT Stats Cache Warm'
+      - 'TFT Tournament Weekly Crawl'
+      - 'TFT Weekly Crawl'
+      - 'Weekly Data Crawl (EUW)'
+      - 'Weekly Data Crawl (KR)'
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  actions: write
+  contents: read
+
+concurrency:
+  group: failure-watch
+  cancel-in-progress: false
+
+jobs:
+  # Der Server stoesst diesen Lauf puenktlich an (scripts/gh-dispatch-due.mjs, Box alle 5 min), weil
+  # GitHub die Zeitplaene seit 02.11.2026 Stunden zu spaet oder gar nicht startet. Kommt der Zeitplan
+  # hinterher, nachdem der Anstoss schon lief, entfaellt der Doppel-Lauf. Ohne Anstoss vom Server
+  # (kein workflow_dispatch im Fenster) laeuft der Zeitplan wie bisher.
+  gate:
+    if: >-
+      github.event_name != 'workflow_run' || (
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.event != 'pull_request' &&
+        github.event.workflow_run.event != 'pull_request_target' &&
+        github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    outputs:
+      run: ${{ steps.g.outputs.run }}
+    steps:
+      - id: g
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WINDOW_MIN: '14'
+        run: |
+          run=true
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then
+            since=$(date -u -d "-$WINDOW_MIN min" +%Y-%m-%dT%H:%M:%SZ)
+            n=$(gh run list -R "$GITHUB_REPOSITORY" --workflow failure-watch.yml --event workflow_dispatch --created ">=$since" --json databaseId -q length || echo 0)
+            if [ "${n:-0}" -gt 0 ]; then run=false; fi
+          fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "Lauf noetig: $run"
+
+  watch:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Immer main, nie der Stand des ausloesenden Laufs.
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Nur Node-Bordmittel, deshalb kein npm ci.
+      - name: Abgleich
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/failure-watch.mjs

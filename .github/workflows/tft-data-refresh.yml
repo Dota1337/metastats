@@ -26,6 +26,12 @@ concurrency:
   group: tft-data-writers
   cancel-in-progress: false
 
+# Fehler-Melder (failure-watch.yml): erst ab dem zweiten roten Lauf in Folge
+# melden. Tactics.tools oder CDragon sind oft nur kurz weg, und nach einem roten
+# Lauf rechnet die naechste Runde ohnehin neu (tft-data-freshness.mjs).
+env:
+  FAILURE_WATCH_AFTER: 2
+
 jobs:
   # Der Server stoesst diesen Lauf puenktlich an (scripts/gh-dispatch-due.mjs, Box alle 5 min), weil
   # GitHub die Zeitplaene seit 02.11.2026 Stunden zu spaet oder gar nicht startet. Kommt der Zeitplan
@@ -182,6 +188,5 @@ jobs:
           MELDER_LOG: ${{ runner.temp }}/melder.log
           RAN: ${{ steps.check.outputs.run }}
           ALARM: ${{ steps.check.outputs.alarm }}
-          PREVIOUS_CONCLUSION: ${{ steps.previous.outputs.conclusion }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: node scripts/tft-data-refresh-report.mjs

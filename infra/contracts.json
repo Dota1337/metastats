@@ -867,6 +867,16 @@
       "note": "Nur Warnung (gelb). Laeuft auf der Box der Code von main? Vergleicht den Box-Commit per GitHub-API mit main. Bot-Commits ausserhalb der Deploy-Pfade (pro-teams.json, metatft-Dateien) loesen bewusst keinen Deploy aus und zaehlen nicht; die Pfadliste wird aus deploy-hetzner.yml gelesen. Gelb heisst: ein Deploy ist gescheitert oder nie angestossen, ein Fix ist auf main, laeuft aber nicht. Commits juenger als 2 h gelten als unterwegs. GitHub nicht erreichbar = uebersprungen."
     },
     {
+      "id": "github/fehler-melder",
+      "owner": ".github/workflows/failure-watch.yml",
+      "type": "gh-workflow-fresh",
+      "repo": "Dota1337/metastats",
+      "workflow": "failure-watch.yml",
+      "branch": "main",
+      "maxAgeHours": 2,
+      "note": "Totmann fuer den Fehler-Melder (seit 12.11.2026). Er meldet rote GitHub-Laeufe per Issue, die GitHub-Mails sind dafuer abgeschaltet; laeuft er selbst nicht, faellt kein Fehler mehr auf. Geprueft wird per oeffentlicher GitHub-API (ohne Schluessel) der juengste abgeschlossene, nicht abgebrochene Lauf von failure-watch.yml auf main: erfolgreich und juenger als 2 h. Die Box stoesst ihn alle 15 min an (scripts/gh-dispatch-due.mjs), dazu weckt ihn jeder fertige Workflow. Rot heisst: Box-Anstoss steht (Notaus /var/lib/metastats/gh-dispatch.off, GH_DISPATCH_TOKEN abgelaufen) oder der Melder bricht ab (Lauf-Log ansehen, node scripts/failure-watch.mjs --dry-run). GitHub nicht erreichbar = uebersprungen."
+    },
+    {
       "id": "box/tls-zertifikat",
       "owner": "metastats-refresh-api.service",
       "type": "tls-cert",

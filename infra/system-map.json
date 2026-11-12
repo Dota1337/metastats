@@ -1002,6 +1002,20 @@
       "onPush": true
     },
     {
+      "file": "failure-watch.yml",
+      "name": "Fehler-Melder",
+      "schedule": [
+        "*/15 * * * *"
+      ],
+      "scripts": [
+        "scripts/lib/failure-watch.mjs",
+        "scripts/gh-dispatch-due.mjs",
+        "scripts/failure-watch.mjs"
+      ],
+      "manualDispatch": true,
+      "onPush": false
+    },
+    {
       "file": "metatft-comps-daily.yml",
       "name": "MetaTFT-Comps daily",
       "schedule": [
@@ -1666,6 +1680,9 @@
     ],
     ".github/workflows/deploy-hetzner.yml": [
       "box/stand-main"
+    ],
+    ".github/workflows/failure-watch.yml": [
+      "github/fehler-melder"
     ],
     "metastats-refresh-api.service": [
       "box/tls-zertifikat"

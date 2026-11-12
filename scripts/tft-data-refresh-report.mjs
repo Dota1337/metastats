@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Letzter Schritt von tft-data-refresh.yml: Issue anlegen, ergaenzen oder schliessen,
- * danach den Lauf rot machen, wenn ein Schritt fehlschlug.
+ * Letzter Schritt von tft-data-refresh.yml: Befund-Issue anlegen, ergaenzen oder
+ * schliessen, danach den Lauf rot machen, wenn ein Schritt fehlschlug.
  *
  * Regeln (User 01.11.2026 „immer aktuell“, aber ohne Issue-Flut, Lauf alle 3 Stunden):
- * - Ein Schritt fehlgeschlagen: erst beim zweiten Mal in Folge melden. Tactics.tools
- *   oder CDragon sind oft nur kurz weg, die naechste Runde holt es nach.
+ * - Ein fehlgeschlagener Schritt legt hier KEIN Issue mehr an (seit 12.11.2026): der
+ *   Lauf endet rot, und der Fehler-Melder (failure-watch.yml) meldet ab dem zweiten
+ *   roten Lauf in Folge (FAILURE_WATCH_AFTER im Workflow).
  * - Veraltete Zahl (Melder) oder Patchtag-Alarm: sofort.
  * - Hoechstens ein offenes Issue. Kommentar nur, wenn sich der Befund geaendert hat.
  * - Geschlossen wird nur nach einem echten, sauberen Lauf: eine Runde ohne Arbeit hat
- *   nichts geprueft.
+ *   nichts geprueft, ein Lauf mit Fehlschlag auch nicht.
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -21,12 +22,8 @@ const LABEL = 'tft-data-refresh';
 const MARK = /<!-- befund:([0-9a-f]+) -->/;
 
 /** Reine Entscheidung. Rueckgabe: { action, lines, mark }, action = none|create|comment|close. */
-export function decideIssue({ ran, failures, findings, alarm, previousConclusion, openIssue, lastMark }) {
-  const lines = [
-    ...findings,
-    ...(alarm ? [alarm] : []),
-    ...(failures.length && previousConclusion === 'failure' ? failures : []),
-  ];
+export function decideIssue({ ran, failures, findings, alarm, openIssue, lastMark }) {
+  const lines = [...findings, ...(alarm ? [alarm] : [])];
   if (!lines.length) {
     const clean = ran && !failures.length && !alarm;
     return { action: clean && openIssue ? 'close' : 'none', lines, mark: null };
@@ -68,7 +65,6 @@ function main() {
   const { action, lines, mark } = decideIssue({
     ran: process.env.RAN === 'true',
     failures, findings, alarm,
-    previousConclusion: process.env.PREVIOUS_CONCLUSION || null,
     openIssue: open?.number ?? null,
     lastMark,
   });

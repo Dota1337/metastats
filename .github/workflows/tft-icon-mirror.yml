@@ -30,6 +30,12 @@ concurrency:
   group: tft-icon-mirror
   cancel-in-progress: false
 
+# Fehler-Melder (failure-watch.yml): erst ab dem zweiten roten Lauf in Folge
+# melden. Faellt CommunityDragon kurz aus, holt der naechste stuendliche Lauf
+# die fehlenden Bilder nach.
+env:
+  FAILURE_WATCH_AFTER: 2
+
 jobs:
   # Der Server stoesst diesen Lauf puenktlich an (scripts/gh-dispatch-due.mjs, Box alle 5 min), weil
   # GitHub die Zeitplaene seit 02.11.2026 Stunden zu spaet oder gar nicht startet. Kommt der Zeitplan

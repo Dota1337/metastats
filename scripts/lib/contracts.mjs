@@ -571,6 +571,7 @@ async function runCheck(c) {
     if (c.type === 'patch-axis') return await checkPatchAxis(c, r);
     if (c.type === 'lol-patch-shift') return await checkLolPatchShift(c, r);
     if (c.type === 'box-main') return await checkBoxMain(c, r);
+    if (c.type === 'gh-workflow-fresh') return await checkGhWorkflowFresh(c, r);
     if (c.type === 'comp-catalog-days') return await checkCompCatalogDays(c, r);
     if (c.type === 'tls-cert') return await checkTlsCert(c, r);
     if (c.type === 'backup-file') return checkBackupFile(c, r);
@@ -1484,6 +1485,53 @@ async function checkBoxMain(c, r) {
     deployPaths = deployPathsFrom(readFileSync(resolve(REPO_ROOT, '.github', 'workflows', 'deploy-hetzner.yml'), 'utf8'));
   } catch { /* leer = jede Datei zaehlt, also eher warnen als schweigen */ }
   const v = evaluateBoxMain({ compare, dirty, deployPaths, now: Date.now(), graceHours: c.graceHours ?? 2 });
+  return r(v.status, v.detail);
+}
+
+/**
+ * Vertrag gh-workflow-fresh: laeuft ein GitHub-Workflow noch? Totmann fuer den
+ * Fehler-Melder (failure-watch.yml): meldet er selbst nichts mehr, faellt das
+ * sonst niemandem auf, weil die GitHub-Mails abgeschaltet sind.
+ *
+ * Gezaehlt wird der juengste abgeschlossene Lauf auf dem Zweig, der nicht
+ * abgebrochen wurde (concurrency ersetzt wartende Laeufe durch cancelled).
+ * Rot: kein Lauf, letzter Lauf nicht erfolgreich, oder aelter als maxAgeHours.
+ * Der Text steht im oeffentlichen Issue: nur Stunden, keine Namen; immer „h“,
+ * weil reasonKey nur Ziffern ausblendet.
+ */
+const GH_RUN_IGNORED = new Set(['cancelled', 'skipped', 'neutral', 'stale']);
+
+export function evaluateGhWorkflowFresh({ runs, now = Date.now(), maxAgeHours }) {
+  if (!(maxAgeHours > 0)) return { status: 'error', detail: 'Vertrag ohne gueltige maxAgeHours' };
+  const done = (runs ?? [])
+    .filter((x) => x?.status === 'completed' && !GH_RUN_IGNORED.has(x.conclusion))
+    .sort((a, b) => Date.parse(b.updated_at ?? b.created_at) - Date.parse(a.updated_at ?? a.created_at));
+  if (!done.length) return { status: 'broken', detail: 'Kein abgeschlossener Lauf gefunden' };
+  const last = done[0];
+  const ageH = (now - Date.parse(last.updated_at ?? last.created_at)) / 3_600_000;
+  const age = Number.isFinite(ageH) ? `${Math.round(ageH)} h` : 'unbekannt';
+  if (last.conclusion !== 'success') return { status: 'broken', detail: `Letzter Lauf endete mit ${last.conclusion} (vor ${age})` };
+  if (!(ageH <= maxAgeHours)) return { status: 'broken', detail: `Letzter Lauf vor ${age} (max ${maxAgeHours} h)` };
+  return { status: 'ok', detail: `Letzter Lauf erfolgreich, vor ${Math.round(ageH * 60)} min` };
+}
+
+// Oeffentliche API ohne Schluessel (Repo ist oeffentlich), wie box-main.
+// GitHub nicht erreichbar = unbekannt (skipped); Workflow unbekannt = rot.
+async function checkGhWorkflowFresh(c, r) {
+  if (!c.repo || !c.workflow) return r('error', 'Vertrag ohne repo oder workflow');
+  let res;
+  try {
+    res = await fetch(`https://api.github.com/repos/${c.repo}/actions/workflows/${encodeURIComponent(c.workflow)}/runs?branch=${encodeURIComponent(c.branch ?? 'main')}&status=completed&per_page=20`, {
+      headers: { accept: 'application/vnd.github+json', 'user-agent': 'metastats-contracts' },
+      signal: AbortSignal.timeout(20_000),
+    });
+  } catch (e) {
+    return r('skipped', `GitHub nicht erreichbar (${e.name}) — Stand unbekannt`);
+  }
+  if (res.status === 404) return r('broken', 'Workflow auf GitHub unbekannt');
+  if (!res.ok) return r('skipped', `GitHub antwortet HTTP ${res.status} — Stand unbekannt`);
+  const body = await res.json();
+  const v = evaluateGhWorkflowFresh({ runs: body.workflow_runs, now: Date.now(), maxAgeHours: c.maxAgeHours });
   return r(v.status, v.detail);
 }
 

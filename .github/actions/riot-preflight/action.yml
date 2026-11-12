@@ -1,8 +1,9 @@
 name: Riot API key pre-flight
 description: >
-  Validates the Riot API key before a long crawl. On 401/403 the workflow
-  fails fast and opens (or de-dupes) a `riot-key-expired` issue so the user
-  gets a notification instead of a silent multi-day outage.
+  Validates the Riot API key before a long crawl. On 401/403 the step fails
+  fast with "Riot-Schluessel abgelaufen". The Fehler-Melder
+  (scripts/failure-watch.mjs) recognizes that line and opens ONE issue for all
+  affected workflows, assigned to the owner (one mail).
 
 inputs:
   game:
@@ -14,11 +15,6 @@ runs:
   steps:
     - name: Validate Riot key
       shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-        REPO: ${{ github.repository }}
-        WORKFLOW: ${{ github.workflow }}
-        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
         set -uo pipefail
 
@@ -42,29 +38,10 @@ runs:
         echo "Riot $LABEL key pre-flight: HTTP $STATUS"
 
         if [ "$STATUS" = "401" ] || [ "$STATUS" = "403" ]; then
-          TITLE="Riot $LABEL key expired (HTTP $STATUS)"
-          # De-dupe: only open one issue per game until it's closed
-          OPEN=$(gh issue list -R "$REPO" --label riot-key-expired --state open \
-            --search "in:title $TITLE" --json number --jq 'length' 2>/dev/null || echo 0)
-          if [ "$OPEN" = "0" ]; then
-            gh issue create -R "$REPO" \
-              --title "$TITLE" \
-              --label riot-key-expired \
-              --body "Pre-flight returned HTTP \`$STATUS\` for \`$URL\`.
-
-              Workflow: **$WORKFLOW** ($RUN_URL)
-              Detected at: $(date -u +%FT%TZ)
-
-              **Fix:** rotate the key on the dev machine:
-              \`\`\`
-              node scripts/refresh-riot-key.mjs
-              \`\`\`
-              Close this issue once the key is rotated." \
-              || echo "::warning::Issue create failed (non-fatal)"
-          else
-            echo "Open issue already exists — skipping create"
-          fi
-          echo "::error::Riot $LABEL key invalid (HTTP $STATUS). Aborting before crawl."
+          # Kein eigenes Issue mehr: der Fehler-Melder erkennt genau diese Zeile
+          # (RIOT_PATTERN in scripts/lib/failure-watch.mjs) und legt EIN Issue
+          # fuer alle betroffenen Workflows an. Wortlaut nur gemeinsam aendern.
+          echo "::error::Riot-Schluessel abgelaufen ($LABEL, HTTP $STATUS). Abbruch vor dem Crawl."
           exit 1
         fi
 

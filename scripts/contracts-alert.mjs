@@ -15,7 +15,8 @@
 // nur die Operationen (Titel sind bereits neutral).
 
 import { readFileSync } from 'node:fs';
-import { decide, sign, LABEL, assignTargets, assignOwner } from './lib/contracts-alert.mjs';
+import { decide, sign, LABEL, assignTargets } from './lib/contracts-alert.mjs';
+import { makeGh, ownerOf, listIssues, ensureLabel, editIssue, closeIssue, createIssue, assignOwner } from './lib/gh-issues.mjs';
 import { boxFetch } from '../app/lib/box-tls.mjs';
 
 const args = process.argv.slice(2);
@@ -24,8 +25,9 @@ const fileIdx = args.indexOf('--status-file');
 const STATUS_FILE = fileIdx >= 0 ? args[fileIdx + 1] : null;
 
 const REPO = process.env.GITHUB_REPOSITORY || 'Dota1337/metastats';
-const OWNER = REPO.split('/')[0];
+const OWNER = ownerOf(REPO);
 const GH = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+const gh = makeGh({ repo: REPO, token: GH });
 
 async function fetchStatus() {
   if (STATUS_FILE) return { kind: 'report', report: JSON.parse(readFileSync(STATUS_FILE, 'utf8')) };
@@ -55,39 +57,6 @@ async function fetchStatus() {
   return { kind: 'unreachable', why };
 }
 
-async function gh(method, path, body) {
-  const res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${GH}`,
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok && !(method === 'POST' && path === '/labels' && res.status === 422)) {
-    throw new Error(`GitHub ${method} ${path} → HTTP ${res.status}`);
-  }
-  return res.status === 204 ? null : res.json();
-}
-
-async function listIssues() {
-  const all = [];
-  for (let page = 1; page <= 10; page++) {
-    const batch = await gh('GET', `/issues?labels=${LABEL}&state=all&per_page=100&page=${page}`);
-    all.push(...batch.filter((i) => !i.pull_request));
-    if (batch.length < 100) break;
-  }
-  return all.map((i) => ({
-    number: i.number,
-    state: i.state,
-    title: i.title,
-    body: i.body || '',
-    assignees: (i.assignees ?? []).map((a) => a.login),
-  }));
-}
-
 // Erst die Zuweisung loest die Mail aus. Scheitert sie, laufen die uebrigen
 // Schritte weiter und der Lauf endet rot; die naechste Nacht versucht es erneut.
 async function assign(number) {
@@ -100,18 +69,18 @@ async function assign(number) {
 async function apply(op) {
   switch (op.op) {
     case 'create': {
-      const issue = await gh('POST', '/issues', { title: op.title, body: op.body, labels: [LABEL] });
+      const issue = await createIssue(gh, { title: op.title, body: op.body, labels: [LABEL] });
       return assign(issue.number);
     }
     case 'comment': return gh('POST', `/issues/${op.number}/comments`, { body: op.body });
     // title nur beim Wechsel rot <-> gelb (" (Warnung)" im Titel)
-    case 'edit': return gh('PATCH', `/issues/${op.number}`, op.title ? { body: op.body, title: op.title } : { body: op.body });
+    case 'edit': return editIssue(gh, op.number, { body: op.body, title: op.title });
     case 'reopen':
       await gh('PATCH', `/issues/${op.number}`, { state: 'open' });
       return gh('POST', `/issues/${op.number}/comments`, { body: op.comment });
     case 'close':
       await gh('POST', `/issues/${op.number}/comments`, { body: op.comment });
-      return gh('PATCH', `/issues/${op.number}`, { state: 'closed', state_reason: 'completed' });
+      return closeIssue(gh, op.number);
     default: throw new Error(`unbekannte Operation ${op.op}`);
   }
 }
@@ -119,7 +88,7 @@ async function apply(op) {
 const input = await fetchStatus();
 if (input.kind === 'report') input.now = Date.now();
 if (!GH && !DRY) throw new Error('GITHUB_TOKEN fehlt');
-const issues = GH ? await listIssues() : [];
+const issues = GH ? await listIssues(gh, { label: LABEL, state: 'all' }) : [];
 const ops = decide(input, issues);
 const toAssign = assignTargets(ops, issues, OWNER);
 
@@ -133,6 +102,6 @@ if (ops.length === 0 && toAssign.length === 0) console.log('- nichts zu tun');
 if (!DRY) {
   // Vor den Operationen, damit ein Kommentar im selben Lauf schon eine Mail ausloest.
   for (const number of toAssign) await assign(number);
-  if (ops.some((o) => o.op === 'create')) await gh('POST', '/labels', { name: LABEL, color: 'B60205', description: 'Laufzeit-Vertrag rot (automatisch)' });
+  if (ops.some((o) => o.op === 'create')) await ensureLabel(gh, { name: LABEL, color: 'B60205', description: 'Laufzeit-Vertrag rot (automatisch)' });
   for (const op of ops) await apply(op);
 }

@@ -25,7 +25,7 @@ import { loadCurrentSet } from './lib/current-set.mjs';
 import { applyAugmentIconOverrides, fetchMissingAugmentIcons } from './lib/tft-augment-icons.mjs';
 import { fixItemName } from './lib/tft-item-name-fixes.mjs';
 import { applyLocalizedNames } from './lib/tft-localized-names.mjs';
-import { applyValueTable, binHash, changesFingerprint, correctFromNotes, livePatchOf, loadSetChanges, patchesUpTo } from './lib/tft-value-corrections.mjs';
+import { applyValueTable, binHash, changesFingerprint, correctFromNotes, livePatchOf, loadSetChanges, patchesUpTo, pbeFromCorrections } from './lib/tft-value-corrections.mjs';
 import { fetchNotes } from './detect-tft-bpatches.mjs';
 import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
 import { cdragonHashToPath } from './lib/tft-image-paths.mjs';
@@ -204,21 +204,41 @@ async function main() {
   if (!active) { console.error('No live set found'); process.exit(1); }
   console.log(`       active set: ${active.number} (${active.mutator})`);
 
-  // Zahlen nachziehen, bevor irgendein Text aufgeloest wird. Faellt eine Quelle
-  // aus, wird abgebrochen und das alte Bundle bleibt: sonst kaemen die falschen
-  // Zahlen still zurueck.
+  // Zahlen nachziehen, bevor irgendein Text aufgeloest wird. Fallen Notes oder
+  // latest aus, wird abgebrochen und das alte Bundle bleibt: sonst kaemen die
+  // falschen Zahlen still zurueck. Faellt nur der Testserver aus, tritt das letzte
+  // Bundle an seine Stelle (siehe unten).
   console.log('[3.1/4] Zahlen gegen Riots Notes und den Testserver pruefen');
   const setMeta = JSON.parse(readFileSync('public/tft-set.json', 'utf8'));
   const livePatch = livePatchOf(setMeta, new Date().toISOString().slice(0, 10));
   const changes = await loadSetChanges(patchesUpTo(setMeta, livePatch), fetchNotes);
-  const pbe = await fetchJSON(PBE_URL);
-  const pbeSet = (pbe.setData || []).find(s => s.number === active.number && s.mutator === active.mutator) ?? null;
+  const lastBundle = existsSync('public/tft-assets.json') ? JSON.parse(readFileSync('public/tft-assets.json', 'utf8')) : null;
+  let pbeSet;
+  let pbeItems;
+  try {
+    const pbe = await fetchJSON(PBE_URL);
+    pbeSet = (pbe.setData || []).find(s => s.number === active.number && s.mutator === active.mutator) ?? null;
+    pbeItems = pbe.items;
+  } catch (e) {
+    // Testserver aus (CDragon pbe 522 seit 12.11.2026): die Notes-Korrekturen des
+    // letzten Bundles weiterverwenden statt abzubrechen (pbeFromCorrections). Ohne
+    // passendes letztes Bundle bleibt es beim Abbruch, sonst fielen sie still weg.
+    if (!Array.isArray(lastBundle?.corrections) || lastBundle.set !== active.number || lastBundle.mutator !== active.mutator) {
+      console.error(`FAIL: Testserver nicht erreichbar (${e.message}), kein passendes letztes Bundle mit Korrekturen — Bundle NICHT geschrieben.`);
+      process.exit(1);
+    }
+    const stand = pbeFromCorrections(lastBundle.corrections, { activeSet: active, items: cd.items, changes, previousTraits: lastBundle.traits });
+    pbeSet = stand.pbeSet;
+    pbeItems = stand.pbeItems;
+    console.log(`::warning::CDragon-Testserver nicht erreichbar (${e.message}) — Korrekturen aus dem letzten Bundle weiterverwendet, neue Mid-Patch-Werte fehlen bis er zurueck ist`);
+    for (const c of stand.dropped) console.warn(`       Ruecknahme in den Notes: ${c.id} ${c.key}${c.tier != null ? ` (${c.tier})` : ''} ${c.from} ⇒ ${c.to} entfaellt`);
+  }
   const cdragonVersion = (await fetchJSON(VERSION_URL)).version || null;
   // Woran die naechste Runde erkennt, dass CDragon neu ist (tft-data-freshness.mjs).
-  const previousStamp = existsSync('public/tft-assets.json') ? JSON.parse(readFileSync('public/tft-assets.json', 'utf8')).sourceStamp : null;
+  const previousStamp = lastBundle?.sourceStamp ?? null;
   const listing = await fetch(LISTING_URL, { signal: AbortSignal.timeout(30_000) }).then(r => (r.ok ? r.text() : '')).catch(() => '');
   const sourceStamp = nextBundleStamp({ listing: listingStamp(listing), previous: previousStamp, nowMs: Date.now() });
-  const fromNotes = correctFromNotes({ activeSet: active, pbeSet, items: cd.items, pbeItems: pbe.items, localeItems, changes });
+  const fromNotes = correctFromNotes({ activeSet: active, pbeSet, items: cd.items, pbeItems, localeItems, changes });
   const fromTable = applyValueTable({ traits: active.traits, items: cd.items, version: cdragonVersion });
   for (const map of Object.values(localeItems)) {
     for (const c of fromTable.applied.filter(x => x.kind === 'item')) {
@@ -601,7 +621,8 @@ async function main() {
     cdragonVersion,
     sourceStamp,
     notesHash,
-    // Was gegenueber CDragon korrigiert wurde, der Melder liest das mit.
+    // Was gegenueber CDragon korrigiert wurde. Faellt der Testserver aus, liest der
+    // naechste Lauf die Notes-Eintraege als Ersatz (pbeFromCorrections) — Format halten.
     corrections,
     iconBase: 'https://raw.communitydragon.org/latest/game/',
     companionsIconBase: 'https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/',

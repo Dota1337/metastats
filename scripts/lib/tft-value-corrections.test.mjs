@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyValueTable, binHash, changesFingerprint, correctFromNotes, correctItemText,
-  livePatchOf, loadSetChanges, patchesUpTo, replaySeries,
+  livePatchOf, loadSetChanges, patchesUpTo, pbeFromCorrections, replaySeries,
 } from './tft-value-corrections.mjs';
 
 const riftbeast = value => ({ apiName: 'T', name: 'Riftbeast', effects: [{ minUnits: 7, variables: { AD: value } }] });
@@ -58,6 +58,77 @@ test('Item: Sprachen bekommen denselben Wert', () => {
     changes: [{ entity: 'Nesting Anvils', label: 'Gold Granted', old: '4', new: '6', patch: '18.5' }],
   });
   assert.deepEqual([items[0].effects.Gold, de.effects.Gold, r.applied.length], [6, 6, 1]);
+});
+
+// ---- Ersatz, wenn der Testserver ausfaellt: Korrekturen des letzten Bundles (Format wie im Bundle)
+const blossom = (a, b) => ({ apiName: 'B', name: 'Blossom', effects: [{ minUnits: 7, variables: { ADAP: a } }, { minUnits: 9, variables: { ADAP: b } }] });
+const BLOSSOM_LINE = { entity: 'Blossom', label: 'AP/AD', old: '50/55%', new: '55/65%', patch: '18.6' };
+const BUNDLE_CORRECTIONS = [
+  { kind: 'trait', id: 'B', key: 'ADAP', tier: 7, from: 0.5, to: 0.55, via: 'notes', patch: '18.6', line: 'x' },
+  { kind: 'trait', id: 'B', key: 'ADAP', tier: 9, from: 0.55, to: 0.65, via: 'notes', patch: '18.6', line: 'x' },
+  { kind: 'item', id: 'S', key: 'GoldGain', tier: null, from: 6, to: 7, via: 'notes', patch: '18.6', line: 'x' },
+  { kind: 'item', id: 'R', key: 'BonusHP', tier: null, from: 0.15, to: 0.08, via: 'table', source: 'x' },
+];
+const SPREE_LINE = { entity: 'Shopping Spree', label: 'Gold', old: '6', new: '7', patch: '18.6' };
+const PREVIOUS_TRAITS = { B: { tiers: [{ minUnits: 7, variables: { ADAP: 0.550000011920929 } }, { minUnits: 9, variables: { ADAP: 0.6499999761581421 } }] } };
+const fallback = ({ live = [0.5, 0.55], gold = 6, changes = [BLOSSOM_LINE, SPREE_LINE], corrections = BUNDLE_CORRECTIONS } = {}) => {
+  const activeSet = { traits: [blossom(...live)] };
+  const items = [{ apiName: 'S', name: 'Shopping Spree', effects: { GoldGain: gold } }, { apiName: 'R', name: 'Omega', effects: { BonusHP: 0.15 } }];
+  const stand = pbeFromCorrections(corrections, { activeSet, items, changes, previousTraits: PREVIOUS_TRAITS });
+  const out = correctFromNotes({ activeSet, pbeSet: stand.pbeSet, items, pbeItems: stand.pbeItems, localeItems: {}, changes });
+  return { ...out, stand, adap: activeSet.traits[0].effects.map(e => e.variables.ADAP), gold: items[0].effects.GoldGain, omega: items[1].effects.BonusHP };
+};
+
+test('Ersatz: latest noch alt, Zeilen da → beide Stufen und Item wie im letzten Bundle, Rohwerte statt Rundung', () => {
+  const r = fallback();
+  assert.deepEqual(r.adap, [0.550000011920929, 0.6499999761581421]);
+  assert.equal(r.gold, 7);
+  assert.equal(r.applied.length, 3);
+  assert.equal(r.stand.pbeSet.traits.length, 1, 'zwei Stufen derselben Synergie in einem Eintrag');
+});
+
+test('Ersatz: Tabellen-Eintraege bleiben aussen vor', () => {
+  const r = fallback();
+  assert.equal(r.omega, 0.15);
+  assert.ok(!r.stand.pbeItems.some(i => i.apiName === 'R'));
+});
+
+test('Ersatz: latest hat nachgezogen → nichts zu tun', () => {
+  const r = fallback({ live: [0.550000011920929, 0.6499999761581421], gold: 7 });
+  assert.deepEqual([r.applied.length, r.unmatched.length, r.gold], [0, 0, 7]);
+});
+
+test('Ersatz: Notes-Zeile fehlt → Wert bleibt, gemeldet', () => {
+  const r = fallback({ changes: [BLOSSOM_LINE] });
+  assert.equal(r.gold, 6);
+  assert.equal(r.unmatched.length, 1);
+});
+
+test('Ersatz: Riot nimmt im Mid-Patch zurueck → Korrektur entfaellt, auch wenn die alte Zeile noch steht', () => {
+  const back = { entity: 'Shopping Spree', label: 'Gold', old: '7', new: '6', patch: '18.6', mid: true };
+  const r = fallback({ changes: [BLOSSOM_LINE, SPREE_LINE, back] });
+  assert.equal(r.gold, 6);
+  assert.deepEqual(r.stand.dropped.map(c => c.id), ['S']);
+  // zurueck und wieder hin: die letzte Zeile entscheidet
+  const again = fallback({ changes: [BLOSSOM_LINE, SPREE_LINE, back, { ...SPREE_LINE, patch: '18.7' }] });
+  assert.equal(again.gold, 7);
+});
+
+test('Ersatz: Synergie ohne Stufe (Eclipse) greift ohne minUnits', () => {
+  const activeSet = { traits: [{ apiName: 'E', name: 'Eclipse', effects: [{ variables: { Heal: 0.1 } }] }] };
+  const changes = [{ entity: 'Eclipse', label: 'Heal', old: '10%', new: '12%', patch: '18.6' }];
+  const stand = pbeFromCorrections([{ kind: 'trait', id: 'E', key: 'Heal', tier: null, from: 0.1, to: 0.12, via: 'notes' }], { activeSet, items: [], changes, previousTraits: {} });
+  assert.equal('minUnits' in stand.pbeSet.traits[0].effects[0], false);
+  const r = correctFromNotes({ activeSet, pbeSet: stand.pbeSet, items: [], pbeItems: stand.pbeItems, localeItems: {}, changes });
+  assert.deepEqual([activeSet.traits[0].effects[0].variables.Heal, r.applied.length], [0.12, 1]);
+});
+
+test('Ersatz: zweiter Ausfall-Lauf hintereinander liefert dieselben Korrekturen', () => {
+  const first = fallback();
+  const round = v => Math.round(v * 1e6) / 1e6;
+  const stored = first.applied.map(c => ({ kind: c.kind, id: c.id, key: c.key, tier: c.tier ?? null, from: round(c.from), to: round(c.to), via: 'notes' }));
+  const second = fallback({ corrections: stored });
+  assert.deepEqual([second.adap, second.gold, second.applied.length], [first.adap, first.gold, first.applied.length]);
 });
 
 test('Reihen laufen die Kette nach, in allen Sprachen, auch als Anfang einer laengeren', () => {

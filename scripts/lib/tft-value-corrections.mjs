@@ -123,6 +123,56 @@ export function correctFromNotes({ activeSet, pbeSet, items, pbeItems, localeIte
   return { applied, unmatched };
 }
 
+/**
+ * Ersatz fuer den Testserver, wenn CDragon pbe nicht antwortet (522 seit 12.11.2026,
+ * User 13.11.: Fehler-Mails alle 3 h). Baut aus den Notes-Korrekturen des letzten
+ * Bundles ein pbe im selben Format, `correctFromNotes` laeuft dann unveraendert:
+ * eine Korrektur greift nur, solange latest noch den alten Wert hat UND die
+ * Notes-Zeile noch steht. Neue Mid-Patch-Aenderungen fehlen bis pbe zurueck ist.
+ *
+ * - Eintraege derselben Sache in EINEN Eintrag (Blossom Stufe 7 und 9): correctFromNotes
+ *   sammelt pbe je apiName, ein zweiter Eintrag wuerde den ersten verdraengen.
+ * - Synergie-Werte aus dem letzten Bundle (`previousTraits`), wenn nahe an `to`: dort
+ *   steht der Rohwert (0.550000011920929), `to` ist gerundet (0.55) — sonst aendert
+ *   sich die Datei ohne Grund, mit Commit und Deploy.
+ * - Ruecknahme: sagt eine spaetere Zeile derselben Sache Neu ⇒ Alt, faellt die
+ *   Korrektur weg. Im Normalweg traegt pbe die Ruecknahme selbst, hier nicht.
+ *   Bewusst nicht `withoutReverted` aus dem Melder: das bildet unter
+ *   Sammelueberschriften auch falsche Paare.
+ */
+export function pbeFromCorrections(corrections, { activeSet, items, changes, previousTraits }) {
+  const names = {
+    trait: new Map((activeSet?.traits || []).map(t => [t.apiName, t.name])),
+    item: new Map((items || []).map(i => [i.apiName, i.name])),
+  };
+  const lastIndex = (name, from, to) => changes.findLastIndex(c => changeMatchesName(c, name) && changeMatchesValues(c, from, to));
+  const traits = new Map();
+  const itemMap = new Map();
+  const dropped = [];
+  for (const c of corrections || []) {
+    if (c?.via !== 'notes' || typeof c.from !== 'number' || typeof c.to !== 'number') continue;
+    const name = names[c.kind]?.get(c.id);
+    if (!name) continue;
+    if (lastIndex(name, c.to, c.from) > lastIndex(name, c.from, c.to)) { dropped.push(c); continue; }
+    if (c.kind === 'trait') {
+      const prev = previousTraits?.[c.id];
+      const prevBag = c.tier == null ? prev?.variables : prev?.tiers?.find(t => t.minUnits === c.tier)?.variables;
+      const raw = prevBag?.[c.key];
+      const value = typeof raw === 'number' && near(raw, c.to) ? raw : c.to;
+      if (!traits.has(c.id)) traits.set(c.id, { apiName: c.id, effects: [] });
+      const effects = traits.get(c.id).effects;
+      // Ohne Stufe (Eclipse) fehlt minUnits auch im Rohformat: null wuerde nie passen.
+      let effect = effects.find(e => e.minUnits === (c.tier ?? undefined));
+      if (!effect) { effect = c.tier == null ? { variables: {} } : { minUnits: c.tier, variables: {} }; effects.push(effect); }
+      effect.variables[c.key] = value;
+    } else if (c.kind === 'item') {
+      if (!itemMap.has(c.id)) itemMap.set(c.id, { apiName: c.id, effects: {} });
+      itemMap.get(c.id).effects[c.key] = c.to;
+    }
+  }
+  return { pbeSet: { traits: [...traits.values()] }, pbeItems: [...itemMap.values()], dropped };
+}
+
 // Reihe im Text: nicht mitten in einer laengeren Reihe, darf aber der Anfang einer
 // laengeren sein („225/335“ in „225/335/1000“, Riot nennt die 3-Sterne-Zahl nur
 // wenn sie sich aendert).

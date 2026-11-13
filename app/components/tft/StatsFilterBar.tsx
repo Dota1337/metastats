@@ -77,10 +77,11 @@ interface Props {
   showDelta?: boolean;
 }
 
-// Patch-Hint: zeigt welcher Patch gerade aktiv ist + sein first_day. Bei
-// Default-Filter (current = patchübergreifende Aggregation) wird zusätzlich
-// "patchübergreifend aggregiert" angehängt, damit der User versteht warum
-// 1d/7d-Switches in den ersten Patch-Tagen kaum unterschiedliche Daten zeigen.
+// Welcher Patch zur Auswahl gehoert (current / previous / konkrete Nummer).
+// Die Items-Leiste zeigt damit die Patch-Nummer an der Patch-Pille.
+// Die Zeile „Patch X · seit <Datum> · patchuebergreifend aggregiert“ unter den
+// Feldern ist seit 13.11.2026 weg (User: falsch — der Zusatz hing bei „Aktuell“
+// immer dran, auch wenn alle Tage im selben Patch lagen).
 export function displayPatchOf(filters: Filters, patches: PatchInfo[]): PatchInfo | null | undefined {
   const newest = patches[0];
   return filters.patch === 'current'
@@ -88,15 +89,6 @@ export function displayPatchOf(filters: Filters, patches: PatchInfo[]): PatchInf
     : filters.patch === 'previous'
       ? previousPatchOf(patches, newest?.patch)
       : patches.find(p => p.patch === filters.patch);
-}
-
-export function patchHintOf(filters: Filters, patches: PatchInfo[], t: (k: TranslationKey) => string): string | null {
-  const displayPatch = displayPatchOf(filters, patches);
-  if (!displayPatch) return null;
-  const base = t('tft.filter.patchSince')
-    .replace('{patch}', tftPatchLabel(displayPatch.patch))
-    .replace('{date}', formatPatchDate(displayPatch.first_day));
-  return filters.patch === 'current' ? `${base} · ${t('tft.filter.patchAggregated')}` : base;
 }
 
 // Inhalte der Auswahlfelder, gemeinsam mit ItemsFilterBar: die Listen und die
@@ -171,8 +163,6 @@ export function RegionOptions() {
 export default function StatsFilterBar({ filters, patches, dataEnd = null, onChange, lead, showDelta = true }: Props) {
   const { t } = useI18n();
 
-  const patchHint = patchHintOf(filters, patches, t);
-
   // Δ-Vergleich „vs Vorpatch" (User 18.10.2026): direkt neben dem Patch-Feld,
   // ganzer gewaehlter Patch gegen den ganzen Vorpatch. Ohne Vorpatch im selben
   // Set oder bei einem zu jungen Patch gibt es nichts zu vergleichen — dann
@@ -241,9 +231,6 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
           <RegionOptions />
         </FilterSelect>
       </div>
-      {patchHint && (
-        <div className="mt-2 text-xs text-fg-faint">{patchHint}</div>
-      )}
     </>
   );
 
@@ -257,15 +244,6 @@ export default function StatsFilterBar({ filters, patches, dataEnd = null, onCha
       ) : body}
     </div>
   );
-}
-
-// ISO-Date (YYYY-MM-DD) → kompaktes DD.MM.YYYY. Locale-spezifische Variants
-// kommen später, wenn klar ist ob das wirklich gebraucht wird; DD.MM.YYYY ist
-// in DE/EN/ES/FR lesbar genug.
-function formatPatchDate(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-  if (!m) return iso;
-  return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
 function FilterSelect({

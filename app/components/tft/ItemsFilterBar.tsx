@@ -9,7 +9,7 @@ import { useI18n, type TranslationKey } from '../../lib/i18n';
 import { ITEM_KINDS, toggleItemKind, type ItemKind, type ItemSortBy } from '../../lib/tft-item-tier-rows';
 import type { Filters, PatchInfo } from '../../lib/tft-filters';
 import { tftPatchLabel } from '../../lib/tft-patch-label';
-import { DayOptions, displayPatchOf, PatchOptions, patchHintOf, RankOptions, RegionOptions } from './StatsFilterBar';
+import { DayOptions, displayPatchOf, PatchOptions, RankOptions, RegionOptions } from './StatsFilterBar';
 
 const KIND_LABEL: Record<ItemKind, TranslationKey> = {
   standard: 'tft.item.kind.items',
@@ -120,7 +120,6 @@ export default function ItemsFilterBar({
           unsichtbar darueber und zeigt beim Oeffnen die vollen Eintraege. */}
       <div
         className="relative col-span-2 flex items-center gap-1.5 rounded-full border border-border-subtle bg-surface-raised pl-3 pr-8 py-2 min-w-0 focus-within:border-accent-a60 lg:ml-auto"
-        title={patchHintOf(filters, patches, t) ?? undefined}
       >
         <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-pos-win flex-shrink-0" />
         <span className="text-xs text-fg-secondary">{t('tft.filter.patch')}</span>

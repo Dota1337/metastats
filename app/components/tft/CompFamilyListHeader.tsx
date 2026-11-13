@@ -54,9 +54,14 @@ export default function CompFamilyListHeader({
   };
   // 13 px wie die Zahlen darunter (User 03.11.2026, vorher 11 px). Spiele und
   // Pickrate teilen sich eine Spalte: Spiele oben, Pickrate darunter.
+  // Box wie die Filterleiste (User 13.11.2026), direkt am md:grid-Element —
+  // eine Huelle darum stuende auf dem Handy leer da. 1 px Rand + px-3.5 wie
+  // die Zeile (CompRow), damit die Spalten genau ueber den Zahlen bleiben.
+  // Kein overflow-hidden und py-2 bleibt: die Tippflaechen der sortierbaren
+  // Koepfe (Item-Seite) reichen 8 px in den Innenabstand.
   return (
     <>
-      <div className={`hidden md:grid items-center gap-3 px-3.5 py-2 text-[13px] leading-tight text-fg-secondary font-semibold whitespace-nowrap ${grid.cols}`}>
+      <div className={`hidden md:grid items-center gap-3 px-3.5 py-2 mb-2 rounded-lg border border-border-subtle bg-surface-base text-[13px] leading-tight text-fg-secondary font-semibold whitespace-nowrap ${grid.cols}`}>
         <div></div>
         <div></div>
         <div>{label(null, t('nav.comps'))}</div>

@@ -28,8 +28,17 @@ interface Props {
   // Zaehler ueber 111 statt aller Comps waeren falsch).
   resultCount?: number;
   totalCount?: number;
-  // Rechts in der Zeile der Advanced-Knoepfe (auf /tft/comps: Sortierung).
+  // Rechts am Ende der Knopfzeile (auf /tft/comps: Sortierung).
   trailing?: ReactNode;
+}
+
+// Presets setzen nur Schwellen; die Kosten-Wahl bleibt, wie sie ist (User
+// 13.11.2026: Kosten- und Preset-Knoepfe stehen in einer Zeile, „Reroll" +
+// „Hidden Gems" wirken zusammen). Deshalb vergleicht die Markierung nur die
+// Schwellen, nicht die Kosten-Wahl.
+function sameThresholds(a: AdvancedFilters, b: AdvancedFilters): boolean {
+  return a.avgPlaceMax === b.avgPlaceMax && a.top4MinPct === b.top4MinPct
+    && a.top1MinPct === b.top1MinPct && a.pickMaxPct === b.pickMaxPct && a.gamesMin === b.gamesMin;
 }
 
 export default function AdvancedCompFilters({ filters, onChange, resultCount, totalCount, trailing }: Props) {
@@ -46,10 +55,11 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
 
   return (
     <div className="mb-2 space-y-2">
-      {/* Cost-Bucket-Filter eigene Pill-Reihe — direkt sichtbar, kein
-          expansion nötig. Reroll/Mid/Fast 8 sind die Standard-Pro-Buckets
-          die jeden Tag genutzt werden. */}
-      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {/* EINE Zeile (User 13.11.2026): Kosten-Knoepfe, dahinter Erweitert +
+          Presets, rechts die Sortierung. Bewusst flach, ohne Gruppen-Huellen:
+          so brechen die Knoepfe auf schmalen Bildschirmen einzeln um, statt als
+          zu breiter Block seitlich ueberzulaufen. */}
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-xs">
         <span className="text-fg-muted text-[10px] uppercase tracking-widest mr-1">{t('tft.cost.label')}:</span>
         {COST_GROUPS.map(g => {
           const isOn = filters.costGroup === g.value;
@@ -68,13 +78,10 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
             </button>
           );
         })}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 text-xs">
         <button
           type="button"
           onClick={() => setExpanded(e => !e)}
-          className={`px-3 py-1 rounded border transition-colors ${
+          className={`md:ml-3 px-3 py-1 rounded border transition-colors ${
             active
               ? 'bg-accent-a15 border-accent-a60 text-[#a892ff]'
               : 'bg-surface-raised border-border-subtle text-fg-secondary hover:border-accent-a40'
@@ -84,12 +91,12 @@ export default function AdvancedCompFilters({ filters, onChange, resultCount, to
           {active && resultCount != null && totalCount != null && <span className="ml-1.5 text-[10px] tabular-nums">({resultCount}/{totalCount})</span>}
         </button>
         {PRESETS.map(p => {
-          const isOn = JSON.stringify(filters) === JSON.stringify(p.filters);
+          const isOn = sameThresholds(filters, p.filters);
           return (
             <button
               key={p.key}
               type="button"
-              onClick={() => onChange(isOn ? ADV_DEFAULT : p.filters)}
+              onClick={() => onChange({ ...(isOn ? ADV_DEFAULT : p.filters), costGroup: filters.costGroup })}
               className={`px-2.5 py-1 rounded border transition-colors ${
                 isOn
                   ? 'bg-[#3ecf8e]/15 border-[#3ecf8e]/60 text-[#3ecf8e]'

@@ -1099,6 +1099,7 @@
       ],
       "scripts": [
         "scripts/lib/tft-data-freshness.mjs",
+        "scripts/lib/tft-cdragon-outage.mjs",
         "scripts/gh-dispatch-due.mjs",
         "scripts/tft-data-refresh-check.mjs",
         "scripts/refresh-augment-tiers.mjs",

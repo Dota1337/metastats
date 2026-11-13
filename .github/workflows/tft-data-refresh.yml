@@ -8,6 +8,8 @@ name: TFT Data Refresh
 # bis zu 3 Tage mit alten Zahlen auf der Seite.
 #
 # Ein Fehler laesst die alten Daten stehen: ohne gruene Pruefung kein Commit.
+# Antwortet CommunityDragon nicht, ist der Lauf trotzdem gruen; gemeldet wird erst
+# nach CDRAGON_DOWN_ALARM_HOURS (scripts/lib/tft-cdragon-outage.mjs).
 # Zeiten meiden tft-bpatch-detect.yml (02:17 UTC), den Wochen-Crawl prueft das Skript.
 
 on:
@@ -31,6 +33,10 @@ concurrency:
 # Lauf rechnet die naechste Runde ohnehin neu (tft-data-freshness.mjs).
 env:
   FAILURE_WATCH_AFTER: 2
+  # Antwortet CommunityDragon nicht, endet der Lauf gruen, die alten Daten bleiben;
+  # erst nach so vielen Stunden Ausfall kommt eine Mail (User 13.11.2026,
+  # scripts/lib/tft-cdragon-outage.mjs). 0 = sofort.
+  CDRAGON_DOWN_ALARM_HOURS: 24
 
 jobs:
   # Der Server stoesst diesen Lauf puenktlich an (scripts/gh-dispatch-due.mjs, Box alle 5 min), weil
@@ -80,11 +86,15 @@ jobs:
                          --json conclusion --jq '.[0].conclusion // ""' 2>/dev/null) || conclusion=""
           echo "Letzter Lauf: ${conclusion:-unbekannt}"
           echo "conclusion=$conclusion" >> "$GITHUB_OUTPUT"
+          # Offener CDragon-Ausfall (Label wie OUTAGE_LABEL in tft-cdragon-outage.mjs): neuer Versuch.
+          down=$(gh issue list --label tft-cdragon-down --state open --json number --jq length 2>/dev/null) || down=0
+          echo "cdragon_down=${down:-0}" >> "$GITHUB_OUTPUT"
 
       - name: Braucht es einen Lauf?
         id: check
         env:
           PREVIOUS_CONCLUSION: ${{ steps.previous.outputs.conclusion }}
+          CDRAGON_DOWN: ${{ steps.previous.outputs.cdragon_down }}
         run: node scripts/tft-data-refresh-check.mjs
 
       - name: Abhaengigkeiten
@@ -112,6 +122,8 @@ jobs:
         continue-on-error: true
         run: node scripts/refresh-patch-notes.mjs --bootstrap
 
+      # Antwortet CommunityDragon nicht: Exit 75 + Ausgabe source_down, die Auswertung
+      # wertet das nicht als Fehlschlag (Alarm erst nach CDRAGON_DOWN_ALARM_HOURS).
       - name: Daten-Bundle
         id: bundle
         if: steps.check.outputs.run == 'true'

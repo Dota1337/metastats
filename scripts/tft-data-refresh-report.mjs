@@ -17,6 +17,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { makeGh, ownerOf } from './lib/gh-issues.mjs';
+import { syncOutage } from './lib/tft-cdragon-outage.mjs';
 
 const LABEL = 'tft-data-refresh';
 const MARK = /<!-- befund:([0-9a-f]+) -->/;
@@ -33,11 +35,20 @@ export function decideIssue({ ran, failures, findings, alarm, openIssue, lastMar
   return { action: mark === lastMark ? 'none' : 'comment', lines, mark };
 }
 
-/** Welche Schritte fehlschlugen. Der Melder zaehlt nur mit Fehler, nicht mit Befund. */
+/** Antwortete CommunityDragon nicht? fetch-tft-assets schreibt das vor Exit 75. */
+export const sourceDownOf = steps => steps?.bundle?.outputs?.source_down === 'true';
+
+/**
+ * Welche Schritte fehlschlugen. Der Melder zaehlt nur mit Fehler, nicht mit Befund.
+ * CDragon-Ausfall zaehlt nicht (User 13.11.2026: gruen, Alarm erst nach 24 h ueber
+ * tft-cdragon-outage.mjs).
+ */
 export function failedSteps(steps, melderLog) {
   const out = [];
+  const sourceDown = sourceDownOf(steps);
   for (const [id, step] of Object.entries(steps ?? {})) {
     if (id === 'melder' || step?.outcome !== 'failure') continue;
+    if (id === 'bundle' && sourceDown) continue;
     out.push(`Schritt ${id} fehlgeschlagen`);
   }
   if (/^FAIL:/m.test(melderLog)) out.push('Melder fehlgeschlagen');
@@ -52,18 +63,41 @@ function gh(args) {
   return r.stdout;
 }
 
-function main() {
+async function main() {
   const melderLog = process.env.MELDER_LOG && existsSync(process.env.MELDER_LOG) ? readFileSync(process.env.MELDER_LOG, 'utf8') : '';
-  const failures = failedSteps(JSON.parse(process.env.STEPS_JSON || '{}'), melderLog);
+  const steps = JSON.parse(process.env.STEPS_JSON || '{}');
+  const sourceDown = sourceDownOf(steps);
+  const failures = failedSteps(steps, melderLog);
   const findings = findingsOf(melderLog);
   const alarm = process.env.ALARM || null;
+
+  // Ausfall-Merker zuerst und abgeschirmt: eine Panne hier darf weder den Befund-Teil
+  // stoppen noch den Lauf rot machen.
+  try {
+    const repo = process.env.GITHUB_REPOSITORY;
+    const hours = Number(process.env.CDRAGON_DOWN_ALARM_HOURS);
+    const outage = await syncOutage({
+      gh: makeGh({ repo, token: process.env.GH_TOKEN }),
+      owner: ownerOf(repo),
+      sourceDown,
+      delivered: steps.bundle?.outcome === 'success',
+      nowMs: Date.now(),
+      alarmHours: Number.isFinite(hours) ? hours : 24,
+      runUrl: process.env.RUN_URL,
+    });
+    if (sourceDown) console.log(`::warning::CommunityDragon nicht erreichbar — alte Daten bleiben (Ausfall-Issue: ${outage})`);
+    else if (outage !== 'none') console.log(`Ausfall-Issue: ${outage}`);
+  } catch (e) {
+    console.log(`::warning::Ausfall-Issue nicht abgeglichen: ${e.message}`);
+  }
 
   const open = JSON.parse(gh(['issue', 'list', '--label', LABEL, '--state', 'open', '--json', 'number,body,comments', '--limit', '1']))[0] ?? null;
   const texts = open ? [open.body, ...(open.comments ?? []).map(c => c.body)] : [];
   const lastMark = texts.map(t => MARK.exec(t ?? '')?.[1]).filter(Boolean).at(-1) ?? null;
 
   const { action, lines, mark } = decideIssue({
-    ran: process.env.RAN === 'true',
+    // Ein Ausfall-Lauf hat nichts geprueft und schliesst deshalb kein Befund-Issue.
+    ran: process.env.RAN === 'true' && !sourceDown,
     failures, findings, alarm,
     openIssue: open?.number ?? null,
     lastMark,
@@ -83,4 +117,6 @@ function main() {
   process.exitCode = failures.length ? 1 : 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) main();
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  main().catch(e => { console.error(`FAIL: ${e.message}`); process.exitCode = 1; });
+}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { decideIssue, failedSteps, findingsOf } from './tft-data-refresh-report.mjs';
+import { decideIssue, failedSteps, findingsOf, sourceDownOf } from './tft-data-refresh-report.mjs';
 
 const base = { ran: true, failures: [], findings: [], alarm: null, openIssue: null, lastMark: null };
 
@@ -33,6 +33,17 @@ test('Befund und Alarm sofort, gleicher Befund nur einmal', () => {
 
 test('Alarm verhindert das Schliessen', () => {
   assert.notEqual(decideIssue({ ...base, alarm: 'Patch', openIssue: 7 }).action, 'close');
+});
+
+test('CommunityDragon weg: Bundle zaehlt nicht als Fehlschlag, andere Schritte schon', () => {
+  const down = { bundle: { outcome: 'failure', outputs: { source_down: 'true' } } };
+  assert.equal(sourceDownOf(down), true);
+  assert.deepEqual(failedSteps(down, ''), []);
+  assert.deepEqual(failedSteps({ ...down, tiers: { outcome: 'failure' } }, ''), ['Schritt tiers fehlgeschlagen']);
+  // ohne Merkmal bleibt jeder Bundle-Fehler rot
+  assert.deepEqual(failedSteps({ bundle: { outcome: 'failure', outputs: {} } }, ''), ['Schritt bundle fehlgeschlagen']);
+  // Ausfall-Lauf hat nichts geprueft: schliesst kein Befund-Issue (main reicht ran=false durch)
+  assert.equal(decideIssue({ ...base, ran: false, openIssue: 7 }).action, 'none');
 });
 
 test('Melder-Befund ist kein Fehlschlag, Melder-Fehler schon', () => {

@@ -48,11 +48,14 @@ function inDailySlot(now) {
 }
 
 /** Soll diese Runde laufen? Rueckgabe: { run, reasons }. */
-export function decideRefresh({ now, manual, listing, bundleStamp, notesHash, bundleNotesHash, previousConclusion }) {
+export function decideRefresh({ now, manual, listing, bundleStamp, notesHash, bundleNotesHash, previousConclusion, cdragonDown = false }) {
   if (manual) return { run: true, reasons: ['von Hand gestartet'] };
   if (inWeeklyWindow(now)) return { run: false, reasons: ['Wochen-Crawl laeuft'] };
   const reasons = [];
   if (previousConclusion === 'failure') reasons.push('letzter Lauf rot');
+  // Ausfall-Laeufe enden gruen (tft-cdragon-outage.mjs), „letzter Lauf rot“ greift dann
+  // nicht mehr: das offene Ausfall-Issue ist der Grund fuer den naechsten Versuch.
+  if (cdragonDown) reasons.push('CommunityDragon zuletzt nicht erreichbar');
   if (listing && listing !== bundleStamp && settled(listing, now.getTime())) reasons.push(`CDragon neu (${listing})`);
   if (notesHash && notesHash !== bundleNotesHash) reasons.push('Riots Notes geaendert');
   if (inDailySlot(now)) reasons.push('Tageslauf');

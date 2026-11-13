@@ -40,6 +40,7 @@ const { run, reasons } = decideRefresh({
   notesHash,
   bundleNotesHash: bundle.notesHash ?? null,
   previousConclusion: process.env.PREVIOUS_CONCLUSION || null,
+  cdragonDown: Number(process.env.CDRAGON_DOWN) > 0,
 });
 const alarm = patchDayAlarm({ meta, livePatch, bundleStamp: bundle.sourceStamp ?? null, now }) ?? '';
 

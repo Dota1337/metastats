@@ -16,7 +16,7 @@
  * frontend doesn't have to download CD's full 24 MB blob.
  */
 
-import { readFileSync, existsSync, readdirSync, realpathSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync, realpathSync, appendFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { resolve } from 'node:path';
 import { lookup as dnsLookup } from 'node:dns';
@@ -28,6 +28,7 @@ import { applyLocalizedNames } from './lib/tft-localized-names.mjs';
 import { applyValueTable, binHash, changesFingerprint, correctFromNotes, livePatchOf, loadSetChanges, patchesUpTo, pbeFromCorrections } from './lib/tft-value-corrections.mjs';
 import { fetchNotes } from './detect-tft-bpatches.mjs';
 import { writeJsonIfChanged } from './lib/write-if-changed.mjs';
+import { isSourceDown } from './lib/source-down.mjs';
 import { cdragonHashToPath } from './lib/tft-image-paths.mjs';
 import { LISTING_URL, listingStamp, nextBundleStamp } from './lib/tft-data-freshness.mjs';
 
@@ -62,7 +63,12 @@ function lookupIPv4(host) {
     dnsLookup(host, { family: 4 }, (err, addr) => err ? reject(err) : resolve(addr));
   });
 }
-async function fetchJSON(url) {
+// Nur fuer CommunityDragon-Adressen; `cdragon` am Fehler trennt sie in main().catch
+// von Riots Notes.
+function fetchJSON(url) {
+  return fetchJSONRaw(url).catch(e => { throw Object.assign(e instanceof Error ? e : new Error(String(e)), { cdragon: true }); });
+}
+async function fetchJSONRaw(url) {
   const u = new URL(url);
   const ip = await lookupIPv4(u.hostname);
   return new Promise((resolve, reject) => {
@@ -73,16 +79,28 @@ async function fetchJSON(url) {
     }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
+      // Reisst die Verbindung mitten in der Antwort ab, kommt weder 'end' noch ein
+      // Fehler am Request — ohne diese Zeile endete der Lauf still mit Exit 0.
+      res.on('error', reject);
       res.on('end', () => {
-        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
+        if (res.statusCode !== 200) return reject(Object.assign(new Error(`HTTP ${res.statusCode}`), { status: res.statusCode }));
         try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
         catch (e) { reject(e); }
       });
     });
     req.on('error', reject);
-    req.setTimeout(60000, () => req.destroy(new Error('timeout')));
+    req.setTimeout(60000, () => req.destroy(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })));
     req.end();
   });
+}
+
+// CommunityDragon antwortet nicht (User 13.11.2026): Hinweis statt Fehler, die alten
+// Daten bleiben, und der Workflow wertet `source_down` aus (tft-data-refresh-report.mjs,
+// Alarm erst nach 24 h). Exit 75 haelt die Folgeschritte an wie jeder Fehlschlag.
+function exitSourceDown(what, err) {
+  console.log(`::warning::CommunityDragon nicht erreichbar (${what}: ${err.message}) — alte Daten bleiben`);
+  if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, 'source_down=true\n');
+  process.exit(75);
 }
 
 // Convert a CD asset path like:
@@ -192,6 +210,7 @@ async function main() {
     } catch (e) {
       // Der Daten-Lauf bricht hier ab: applyLocalizedNames rettet Namen aus dem
       // Vorgaenger-Bundle, die Augment-Texte dieser Sprache gingen aber verloren.
+      if (STRICT_LOCALES && isSourceDown(e)) exitSourceDown(`Sprachdatei ${l.code}`, e);
       if (STRICT_LOCALES) { console.error(`FATAL: Sprachdatei ${l.code} fehlt (${e.message}) — Bundle NICHT geschrieben.`); process.exit(1); }
       console.warn(`       ${l.code}: FAILED (${e.message}) — augments will fall back to en`);
       localeItems[l.code] = new Map();
@@ -905,5 +924,10 @@ function isDirectRun() {
   } catch { return false; }
 }
 if (isDirectRun()) {
-  main().catch(err => { console.error('FAIL:', err.message); process.exit(1); });
+  main().catch(err => {
+    // fetchJSON holt nur von CommunityDragon; Riots Notes (fetchNotes) bleiben rot.
+    if (err?.cdragon && isSourceDown(err)) exitSourceDown('Abruf', err);
+    console.error('FAIL:', err.message);
+    process.exit(1);
+  });
 }

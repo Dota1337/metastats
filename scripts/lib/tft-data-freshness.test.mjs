@@ -43,6 +43,11 @@ test('Notes geaendert, roter Vorlauf, Tageslauf, von Hand', () => {
   assert.equal(decideRefresh({ ...base, manual: true, now: SUNDAY }).run, true);
 });
 
+test('offener CDragon-Ausfall: naechster Versuch auch nach gruenem Ausfall-Lauf', () => {
+  assert.deepEqual(decideRefresh({ ...base, listing: null, cdragonDown: true, now: SUNDAY }),
+    { run: true, reasons: ['CommunityDragon zuletzt nicht erreichbar'] });
+});
+
 test('Quelle nicht erreichbar ist kein Grund', () => {
   assert.equal(decideRefresh({ ...base, listing: null, notesHash: null, now: SUNDAY }).run, false);
 });

@@ -66,7 +66,10 @@ export default function CompFamilyListHeader({
       <div className={`hidden md:grid items-center gap-3 px-3.5 py-2 mb-2 rounded-lg border border-accent-a60 bg-surface-raised text-[13px] leading-tight text-fg-secondary font-semibold whitespace-nowrap ${grid.cols}`}>
         <div></div>
         <div></div>
-        <div>{label(null, t('nav.comps'))}</div>
+        {/* „Comps" mittig ueber Name + Units (User 13.11.2026), gleiche
+            Technik wie die Werte-Spalten. Ab 1366 ist Spalte 4 im Kopf leer
+            (0 px), Spalte 3 reicht dann ueber Name und Units der Zeile. */}
+        <div className="flex justify-center">{label(null, t('nav.comps'))}</div>
         <div className={grid.oneLineOnly}></div>
         {/* Alle Werte-Spalten gleich breit und zentriert (User 03.11.2026). flex
             statt text-center: „Avg. Place" ist bei 13 px breiter als die

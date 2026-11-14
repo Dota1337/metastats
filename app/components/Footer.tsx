@@ -20,9 +20,10 @@ export default function Footer() {
           <span className="hidden sm:inline">{t('footer.disclaimer')}</span>
         </div>
 
-        <nav className="flex items-center gap-4 justify-center" aria-label="legal links">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 justify-center" aria-label="legal links">
           <a href={withLang("/impressum")} className="hover:text-white transition">{t('legal.imprint')}</a>
           <a href={withLang("/datenschutz")} className="hover:text-white transition">{t('legal.privacy')}</a>
+          <a href={withLang("/terms")} className="hover:text-white transition">{t('legal.terms')}</a>
         </nav>
 
         <div className="flex items-center sm:justify-end relative">

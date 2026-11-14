@@ -141,6 +141,14 @@ export const PAGE_COPY = {
     ['Política de privacidad', 'Política de privacidad de metastats.gg: qué datos se recogen, encargados del tratamiento, cookies, conservación y tus derechos.'],
     ['Politique de confidentialité', 'Politique de confidentialité de metastats.gg : données collectées, sous-traitants, cookies, durée de conservation et vos droits.'],
   ),
+  'legal.terms': six(
+    ['Nutzungsbedingungen', 'Nutzungsbedingungen von metastats.gg: Benutzerkonto, unzulässige Nutzung, Daten und Marktwerte, Haftung und anwendbares Recht.'],
+    ['Terms of Service', 'Terms of service of metastats.gg: user accounts, prohibited use, data and market values, liability and applicable law.'],
+    ['이용약관', 'metastats.gg 이용약관: 사용자 계정, 금지된 이용, 데이터와 시장 가치, 책임, 준거법.'],
+    ['服务条款', 'metastats.gg 服务条款：用户账户、禁止的使用行为、数据与市场价值、责任及适用法律。'],
+    ['Términos del servicio', 'Términos del servicio de metastats.gg: cuenta de usuario, uso prohibido, datos y valores de mercado, responsabilidad y legislación aplicable.'],
+    ['Conditions d\'utilisation', 'Conditions d\'utilisation de metastats.gg : compte utilisateur, utilisation interdite, données et valeurs marchandes, responsabilité et droit applicable.'],
+  ),
 
   // ---------------- Teamfight Tactics ----------------
   'tft.comps': six(

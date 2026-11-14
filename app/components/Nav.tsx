@@ -78,6 +78,9 @@ const META_PULSE_CHILDREN = TFT_WHAT_TO_BUILD_ENABLED
 
 const MENU_MIN_WIDTH_PX = 208;
 
+// Eintraege im Konto-Menue oben rechts — gleicher Stil wie „Abmelden“.
+const USER_MENU_ITEM = 'block w-full text-left px-3 py-2 text-xs text-fg-secondary hover:text-white hover:bg-surface-raised';
+
 // Klappmenue an Meta Pulse. Liegt per Portal im body: die Leiste hat overflow-x-auto
 // und wuerde ein normal positioniertes Menue abschneiden. Der Name bleibt ein Link,
 // nur der Pfeil oeffnet. Scrollen schliesst, weil das Menue an der Leiste haengt.
@@ -154,7 +157,7 @@ function MetaPulseMenu({ pathname }: { pathname: string }) {
 
 export default function Nav({ active }: NavProps) {
   const { lang, setLang, t, withLang } = useI18n();
-  const { user, signOut } = useAuth();
+  const { user, signOut, riot } = useAuth();
   const pathname = usePathname() || '/';
   const game = detectGameFromPath(pathname);
   const [langOpen, setLangOpen] = useState(false);
@@ -474,6 +477,20 @@ export default function Nav({ active }: NavProps) {
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setUserMenuOpen(false)} />
                     <div className="absolute right-0 top-full mt-1 z-40 bg-surface-base border border-border-subtle rounded shadow-lg min-w-[160px]">
+                      {riot?.link?.tftPath && (
+                        <a href={withLang(riot.link.tftPath)} className={USER_MENU_ITEM}>{t('nav.myTftProfile')}</a>
+                      )}
+                      {riot?.link?.lolPath && (
+                        <a href={withLang(riot.link.lolPath)} className={USER_MENU_ITEM}>{t('nav.myLolProfile')}</a>
+                      )}
+                      {/* Einfacher Link statt next/link: kein Vorab-Laden der Riot-Anmeldung. */}
+                      {riot?.enabled && !riot.link && (
+                        <a href={`/auth/riot/start?mode=link&next=${encodeURIComponent('/auth/account')}`} className={USER_MENU_ITEM}>{t('nav.linkRiot')}</a>
+                      )}
+                      {riot?.link && !riot.riotOnly && (
+                        <a href="/auth/account" className={USER_MENU_ITEM}>{t('nav.unlinkRiot')}</a>
+                      )}
+                      <a href="/auth/account" className={USER_MENU_ITEM}>{t('nav.deleteAccount')}</a>
                       <button
                         onClick={async () => { await signOut(); setUserMenuOpen(false); }}
                         className="w-full text-left px-3 py-2 text-xs text-fg-secondary hover:text-white hover:bg-surface-raised"

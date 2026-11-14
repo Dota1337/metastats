@@ -336,6 +336,27 @@ const translations = {
     'Correo de confirmaci\u00F3n enviado. Revisa tu bandeja.',
     'E-mail de confirmation envoy\u00E9. V\u00E9rifie ta bo\u00EEte de r\u00E9ception.'
   ),
+  'auth.riotLogin': t6('Mit Riot anmelden', 'Sign in with Riot', 'Riot\uC73C\uB85C \uB85C\uADF8\uC778', '\u4F7F\u7528 Riot \u767B\u5F55', 'Iniciar sesi\u00F3n con Riot', 'Se connecter avec Riot'),
+  'auth.err.riot_off': t6('Die Riot-Anmeldung ist gerade nicht verf\u00FCgbar.', 'Riot sign-in is currently unavailable.', 'Riot \uB85C\uADF8\uC778\uC744 \uD604\uC7AC \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.', 'Riot \u767B\u5F55\u6682\u65F6\u4E0D\u53EF\u7528\u3002', 'El inicio de sesi\u00F3n con Riot no est\u00E1 disponible ahora.', 'La connexion avec Riot est actuellement indisponible.'),
+  'auth.err.riot_denied': t6('Die Riot-Anmeldung wurde abgebrochen.', 'Riot sign-in was cancelled.', 'Riot \uB85C\uADF8\uC778\uC774 \uCDE8\uC18C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.', 'Riot \u767B\u5F55\u5DF2\u53D6\u6D88\u3002', 'Se cancel\u00F3 el inicio de sesi\u00F3n con Riot.', 'La connexion avec Riot a \u00E9t\u00E9 annul\u00E9e.'),
+  'auth.err.state': t6('Die Anmeldung ist abgelaufen. Bitte erneut versuchen.', 'The sign-in expired. Please try again.', '\uB85C\uADF8\uC778 \uC2DC\uAC04\uC774 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.', '\u767B\u5F55\u5DF2\u8FC7\u671F\uFF0C\u8BF7\u91CD\u8BD5\u3002', 'El inicio de sesi\u00F3n ha caducado. Int\u00E9ntalo de nuevo.', 'La connexion a expir\u00E9. R\u00E9essaie.'),
+  'auth.err.exchange': t6('Riot hat die Anmeldung nicht best\u00E4tigt. Bitte erneut versuchen.', 'Riot did not confirm the sign-in. Please try again.', 'Riot\uC5D0\uC11C \uB85C\uADF8\uC778\uC744 \uD655\uC778\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.', 'Riot \u672A\u786E\u8BA4\u6B64\u6B21\u767B\u5F55\uFF0C\u8BF7\u91CD\u8BD5\u3002', 'Riot no confirm\u00F3 el inicio de sesi\u00F3n. Int\u00E9ntalo de nuevo.', "Riot n'a pas confirm\u00E9 la connexion. R\u00E9essaie."),
+  'auth.err.account': t6('Das Konto konnte gerade nicht geladen werden. Bitte erneut versuchen.', 'Your account could not be loaded. Please try again.', '\uACC4\uC815\uC744 \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.', '\u6682\u65F6\u65E0\u6CD5\u52A0\u8F7D\u8D26\u6237\uFF0C\u8BF7\u91CD\u8BD5\u3002', 'No se pudo cargar la cuenta. Int\u00E9ntalo de nuevo.', 'Impossible de charger le compte. R\u00E9essaie.'),
+  'auth.err.conflict': t6('Dieses Riot-Konto ist bereits mit einem anderen metastats-Konto verkn\u00FCpft.', 'This Riot account is already linked to another metastats account.', '\uC774 Riot \uACC4\uC815\uC740 \uC774\uBBF8 \uB2E4\uB978 metastats \uACC4\uC815\uC5D0 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.', '\u8BE5 Riot \u8D26\u6237\u5DF2\u5173\u8054\u5230\u53E6\u4E00\u4E2A metastats \u8D26\u6237\u3002', 'Esta cuenta de Riot ya est\u00E1 vinculada a otra cuenta de metastats.', 'Ce compte Riot est d\u00E9j\u00E0 li\u00E9 \u00E0 un autre compte metastats.'),
+  'auth.err.has_other': t6('Dein Konto ist bereits mit einem anderen Riot-Konto verkn\u00FCpft. Trenne es zuerst.', 'Your account is already linked to another Riot account. Unlink it first.', '\uACC4\uC815\uC774 \uC774\uBBF8 \uB2E4\uB978 Riot \uACC4\uC815\uC5D0 \uC5F0\uACB0\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uBA3C\uC800 \uC5F0\uACB0\uC744 \uD574\uC81C\uD558\uC138\uC694.', '\u4F60\u7684\u8D26\u6237\u5DF2\u5173\u8054\u53E6\u4E00\u4E2A Riot \u8D26\u6237\uFF0C\u8BF7\u5148\u89E3\u9664\u5173\u8054\u3002', 'Tu cuenta ya est\u00E1 vinculada a otra cuenta de Riot. Desvinc\u00FAlala primero.', "Ton compte est d\u00E9j\u00E0 li\u00E9 \u00E0 un autre compte Riot. Dissocie-le d'abord."),
+  'auth.err.already_signed_in': t6('Du bist bereits angemeldet. Verkn\u00FCpfe dein Riot-Konto auf deiner Kontoseite.', 'You are already signed in. Link your Riot account on your account page.', '\uC774\uBBF8 \uB85C\uADF8\uC778\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4. \uACC4\uC815 \uD398\uC774\uC9C0\uC5D0\uC11C Riot \uACC4\uC815\uC744 \uC5F0\uACB0\uD558\uC138\uC694.', '\u4F60\u5DF2\u767B\u5F55\u3002\u8BF7\u5728\u8D26\u6237\u9875\u9762\u5173\u8054 Riot \u8D26\u6237\u3002', 'Ya has iniciado sesi\u00F3n. Vincula tu cuenta de Riot en la p\u00E1gina de tu cuenta.', 'Tu es d\u00E9j\u00E0 connect\u00E9. Lie ton compte Riot sur la page de ton compte.'),
+  'auth.err.oauth': t6('Die Anmeldung hat nicht geklappt. Bitte erneut versuchen.', 'Sign-in failed. Please try again.', '\uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.', '\u767B\u5F55\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002', 'No se pudo iniciar sesi\u00F3n. Int\u00E9ntalo de nuevo.', 'La connexion a \u00E9chou\u00E9. R\u00E9essaie.'),
+  'auth.err.generic': t6('Das hat nicht geklappt. Bitte erneut versuchen.', 'Something went wrong. Please try again.', '\uBB38\uC81C\uAC00 \uBC1C\uC0DD\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD558\uC138\uC694.', '\u64CD\u4F5C\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5\u3002', 'Algo sali\u00F3 mal. Int\u00E9ntalo de nuevo.', 'Une erreur est survenue. R\u00E9essaie.'),
+  'nav.myTftProfile': t6('Mein TFT-Profil', 'My TFT profile', '\uB0B4 TFT \uD504\uB85C\uD544', '\u6211\u7684 TFT \u8D44\u6599', 'Mi perfil de TFT', 'Mon profil TFT'),
+  'nav.myLolProfile': t6('Mein LoL-Profil', 'My LoL profile', '\uB0B4 LoL \uD504\uB85C\uD544', '\u6211\u7684 LoL \u8D44\u6599', 'Mi perfil de LoL', 'Mon profil LoL'),
+  'nav.linkRiot': t6('Riot verkn\u00FCpfen', 'Link Riot account', 'Riot \uACC4\uC815 \uC5F0\uACB0', '\u5173\u8054 Riot \u8D26\u6237', 'Vincular cuenta de Riot', 'Lier le compte Riot'),
+  'nav.unlinkRiot': t6('Riot trennen', 'Unlink Riot account', 'Riot \uC5F0\uACB0 \uD574\uC81C', '\u89E3\u9664 Riot \u5173\u8054', 'Desvincular cuenta de Riot', 'Dissocier le compte Riot'),
+  'nav.deleteAccount': t6('Konto l\u00F6schen', 'Delete account', '\uACC4\uC815 \uC0AD\uC81C', '\u5220\u9664\u8D26\u6237', 'Eliminar cuenta', 'Supprimer le compte'),
+  'account.title': t6('Mein Konto', 'My account', '\uB0B4 \uACC4\uC815', '\u6211\u7684\u8D26\u6237', 'Mi cuenta', 'Mon compte'),
+  'account.riotHeading': t6('Riot-Konto', 'Riot account', 'Riot \uACC4\uC815', 'Riot \u8D26\u6237', 'Cuenta de Riot', 'Compte Riot'),
+  'account.deleteConfirm': t6('Konto und alle verkn\u00FCpften Daten endg\u00FCltig l\u00F6schen?', 'Permanently delete your account and all linked data?', '\uACC4\uC815\uACFC \uC5F0\uACB0\uB41C \uBAA8\uB4E0 \uB370\uC774\uD130\uB97C \uC601\uAD6C\uC801\uC73C\uB85C \uC0AD\uC81C\uD560\uAE4C\uC694?', '\u8981\u6C38\u4E45\u5220\u9664\u8D26\u6237\u53CA\u6240\u6709\u5173\u8054\u6570\u636E\u5417\uFF1F', '\u00BFEliminar definitivamente la cuenta y todos los datos vinculados?', 'Supprimer d\u00E9finitivement le compte et toutes les donn\u00E9es li\u00E9es ?'),
+  'account.deleteYes': t6('Endg\u00FCltig l\u00F6schen', 'Delete permanently', '\uC601\uAD6C \uC0AD\uC81C', '\u6C38\u4E45\u5220\u9664', 'Eliminar definitivamente', 'Supprimer d\u00E9finitivement'),
+  'account.cancel': t6('Abbrechen', 'Cancel', '\uCDE8\uC18C', '\u53D6\u6D88', 'Cancelar', 'Annuler'),
   'tft.slotFirst': t6('Erster Slot', 'First slot', '\uCCAB \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E00\u4EF6\u88C5\u5907', 'Primer slot', 'Premier slot'),
   'tft.slotSecond': t6('Zweiter Slot', 'Second slot', '\uB450 \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E8C\u4EF6\u88C5\u5907', 'Segundo slot', 'Deuxi\u00E8me slot'),
   'tft.slotThird': t6('Dritter Slot', 'Third slot', '\uC138 \uBC88\uC9F8 \uC2AC\uB86F', '\u7B2C\u4E09\u4EF6\u88C5\u5907', 'Tercer slot', 'Troisi\u00E8me slot'),
@@ -3632,12 +3653,12 @@ const translations = {
     'Vercel Inc. (USA) \u2014 h\u00E9bergement.'
   ),
   'legal.privacy.processorSupabase': t6(
-    'Supabase (USA/EU) \u2014 Datenbank-Hosting. PostgreSQL mit Row-Level-Security, Cache nur Game-Daten (kein PII).',
-    'Supabase (USA/EU) \u2014 database hosting. PostgreSQL with row-level security, caches only game data (no PII).',
-    'Supabase(\uBBF8\uAD6D/EU) \u2014 \uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uD638\uC2A4\uD305. \uAC8C\uC784 \uB370\uC774\uD130 \uCE90\uC2DC(PII \uC5C6\uC74C).',
-    'Supabase\uFF08\u7F8E\u56FD/EU\uFF09\u2014 \u6570\u636E\u5E93\u6258\u7BA1\u3002\u4EC5\u7F13\u5B58\u6E38\u620F\u6570\u636E\u3002',
-    'Supabase \u2014 alojamiento de base de datos.',
-    'Supabase \u2014 h\u00E9bergement de base de donn\u00E9es.'
+    'Supabase (USA/EU), Rechenzentrum Irland \u2014 Datenbank und Benutzerkonten (Supabase Auth). PostgreSQL mit Row-Level-Security; gespeichert werden Spieldaten und die Kontodaten aus dem Abschnitt \u201EBenutzerkonto\u201C.',
+    'Supabase (USA/EU), Ireland data centre \u2014 database and user accounts (Supabase Auth). PostgreSQL with row-level security; stores game data and the account data described under \u201CUser account\u201D.',
+    'Supabase(\uBBF8\uAD6D/EU), \uC544\uC77C\uB79C\uB4DC \uB370\uC774\uD130 \uC13C\uD130 \u2014 \uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uBC0F \uC0AC\uC6A9\uC790 \uACC4\uC815(Supabase Auth). \uAC8C\uC784 \uB370\uC774\uD130\uC640 \u2018\uC0AC\uC6A9\uC790 \uACC4\uC815\u2019 \uD56D\uBAA9\uC758 \uACC4\uC815 \uB370\uC774\uD130\uB97C \uC800\uC7A5\uD569\uB2C8\uB2E4.',
+    'Supabase\uFF08\u7F8E\u56FD/EU\uFF09\uFF0C\u7231\u5C14\u5170\u6570\u636E\u4E2D\u5FC3 \u2014 \u6570\u636E\u5E93\u53CA\u7528\u6237\u8D26\u6237\uFF08Supabase Auth\uFF09\u3002\u5B58\u50A8\u6E38\u620F\u6570\u636E\u4EE5\u53CA\u201C\u7528\u6237\u8D26\u6237\u201D\u4E00\u8282\u6240\u8FF0\u7684\u8D26\u6237\u6570\u636E\u3002',
+    'Supabase (EE. UU./UE), centro de datos de Irlanda \u2014 base de datos y cuentas de usuario (Supabase Auth). Guarda datos de juego y los datos de cuenta descritos en \u00ABCuenta de usuario\u00BB.',
+    'Supabase (\u00C9tats-Unis/UE), centre de donn\u00E9es en Irlande \u2014 base de donn\u00E9es et comptes utilisateur (Supabase Auth). Stocke les donn\u00E9es de jeu et les donn\u00E9es de compte d\u00E9crites dans \u00AB Compte utilisateur \u00BB.'
   ),
   'legal.privacy.processorRiot': t6(
     'Riot Games, Inc. (USA) \u2014 Spieldaten-API. Wir senden Spielernamen / puuid f\u00FCr Suchanfragen.',
@@ -3667,12 +3688,12 @@ const translations = {
     'Cookies', 'Cookies', '\uCFE0\uD0A4', 'Cookie', 'Cookies', 'Cookies'
   ),
   'legal.privacy.cookiesText': t6(
-    'metastats.gg setzt nur ein funktionales Cookie (metastats-lang) zur Speicherung der Sprachauswahl. Es werden keine Tracking- oder Werbe-Cookies gesetzt. Vercel Analytics nutzt eine anonymisierte, hash-basierte Methode ohne Cookies und ohne IP-Speicherung. Wer eine Community-Comp teilt oder bewertet, erh\u00E4lt zus\u00E4tzlich das funktionale Cookie tft_author_token. Es ordnet eigene Comps und Stimmen zu und verhindert Mehrfachabgaben; daf\u00FCr wird aus der IP-Adresse ein nicht umkehrbarer Kennwert gebildet, die IP-Adresse selbst wird nicht gespeichert.',
-    'metastats.gg sets only a functional cookie (metastats-lang) for language preference. No tracking or advertising cookies are set. Vercel Analytics uses an anonymous, hash-based method without cookies and without IP storage. Sharing or upvoting a community comp additionally sets the functional cookie tft_author_token. It links your own comps and votes and prevents repeated submissions; for this, a non-reversible identifier is derived from the IP address, the IP address itself is not stored.',
-    'metastats.gg\uB294 \uC5B8\uC5B4 \uC120\uD0DD\uC6A9 \uAE30\uB2A5 \uCFE0\uD0A4(metastats-lang)\uB9CC \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uCD94\uC801/\uAD11\uACE0 \uCFE0\uD0A4\uB294 \uC5C6\uC2B5\uB2C8\uB2E4. \uCEE4\uBBA4\uB2C8\uD2F0 \uC870\uD569\uC744 \uACF5\uC720\uD558\uAC70\uB098 \uCD94\uCC9C\uD558\uBA74 \uAE30\uB2A5 \uCFE0\uD0A4 tft_author_token\uC774 \uCD94\uAC00\uB85C \uC124\uC815\uB429\uB2C8\uB2E4. \uBCF8\uC778\uC758 \uC870\uD569\uACFC \uCD94\uCC9C\uC744 \uC5F0\uACB0\uD558\uACE0 \uC911\uBCF5 \uC81C\uCD9C\uC744 \uB9C9\uAE30 \uC704\uD574 IP \uC8FC\uC18C\uC5D0\uC11C \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uB294 \uC2DD\uBCC4\uAC12\uC744 \uB9CC\uB4E4\uBA70, IP \uC8FC\uC18C \uC790\uCCB4\uB294 \uC800\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
-    'metastats.gg \u4EC5\u8BBE\u7F6E\u4E00\u4E2A\u529F\u80FD\u6027 Cookie\uFF08metastats-lang\uFF09\u7528\u4E8E\u8BED\u8A00\u504F\u597D\uFF0C\u65E0\u8FFD\u8E2A\u6216\u5E7F\u544A Cookie\u3002 \u5206\u4EAB\u6216\u70B9\u8D5E\u793E\u533A\u9635\u5BB9\u65F6\uFF0C\u8FD8\u4F1A\u8BBE\u7F6E\u529F\u80FD\u6027 Cookie tft_author_token\uFF0C\u7528\u4E8E\u5173\u8054\u60A8\u81EA\u5DF1\u7684\u9635\u5BB9\u548C\u6295\u7968\u5E76\u9632\u6B62\u91CD\u590D\u63D0\u4EA4\uFF1B\u4E3A\u6B64\u4F1A\u6839\u636E IP \u5730\u5740\u751F\u6210\u4E0D\u53EF\u9006\u7684\u6807\u8BC6\u503C\uFF0CIP \u5730\u5740\u672C\u8EAB\u4E0D\u4F1A\u88AB\u5B58\u50A8\u3002',
-    'metastats.gg solo establece una cookie funcional (metastats-lang). Sin cookies de seguimiento o publicidad. Al compartir o votar una composici\u00F3n de la comunidad se establece adem\u00E1s la cookie funcional tft_author_token. Vincula tus composiciones y votos y evita env\u00EDos repetidos; para ello se genera a partir de la direcci\u00F3n IP un identificador no reversible, sin almacenar la direcci\u00F3n IP.',
-    'metastats.gg ne d\u00E9finit qu\'un cookie fonctionnel (metastats-lang). Aucun cookie de suivi ou publicitaire. Partager ou voter pour une composition de la communaut\u00E9 d\u00E9finit en plus le cookie fonctionnel tft_author_token. Il relie vos compositions et votes et emp\u00EAche les envois r\u00E9p\u00E9t\u00E9s ; pour cela, un identifiant non r\u00E9versible est d\u00E9riv\u00E9 de l\'adresse IP, l\'adresse IP elle-m\u00EAme n\'est pas stock\u00E9e.'
+    'metastats.gg setzt das funktionale Cookie metastats-lang zur Speicherung der Sprachauswahl. Es werden keine Tracking- oder Werbe-Cookies gesetzt. Vercel Analytics nutzt eine anonymisierte, hash-basierte Methode ohne Cookies und ohne IP-Speicherung. Wer eine Community-Comp teilt oder bewertet, erh\u00E4lt zus\u00E4tzlich das funktionale Cookie tft_author_token. Es ordnet eigene Comps und Stimmen zu und verhindert Mehrfachabgaben; daf\u00FCr wird aus der IP-Adresse ein nicht umkehrbarer Kennwert gebildet, die IP-Adresse selbst wird nicht gespeichert.',
+    'metastats.gg sets the functional cookie metastats-lang for your language preference. No tracking or advertising cookies are set. Vercel Analytics uses an anonymous, hash-based method without cookies and without IP storage. Sharing or upvoting a community comp additionally sets the functional cookie tft_author_token. It links your own comps and votes and prevents repeated submissions; for this, a non-reversible identifier is derived from the IP address, the IP address itself is not stored.',
+    'metastats.gg\uB294 \uC5B8\uC5B4 \uC120\uD0DD\uC6A9 \uAE30\uB2A5 \uCFE0\uD0A4(metastats-lang)\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uCD94\uC801/\uAD11\uACE0 \uCFE0\uD0A4\uB294 \uC5C6\uC2B5\uB2C8\uB2E4. \uCEE4\uBBA4\uB2C8\uD2F0 \uC870\uD569\uC744 \uACF5\uC720\uD558\uAC70\uB098 \uCD94\uCC9C\uD558\uBA74 \uAE30\uB2A5 \uCFE0\uD0A4 tft_author_token\uC774 \uCD94\uAC00\uB85C \uC124\uC815\uB429\uB2C8\uB2E4. \uBCF8\uC778\uC758 \uC870\uD569\uACFC \uCD94\uCC9C\uC744 \uC5F0\uACB0\uD558\uACE0 \uC911\uBCF5 \uC81C\uCD9C\uC744 \uB9C9\uAE30 \uC704\uD574 IP \uC8FC\uC18C\uC5D0\uC11C \uB418\uB3CC\uB9B4 \uC218 \uC5C6\uB294 \uC2DD\uBCC4\uAC12\uC744 \uB9CC\uB4E4\uBA70, IP \uC8FC\uC18C \uC790\uCCB4\uB294 \uC800\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    'metastats.gg \u8BBE\u7F6E\u529F\u80FD\u6027 Cookie\uFF08metastats-lang\uFF09\u7528\u4E8E\u8BED\u8A00\u504F\u597D\uFF0C\u65E0\u8FFD\u8E2A\u6216\u5E7F\u544A Cookie\u3002 \u5206\u4EAB\u6216\u70B9\u8D5E\u793E\u533A\u9635\u5BB9\u65F6\uFF0C\u8FD8\u4F1A\u8BBE\u7F6E\u529F\u80FD\u6027 Cookie tft_author_token\uFF0C\u7528\u4E8E\u5173\u8054\u60A8\u81EA\u5DF1\u7684\u9635\u5BB9\u548C\u6295\u7968\u5E76\u9632\u6B62\u91CD\u590D\u63D0\u4EA4\uFF1B\u4E3A\u6B64\u4F1A\u6839\u636E IP \u5730\u5740\u751F\u6210\u4E0D\u53EF\u9006\u7684\u6807\u8BC6\u503C\uFF0CIP \u5730\u5740\u672C\u8EAB\u4E0D\u4F1A\u88AB\u5B58\u50A8\u3002',
+    'metastats.gg establece la cookie funcional metastats-lang para guardar el idioma. Sin cookies de seguimiento o publicidad. Al compartir o votar una composici\u00F3n de la comunidad se establece adem\u00E1s la cookie funcional tft_author_token. Vincula tus composiciones y votos y evita env\u00EDos repetidos; para ello se genera a partir de la direcci\u00F3n IP un identificador no reversible, sin almacenar la direcci\u00F3n IP.',
+    'metastats.gg d\u00E9finit le cookie fonctionnel metastats-lang pour m\u00E9moriser la langue. Aucun cookie de suivi ou publicitaire. Partager ou voter pour une composition de la communaut\u00E9 d\u00E9finit en plus le cookie fonctionnel tft_author_token. Il relie vos compositions et votes et emp\u00EAche les envois r\u00E9p\u00E9t\u00E9s ; pour cela, un identifiant non r\u00E9versible est d\u00E9riv\u00E9 de l\'adresse IP, l\'adresse IP elle-m\u00EAme n\'est pas stock\u00E9e.'
   ),
   'legal.privacy.retentionHeading': t6(
     'Speicherdauer', 'Retention',
@@ -3760,6 +3781,128 @@ const translations = {
     '\u672C\u58F0\u660E\u53EF\u80FD\u6839\u636E\u6CD5\u5F8B\u8981\u6C42\u66F4\u65B0\uFF0C\u6700\u65B0\u7248\u672C\u81EA\u53D1\u5E03\u4E4B\u65E5\u8D77\u751F\u6548\u3002',
     'Esta pol\u00EDtica puede actualizarse para reflejar requisitos legales.',
     'Cette politique peut \u00EAtre mise \u00E0 jour selon les exigences l\u00E9gales.'
+  ),
+
+  // Datenschutz: Benutzerkonten + Riot-Anmeldung (RSO), Stand 14.11.2026
+  'legal.privacy.dataAccount': t6(
+    'Kontodaten, wenn du ein Benutzerkonto anlegst oder dein Riot-Konto verkn\u00FCpfst (siehe die beiden folgenden Abschnitte).',
+    'Account data if you create a user account or link your Riot account (see the next two sections).',
+    '\uC0AC\uC6A9\uC790 \uACC4\uC815\uC744 \uB9CC\uB4E4\uAC70\uB098 Riot \uACC4\uC815\uC744 \uC5F0\uACB0\uD558\uB294 \uACBD\uC6B0\uC758 \uACC4\uC815 \uB370\uC774\uD130(\uB2E4\uC74C \uB450 \uD56D\uBAA9 \uCC38\uC870).',
+    '\u5F53\u4F60\u521B\u5EFA\u7528\u6237\u8D26\u6237\u6216\u5173\u8054 Riot \u8D26\u6237\u65F6\u7684\u8D26\u6237\u6570\u636E\uFF08\u89C1\u4EE5\u4E0B\u4E24\u8282\uFF09\u3002',
+    'Datos de la cuenta, si creas una cuenta de usuario o vinculas tu cuenta de Riot (consulta los dos apartados siguientes).',
+    'Donn\u00E9es de compte, si vous cr\u00E9ez un compte utilisateur ou liez votre compte Riot (voir les deux sections suivantes).'
+  ),
+  'legal.privacy.accountHeading': t6(
+    'Benutzerkonto',
+    'User account',
+    '\uC0AC\uC6A9\uC790 \uACC4\uC815',
+    '\u7528\u6237\u8D26\u6237',
+    'Cuenta de usuario',
+    'Compte utilisateur'
+  ),
+  'legal.privacy.accountText': t6(
+    'Ein Konto ist freiwillig. Konten verwaltet Supabase Auth (Rechenzentrum Irland). Du kannst dich mit E-Mail und Passwort, mit Discord oder mit Riot anmelden.',
+    'An account is optional. Accounts are managed by Supabase Auth (Ireland data centre). You can sign in with e-mail and password, with Discord or with Riot.',
+    '\uACC4\uC815 \uC0DD\uC131\uC740 \uC120\uD0DD \uC0AC\uD56D\uC785\uB2C8\uB2E4. \uACC4\uC815\uC740 Supabase Auth(\uC544\uC77C\uB79C\uB4DC \uB370\uC774\uD130 \uC13C\uD130)\uC5D0\uC11C \uAD00\uB9AC\uD569\uB2C8\uB2E4. \uC774\uBA54\uC77C\uACFC \uBE44\uBC00\uBC88\uD638, Discord \uB610\uB294 Riot\uC73C\uB85C \uB85C\uADF8\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u6CE8\u518C\u8D26\u6237\u662F\u81EA\u613F\u7684\u3002\u8D26\u6237\u7531 Supabase Auth\uFF08\u7231\u5C14\u5170\u6570\u636E\u4E2D\u5FC3\uFF09\u7BA1\u7406\u3002\u4F60\u53EF\u4EE5\u4F7F\u7528\u7535\u5B50\u90AE\u4EF6\u548C\u5BC6\u7801\u3001Discord \u6216 Riot \u767B\u5F55\u3002',
+    'Crear una cuenta es voluntario. Las cuentas las gestiona Supabase Auth (centro de datos de Irlanda). Puedes iniciar sesi\u00F3n con correo electr\u00F3nico y contrase\u00F1a, con Discord o con Riot.',
+    'Un compte est facultatif. Les comptes sont g\u00E9r\u00E9s par Supabase Auth (centre de donn\u00E9es en Irlande). Vous pouvez vous connecter avec une adresse e-mail et un mot de passe, avec Discord ou avec Riot.'
+  ),
+  'legal.privacy.accountData': t6(
+    'Wir speichern: deine E-Mail-Adresse (bei Konten mit E-Mail oder Discord), den Anzeigenamen und das Profilbild, die der Anmeldedienst liefert, eine technische Konto-ID und Zeitstempel (zum Beispiel Anlage und letzte Anmeldung).',
+    'We store: your e-mail address (for accounts with e-mail or Discord), the display name and avatar provided by the sign-in service, a technical account ID and timestamps (for example creation and last sign-in).',
+    '\uC800\uC7A5 \uD56D\uBAA9: \uC774\uBA54\uC77C \uC8FC\uC18C(\uC774\uBA54\uC77C \uB610\uB294 Discord \uACC4\uC815\uC758 \uACBD\uC6B0), \uB85C\uADF8\uC778 \uC11C\uBE44\uC2A4\uAC00 \uC81C\uACF5\uD558\uB294 \uD45C\uC2DC \uC774\uB984\uACFC \uD504\uB85C\uD544 \uC0AC\uC9C4, \uAE30\uC220\uC801 \uACC4\uC815 ID, \uD0C0\uC784\uC2A4\uD0EC\uD504(\uC608: \uC0DD\uC131 \uC2DC\uAC01, \uB9C8\uC9C0\uB9C9 \uB85C\uADF8\uC778 \uC2DC\uAC01).',
+    '\u6211\u4EEC\u5B58\u50A8\uFF1A\u4F60\u7684\u7535\u5B50\u90AE\u4EF6\u5730\u5740\uFF08\u9002\u7528\u4E8E\u7535\u5B50\u90AE\u4EF6\u6216 Discord \u8D26\u6237\uFF09\u3001\u767B\u5F55\u670D\u52A1\u63D0\u4F9B\u7684\u663E\u793A\u540D\u79F0\u548C\u5934\u50CF\u3001\u6280\u672F\u6027\u8D26\u6237 ID \u4EE5\u53CA\u65F6\u95F4\u6233\uFF08\u4F8B\u5982\u521B\u5EFA\u65F6\u95F4\u548C\u6700\u8FD1\u767B\u5F55\u65F6\u95F4\uFF09\u3002',
+    'Guardamos: tu direcci\u00F3n de correo electr\u00F3nico (en cuentas con correo o Discord), el nombre visible y la imagen de perfil que facilita el servicio de inicio de sesi\u00F3n, un ID t\u00E9cnico de cuenta y marcas de tiempo (por ejemplo, creaci\u00F3n y \u00FAltimo inicio de sesi\u00F3n).',
+    'Nous enregistrons : votre adresse e-mail (pour les comptes avec e-mail ou Discord), le nom d\u2019affichage et l\u2019image de profil fournis par le service de connexion, un identifiant technique de compte et des horodatages (par exemple cr\u00E9ation et derni\u00E8re connexion).'
+  ),
+  'legal.privacy.accountPurpose': t6(
+    'Zweck: Anmeldung und Kontofunktionen. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
+    'Purpose: sign-in and account features. Legal basis: Art. 6(1)(b) GDPR.',
+    '\uBAA9\uC801: \uB85C\uADF8\uC778 \uBC0F \uACC4\uC815 \uAE30\uB2A5 \uC81C\uACF5. \uBC95\uC801 \uADFC\uAC70: GDPR 6\uC870 1\uD56D b.',
+    '\u76EE\u7684\uFF1A\u767B\u5F55\u53CA\u8D26\u6237\u529F\u80FD\u3002\u6CD5\u5F8B\u4F9D\u636E\uFF1AGDPR \u7B2C 6 \u6761\u7B2C 1 \u6B3E b \u9879\u3002',
+    'Finalidad: inicio de sesi\u00F3n y funciones de la cuenta. Base jur\u00EDdica: art. 6.1.b RGPD.',
+    'Finalit\u00E9 : connexion et fonctions du compte. Base l\u00E9gale : art. 6, par. 1, b RGPD.'
+  ),
+  'legal.privacy.riotHeading': t6(
+    'Anmeldung mit Riot und Verkn\u00FCpfung des Riot-Kontos',
+    'Sign in with Riot and linking your Riot account',
+    'Riot \uB85C\uADF8\uC778 \uBC0F Riot \uACC4\uC815 \uC5F0\uACB0',
+    '\u4F7F\u7528 Riot \u767B\u5F55\u53CA\u5173\u8054 Riot \u8D26\u6237',
+    'Inicio de sesi\u00F3n con Riot y vinculaci\u00F3n de la cuenta de Riot',
+    'Connexion avec Riot et liaison du compte Riot'
+  ),
+  'legal.privacy.riotIntro': t6(
+    'Freiwillig und nur, wenn du es selbst startest. Die Anmeldung findet auf der Seite von Riot Games statt (auth.riotgames.com); dein Riot-Passwort sehen wir nie.',
+    'Optional, and only if you start it yourself. You sign in on Riot Games\u2019 own page (auth.riotgames.com); we never see your Riot password.',
+    '\uC120\uD0DD \uC0AC\uD56D\uC774\uBA70 \uC774\uC6A9\uC790\uAC00 \uC9C1\uC811 \uC2DC\uC791\uD55C \uACBD\uC6B0\uC5D0\uB9CC \uC9C4\uD589\uB429\uB2C8\uB2E4. \uB85C\uADF8\uC778\uC740 Riot Games\uC758 \uD398\uC774\uC9C0(auth.riotgames.com)\uC5D0\uC11C \uC774\uB8E8\uC5B4\uC9C0\uBA70, \uB2F9\uC0AC\uB294 Riot \uBE44\uBC00\uBC88\uD638\uB97C \uBCFC \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.',
+    '\u6B64\u529F\u80FD\u662F\u81EA\u613F\u7684\uFF0C\u4EC5\u5728\u4F60\u4E3B\u52A8\u53D1\u8D77\u65F6\u8FDB\u884C\u3002\u767B\u5F55\u5728 Riot Games \u81EA\u5DF1\u7684\u9875\u9762\uFF08auth.riotgames.com\uFF09\u4E0A\u5B8C\u6210\uFF1B\u6211\u4EEC\u6C38\u8FDC\u770B\u4E0D\u5230\u4F60\u7684 Riot \u5BC6\u7801\u3002',
+    'Es voluntario y solo ocurre si lo inicias t\u00FA. El inicio de sesi\u00F3n se realiza en la p\u00E1gina de Riot Games (auth.riotgames.com); nunca vemos tu contrase\u00F1a de Riot.',
+    'Facultatif, et uniquement si vous le lancez vous-m\u00EAme. La connexion a lieu sur la page de Riot Games (auth.riotgames.com) ; nous ne voyons jamais votre mot de passe Riot.'
+  ),
+  'legal.privacy.riotToken': t6(
+    'Nach deiner Zustimmung schickt Riot uns einen einmaligen Zugangsschl\u00FCssel. Mit ihm lesen wir einmal die Kennung deines Riot-Kontos (PUUID) und deine Riot-ID (Spielname und Tag) und verwerfen ihn danach. Riot-Zugangsschl\u00FCssel speichern wir nicht.',
+    'After you agree, Riot sends us a one-time access token. We use it once to read your Riot account\u2019s identifier (PUUID) and your Riot ID (game name and tag) and then discard it. We do not store Riot access tokens.',
+    '\uC774\uC6A9\uC790\uAC00 \uB3D9\uC758\uD558\uBA74 Riot\uC774 \uC77C\uD68C\uC6A9 \uC561\uC138\uC2A4 \uD1A0\uD070\uC744 \uBCF4\uB0C5\uB2C8\uB2E4. \uB2F9\uC0AC\uB294 \uC774 \uD1A0\uD070\uC73C\uB85C Riot \uACC4\uC815 \uC2DD\uBCC4\uC790(PUUID)\uC640 Riot ID(\uAC8C\uC784 \uC774\uB984\uACFC \uD0DC\uADF8)\uB97C \uD55C \uBC88 \uC77D\uC740 \uD6C4 \uD3D0\uAE30\uD569\uB2C8\uB2E4. Riot \uC561\uC138\uC2A4 \uD1A0\uD070\uC740 \uC800\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u5728\u4F60\u540C\u610F\u540E\uFF0CRiot \u4F1A\u5411\u6211\u4EEC\u53D1\u9001\u4E00\u4E2A\u4E00\u6B21\u6027\u8BBF\u95EE\u4EE4\u724C\u3002\u6211\u4EEC\u4EC5\u7528\u5B83\u8BFB\u53D6\u4E00\u6B21\u4F60\u7684 Riot \u8D26\u6237\u6807\u8BC6\uFF08PUUID\uFF09\u548C Riot ID\uFF08\u6E38\u620F\u540D\u79F0\u548C\u6807\u7B7E\uFF09\uFF0C\u968F\u540E\u5C06\u5176\u4E22\u5F03\u3002\u6211\u4EEC\u4E0D\u5B58\u50A8 Riot \u8BBF\u95EE\u4EE4\u724C\u3002',
+    'Cuando das tu consentimiento, Riot nos env\u00EDa un token de acceso de un solo uso. Lo usamos una vez para leer el identificador de tu cuenta de Riot (PUUID) y tu Riot ID (nombre de juego y etiqueta) y despu\u00E9s lo descartamos. No guardamos tokens de acceso de Riot.',
+    'Apr\u00E8s votre accord, Riot nous envoie un jeton d\u2019acc\u00E8s \u00E0 usage unique. Nous l\u2019utilisons une seule fois pour lire l\u2019identifiant de votre compte Riot (PUUID) et votre Riot ID (nom de jeu et tag), puis nous le supprimons. Nous ne conservons aucun jeton d\u2019acc\u00E8s Riot.'
+  ),
+  'legal.privacy.riotStored': t6(
+    'In der Verkn\u00FCpfung speichern wir: die Kennung deines Riot-Kontos, deine Riot-ID, ob ein TFT- bzw. LoL-Konto besteht, und die LoL-Server-Region.',
+    'In the link we store: your Riot account\u2019s identifier, your Riot ID, whether a TFT or LoL account exists, and the LoL server region.',
+    '\uC5F0\uACB0 \uC815\uBCF4\uB85C \uC800\uC7A5\uD558\uB294 \uD56D\uBAA9: Riot \uACC4\uC815 \uC2DD\uBCC4\uC790, Riot ID, TFT \uB610\uB294 LoL \uACC4\uC815 \uBCF4\uC720 \uC5EC\uBD80, LoL \uC11C\uBC84 \uC9C0\uC5ED.',
+    '\u5173\u8054\u4FE1\u606F\u4E2D\u6211\u4EEC\u5B58\u50A8\uFF1A\u4F60\u7684 Riot \u8D26\u6237\u6807\u8BC6\u3001Riot ID\u3001\u662F\u5426\u5B58\u5728 TFT \u6216 LoL \u8D26\u6237\uFF0C\u4EE5\u53CA LoL \u670D\u52A1\u5668\u5730\u533A\u3002',
+    'En la vinculaci\u00F3n guardamos: el identificador de tu cuenta de Riot, tu Riot ID, si existe una cuenta de TFT o de LoL y la regi\u00F3n del servidor de LoL.',
+    'Dans la liaison, nous enregistrons : l\u2019identifiant de votre compte Riot, votre Riot ID, l\u2019existence d\u2019un compte TFT ou LoL et la r\u00E9gion du serveur LoL.'
+  ),
+  'legal.privacy.riotEmail': t6(
+    'Riot \u00FCbermittelt keine E-Mail-Adresse. F\u00FCr Konten, die \u00FCber Riot angelegt werden, erzeugen wir aus technischen Gr\u00FCnden eine interne Platzhalter-Adresse, an die keine E-Mails zugestellt werden k\u00F6nnen.',
+    'Riot does not provide an e-mail address. For accounts created via Riot we generate an internal placeholder address for technical reasons only; no e-mail can be delivered to it.',
+    'Riot\uC740 \uC774\uBA54\uC77C \uC8FC\uC18C\uB97C \uC81C\uACF5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. Riot\uC73C\uB85C \uC0DD\uC131\uB41C \uACC4\uC815\uC5D0\uB294 \uAE30\uC220\uC801\uC778 \uC774\uC720\uB85C\uB9CC \uB0B4\uBD80\uC6A9 \uB300\uCCB4 \uC8FC\uC18C\uB97C \uB9CC\uB4E4\uBA70, \uC774 \uC8FC\uC18C\uB85C\uB294 \uC774\uBA54\uC77C\uC774 \uC804\uB2EC\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    'Riot \u4E0D\u63D0\u4F9B\u7535\u5B50\u90AE\u4EF6\u5730\u5740\u3002\u5BF9\u4E8E\u901A\u8FC7 Riot \u521B\u5EFA\u7684\u8D26\u6237\uFF0C\u6211\u4EEC\u4EC5\u51FA\u4E8E\u6280\u672F\u539F\u56E0\u751F\u6210\u4E00\u4E2A\u5185\u90E8\u5360\u4F4D\u5730\u5740\uFF0C\u8BE5\u5730\u5740\u65E0\u6CD5\u63A5\u6536\u4EFB\u4F55\u90AE\u4EF6\u3002',
+    'Riot no facilita ninguna direcci\u00F3n de correo electr\u00F3nico. Para las cuentas creadas con Riot generamos, solo por motivos t\u00E9cnicos, una direcci\u00F3n interna de marcador a la que no se pueden entregar correos.',
+    'Riot ne transmet aucune adresse e-mail. Pour les comptes cr\u00E9\u00E9s via Riot, nous g\u00E9n\u00E9rons, uniquement pour des raisons techniques, une adresse interne de substitution \u00E0 laquelle aucun e-mail ne peut \u00EAtre distribu\u00E9.'
+  ),
+  'legal.privacy.riotPurpose': t6(
+    'Zweck: Anmeldung und Anzeige deines eigenen Spielerprofils. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO; die freiwillige Verkn\u00FCpfung beruht zus\u00E4tzlich auf deiner Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die du durch Trennen jederzeit widerrufen kannst. Empf\u00E4nger: Riot Games als Anbieter der Anmeldung.',
+    'Purpose: sign-in and showing your own player profile. Legal basis: Art. 6(1)(b) GDPR; the optional link is additionally based on your consent (Art. 6(1)(a) GDPR), which you can withdraw at any time by unlinking. Recipient: Riot Games as the provider of the sign-in.',
+    '\uBAA9\uC801: \uB85C\uADF8\uC778 \uBC0F \uBCF8\uC778 \uD50C\uB808\uC774\uC5B4 \uD504\uB85C\uD544 \uD45C\uC2DC. \uBC95\uC801 \uADFC\uAC70: GDPR 6\uC870 1\uD56D b. \uC120\uD0DD\uC801\uC778 \uACC4\uC815 \uC5F0\uACB0\uC740 \uCD94\uAC00\uB85C \uC774\uC6A9\uC790\uC758 \uB3D9\uC758(GDPR 6\uC870 1\uD56D a)\uC5D0 \uADFC\uAC70\uD558\uBA70, \uC5F0\uACB0\uC744 \uD574\uC81C\uD558\uC5EC \uC5B8\uC81C\uB4E0\uC9C0 \uCCA0\uD68C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uC218\uB839\uC778: \uB85C\uADF8\uC778 \uC81C\uACF5\uC790\uC778 Riot Games.',
+    '\u76EE\u7684\uFF1A\u767B\u5F55\u5E76\u663E\u793A\u4F60\u672C\u4EBA\u7684\u73A9\u5BB6\u8D44\u6599\u3002\u6CD5\u5F8B\u4F9D\u636E\uFF1AGDPR \u7B2C 6 \u6761\u7B2C 1 \u6B3E b \u9879\uFF1B\u81EA\u613F\u7684\u5173\u8054\u53E6\u5916\u57FA\u4E8E\u4F60\u7684\u540C\u610F\uFF08GDPR \u7B2C 6 \u6761\u7B2C 1 \u6B3E a \u9879\uFF09\uFF0C\u4F60\u53EF\u4EE5\u968F\u65F6\u901A\u8FC7\u89E3\u9664\u5173\u8054\u64A4\u56DE\u540C\u610F\u3002\u63A5\u6536\u65B9\uFF1A\u4F5C\u4E3A\u767B\u5F55\u670D\u52A1\u63D0\u4F9B\u65B9\u7684 Riot Games\u3002',
+    'Finalidad: inicio de sesi\u00F3n y mostrar tu propio perfil de jugador. Base jur\u00EDdica: art. 6.1.b RGPD; la vinculaci\u00F3n voluntaria se basa adem\u00E1s en tu consentimiento (art. 6.1.a RGPD), que puedes retirar en cualquier momento desvinculando la cuenta. Destinatario: Riot Games como proveedor del inicio de sesi\u00F3n.',
+    'Finalit\u00E9 : connexion et affichage de votre propre profil de joueur. Base l\u00E9gale : art. 6, par. 1, b RGPD ; la liaison facultative repose en outre sur votre consentement (art. 6, par. 1, a RGPD), que vous pouvez retirer \u00E0 tout moment en supprimant la liaison. Destinataire : Riot Games en tant que fournisseur de la connexion.'
+  ),
+  'legal.privacy.riotDeletion': t6(
+    'Die Daten bleiben gespeichert, bis du die Verkn\u00FCpfung trennst oder dein metastats-Konto l\u00F6schst. Beides geht jederzeit auf deiner Kontoseite; das L\u00F6schen des Kontos entfernt es mit allen verkn\u00FCpften Daten. Den Zugriff kannst du zus\u00E4tzlich in den Einstellungen deines Riot-Kontos widerrufen.',
+    'The data is kept until you unlink your Riot account or delete your metastats account. You can do both at any time on your account page; deleting the account removes it together with all linked data. You can also revoke access in your Riot account settings.',
+    '\uB370\uC774\uD130\uB294 Riot \uACC4\uC815 \uC5F0\uACB0\uC744 \uD574\uC81C\uD558\uAC70\uB098 metastats \uACC4\uC815\uC744 \uC0AD\uC81C\uD560 \uB54C\uAE4C\uC9C0 \uBCF4\uAD00\uB429\uB2C8\uB2E4. \uB450 \uAC00\uC9C0 \uBAA8\uB450 \uACC4\uC815 \uD398\uC774\uC9C0\uC5D0\uC11C \uC5B8\uC81C\uB4E0\uC9C0 \uD560 \uC218 \uC788\uC73C\uBA70, \uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uBA74 \uC5F0\uACB0\uB41C \uBAA8\uB4E0 \uB370\uC774\uD130\uC640 \uD568\uAED8 \uC0AD\uC81C\uB429\uB2C8\uB2E4. \uB610\uD55C Riot \uACC4\uC815 \uC124\uC815\uC5D0\uC11C \uC811\uADFC \uAD8C\uD55C\uC744 \uCCA0\uD68C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u8FD9\u4E9B\u6570\u636E\u4F1A\u4E00\u76F4\u4FDD\u5B58\uFF0C\u76F4\u5230\u4F60\u89E3\u9664 Riot \u8D26\u6237\u5173\u8054\u6216\u5220\u9664\u4F60\u7684 metastats \u8D26\u6237\u3002\u4E24\u8005\u90FD\u53EF\u4EE5\u968F\u65F6\u5728\u8D26\u6237\u9875\u9762\u5B8C\u6210\uFF1B\u5220\u9664\u8D26\u6237\u4F1A\u5C06\u5176\u8FDE\u540C\u6240\u6709\u5173\u8054\u6570\u636E\u4E00\u5E76\u5220\u9664\u3002\u4F60\u8FD8\u53EF\u4EE5\u5728 Riot \u8D26\u6237\u8BBE\u7F6E\u4E2D\u64A4\u9500\u8BBF\u95EE\u6743\u9650\u3002',
+    'Los datos se conservan hasta que desvincules tu cuenta de Riot o elimines tu cuenta de metastats. Puedes hacer ambas cosas en cualquier momento en la p\u00E1gina de tu cuenta; al eliminar la cuenta se borra junto con todos los datos vinculados. Adem\u00E1s, puedes revocar el acceso en los ajustes de tu cuenta de Riot.',
+    'Les donn\u00E9es sont conserv\u00E9es jusqu\u2019\u00E0 ce que vous supprimiez la liaison avec votre compte Riot ou votre compte metastats. Vous pouvez faire l\u2019un ou l\u2019autre \u00E0 tout moment sur la page de votre compte ; la suppression du compte l\u2019efface avec toutes les donn\u00E9es li\u00E9es. Vous pouvez \u00E9galement r\u00E9voquer l\u2019acc\u00E8s dans les param\u00E8tres de votre compte Riot.'
+  ),
+  'legal.privacy.accountPage': t6(
+    'Zur Kontoseite',
+    'Go to your account page',
+    '\uACC4\uC815 \uD398\uC774\uC9C0\uB85C \uC774\uB3D9',
+    '\u524D\u5F80\u8D26\u6237\u9875\u9762',
+    'Ir a la p\u00E1gina de tu cuenta',
+    'Aller \u00E0 la page de votre compte'
+  ),
+  'legal.privacy.cookiesLogin': t6(
+    'Wenn du dich anmeldest, setzt Supabase Anmelde-Cookies (die Namen beginnen mit sb-), die deine Sitzung halten. Sie haben eine Laufzeit von bis zu 400 Tagen und werden beim Abmelden gel\u00F6scht. W\u00E4hrend einer Anmeldung mit Riot setzen wir zus\u00E4tzlich ein kurzlebiges Cookie, das den Anmeldevorgang absichert; es gilt h\u00F6chstens 10 Minuten. Diese Cookies sind f\u00FCr die Anmeldung technisch notwendig (\u00A7 25 Abs. 2 TTDSG).',
+    'When you sign in, Supabase sets login cookies (their names start with sb-) that keep your session. They last up to 400 days and are deleted when you sign out. During a sign-in with Riot we additionally set a short-lived cookie that secures the sign-in process; it is valid for at most 10 minutes. These cookies are technically necessary for signing in (\u00A7 25 Abs. 2 TTDSG).',
+    '\uB85C\uADF8\uC778\uD558\uBA74 Supabase\uAC00 \uC138\uC158\uC744 \uC720\uC9C0\uD558\uB294 \uB85C\uADF8\uC778 \uCFE0\uD0A4(\uC774\uB984\uC774 sb-\uB85C \uC2DC\uC791)\uB97C \uC124\uC815\uD569\uB2C8\uB2E4. \uC720\uD6A8 \uAE30\uAC04\uC740 \uCD5C\uB300 400\uC77C\uC774\uBA70 \uB85C\uADF8\uC544\uC6C3\uD558\uBA74 \uC0AD\uC81C\uB429\uB2C8\uB2E4. Riot\uC73C\uB85C \uB85C\uADF8\uC778\uD558\uB294 \uB3D9\uC548\uC5D0\uB294 \uB85C\uADF8\uC778 \uACFC\uC815\uC744 \uBCF4\uD638\uD558\uB294 \uB2E8\uAE30 \uCFE0\uD0A4\uAC00 \uCD94\uAC00\uB85C \uC124\uC815\uB418\uBA70, \uCD5C\uB300 10\uBD84\uAC04 \uC720\uD6A8\uD569\uB2C8\uB2E4. \uC774 \uCFE0\uD0A4\uB4E4\uC740 \uB85C\uADF8\uC778\uC5D0 \uAE30\uC220\uC801\uC73C\uB85C \uD544\uC694\uD569\uB2C8\uB2E4(TTDSG \u00A7 25 Abs. 2).',
+    '\u5F53\u4F60\u767B\u5F55\u65F6\uFF0CSupabase \u4F1A\u8BBE\u7F6E\u7528\u4E8E\u4FDD\u6301\u4F1A\u8BDD\u7684\u767B\u5F55 Cookie\uFF08\u540D\u79F0\u4EE5 sb- \u5F00\u5934\uFF09\u3002\u5176\u6709\u6548\u671F\u6700\u957F 400 \u5929\uFF0C\u9000\u51FA\u767B\u5F55\u65F6\u4F1A\u88AB\u5220\u9664\u3002\u4F7F\u7528 Riot \u767B\u5F55\u671F\u95F4\uFF0C\u6211\u4EEC\u8FD8\u4F1A\u8BBE\u7F6E\u4E00\u4E2A\u4FDD\u62A4\u767B\u5F55\u8FC7\u7A0B\u7684\u77ED\u671F Cookie\uFF0C\u6709\u6548\u671F\u6700\u957F 10 \u5206\u949F\u3002\u8FD9\u4E9B Cookie \u662F\u767B\u5F55\u5728\u6280\u672F\u4E0A\u6240\u5FC5\u9700\u7684\uFF08TTDSG \u00A7 25 Abs. 2\uFF09\u3002',
+    'Al iniciar sesi\u00F3n, Supabase establece cookies de inicio de sesi\u00F3n (sus nombres empiezan por sb-) que mantienen tu sesi\u00F3n. Duran hasta 400 d\u00EDas y se eliminan al cerrar sesi\u00F3n. Durante un inicio de sesi\u00F3n con Riot establecemos adem\u00E1s una cookie de corta duraci\u00F3n que protege el proceso; es v\u00E1lida como m\u00E1ximo 10 minutos. Estas cookies son t\u00E9cnicamente necesarias para iniciar sesi\u00F3n (\u00A7 25 Abs. 2 TTDSG).',
+    'Lorsque vous vous connectez, Supabase d\u00E9finit des cookies de connexion (leur nom commence par sb-) qui maintiennent votre session. Ils durent jusqu\u2019\u00E0 400 jours et sont supprim\u00E9s \u00E0 la d\u00E9connexion. Pendant une connexion avec Riot, nous d\u00E9finissons en plus un cookie de courte dur\u00E9e qui s\u00E9curise la connexion ; il est valable 10 minutes au maximum. Ces cookies sont techniquement n\u00E9cessaires \u00E0 la connexion (\u00A7 25 Abs. 2 TTDSG).'
+  ),
+  'legal.privacy.retentionAccount': t6(
+    'Kontodaten speichern wir, solange dein Konto besteht. L\u00F6schst du dein Konto, l\u00F6schen wir es mit allen verkn\u00FCpften Daten, auch der Riot-Verkn\u00FCpfung. Trennst du nur dein Riot-Konto, l\u00F6schen wir die Verkn\u00FCpfung.',
+    'We keep account data for as long as your account exists. If you delete your account, we delete it together with all linked data, including the Riot link. If you only unlink your Riot account, we delete the link.',
+    '\uACC4\uC815 \uB370\uC774\uD130\uB294 \uACC4\uC815\uC774 \uC874\uC7AC\uD558\uB294 \uB3D9\uC548 \uBCF4\uAD00\uD569\uB2C8\uB2E4. \uACC4\uC815\uC744 \uC0AD\uC81C\uD558\uBA74 Riot \uC5F0\uACB0\uC744 \uD3EC\uD568\uD55C \uBAA8\uB4E0 \uC5F0\uACB0 \uB370\uC774\uD130\uC640 \uD568\uAED8 \uC0AD\uC81C\uD569\uB2C8\uB2E4. Riot \uACC4\uC815 \uC5F0\uACB0\uB9CC \uD574\uC81C\uD558\uBA74 \uC5F0\uACB0 \uC815\uBCF4\uB97C \uC0AD\uC81C\uD569\uB2C8\uB2E4.',
+    '\u8D26\u6237\u6570\u636E\u5728\u4F60\u7684\u8D26\u6237\u5B58\u7EED\u671F\u95F4\u4FDD\u5B58\u3002\u5220\u9664\u8D26\u6237\u65F6\uFF0C\u6211\u4EEC\u4F1A\u5C06\u5176\u8FDE\u540C\u6240\u6709\u5173\u8054\u6570\u636E\uFF08\u5305\u62EC Riot \u5173\u8054\uFF09\u4E00\u5E76\u5220\u9664\u3002\u5982\u679C\u4F60\u4EC5\u89E3\u9664 Riot \u8D26\u6237\u5173\u8054\uFF0C\u6211\u4EEC\u4F1A\u5220\u9664\u8BE5\u5173\u8054\u4FE1\u606F\u3002',
+    'Conservamos los datos de la cuenta mientras exista tu cuenta. Si eliminas tu cuenta, la borramos junto con todos los datos vinculados, incluida la vinculaci\u00F3n con Riot. Si solo desvinculas tu cuenta de Riot, borramos la vinculaci\u00F3n.',
+    'Nous conservons les donn\u00E9es de compte tant que votre compte existe. Si vous supprimez votre compte, nous le supprimons avec toutes les donn\u00E9es li\u00E9es, y compris la liaison Riot. Si vous supprimez uniquement la liaison avec votre compte Riot, nous supprimons cette liaison.'
   ),
 
   // \u2500 Companion-App: Datenschutz + Nutzungsbedingungen (/companion/privacy, /companion/terms)
@@ -4024,17 +4167,267 @@ const translations = {
     'Le droit allemand s\u2019applique. Si certaines dispositions sont invalides, les autres restent valables.'
   ),
 
+  // Nutzungsbedingungen der Website (/terms), Stand 14.11.2026
+  'legal.terms': t6(
+    'Nutzungsbedingungen',
+    'Terms of Service',
+    '\uC774\uC6A9\uC57D\uAD00',
+    '\u670D\u52A1\u6761\u6B3E',
+    'T\u00E9rminos del servicio',
+    'Conditions d\u2019utilisation'
+  ),
+  'legal.terms.updated': t6(
+    'Stand: 14. November 2026',
+    'Last updated: 14 November 2026',
+    '\uCD5C\uC885 \uC218\uC815: 2026\uB144 11\uC6D4 14\uC77C',
+    '\u66F4\u65B0\u65E5\u671F\uFF1A2026\u5E7411\u670814\u65E5',
+    '\u00DAltima actualizaci\u00F3n: 14 de noviembre de 2026',
+    'Derni\u00E8re mise \u00E0 jour : 14 novembre 2026'
+  ),
+  'legal.terms.scopeHeading': t6(
+    'Geltungsbereich',
+    'Scope',
+    '\uC801\uC6A9 \uBC94\uC704',
+    '\u9002\u7528\u8303\u56F4',
+    '\u00C1mbito de aplicaci\u00F3n',
+    'Champ d\u2019application'
+  ),
+  'legal.terms.scopeText': t6(
+    'Diese Bedingungen gelten f\u00FCr die Nutzung der Website metastats.gg einschlie\u00DFlich der Benutzerkonten. Anbieter ist der im Impressum genannte Betreiber. F\u00FCr die Companion App gelten eigene Nutzungsbedingungen.',
+    'These terms apply to the use of the website metastats.gg, including user accounts. The provider is the operator named in the imprint. The Companion app has its own terms of use.',
+    '\uBCF8 \uC57D\uAD00\uC740 \uC0AC\uC6A9\uC790 \uACC4\uC815\uC744 \uD3EC\uD568\uD55C metastats.gg \uC6F9\uC0AC\uC774\uD2B8 \uC774\uC6A9\uC5D0 \uC801\uC6A9\uB429\uB2C8\uB2E4. \uC11C\uBE44\uC2A4 \uC81C\uACF5\uC790\uB294 \uBC95\uC801 \uACE0\uC9C0\uC5D0 \uAE30\uC7AC\uB41C \uC6B4\uC601\uC790\uC785\uB2C8\uB2E4. Companion \uC571\uC5D0\uB294 \uBCC4\uB3C4\uC758 \uC774\uC6A9 \uC57D\uAD00\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4.',
+    '\u672C\u6761\u6B3E\u9002\u7528\u4E8E metastats.gg \u7F51\u7AD9\uFF08\u5305\u62EC\u7528\u6237\u8D26\u6237\uFF09\u7684\u4F7F\u7528\u3002\u670D\u52A1\u63D0\u4F9B\u65B9\u4E3A\u6CD5\u5F8B\u58F0\u660E\u4E2D\u5217\u660E\u7684\u8FD0\u8425\u8005\u3002Companion \u5E94\u7528\u9002\u7528\u5176\u5355\u72EC\u7684\u4F7F\u7528\u6761\u6B3E\u3002',
+    'Estos t\u00E9rminos se aplican al uso del sitio web metastats.gg, incluidas las cuentas de usuario. El proveedor es el operador indicado en el aviso legal. La app Companion tiene sus propias condiciones de uso.',
+    'Ces conditions s\u2019appliquent \u00E0 l\u2019utilisation du site metastats.gg, y compris les comptes utilisateur. Le fournisseur est l\u2019exploitant indiqu\u00E9 dans les mentions l\u00E9gales. L\u2019app Companion dispose de ses propres conditions d\u2019utilisation.'
+  ),
+  'legal.terms.serviceHeading': t6(
+    'Leistung',
+    'The service',
+    '\uC11C\uBE44\uC2A4',
+    '\u670D\u52A1\u5185\u5BB9',
+    'El servicio',
+    'Le service'
+  ),
+  'legal.terms.serviceText': t6(
+    'metastats.gg ist kostenlos. Ein Anspruch auf eine bestimmte Verf\u00FCgbarkeit oder auf bestimmte Funktionen besteht nicht; wir k\u00F6nnen Funktionen \u00E4ndern, einschr\u00E4nken oder einstellen.',
+    'metastats.gg is free of charge. There is no claim to any particular availability or to particular features; we may change, limit or discontinue features.',
+    'metastats.gg\uB294 \uBB34\uB8CC\uC785\uB2C8\uB2E4. \uD2B9\uC815 \uAC00\uC6A9\uC131\uC774\uB098 \uD2B9\uC815 \uAE30\uB2A5\uC744 \uC694\uAD6C\uD560 \uAD8C\uB9AC\uB294 \uC5C6\uC73C\uBA70, \uB2F9\uC0AC\uB294 \uAE30\uB2A5\uC744 \uBCC0\uACBD, \uC81C\uD55C \uB610\uB294 \uC911\uB2E8\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    'metastats.gg \u514D\u8D39\u63D0\u4F9B\u3002\u7528\u6237\u65E0\u6743\u8981\u6C42\u7279\u5B9A\u7684\u53EF\u7528\u6027\u6216\u7279\u5B9A\u529F\u80FD\uFF1B\u6211\u4EEC\u53EF\u4EE5\u66F4\u6539\u3001\u9650\u5236\u6216\u505C\u6B62\u63D0\u4F9B\u529F\u80FD\u3002',
+    'metastats.gg es gratuito. No existe derecho a una disponibilidad determinada ni a funciones concretas; podemos modificar, limitar o suspender funciones.',
+    'metastats.gg est gratuit. Il n\u2019existe aucun droit \u00E0 une disponibilit\u00E9 particuli\u00E8re ni \u00E0 des fonctionnalit\u00E9s particuli\u00E8res ; nous pouvons modifier, limiter ou arr\u00EAter des fonctionnalit\u00E9s.'
+  ),
+  'legal.terms.accountHeading': t6(
+    'Benutzerkonto',
+    'User account',
+    '\uC0AC\uC6A9\uC790 \uACC4\uC815',
+    '\u7528\u6237\u8D26\u6237',
+    'Cuenta de usuario',
+    'Compte utilisateur'
+  ),
+  'legal.terms.accountIntro': t6(
+    'Ein Konto ist freiwillig. Wenn du eines anlegst, gilt:',
+    'An account is optional. If you create one:',
+    '\uACC4\uC815 \uC0DD\uC131\uC740 \uC120\uD0DD \uC0AC\uD56D\uC785\uB2C8\uB2E4. \uACC4\uC815\uC744 \uB9CC\uB4E4\uBA74 \uB2E4\uC74C\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4:',
+    '\u6CE8\u518C\u8D26\u6237\u662F\u81EA\u613F\u7684\u3002\u5982\u679C\u4F60\u521B\u5EFA\u8D26\u6237\uFF0C\u987B\u9075\u5B88\u4EE5\u4E0B\u89C4\u5B9A\uFF1A',
+    'Crear una cuenta es voluntario. Si creas una:',
+    'Un compte est facultatif. Si vous en cr\u00E9ez un :'
+  ),
+  'legal.terms.accountPerson': t6(
+    'Jedes Konto geh\u00F6rt einer einzelnen nat\u00FCrlichen Person.',
+    'Each account belongs to a single natural person.',
+    '\uAC01 \uACC4\uC815\uC740 \uD55C \uBA85\uC758 \uC790\uC5F0\uC778\uC5D0\uAC8C\uB9CC \uC18D\uD569\uB2C8\uB2E4.',
+    '\u6BCF\u4E2A\u8D26\u6237\u4EC5\u5C5E\u4E8E\u4E00\u540D\u81EA\u7136\u4EBA\u3002',
+    'Cada cuenta pertenece a una sola persona f\u00EDsica.',
+    'Chaque compte appartient \u00E0 une seule personne physique.'
+  ),
+  'legal.terms.accountTruthful': t6(
+    'Deine Angaben m\u00FCssen wahr sein.',
+    'The information you provide must be truthful.',
+    '\uC81C\uACF5\uD558\uB294 \uC815\uBCF4\uB294 \uC0AC\uC2E4\uC774\uC5B4\uC57C \uD569\uB2C8\uB2E4.',
+    '\u4F60\u63D0\u4F9B\u7684\u4FE1\u606F\u5FC5\u987B\u771F\u5B9E\u3002',
+    'Los datos que facilites deben ser veraces.',
+    'Les informations que vous fournissez doivent \u00EAtre exactes.'
+  ),
+  'legal.terms.accountSecret': t6(
+    'Halte deine Zugangsdaten geheim.',
+    'Keep your login credentials secret.',
+    '\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uBE44\uBC00\uB85C \uC720\uC9C0\uD558\uC138\uC694.',
+    '\u8BF7\u5BF9\u4F60\u7684\u767B\u5F55\u51ED\u636E\u4FDD\u5BC6\u3002',
+    'Mant\u00E9n en secreto tus datos de acceso.',
+    'Gardez vos identifiants de connexion secrets.'
+  ),
+  'legal.terms.accountRiot': t6(
+    'Verkn\u00FCpfe nur dein eigenes Riot-Konto.',
+    'Only link your own Riot account.',
+    '\uBCF8\uC778\uC758 Riot \uACC4\uC815\uB9CC \uC5F0\uACB0\uD558\uC138\uC694.',
+    '\u53EA\u80FD\u5173\u8054\u4F60\u672C\u4EBA\u7684 Riot \u8D26\u6237\u3002',
+    'Vincula solo tu propia cuenta de Riot.',
+    'Ne liez que votre propre compte Riot.'
+  ),
+  'legal.terms.useHeading': t6(
+    'Unzul\u00E4ssige Nutzung',
+    'Prohibited use',
+    '\uAE08\uC9C0\uB41C \uC774\uC6A9',
+    '\u7981\u6B62\u7684\u4F7F\u7528\u884C\u4E3A',
+    'Uso prohibido',
+    'Utilisation interdite'
+  ),
+  'legal.terms.useIntro': t6(
+    'Nicht erlaubt ist insbesondere:',
+    'In particular, the following is not permitted:',
+    '\uD2B9\uD788 \uB2E4\uC74C \uD589\uC704\uB294 \uD5C8\uC6A9\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4:',
+    '\u5C24\u5176\u7981\u6B62\u4EE5\u4E0B\u884C\u4E3A\uFF1A',
+    'En particular, no est\u00E1 permitido:',
+    'Sont notamment interdits :'
+  ),
+  'legal.terms.useScraping': t6(
+    'Automatisiertes Auslesen von Inhalten (Scraping) und automatisierte Massenabfragen',
+    'Automated extraction of content (scraping) and automated mass requests',
+    '\uCF58\uD150\uCE20 \uC790\uB3D9 \uC218\uC9D1(\uC2A4\uD06C\uB798\uD551) \uBC0F \uC790\uB3D9\uD654\uB41C \uB300\uB7C9 \uC694\uCCAD',
+    '\u81EA\u52A8\u6293\u53D6\u5185\u5BB9\uFF08\u722C\u53D6\uFF09\u53CA\u81EA\u52A8\u5316\u7684\u5927\u6279\u91CF\u8BF7\u6C42',
+    'La extracci\u00F3n automatizada de contenidos (scraping) y las consultas masivas automatizadas',
+    'L\u2019extraction automatis\u00E9e de contenus (scraping) et les requ\u00EAtes massives automatis\u00E9es'
+  ),
+  'legal.terms.useAttacks': t6(
+    'Angriffe auf die Seite oder die Systeme dahinter sowie das Umgehen technischer Beschr\u00E4nkungen, etwa von Abfragegrenzen',
+    'Attacks on the site or the systems behind it, and circumventing technical limits such as request limits',
+    '\uC0AC\uC774\uD2B8 \uB610\uB294 \uC774\uB97C \uC6B4\uC601\uD558\uB294 \uC2DC\uC2A4\uD15C\uC5D0 \uB300\uD55C \uACF5\uACA9, \uC694\uCCAD \uD69F\uC218 \uC81C\uD55C \uB4F1 \uAE30\uC220\uC801 \uC81C\uD55C\uC758 \uC6B0\uD68C',
+    '\u653B\u51FB\u672C\u7F51\u7AD9\u6216\u5176\u80CC\u540E\u7684\u7CFB\u7EDF\uFF0C\u4EE5\u53CA\u89C4\u907F\u6280\u672F\u9650\u5236\uFF08\u4F8B\u5982\u8BF7\u6C42\u6B21\u6570\u9650\u5236\uFF09',
+    'Los ataques al sitio o a los sistemas que lo sustentan y la elusi\u00F3n de l\u00EDmites t\u00E9cnicos, como los l\u00EDmites de consultas',
+    'Les attaques contre le site ou les syst\u00E8mes qui le font fonctionner, ainsi que le contournement de limites techniques, comme les limites de requ\u00EAtes'
+  ),
+  'legal.terms.useImpersonate': t6(
+    'Das Vort\u00E4uschen einer fremden Identit\u00E4t',
+    'Impersonating other people',
+    '\uB2E4\uB978 \uC0AC\uB78C\uC744 \uC0AC\uCE6D\uD558\uB294 \uD589\uC704',
+    '\u5192\u5145\u4ED6\u4EBA',
+    'La suplantaci\u00F3n de otras personas',
+    'L\u2019usurpation de l\u2019identit\u00E9 d\u2019autrui'
+  ),
+  'legal.terms.dataHeading': t6(
+    'Daten und Marktwerte',
+    'Data and market values',
+    '\uB370\uC774\uD130 \uBC0F \uC2DC\uC7A5 \uAC00\uCE58',
+    '\u6570\u636E\u4E0E\u5E02\u573A\u4EF7\u503C',
+    'Datos y valores de mercado',
+    'Donn\u00E9es et valeurs marchandes'
+  ),
+  'legal.terms.dataText': t6(
+    'Statistiken und Spielerdaten stammen aus der Schnittstelle von Riot Games und weiteren Quellen. F\u00FCr ihre Richtigkeit, Vollst\u00E4ndigkeit und Aktualit\u00E4t \u00FCbernehmen wir keine Gew\u00E4hr.',
+    'Statistics and player data come from the Riot Games API and other sources. We give no warranty that they are correct, complete or up to date.',
+    '\uD1B5\uACC4\uC640 \uD50C\uB808\uC774\uC5B4 \uB370\uC774\uD130\uB294 Riot Games API \uBC0F \uAE30\uD0C0 \uCD9C\uCC98\uC5D0\uC11C \uAC00\uC838\uC635\uB2C8\uB2E4. \uC815\uD655\uC131, \uC644\uC804\uC131, \uCD5C\uC2E0\uC131\uC740 \uBCF4\uC7A5\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u7EDF\u8BA1\u4E0E\u73A9\u5BB6\u6570\u636E\u6765\u81EA Riot Games API \u53CA\u5176\u4ED6\u6765\u6E90\u3002\u6211\u4EEC\u4E0D\u4FDD\u8BC1\u5176\u51C6\u786E\u6027\u3001\u5B8C\u6574\u6027\u6216\u65F6\u6548\u6027\u3002',
+    'Las estad\u00EDsticas y los datos de jugadores proceden de la API de Riot Games y de otras fuentes. No garantizamos que sean correctos, completos o actuales.',
+    'Les statistiques et les donn\u00E9es de joueurs proviennent de l\u2019API de Riot Games et d\u2019autres sources. Nous ne garantissons pas leur exactitude, leur exhaustivit\u00E9 ni leur actualit\u00E9.'
+  ),
+  'legal.terms.marketValueText': t6(
+    'Die angezeigten Marktwerte sch\u00E4tzen die Spielst\u00E4rke als Geldbetrag. Sie sind Sch\u00E4tzwerte und keine Finanz- oder Anlageberatung.',
+    'The market values shown estimate a player\u2019s strength as a monetary figure. They are estimates and not financial or investment advice.',
+    '\uD45C\uC2DC\uB418\uB294 \uC2DC\uC7A5 \uAC00\uCE58\uB294 \uD50C\uB808\uC774\uC5B4\uC758 \uC2E4\uB825\uC744 \uAE08\uC561\uC73C\uB85C \uD658\uC0B0\uD55C \uCD94\uC815\uCE58\uC774\uBA70, \uAE08\uC735 \uB610\uB294 \uD22C\uC790 \uC870\uC5B8\uC774 \uC544\uB2D9\uB2C8\uB2E4.',
+    '\u7F51\u7AD9\u663E\u793A\u7684\u5E02\u573A\u4EF7\u503C\u662F\u5C06\u73A9\u5BB6\u5B9E\u529B\u6362\u7B97\u4E3A\u91D1\u989D\u7684\u4F30\u7B97\u503C\uFF0C\u4E0D\u6784\u6210\u4EFB\u4F55\u8D22\u52A1\u6216\u6295\u8D44\u5EFA\u8BAE\u3002',
+    'Los valores de mercado mostrados estiman la fuerza de un jugador como una cifra monetaria. Son estimaciones y no constituyen asesoramiento financiero ni de inversi\u00F3n.',
+    'Les valeurs marchandes affich\u00E9es estiment la force d\u2019un joueur sous forme de montant. Ce sont des estimations et non des conseils financiers ou d\u2019investissement.'
+  ),
+  'legal.terms.liabilityHeading': t6(
+    'Haftung',
+    'Liability',
+    '\uCC45\uC784',
+    '\u8D23\u4EFB',
+    'Responsabilidad',
+    'Responsabilit\u00E9'
+  ),
+  'legal.terms.liabilityText': t6(
+    'Wir haften unbeschr\u00E4nkt bei Vorsatz und grober Fahrl\u00E4ssigkeit sowie f\u00FCr Sch\u00E4den aus der Verletzung des Lebens, des K\u00F6rpers oder der Gesundheit. Bei leichter Fahrl\u00E4ssigkeit haften wir nur, wenn wir eine wesentliche Pflicht verletzen, also eine Pflicht, deren Erf\u00FCllung die Nutzung erst erm\u00F6glicht und auf die du vertrauen darfst; die Haftung ist dann auf den vorhersehbaren, typischerweise eintretenden Schaden begrenzt.',
+    'We are liable without limitation for intent and gross negligence and for injury to life, body or health. For slight negligence we are liable only if we breach an essential obligation, meaning an obligation whose fulfilment makes use of the service possible in the first place and on which you may rely; liability is then limited to the foreseeable damage that typically occurs.',
+    '\uACE0\uC758 \uBC0F \uC911\uACFC\uC2E4, \uADF8\uB9AC\uACE0 \uC0DD\uBA85\u00B7\uC2E0\uCCB4\u00B7\uAC74\uAC15 \uCE68\uD574\uB85C \uC778\uD55C \uC190\uD574\uC5D0 \uB300\uD574\uC11C\uB294 \uBB34\uC81C\uD55C\uC73C\uB85C \uCC45\uC784\uC744 \uC9D1\uB2C8\uB2E4. \uACBD\uACFC\uC2E4\uC758 \uACBD\uC6B0 \uBCF8\uC9C8\uC801 \uC758\uBB34(\uC774\uD589\uB418\uC5B4\uC57C \uBE44\uB85C\uC18C \uC11C\uBE44\uC2A4 \uC774\uC6A9\uC774 \uAC00\uB2A5\uD558\uACE0 \uC774\uC6A9\uC790\uAC00 \uC2E0\uB8B0\uD560 \uC218 \uC788\uB294 \uC758\uBB34)\uB97C \uC704\uBC18\uD55C \uB54C\uC5D0\uB9CC \uCC45\uC784\uC744 \uC9C0\uBA70, \uC774 \uACBD\uC6B0 \uCC45\uC784\uC740 \uC608\uACAC \uAC00\uB2A5\uD558\uACE0 \uD1B5\uC0C1\uC801\uC73C\uB85C \uBC1C\uC0DD\uD558\uB294 \uC190\uD574\uB85C \uC81C\uD55C\uB429\uB2C8\uB2E4.',
+    '\u5BF9\u4E8E\u6545\u610F\u548C\u91CD\u5927\u8FC7\u5931\uFF0C\u4EE5\u53CA\u9020\u6210\u751F\u547D\u3001\u8EAB\u4F53\u6216\u5065\u5EB7\u635F\u5BB3\u7684\u60C5\u5F62\uFF0C\u6211\u4EEC\u627F\u62C5\u65E0\u9650\u8D23\u4EFB\u3002\u5BF9\u4E8E\u8F7B\u5FAE\u8FC7\u5931\uFF0C\u4EC5\u5728\u6211\u4EEC\u8FDD\u53CD\u57FA\u672C\u4E49\u52A1\uFF08\u5373\u53EA\u6709\u5C65\u884C\u540E\u670D\u52A1\u624D\u80FD\u4F7F\u7528\u3001\u4E14\u4F60\u53EF\u4EE5\u4FE1\u8D56\u7684\u4E49\u52A1\uFF09\u65F6\u627F\u62C5\u8D23\u4EFB\uFF0C\u4E14\u8D23\u4EFB\u9650\u4E8E\u53EF\u9884\u89C1\u7684\u3001\u901A\u5E38\u4F1A\u53D1\u751F\u7684\u635F\u5BB3\u3002',
+    'Respondemos sin limitaci\u00F3n en caso de dolo y negligencia grave, as\u00ED como por da\u00F1os a la vida, la integridad f\u00EDsica o la salud. En caso de negligencia leve solo respondemos si incumplimos una obligaci\u00F3n esencial, es decir, una obligaci\u00F3n cuyo cumplimiento hace posible el uso del servicio y en la que puedes confiar; la responsabilidad se limita entonces al da\u00F1o previsible y t\u00EDpico.',
+    'Nous sommes responsables sans limitation en cas de faute intentionnelle et de n\u00E9gligence grave, ainsi qu\u2019en cas d\u2019atteinte \u00E0 la vie, \u00E0 l\u2019int\u00E9grit\u00E9 physique ou \u00E0 la sant\u00E9. En cas de n\u00E9gligence l\u00E9g\u00E8re, nous ne sommes responsables qu\u2019en cas de manquement \u00E0 une obligation essentielle, c\u2019est-\u00E0-dire une obligation dont l\u2019ex\u00E9cution permet l\u2019utilisation du service et sur laquelle vous pouvez compter ; la responsabilit\u00E9 est alors limit\u00E9e au dommage pr\u00E9visible et typique.'
+  ),
+  'legal.terms.endHeading': t6(
+    'Ende der Nutzung und Sperrung',
+    'Ending use and suspension',
+    '\uC774\uC6A9 \uC885\uB8CC \uBC0F \uACC4\uC815 \uC815\uC9C0',
+    '\u7EC8\u6B62\u4F7F\u7528\u4E0E\u5C01\u7981',
+    'Fin del uso y suspensi\u00F3n',
+    'Fin de l\u2019utilisation et suspension'
+  ),
+  'legal.terms.endText': t6(
+    'Du kannst die Nutzung jederzeit beenden und dein Konto jederzeit auf deiner Kontoseite l\u00F6schen.',
+    'You can stop using the service at any time and delete your account at any time on your account page.',
+    '\uC5B8\uC81C\uB4E0\uC9C0 \uC774\uC6A9\uC744 \uC911\uB2E8\uD560 \uC218 \uC788\uC73C\uBA70, \uACC4\uC815 \uD398\uC774\uC9C0\uC5D0\uC11C \uC5B8\uC81C\uB4E0\uC9C0 \uACC4\uC815\uC744 \uC0AD\uC81C\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u4F60\u53EF\u4EE5\u968F\u65F6\u505C\u6B62\u4F7F\u7528\uFF0C\u5E76\u53EF\u968F\u65F6\u5728\u8D26\u6237\u9875\u9762\u5220\u9664\u4F60\u7684\u8D26\u6237\u3002',
+    'Puedes dejar de usar el servicio en cualquier momento y eliminar tu cuenta cuando quieras en la p\u00E1gina de tu cuenta.',
+    'Vous pouvez cesser d\u2019utiliser le service \u00E0 tout moment et supprimer votre compte \u00E0 tout moment sur la page de votre compte.'
+  ),
+  'legal.terms.suspendText': t6(
+    'Verst\u00F6\u00DFt ein Konto gegen diese Bedingungen, k\u00F6nnen wir es sperren.',
+    'We may suspend accounts that violate these terms.',
+    '\uBCF8 \uC57D\uAD00\uC744 \uC704\uBC18\uD558\uB294 \uACC4\uC815\uC740 \uC815\uC9C0\uB420 \uC218 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u8FDD\u53CD\u672C\u6761\u6B3E\u7684\u8D26\u6237\u53EF\u80FD\u4F1A\u88AB\u6211\u4EEC\u5C01\u7981\u3002',
+    'Podemos suspender las cuentas que incumplan estos t\u00E9rminos.',
+    'Nous pouvons suspendre les comptes qui enfreignent ces conditions.'
+  ),
+  'legal.terms.changesHeading': t6(
+    '\u00C4nderungen',
+    'Changes',
+    '\uBCC0\uACBD',
+    '\u53D8\u66F4',
+    'Cambios',
+    'Modifications'
+  ),
+  'legal.terms.changesText': t6(
+    '\u00C4nderungen dieser Bedingungen k\u00FCndigen wir auf dieser Seite an.',
+    'We will announce changes to these terms on this page.',
+    '\uBCF8 \uC57D\uAD00\uC758 \uBCC0\uACBD \uC0AC\uD56D\uC740 \uC774 \uD398\uC774\uC9C0\uC5D0\uC11C \uACF5\uC9C0\uD569\uB2C8\uB2E4.',
+    '\u672C\u6761\u6B3E\u5982\u6709\u53D8\u66F4\uFF0C\u6211\u4EEC\u5C06\u5728\u672C\u9875\u516C\u5E03\u3002',
+    'Anunciaremos en esta p\u00E1gina los cambios de estos t\u00E9rminos.',
+    'Nous annoncerons les modifications de ces conditions sur cette page.'
+  ),
+  'legal.terms.lawHeading': t6(
+    'Anwendbares Recht',
+    'Applicable law',
+    '\uC900\uAC70\uBC95',
+    '\u9002\u7528\u6CD5\u5F8B',
+    'Legislaci\u00F3n aplicable',
+    'Droit applicable'
+  ),
+  'legal.terms.lawText': t6(
+    'Es gilt deutsches Recht. Zwingende Verbraucherschutzvorschriften des Landes, in dem du deinen gew\u00F6hnlichen Aufenthalt hast, bleiben unber\u00FChrt.',
+    'German law applies. Mandatory consumer protection rules of the country in which you habitually reside remain unaffected.',
+    '\uB3C5\uC77C \uBC95\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4. \uC774\uC6A9\uC790\uAC00 \uC0C1\uC2DC \uAC70\uC8FC\uD558\uB294 \uAD6D\uAC00\uC758 \uAC15\uD589\uC801 \uC18C\uBE44\uC790 \uBCF4\uD638 \uADDC\uC815\uC740 \uC601\uD5A5\uC744 \uBC1B\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.',
+    '\u9002\u7528\u5FB7\u56FD\u6CD5\u5F8B\u3002\u4F60\u60EF\u5E38\u5C45\u4F4F\u56FD\u7684\u5F3A\u5236\u6027\u6D88\u8D39\u8005\u4FDD\u62A4\u89C4\u5B9A\u4E0D\u53D7\u5F71\u54CD\u3002',
+    'Se aplica el derecho alem\u00E1n. Las normas imperativas de protecci\u00F3n de los consumidores del pa\u00EDs en el que resides habitualmente no se ven afectadas.',
+    'Le droit allemand s\u2019applique. Les dispositions imp\u00E9ratives de protection des consommateurs du pays dans lequel vous r\u00E9sidez habituellement restent applicables.'
+  ),
+  'legal.terms.contactHeading': t6(
+    'Kontakt',
+    'Contact',
+    '\uC5F0\uB77D\uCC98',
+    '\u8054\u7CFB\u65B9\u5F0F',
+    'Contacto',
+    'Contact'
+  ),
+  'legal.terms.contactText': t6(
+    'Anbieter und Kontaktdaten findest du im Impressum. Wie wir personenbezogene Daten verarbeiten, steht in der Datenschutzerkl\u00E4rung.',
+    'Provider and contact details are in the imprint. How we process personal data is described in the privacy policy.',
+    '\uC81C\uACF5\uC790 \uBC0F \uC5F0\uB77D\uCC98 \uC815\uBCF4\uB294 \uBC95\uC801 \uACE0\uC9C0\uC5D0\uC11C \uD655\uC778\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uAC1C\uC778\uC815\uBCF4 \uCC98\uB9AC \uBC29\uBC95\uC740 \uAC1C\uC778\uC815\uBCF4\uCC98\uB9AC\uBC29\uCE68\uC5D0 \uC124\uBA85\uB418\uC5B4 \uC788\uC2B5\uB2C8\uB2E4.',
+    '\u670D\u52A1\u63D0\u4F9B\u65B9\u53CA\u8054\u7CFB\u65B9\u5F0F\u89C1\u6CD5\u5F8B\u58F0\u660E\u3002\u6211\u4EEC\u5982\u4F55\u5904\u7406\u4E2A\u4EBA\u6570\u636E\uFF0C\u8BF7\u53C2\u9605\u9690\u79C1\u653F\u7B56\u3002',
+    'Los datos del proveedor y de contacto figuran en el aviso legal. C\u00F3mo tratamos los datos personales se explica en la pol\u00EDtica de privacidad.',
+    'Les coordonn\u00E9es du fournisseur figurent dans les mentions l\u00E9gales. La mani\u00E8re dont nous traitons les donn\u00E9es personnelles est d\u00E9crite dans la politique de confidentialit\u00E9.'
+  ),
+
   // \u2500 Cookie banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   'cookie.title': t6(
     'Cookies', 'Cookies', '\uCFE0\uD0A4', 'Cookie', 'Cookies', 'Cookies'
   ),
   'cookie.body': t6(
-    'Wir setzen ein notwendiges Cookie f\u00FCr die Sprachauswahl und nutzen anonyme Analytics ohne Tracking. Details unter',
-    'We set one functional cookie for language and use anonymous analytics with no tracking. Details in our',
-    '\uC5B8\uC5B4 \uC120\uD0DD\uC744 \uC704\uD55C \uD544\uC218 \uCFE0\uD0A4\uC640 \uC775\uBA85 \uBD84\uC11D\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC790\uC138\uD55C \uB0B4\uC6A9\uC740',
-    '\u6211\u4EEC\u8BBE\u7F6E\u4E00\u4E2A\u529F\u80FD\u6027 Cookie\uFF08\u8BED\u8A00\uFF09\u5E76\u4F7F\u7528\u533F\u540D\u5206\u6790\u3002\u8BE6\u60C5\u89C1',
-    'Usamos una cookie funcional para el idioma y anal\u00EDtica an\u00F3nima. Detalles en',
-    'Un cookie fonctionnel pour la langue, analytique anonyme. D\u00E9tails dans la'
+    'Wir setzen notwendige Cookies f\u00FCr Sprachauswahl und Anmeldung und nutzen anonyme Analytics ohne Tracking. Details unter',
+    'We set functional cookies for language and sign-in and use anonymous analytics with no tracking. Details in our',
+    '\uC5B8\uC5B4 \uC120\uD0DD\uACFC \uB85C\uADF8\uC778\uC744 \uC704\uD55C \uD544\uC218 \uCFE0\uD0A4\uC640 \uC775\uBA85 \uBD84\uC11D\uC744 \uC0AC\uC6A9\uD569\uB2C8\uB2E4. \uC790\uC138\uD55C \uB0B4\uC6A9\uC740',
+    '\u6211\u4EEC\u8BBE\u7F6E\u529F\u80FD\u6027 Cookie\uFF08\u8BED\u8A00\u548C\u767B\u5F55\uFF09\u5E76\u4F7F\u7528\u533F\u540D\u5206\u6790\u3002\u8BE6\u60C5\u89C1',
+    'Usamos cookies funcionales para el idioma y el inicio de sesi\u00F3n y anal\u00EDtica an\u00F3nima. Detalles en',
+    'Des cookies fonctionnels pour la langue et la connexion, analytique anonyme. D\u00E9tails dans la'
   ),
   'cookie.accept': t6(
     'Akzeptieren', 'Accept',

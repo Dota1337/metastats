@@ -123,6 +123,12 @@ export async function middleware(req: NextRequest, event: NextFetchEvent) {
     return NextResponse.redirect(loginUrl);
   }
 
+  // --- Riot-Anmeldung: ohne Supabase-Abgleich durchreichen ----------------
+  // Die Routen setzen die Sitzung selbst. Liefe hier zusaetzlich getUser(),
+  // stuenden beim Kontowechsel zwei Set-Cookie fuer dasselbe Cookie in einer
+  // Antwort, Reihenfolge unbestimmt (logic-flow-critic 14.11.2026).
+  if (path.startsWith('/auth/riot/')) return forward(req, null);
+
   // --- Alte TFT-Spieler-Adressen `Name-Tag` → 308 auf `Name--Tag` --------
   // Rising und die Lesezeichen bauten sie mit einem Strich; die Seite las dann
   // alles als Namen und fand den Spieler nicht. Ausserhalb von SEO_404_GATE:

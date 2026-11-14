@@ -6,8 +6,8 @@
     "belegen laesst, steht in `unresolved` statt als geratene Kante im Graphen."
   ],
   "counts": {
-    "routes": 86,
-    "groups": 27,
+    "routes": 88,
+    "groups": 28,
     "tables": 47,
     "rpcs": 42,
     "files": 12,
@@ -39,6 +39,10 @@
     {
       "name": "tft/pros",
       "count": 3
+    },
+    {
+      "name": "account",
+      "count": 2
     },
     {
       "name": "champions",
@@ -126,6 +130,31 @@
     }
   ],
   "nodes": [
+    {
+      "id": "api:/api/account/delete",
+      "kind": "route",
+      "label": "/api/account/delete",
+      "group": "account",
+      "file": "app/api/account/delete/route.ts",
+      "via": [],
+      "used": true,
+      "usedBy": [
+        "app/auth/account/AccountClient.tsx"
+      ]
+    },
+    {
+      "id": "api:/api/account/riot",
+      "kind": "route",
+      "label": "/api/account/riot",
+      "group": "account",
+      "file": "app/api/account/riot/route.ts",
+      "via": [],
+      "used": true,
+      "usedBy": [
+        "app/auth/account/AccountClient.tsx",
+        "app/lib/auth-context.tsx"
+      ]
+    },
     {
       "id": "api:/api/ai-coach",
       "kind": "route",

@@ -9,8 +9,9 @@ export default function robots(): MetadataRoute.Robots {
         // /api/img/ ist der Bild-Proxy (Unit-, Item-, Trait-Bilder). Ohne die
         // Ausnahme sperrt /api/ auch die Bilder, und Google sieht die Seiten
         // ohne sie. Die laengere Regel gewinnt, der Rest von /api/ bleibt zu.
+        // /auth/ (Anmeldung, Konto, Riot-Anmeldung) hat nichts fuer den Index.
         allow: ['/', '/api/img/'],
-        disallow: ['/api/'],
+        disallow: ['/api/', '/auth/'],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

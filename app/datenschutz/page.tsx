@@ -5,14 +5,21 @@ import { useI18n } from '../lib/i18n';
 
 // Datenschutzerklärung — DSGVO Art. 13 + 14. Lists every personal data flow:
 // what we collect, why, retention, third-party processors, and user rights.
-// Content reflects the actual data flows in metastats.gg as of 2026-05-12:
-//   * Spielersuche → Riot API (Account-Resolve, no PII stored beyond puuid)
-//   * Match-Cache, Marktwert-Snapshots → Supabase (puuid + game data only)
-//   * Sprach-Cookie (essential, no consent needed under TTDSG §25 Abs. 2)
+// Content reflects the actual data flows in metastats.gg as of 2026-11-14:
+//   * Spielersuche → Riot API (Account-Resolve; Spielerdaten im Cache)
+//   * Match-Cache, Marktwert-Snapshots → Supabase (puuid + game data)
+//   * Benutzerkonten (Supabase Auth: E-Mail, Name, Avatar, Konto-ID,
+//     Zeitstempel) — personenbezogen, NICHT mehr „nur puuid“
+//   * Riot-Anmeldung/Verknuepfung (RSO): PUUID, Riot-ID, has_tft/LoL,
+//     LoL-Region; Riot-Token werden nicht gespeichert
+//   * Cookies: Sprache, tft_author_token, Supabase-Sitzung (sb-*),
+//     Riot-Login-Cookie (max. 10 min, nur waehrend der Riot-Anmeldung)
 //   * Vercel Analytics (hashed/anonymous — no IP, no third-party cookies)
 
+const LINK = 'text-brand-text hover:underline';
+
 export default function DatenschutzPage() {
-  const { t } = useI18n();
+  const { t, withLang } = useI18n();
 
   return (
     <main className="min-h-screen bg-surface-page">
@@ -28,7 +35,9 @@ export default function DatenschutzPage() {
 
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.controllerHeading')}</h2>
-            <p>info@metastats.gg</p>
+            <p>
+              info@metastats.gg · <a href={withLang('/impressum')} className={LINK}>{t('legal.imprint')}</a>
+            </p>
           </div>
 
           <div>
@@ -38,7 +47,28 @@ export default function DatenschutzPage() {
               <li>{t('legal.privacy.dataRiot')}</li>
               <li>{t('legal.privacy.dataLogs')}</li>
               <li>{t('legal.privacy.dataLang')}</li>
+              <li>{t('legal.privacy.dataAccount')}</li>
             </ul>
+          </div>
+
+          <div>
+            <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.accountHeading')}</h2>
+            <p>{t('legal.privacy.accountText')}</p>
+            <p className="mt-3">{t('legal.privacy.accountData')}</p>
+            <p className="mt-3">{t('legal.privacy.accountPurpose')}</p>
+          </div>
+
+          <div>
+            <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.riotHeading')}</h2>
+            <p>{t('legal.privacy.riotIntro')}</p>
+            <p className="mt-3">{t('legal.privacy.riotToken')}</p>
+            <p className="mt-3">{t('legal.privacy.riotStored')}</p>
+            <p className="mt-3">{t('legal.privacy.riotEmail')}</p>
+            <p className="mt-3">{t('legal.privacy.riotPurpose')}</p>
+            <p className="mt-3">{t('legal.privacy.riotDeletion')}</p>
+            <p className="mt-3">
+              <a href={withLang('/auth/account')} className={LINK}>{t('legal.privacy.accountPage')}</a>
+            </p>
           </div>
 
           <div>
@@ -55,11 +85,13 @@ export default function DatenschutzPage() {
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.cookiesHeading')}</h2>
             <p>{t('legal.privacy.cookiesText')}</p>
+            <p className="mt-3">{t('legal.privacy.cookiesLogin')}</p>
           </div>
 
           <div>
             <h2 className="text-white text-base font-medium mb-2">{t('legal.privacy.retentionHeading')}</h2>
             <p>{t('legal.privacy.retentionText')}</p>
+            <p className="mt-3">{t('legal.privacy.retentionAccount')}</p>
           </div>
 
           <div>

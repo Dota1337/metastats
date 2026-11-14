@@ -3645,12 +3645,12 @@ const translations = {
     'Sous-traitants et services'
   ),
   'legal.privacy.processorVercel': t6(
-    'Vercel Inc. (USA) \u2014 Hosting & Edge-Cache. Privacy Shield zertifiziert, DSGVO-konforme Datenverarbeitungsvereinbarung.',
-    'Vercel Inc. (USA) \u2014 hosting & edge cache. Privacy Shield certified, GDPR-compliant DPA.',
-    'Vercel Inc.(\uBBF8\uAD6D) \u2014 \uD638\uC2A4\uD305 \uBC0F \uC5E3\uC9C0 \uCE90\uC2DC.',
-    'Vercel Inc.\uFF08\u7F8E\u56FD\uFF09\u2014 \u6258\u7BA1\u548C\u8FB9\u7F18\u7F13\u5B58\u3002',
-    'Vercel Inc. (EE.UU.) \u2014 alojamiento.',
-    'Vercel Inc. (USA) \u2014 h\u00E9bergement.'
+    'Vercel Inc. (USA) \u2014 Hosting & Edge-Cache. Zertifiziert nach dem EU-US Data Privacy Framework, DSGVO-konforme Datenverarbeitungsvereinbarung.',
+    'Vercel Inc. (USA) \u2014 hosting & edge cache. Certified under the EU-U.S. Data Privacy Framework, GDPR-compliant DPA.',
+    'Vercel Inc.(\uBBF8\uAD6D) \u2014 \uD638\uC2A4\uD305 \uBC0F \uC5E3\uC9C0 \uCE90\uC2DC. EU-\uBBF8\uAD6D \uB370\uC774\uD130 \uD504\uB77C\uC774\uBC84\uC2DC \uD504\uB808\uC784\uC6CC\uD06C(DPF) \uC778\uC99D.',
+    'Vercel Inc.\uFF08\u7F8E\u56FD\uFF09\u2014 \u6258\u7BA1\u548C\u8FB9\u7F18\u7F13\u5B58\u3002\u5DF2\u901A\u8FC7\u6B27\u76DF-\u7F8E\u56FD\u6570\u636E\u9690\u79C1\u6846\u67B6\uFF08DPF\uFF09\u8BA4\u8BC1\u3002',
+    'Vercel Inc. (EE.UU.) \u2014 alojamiento. Certificado seg\u00FAn el Marco de Privacidad de Datos UE-EE. UU.',
+    'Vercel Inc. (USA) \u2014 h\u00E9bergement. Certifi\u00E9 selon le cadre de protection des donn\u00E9es UE-\u00C9tats-Unis (Data Privacy Framework).'
   ),
   'legal.privacy.processorSupabase': t6(
     'Supabase (USA/EU), Rechenzentrum Irland \u2014 Datenbank und Benutzerkonten (Supabase Auth). PostgreSQL mit Row-Level-Security; gespeichert werden Spieldaten und die Kontodaten aus dem Abschnitt \u201EBenutzerkonto\u201C.',

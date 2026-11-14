@@ -1,68 +1,68 @@
 {
   "queue": "RANKED_TFT",
-  "month": "September 2026",
-  "fetchedAt": "2026-11-07T07:11:27.048Z",
+  "month": "November 2026",
+  "fetchedAt": "2026-11-14T14:34:05.091Z",
   "source": "esportstales.com",
   "tiers": [
     {
       "key": "IRON",
       "label": "Iron",
       "color": "#949494",
-      "pct": 2.7
+      "pct": 2.6
     },
     {
       "key": "BRONZE",
       "label": "Bronze",
       "color": "#cc843c",
-      "pct": 19
+      "pct": 15
     },
     {
       "key": "SILVER",
       "label": "Silver",
       "color": "#a9b8c0",
-      "pct": 36
+      "pct": 28
     },
     {
       "key": "GOLD",
       "label": "Gold",
       "color": "#c89b3c",
-      "pct": 26
+      "pct": 25
     },
     {
       "key": "PLATINUM",
       "label": "Plat",
       "color": "#209e85",
-      "pct": 11
+      "pct": 16
     },
     {
       "key": "EMERALD",
       "label": "Emerald",
       "color": "#00a86b",
-      "pct": 3.4
+      "pct": 7.8
     },
     {
       "key": "DIAMOND",
       "label": "Dia",
       "color": "#8090da",
-      "pct": 0.74
+      "pct": 3
     },
     {
       "key": "MASTER",
       "label": "Master",
       "color": "#b778e8",
-      "pct": 0.21
+      "pct": 1.5
     },
     {
       "key": "GRANDMASTER",
       "label": "GM",
       "color": "#ea6c6c",
-      "pct": 0.05
+      "pct": 0.088
     },
     {
       "key": "CHALLENGER",
       "label": "Chall",
       "color": "#f0c040",
-      "pct": 0.023
+      "pct": 0.044
     }
   ]
 }

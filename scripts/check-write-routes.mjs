@@ -129,6 +129,13 @@ const AUSNAHMEN = {
     'Die Box schreibt nur Zeilen des Spielers, den Riot zur Kennung kennt ' +
     '(refreshOnePlayer prueft das Konto vor dem ersten Schreiben). Kennung im ' +
     'Riot-Format, Region aus der Positivliste, Bremse je IP, Box sperrt je Spieler 60 s.',
+  'app/api/account/riot/route.ts':
+    'Nicht oeffentlich: GET und DELETE verlangen eine gueltige Supabase-Sitzung ' +
+    '(auth.getUser(), sonst 401), DELETE zusaetzlich gleiche Herkunft ' +
+    '(sameOriginRequest, sonst 403). Geschrieben wird nur die eigene Zeile in ' +
+    'user_riot_links (deleteLinkForUser mit der Nutzer-ID aus der Sitzung, nie aus ' +
+    'der Anfrage). Als schreibend gemeldet, weil riot-rso-server.ts eingebunden ' +
+    'ist; das Anlegen der Zeile laeuft nur im Rueckweg /auth/riot/callback.',
 };
 
 function routen(dir) {

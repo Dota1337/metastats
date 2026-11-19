@@ -6,6 +6,7 @@
 import { createServer } from 'node:http';
 import { openDb, isSectionStale, DEFAULT_STALE_DAYS, EMBEDDING_MODEL } from './lib/db.mjs';
 import { embedOne, vecToJson, getPipeline } from './lib/embedder.mjs';
+import { setPause } from './lib/deps.mjs';
 import { createHash } from 'node:crypto';
 
 const PORT = parseInt(process.env.AGENTDB_PORT || '7878', 10);
@@ -293,6 +294,14 @@ server.listen(PORT, HOST, () => {
       warmState = 'error';
       warmError = err.message;
       console.error(`[daemon] Pipeline warmup FAILED: ${err.message}`);
+      // Frueher blieb der Dienst mit 'error' am Port. ensure-daemon verlangt
+      // 'ok', jeder neue Start lief in EADDRINUSE — der Dienst erholte sich nie.
+      // Jetzt: 30 min Pause (sonst laedt jeder Prompt das Modell neu) und
+      // beenden. Exit 1, nie 2.
+      setPause(`warmup: ${err.message}`);
+      try { db.close(); } catch {}
+      server.close();
+      process.exit(1);
     });
 });
 

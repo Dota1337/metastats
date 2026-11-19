@@ -22,8 +22,9 @@
 import { spawn } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync, statSync, unlinkSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
+import { depsReady, installLockHeld, pauseActive, autoInstallOff, INSTALL_LOG, AGENTDB_DIR } from './lib/deps.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.AGENTDB_PORT || '7878', 10);
@@ -75,6 +76,33 @@ function acquireSpawnLock() {
 
 function releaseSpawnLock() {
   try { unlinkSync(LOCK_FILE); } catch {}
+}
+
+// Antwortet ueberhaupt etwas auf dem Port (auch 'warming' oder 'error')?
+async function portAnswers() {
+  try {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 2000);
+    await fetch(HEALTHZ_URL, { signal: ctl.signal });
+    clearTimeout(timer);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Installation abgekoppelt starten und NICHT warten: Pruefer rufen dieses
+// Skript im Vordergrund auf (Schritt 0), npm ci dauert Minuten. Der Installer
+// haelt seine Sperre selbst (install-deps.mjs).
+function spawnInstaller() {
+  const child = spawn(process.execPath, [resolve(__dirname, 'install-deps.mjs')], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    env: { ...process.env, NODE_OPTIONS: process.env.NODE_OPTIONS || '--use-system-ca' },
+  });
+  child.unref();
+  return child.pid;
 }
 
 async function spawnDaemon() {
@@ -141,6 +169,41 @@ async function main() {
     checkDailyExport();
     process.exit(0);
   }
+
+  // Pause nach gescheiterter Installation oder Aufwaermfehler: kein Start, kein
+  // Download, bis sie abgelaufen ist (lib/deps.mjs, 30 min).
+  const pause = pauseActive();
+  if (pause) {
+    log(`[ensure-daemon] Pause bis ${pause.until} (${pause.reason}) — kein Start. Von Hand: node scripts/agentdb/install-deps.mjs`);
+    process.exit(1);
+  }
+  // Waehrend einer Installation niemals den Dienst starten: er laedt sonst
+  // Dateien aus dem Ordner, der gerade getauscht wird.
+  if (installLockHeld()) {
+    log(`[ensure-daemon] Pakete werden installiert, siehe ${INSTALL_LOG}`);
+    process.exit(1);
+  }
+  // Eigene Pakete fehlen oder passen nicht zum Lockfile: im Hintergrund
+  // installieren — aber nur, wenn auf dem Port gar nichts antwortet. Ein
+  // laufender Dienst haelt seine .node-Dateien offen.
+  if (!depsReady() && !(await portAnswers())) {
+    if (autoInstallOff()) {
+      log('[ensure-daemon] Pakete fehlen, AGENTDB_AUTO_INSTALL=0 — keine Installation. Von Hand: node scripts/agentdb/install-deps.mjs');
+      process.exit(1);
+    }
+    const pid = spawnInstaller();
+    log(`[ensure-daemon] Pakete fehlen — Installation im Hintergrund gestartet (PID ${pid}), Log: ${INSTALL_LOG}`);
+    process.exit(1);
+  }
+
+  // Reste frueherer Installationen (.install-<pid>/old) liessen sich nicht
+  // loeschen, solange ein Dienst die alten .node-Dateien offen hielt (gemessen
+  // 19.11.2026, EPERM). Jetzt laeuft kein Dienst und keine Installation.
+  try {
+    for (const d of readdirSync(AGENTDB_DIR)) {
+      if (/^\.install-\d+$/.test(d)) rmSync(join(AGENTDB_DIR, d), { recursive: true, force: true });
+    }
+  } catch {}
 
   // Spawnen
   if (!acquireSpawnLock()) {

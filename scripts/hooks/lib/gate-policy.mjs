@@ -27,9 +27,14 @@ export { toNativePath };
 export const ROUTINE_OPS = new Set([
   'scripts/refresh-riot-key.mjs',
   // Schritt 0 jedes Pruefer-Agenten (AGENTS.md, Spec-First): startet den
-  // Recall-Dienst und schreibt nur nach ~/.claude/agentdb (ensure-daemon.mjs:33,
+  // Recall-Dienst und schreibt nach ~/.claude/agentdb (ensure-daemon.mjs:33,
   // :113). Ohne Eintrag blockte das Gate die Pruefer VOR der Freigabe — also
   // genau den Schritt, der zur Freigabe fuehren soll (logic-flow-critic 24.10.2026).
+  // Seit 19.11.2026 startet es bei fehlenden Paketen install-deps.mjs, das per
+  // `npm ci` aus dem eingecheckten scripts/agentdb/package-lock.json nach
+  // scripts/agentdb/node_modules schreibt. Kein Schlupfloch: `npm ci` ist auch
+  // als nackter Befehl frei, package.json + Lockfile bleiben gate-pflichtig
+  // (architect 19.11.2026).
   'scripts/agentdb/ensure-daemon.mjs',
 ]);
 

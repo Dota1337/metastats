@@ -24,8 +24,7 @@
 // check-eslint-budget.mjs:28-31.
 
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { findNpmCli, npmCliCandidates } from './lib/npm-cli.mjs';
 
 // Bekannte, bewusst offene Warnungen. Neue Ausnahmen nur mit Begruendung im
 // Klartext eintragen.
@@ -34,15 +33,10 @@ const BEKANNT = {};
 const ROT_AB = new Set(['high', 'critical']);
 
 function npmCli() {
-  const d = dirname(process.execPath);
-  const kandidaten = [
-    join(d, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    join(d, '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-  ];
-  const treffer = kandidaten.find((p) => existsSync(p));
+  const treffer = findNpmCli();
   if (!treffer) {
     console.error('npm-cli.js nicht gefunden neben', process.execPath);
-    console.error('Gesucht in:\n  ' + kandidaten.join('\n  '));
+    console.error('Gesucht in:\n  ' + npmCliCandidates().join('\n  '));
     process.exit(1);
   }
   return treffer;

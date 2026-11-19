@@ -2,6 +2,9 @@
 
 # dependencies
 /node_modules
+# Pakete der Gedaechtnis-Suche (eigenes package.json, scripts/agentdb/lib/deps.mjs)
+/scripts/agentdb/node_modules/
+/scripts/agentdb/.install-*/
 /.pnp
 .pnp.*
 .yarn/*

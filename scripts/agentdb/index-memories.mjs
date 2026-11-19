@@ -5,9 +5,19 @@
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
-import { openDb, EMBEDDING_MODEL } from './lib/db.mjs';
-import { embed, vecToJson } from './lib/embedder.mjs';
 import { splitSections } from './lib/sections.mjs';
+import { depsReady, installLockHeld } from './lib/deps.mjs';
+
+// Solange die eigenen Pakete fehlen oder gerade installiert werden: aussetzen.
+// Ein laufender Index haelt .node-Dateien offen, und unter Windows scheitert
+// dann der Ordner-Tausch der Installation (logic-flow-critic 19.11.2026).
+// Darum werden db.mjs/embedder.mjs erst NACH dieser Pruefung geladen.
+if (!depsReady() || installLockHeld()) {
+  console.error('[index] agentdb-Pakete fehlen oder werden installiert — Index uebersprungen (ensure-daemon.mjs installiert sie).');
+  process.exit(1);
+}
+const { openDb, EMBEDDING_MODEL } = await import('./lib/db.mjs');
+const { embed, vecToJson } = await import('./lib/embedder.mjs');
 
 const MEMORY_DIR = `${os.homedir()}/.claude/projects/C--Users-dtaub-metastats/memory`;
 const BATCH_SIZE = 16;

@@ -116,7 +116,8 @@ crawl_running() {
 # holt die Box beim ersten Lauf nach dieser Umstellung den Rueckstand nach.
 DEPS_STAMP=node_modules/.metastats-lock-sha1
 # Node-ABI gehoert in den Stempel (2026-10-24, Wechsel Node 20 -> 22): native
-# Module wie better-sqlite3 sind an die ABI gebunden. Ohne sie saehe ein
+# Module (damals better-sqlite3, seit 19.11.2026 nicht mehr im Root) sind an
+# die ABI gebunden. Ohne sie saehe ein
 # Node-Wechsel bei gleichem Lockfile "alles passt" und liesse die alten Builds liegen.
 lock_hash() {
   local h

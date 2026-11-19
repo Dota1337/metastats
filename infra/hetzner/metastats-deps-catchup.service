@@ -13,8 +13,9 @@ WorkingDirectory=/opt/metastats-crawler
 # Deploy bringt so automatisch die aktuelle Fassung mit.
 # "+" = ohne Sandbox, und das ist hier Absicht: npm ci muss sich exakt so
 # verhalten wie im Deploy (root per ssh, ohne Sandbox). Mit ProtectHome=yes
-# fehlte der npm-Cache unter /root/.npm, und die Installations-Skripte von
-# better-sqlite3, onnxruntime-node und @sentry/cli laden Binaries nach —
+# fehlte der npm-Cache unter /root/.npm, und Installations-Skripte wie das von
+# @sentry/cli laden Binaries nach (better-sqlite3 und onnxruntime-node liegen
+# seit 19.11.2026 nur noch in scripts/agentdb, nicht mehr im Root) —
 # scheitert npm ci mittendrin, ist node_modules halb geloescht und jeder
 # Crawl stirbt beim Start.
 ExecStart=+/bin/bash /opt/metastats-crawler/infra/hetzner/remote-deploy.sh --deps-only

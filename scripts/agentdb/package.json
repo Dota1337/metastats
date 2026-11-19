@@ -1,0 +1,10 @@
+{
+  "name": "metastats-agentdb",
+  "private": true,
+  "description": "Pakete der lokalen Gedaechtnis-Suche. Bewusst NICHT im Root-package.json, siehe lib/deps.mjs. Installation: node scripts/agentdb/install-deps.mjs (macht ensure-daemon.mjs selbst).",
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "fastembed": "2.1.1",
+    "sqlite-vec": "0.1.9"
+  }
+}

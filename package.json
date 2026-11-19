@@ -53,13 +53,10 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "better-sqlite3": "^12.11.1",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "fast-check": "^4.9.0",
-    "fastembed": "^2.1.0",
     "sharp": "^0.35.5",
-    "sqlite-vec": "^0.1.9",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

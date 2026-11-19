@@ -87,6 +87,7 @@ function read(path) {
   };
   const files = readdirSync('scripts', { recursive: true })
     .map((f) => `scripts/${String(f).replace(/\\/g, '/')}`)
+    .filter((f) => !f.includes('/node_modules/'))
     .filter((f) => f.endsWith('.mjs') && !f.endsWith('lib/riot-limits.mjs'));
 
   let limiterDrift = 0;
@@ -127,6 +128,7 @@ function read(path) {
 {
   const files = readdirSync('scripts', { recursive: true })
     .map((f) => `scripts/${String(f).replace(/\\/g, '/')}`)
+    .filter((f) => !f.includes('/node_modules/'))
     .filter((f) => f.endsWith('.mjs'))
     .concat(
       readdirSync('app', { recursive: true })
@@ -681,6 +683,27 @@ function read(path) {
     failures += naked.length;
   } else {
     console.log(`✓ Cache-Kopfzeilen: ${routes.length} Routen, keine nackte s-maxage-Zeile`);
+  }
+}
+
+// 11) Pakete der Gedaechtnis-Suche gehoeren NICHT ins Root-Projekt
+// (scripts/agentdb/lib/deps.mjs). onnxruntime-node laedt beim Installieren auf
+// Linux CUDA-Dateien von GitHub; seit 17.11.2026 404 — `npm ci` scheiterte in
+// 12 Workflows und im Vercel-Bau, und die Box haette es beim naechsten
+// Lockfile-Wechsel getroffen. Lokal faellt ein Rueckfall nicht auf: Node findet
+// die Pakete ueber die Verzeichnis-Kette auch im Root. Deshalb hier mechanisch.
+{
+  const pkg = JSON.parse(read('package.json') || '{}');
+  const all = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.optionalDependencies };
+  const back = ['fastembed', 'better-sqlite3', 'sqlite-vec', 'onnxruntime-node'].filter((n) => n in all);
+  const inLock = read('package-lock.json').includes('"node_modules/onnxruntime-node"');
+  if (back.length || inLock) {
+    if (back.length) console.error(`✗ DRIFT: ${back.join(', ')} im Root-package.json`);
+    if (inLock) console.error('✗ DRIFT: onnxruntime-node im Root-package-lock.json (kommt ueber eine andere Abhaengigkeit)');
+    console.error('    → gehoert nach scripts/agentdb/package.json; Root-npm-ci scheitert sonst auf Linux (CUDA-Download 404).');
+    failures += back.length + (inLock ? 1 : 0);
+  } else {
+    console.log('✓ Pakete der Gedaechtnis-Suche nicht im Root-Projekt');
   }
 }
 

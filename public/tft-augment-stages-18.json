@@ -1,7 +1,7 @@
 {
   "set": 18,
   "source": "tactics.tools/info/augments",
-  "fetchedAt": "2026-11-05T09:48:52.245Z",
+  "fetchedAt": "2026-11-19T23:41:08.546Z",
   "counts": {
     "cards": 249,
     "pinned": 428,
@@ -47,13 +47,13 @@
       "3-2",
       "4-2"
     ],
-    "DA_18_BranchingOut": [
+    "DA_BranchingOut": [
       "2-1"
     ],
     "TFT_Augment_BranchingOut": [
       "2-1"
     ],
-    "DA_18_BranchingOutPlus": [
+    "DA_BranchingOutPlus": [
       "3-2"
     ],
     "TFT_Augment_BranchingOutPlus": [
@@ -186,7 +186,7 @@
       "3-2",
       "4-2"
     ],
-    "DA_18_GoodForSomethingI": [
+    "DA_GoodForSomethingI": [
       "2-1"
     ],
     "TFT10_Augment_GoodForSomethingSilver": [
@@ -260,7 +260,7 @@
       "3-2",
       "4-2"
     ],
-    "DA_18_OneTwoFive": [
+    "DA_OneTwoFive": [
       "4-2"
     ],
     "TFT6_Augment_OneTwoFive": [
@@ -454,7 +454,7 @@
     "DA_18_PrimalAugmentPlus_Sivir": [
       "4-2"
     ],
-    "DA_18_BigGrabBag": [
+    "DA_BigGrabBag": [
       "3-2",
       "4-2"
     ],

@@ -12,13 +12,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import apiMap from '../../../../infra/api-map.json';
 import { OPS_SERVICES } from '../../../lib/ops-services';
-import { BOX_TLS_PORT, boxFetch } from '../../../lib/box-tls.mjs';
+import { boxFetch } from '../../../lib/box-tls.mjs';
 
 export const dynamic = 'force-dynamic';
 
-// Rueckfall = der https-Zugang der Box mit eigenem Zertifikat (box-tls.mjs); den
-// frueher hier stehenden Namen refresh.metastats.gg gab es nie im DNS.
-const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || `https://37.27.219.140:${BOX_TLS_PORT}`;
+// Kein eingebauter Rueckfall: die Box-Adresse steht nicht im (oeffentlichen)
+// Code. Ohne HETZNER_REFRESH_URL zeigt das Dashboard die Dienste als nicht abrufbar.
+const HETZNER_BASE = process.env.HETZNER_REFRESH_URL || '';
 const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const MANIFEST_URL = process.env.SNAPSHOT_MANIFEST_URL || '';
@@ -118,6 +118,7 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
 }
 
 async function fetchServices() {
+  if (!HETZNER_BASE) throw new Error('HETZNER_REFRESH_URL fehlt');
   const url = `${HETZNER_BASE.replace(/\/$/, '')}/healthz?detail=services`;
   // Die Dienstliste verlangt auf der Box den Schluessel (Sicherheitsdurchsicht
   // 24.10.2026, statusseite-ohne-zugang) — ohne ihn sah jeder, welche Dienste

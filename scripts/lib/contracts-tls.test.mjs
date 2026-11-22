@@ -4,8 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { evaluateTlsCert } from './contracts.mjs';
-import { BOX_TLS_PORT } from '../../app/lib/box-tls.mjs';
+import { evaluateTlsCert, tlsCertTarget } from './contracts.mjs';
 
 const NOW = Date.parse('2026-10-24T04:00:00Z');
 
@@ -37,9 +36,34 @@ test('Vertrag im Register: Art, Ziel und Schwelle', () => {
   assert.ok(c, 'box/tls-zertifikat fehlt');
   assert.equal(c.type, 'tls-cert');
   assert.equal(c.owner, 'metastats-refresh-api.service');
-  // eigenes Zertifikat: Pinning auf BOX_TLS_CERTS und derselbe Port wie die Aufrufer
+  // eigenes Zertifikat: Pinning auf BOX_TLS_CERTS; Ziel aus derselben Variable
+  // wie die Aufrufer, keine Adresse im Register
   assert.equal(c.pinned, true);
-  assert.equal(c.port, BOX_TLS_PORT);
+  assert.equal(c.urlEnv, 'HETZNER_REFRESH_URL');
+  assert.equal(c.host, undefined);
+  assert.equal(c.port, undefined);
   // 3-Jahres-Zertifikat, Wechsel von Hand: genug Vorlauf, aber kein Dauer-Rot
   assert.ok(c.minHoursLeft >= 24 * 30 && c.minHoursLeft <= 24 * 90, `minHoursLeft ${c.minHoursLeft}`);
+});
+
+test('Ziel aus urlEnv: Host und Port aus der Adresse, Text ohne Adresse', () => {
+  const c = { urlEnv: 'HETZNER_REFRESH_URL' };
+  const t = tlsCertTarget(c, { HETZNER_REFRESH_URL: 'https://203.0.113.7:8443/' });
+  assert.equal(t.host, '203.0.113.7');
+  assert.equal(t.port, 8443);
+  assert.ok(!t.label.includes('203.0.113.7'), t.label);
+});
+
+test('Ziel aus urlEnv: fehlende oder kaputte Variable ist ein Fehler, nie localhost', () => {
+  const c = { urlEnv: 'HETZNER_REFRESH_URL' };
+  assert.match(tlsCertTarget(c, {}).error, /HETZNER_REFRESH_URL fehlt/);
+  assert.match(tlsCertTarget(c, { HETZNER_REFRESH_URL: 'kein url' }).error, /keine gueltige Adresse/);
+  assert.match(tlsCertTarget(c, { HETZNER_REFRESH_URL: 'http://203.0.113.7' }).error, /kein https-Zugang/);
+  // Fehlertext nennt nie den Wert
+  assert.ok(!tlsCertTarget(c, { HETZNER_REFRESH_URL: 'kein url' }).error.includes('kein url'));
+});
+
+test('Ziel mit festem host (andere Vertraege) bleibt wie bisher', () => {
+  const t = tlsCertTarget({ host: 'example.com', port: 443 }, {});
+  assert.deepEqual(t, { host: 'example.com', port: 443, label: 'example.com:443' });
 });

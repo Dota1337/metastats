@@ -29,6 +29,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { createVercelDeploy, acquireLock } from './lib/vercel-deploy.mjs';
+import { boxHost } from './lib/box-host.mjs';
 
 const require_ = createRequire(import.meta.url);
 const DEPLOY = process.argv.includes('--deploy');
@@ -113,10 +114,13 @@ async function pushGithub(name, value) {
 }
 
 async function pushHetzner(updates) {
-  const host = env.HETZNER_REFRESH_URL
-    ? new URL(env.HETZNER_REFRESH_URL).hostname
-    : '37.27.219.140';
-  console.log(`  hetzner ${host}: updating /etc/metastats-crawler/env`);
+  // Keine eingebaute Adresse (oeffentliches Repo): HETZNER_HOST oder HETZNER_REFRESH_URL.
+  const host = boxHost(env);
+  if (!host) {
+    console.error('  hetzner: HETZNER_HOST / HETZNER_REFRESH_URL fehlt in .env.local — Box nicht aktualisiert');
+    return false;
+  }
+  console.log('  hetzner: updating /etc/metastats-crawler/env');
   // sed -i in-place mit Backup; add key wenn nicht vorhanden.
   const lines = Object.entries(updates).map(([k, v]) => {
     const escaped = v.replace(/[\\&|]/g, '\\$&');

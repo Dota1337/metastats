@@ -20,9 +20,18 @@
 
 set -euo pipefail
 
-HOST="${HETZNER_HOST:-37.27.219.140}"
-SSH="ssh -o BatchMode=yes root@${HOST}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
+# Keine eingebaute Adresse (oeffentliches Repo): HETZNER_HOST, sonst der Host
+# aus HETZNER_REFRESH_URL in .env.local.
+HOST="${HETZNER_HOST:-}"
+if [ -z "$HOST" ] && [ -f "$DIR/../../.env.local" ]; then
+  HOST="$(sed -n -E 's#^HETZNER_REFRESH_URL=["'\'']?https?://([^:/"'\'']+).*#\1#p' "$DIR/../../.env.local" | head -n 1)"
+fi
+if [ -z "$HOST" ]; then
+  echo "HETZNER_HOST fehlt (oder HETZNER_REFRESH_URL in .env.local)" >&2
+  exit 2
+fi
+SSH="ssh -o BatchMode=yes root@${HOST}"
 
 if [ "$#" -eq 0 ]; then
   echo "usage: $0 <unit> [unit...] | --all" >&2

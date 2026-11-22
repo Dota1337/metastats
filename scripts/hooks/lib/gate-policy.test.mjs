@@ -468,7 +468,7 @@ test('Korpus-Abgleich 24.10.2026: Luecken und Fehlalarme aus echten Aufrufen', (
   // Fehlalarme des alten Gates
   assert.equal(blocksMit('curl -s https://x -o "$TMPDIR/c.json"', { env: {} }), false);
   assert.equal(blocksMit('H=$(cat "$S/boxhost.txt"); scp -q a.mjs "$H:/root/a.mjs"'), false);
-  assert.equal(blocksMit('H=root@37.27.219.140; E=/mnt/v; scp a.mjs "$H:$E/a.mjs"'), false);
+  assert.equal(blocksMit('H=root@203.0.113.10; E=/mnt/v; scp a.mjs "$H:$E/a.mjs"'), false);
   assert.equal(blocksMit("sed -n 's/`a`/b/p' app/x.ts"), false);
   assert.equal(blocksMit('git checkout -b neu'), false);
   // Skript im Scratchpad, das neben sich schreibt

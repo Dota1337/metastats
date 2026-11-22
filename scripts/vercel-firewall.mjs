@@ -12,12 +12,18 @@
  * Laeuft ueber `vercel api` (Anmeldung der Vercel-CLI), braucht also keinen
  * eigenen Schluessel. Regeln, die nur in Vercel stehen, werden gemeldet, aber nie
  * geloescht — Loeschen bleibt Handarbeit im Dashboard.
+ *
+ * Die Box-Adresse steht in der Datei nur als ${BOX_IP} und kommt aus
+ * HETZNER_HOST bzw. HETZNER_REFRESH_URL (.env.local). Ohne sie bricht das
+ * Skript ab, bevor es Vercel fragt.
  */
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createVercelDeploy } from './lib/vercel-deploy.mjs';
+import { boxHost } from './lib/box-host.mjs';
+import { resolveRules } from './lib/vercel-firewall-rules.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONF = JSON.parse(readFileSync(join(ROOT, 'infra', 'vercel', 'firewall.json'), 'utf8'));
@@ -26,6 +32,26 @@ if (!mode) {
   console.error('Aufruf: node scripts/vercel-firewall.mjs --check | --apply');
   process.exit(2);
 }
+
+function localEnv() {
+  const out = { ...process.env };
+  const file = join(ROOT, '.env.local');
+  if (!existsSync(file)) return out;
+  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (m && !out[m[1]]) out[m[1]] = m[2].trim().replace(/^(["'])(.*)\1$/, '$2');
+  }
+  return out;
+}
+const BOX_IP = boxHost(localEnv());
+let RULES;
+try {
+  RULES = resolveRules(CONF, BOX_IP);
+} catch (err) {
+  console.error(`✗ ${err.message}`);
+  process.exit(2);
+}
+const mask = (s) => (BOX_IP ? String(s).split(BOX_IP).join('***') : String(s));
 const QS = `projectId=${CONF.projectId}&teamId=${CONF.teamId}`;
 // Ohne Shell ueber vc.js (sonst trennt cmd.exe die Adresse am &), Muster refresh-riot-key.
 const { vercel } = createVercelDeploy({ log: () => {} });
@@ -42,7 +68,7 @@ function vercelApi(path, { method = 'GET', body } = {}) {
   }
   try {
     const r = vercel(args, { timeout: 60_000 });
-    if (r.status !== 0) throw new Error(`vercel api ${method} ${path.split('?')[0]} → Exit ${r.status}: ${(r.stderr || r.stdout || '').slice(0, 400)}`);
+    if (r.status !== 0) throw new Error(`vercel api ${method} ${path.split('?')[0]} → Exit ${r.status}: ${mask((r.stderr || r.stdout || '').slice(0, 400))}`);
     return r.stdout.trim() ? JSON.parse(r.stdout) : null;
   } finally {
     if (dir) rmSync(dir, { recursive: true, force: true });
@@ -72,7 +98,7 @@ if (!live?.firewallEnabled) console.warn('! Firewall ist in Vercel ausgeschaltet
 const byName = new Map((live?.rules || []).map((r) => [r.name, r]));
 let drift = 0;
 
-for (const want of CONF.rules) {
+for (const want of RULES) {
   const have = byName.get(want.name);
   byName.delete(want.name);
   if (have && same(pick(have), pick(want))) {
@@ -95,7 +121,7 @@ for (const name of byName.keys()) console.log(`? nur in Vercel, nicht in der Dat
 if (mode === 'apply' && drift) {
   const after = vercelApi(`/v1/security/firewall/config/active?${QS}`);
   const names = new Map((after?.rules || []).map((r) => [r.name, r]));
-  const bad = CONF.rules.filter((w) => !names.has(w.name) || !same(pick(names.get(w.name)), pick(w)));
+  const bad = RULES.filter((w) => !names.has(w.name) || !same(pick(names.get(w.name)), pick(w)));
   if (bad.length) {
     console.error(`✗ nach dem Einspielen weichen noch ab: ${bad.map((b) => b.name).join(', ')}`);
     process.exit(1);

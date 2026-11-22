@@ -1,6 +1,6 @@
 #!/bin/bash
 # install-caddy.sh — einmalig auf der Box (als root), idempotent:
-#   ssh root@37.27.219.140 'bash -s' < infra/hetzner/install-caddy.sh
+#   ssh root@$HETZNER_HOST 'bash -s' < infra/hetzner/install-caddy.sh
 #
 # Caddy aus dem offiziellen Caddy-apt-Repo, weil Ubuntu 24.04 nur 2.6.2
 # liefert und erst 2.10 ACME-Profile kann (noetig fuer Let's-Encrypt-

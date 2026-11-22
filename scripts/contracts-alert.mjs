@@ -3,7 +3,7 @@
 // mit Label contract-broken ab. Logik: scripts/lib/contracts-alert.mjs.
 //
 // Laeuft in .github/workflows/contracts-alert.yml. Env:
-//   CONTRACTS_STATUS_URL   https://37.27.219.140:8443/contracts-status (eigenes Zertifikat,
+//   CONTRACTS_STATUS_URL   https://<Box>:8443/contracts-status (eigenes Zertifikat,
 //                          gepinnt ueber app/lib/box-tls.mjs, seit 24.10.2026)
 //   CONTRACTS_READ_TOKEN   geteiltes Geheimnis mit refresh-api (nur fuer HMAC)
 //   GITHUB_TOKEN, GITHUB_REPOSITORY

@@ -26,7 +26,7 @@ import { evaluateGuideCoverage } from './guide-coverage.mjs';
 import { compsToCheck, evaluateCompBoardButtons } from './comp-board-buttons.mjs';
 import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
-import { BOX_TLS_CERTS } from '../../app/lib/box-tls.mjs';
+import { pinnedTlsOptions } from '../../app/lib/box-tls.mjs';
 import { evaluateLiveStandings, liveTournamentsToCheck } from './tft-live-standings.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1333,23 +1333,46 @@ export function evaluateTlsCert({ validTo, now = Date.now(), minHoursLeft }) {
 // erneuert, aber nicht ausgeliefert wird. Mit voller Pruefung (Kette, Name/IP)
 // — ein abgelaufenes oder falsches Zertifikat endet als broken mit dem
 // TLS-Fehlercode. An eine IP geht kein Servername (Node verbietet IP als SNI).
-// `pinned: true` = eigenes Zertifikat der Box: vertraut wird nur BOX_TLS_CERTS
-// (app/lib/box-tls.mjs). Rot dann auch, wenn die Box ein anderes Zertifikat
+// `pinned: true` = eigenes Zertifikat der Box: vertraut wird nur BOX_TLS_CERTS,
+// gleiche Pruefung wie bei den Aufrufern (pinnedTlsOptions in
+// app/lib/box-tls.mjs). Rot dann auch, wenn die Box ein anderes Zertifikat
 // ausliefert als das, dem die Aufrufer vertrauen.
-function checkTlsCert(c, r) {
+// Ziel per `urlEnv` (Box: HETZNER_REFRESH_URL) — die Adresse steht dann weder
+// im Register noch im Ergebnistext, denn der Text landet bei Rot im
+// oeffentlichen GitHub-Issue (scripts/lib/contracts-alert.mjs).
+export function tlsCertTarget(c, env = process.env) {
+  if (c.urlEnv) {
+    const raw = env[c.urlEnv];
+    if (!raw) return { error: `${c.urlEnv} fehlt` };
+    let u;
+    try { u = new URL(raw); } catch { return { error: `${c.urlEnv} ist keine gueltige Adresse` }; }
+    if (!u.hostname) return { error: `${c.urlEnv} ohne Host` };
+    const port = Number(u.port) || (u.protocol === 'https:' ? 443 : NaN);
+    if (!Number.isFinite(port)) return { error: `${c.urlEnv} ist kein https-Zugang` };
+    return { host: u.hostname.replace(/^\[|\]$/g, ''), port, label: `Box-Zugang :${port}` };
+  }
+  if (!c.host) return { error: 'weder host noch urlEnv' };
   const port = c.port || 443;
+  return { host: c.host, port, label: `${c.host}:${port}` };
+}
+
+function checkTlsCert(c, r) {
+  const t = tlsCertTarget(c);
+  if (t.error) return Promise.resolve(r('error', t.error));
+  const { host, port, label } = t;
+  const scrub = (s) => String(s).split(host).join('***');
   return new Promise((resolveCheck) => {
     const sock = tlsConnect({
-      host: c.host, port,
-      ...(isIP(c.host) ? {} : { servername: c.host }),
-      ...(c.pinned ? { ca: BOX_TLS_CERTS } : {}),
+      host, port,
+      ...(isIP(host) ? {} : { servername: host }),
+      ...(c.pinned ? pinnedTlsOptions() : {}),
     });
     const done = (res) => { sock.destroy(); resolveCheck(res); };
-    sock.setTimeout(15_000, () => done(r('broken', `${c.host}:${port} antwortet nicht (15 s)`)));
-    sock.once('error', (err) => done(r('broken', `${c.host}:${port}: ${err.code || err.message}`)));
+    sock.setTimeout(15_000, () => done(r('broken', `${label} antwortet nicht (15 s)`)));
+    sock.once('error', (err) => done(r('broken', `${label}: ${scrub(err.code || err.message)}`)));
     sock.once('secureConnect', () => {
       const res = evaluateTlsCert({ validTo: sock.getPeerCertificate()?.valid_to, minHoursLeft: c.minHoursLeft });
-      done(r(res.status, `${c.host}:${port} ${res.detail}`));
+      done(r(res.status, `${label} ${res.detail}`));
     });
   });
 }

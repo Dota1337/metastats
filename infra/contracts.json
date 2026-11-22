@@ -880,11 +880,10 @@
       "id": "box/tls-zertifikat",
       "owner": "metastats-refresh-api.service",
       "type": "tls-cert",
-      "host": "37.27.219.140",
-      "port": 8443,
+      "urlEnv": "HETZNER_REFRESH_URL",
       "pinned": true,
       "minHoursLeft": 1440,
-      "note": "https-Zugang von refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Eigenes Zertifikat, gueltig bis 23.10.2029; alle Aufrufer vertrauen nur ihm (app/lib/box-tls.mjs). Geprueft wird das AUSGELIEFERTE Zertifikat gegen genau diese Liste, nicht die Datei. Rot heisst: weniger als 60 Tage Restlaufzeit, die Box liefert ein anderes Zertifikat aus, als im Code steht, oder der https-Zugang laeuft nicht — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard. Wechsel: Anleitung im Kopf von box-tls.mjs. Rot: journalctl -u metastats-refresh-api | grep '\\[tls\\]'."
+      "note": "https-Zugang von refresh-api (Sicherheitsdurchsicht 24.10.2026, klartext-token). Eigenes Zertifikat, seit 22.11.2026 auf den Namen box.invalid statt auf die Adresse; alle Aufrufer vertrauen nur ihm (app/lib/box-tls.mjs, Fingerabdruck). Ziel und Port kommen aus HETZNER_REFRESH_URL (Box: /etc/metastats-crawler/env), damit die Adresse weder hier noch im oeffentlichen Issue-Text steht; fehlt die Variable, ist der Vertrag rot. Geprueft wird das AUSGELIEFERTE Zertifikat gegen genau diese Liste, nicht die Datei. Rot heisst: weniger als 60 Tage Restlaufzeit, die Box liefert ein anderes Zertifikat aus, als im Code steht, oder der https-Zugang laeuft nicht — danach brechen Spieler-Aktualisieren, Data Explorer, Spieler-Matches und das Ops-Dashboard. Wechsel: Anleitung im Kopf von box-tls.mjs. Rot: journalctl -u metastats-refresh-api | grep '\\[tls\\]'."
     },
     {
       "id": "box/datenbank-sicherung",

@@ -5,25 +5,34 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import http from 'node:http';
 import https from 'node:https';
 import { X509Certificate } from 'node:crypto';
-import { BOX_TLS_CERTS, BOX_TLS_PORT, boxFetch } from './box-tls.mjs';
+import { BOX_TLS_CERTS, BOX_TLS_NAME, BOX_TLS_PORT, boxFetch, pinnedTlsOptions } from './box-tls.mjs';
 
-const BOX_IP = '37.27.219.140';
+// Altes Zertifikat (SAN = Adresse) bis zum Schluesseltausch auf der Box; wird
+// danach aus BOX_TLS_CERTS UND hier entfernt.
+const RETIRING = new Set(['6E:6D:4A:7E:56:BF:5C:38:CF:C2:C5:CA:49:6E:3C:94:EC:45:24:D9:C5:7D:BE:41:5F:A3:FF:27:EE:5D:DC:F4']);
 
-test('BOX_TLS_CERTS: gueltige Zertifikate fuer die Box-IP, noch mindestens 60 Tage', () => {
+test('BOX_TLS_CERTS: auf BOX_TLS_NAME, ohne Adresse, kein CA, noch mindestens 60 Tage', () => {
   assert.ok(BOX_TLS_CERTS.length >= 1);
   assert.equal(BOX_TLS_PORT, 8443);
+  assert.equal(BOX_TLS_NAME, 'box.invalid');
+  let current = 0;
   for (const pem of BOX_TLS_CERTS) {
     const x = new X509Certificate(pem);
-    assert.match(x.subjectAltName || '', new RegExp(`IP Address:${BOX_IP.replace(/\./g, '\\.')}`));
     const left = (new Date(x.validTo).getTime() - Date.now()) / 86_400_000;
     assert.ok(left > 60, `Zertifikat laeuft in ${Math.round(left)} Tagen ab — Wechsel siehe box-tls.mjs`);
+    if (RETIRING.has(x.fingerprint256)) continue;
+    current += 1;
+    assert.equal(x.subjectAltName, `DNS:${BOX_TLS_NAME}`);
+    assert.equal(x.subject.trim(), `CN=${BOX_TLS_NAME}`);
+    assert.equal(x.ca, false);
   }
+  assert.ok(current >= 1, 'kein Zertifikat auf BOX_TLS_NAME gepinnt');
 });
 
 let hasOpenssl = true;
@@ -36,9 +45,102 @@ function makePair(dir, name) {
   return { key: readFileSync(join(dir, `${name}.key`), 'utf8'), cert: readFileSync(join(dir, `${name}.pem`), 'utf8') };
 }
 
+// Wie das echte Box-Zertifikat: auf den Namen, nicht auf die Adresse.
+function makeNamed(dir, name, { ca = false } = {}) {
+  execFileSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1',
+    '-nodes', '-days', '2', '-subj', `/CN=${BOX_TLS_NAME}`, '-addext', `subjectAltName=DNS:${BOX_TLS_NAME}`,
+    '-addext', ca ? 'basicConstraints=critical,CA:TRUE' : 'basicConstraints=critical,CA:FALSE',
+    '-keyout', join(dir, `${name}.key`), '-out', join(dir, `${name}.pem`)], { stdio: 'ignore' });
+  return { key: readFileSync(join(dir, `${name}.key`), 'utf8'), cert: readFileSync(join(dir, `${name}.pem`), 'utf8') };
+}
+
+// Von `issuer` unterschrieben, selbst aber nicht gepinnt.
+function makeSigned(dir, name, issuer) {
+  writeFileSync(join(dir, 'issuer.key'), issuer.key);
+  writeFileSync(join(dir, 'issuer.pem'), issuer.cert);
+  writeFileSync(join(dir, 'ext.cnf'), `subjectAltName=DNS:${BOX_TLS_NAME}\n`);
+  execFileSync('openssl', ['req', '-new', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes',
+    '-subj', `/CN=${BOX_TLS_NAME}`, '-keyout', join(dir, `${name}.key`), '-out', join(dir, `${name}.csr`)], { stdio: 'ignore' });
+  execFileSync('openssl', ['x509', '-req', '-in', join(dir, `${name}.csr`), '-CA', join(dir, 'issuer.pem'),
+    '-CAkey', join(dir, 'issuer.key'), '-set_serial', '7', '-days', '2', '-extfile', join(dir, 'ext.cnf'),
+    '-out', join(dir, `${name}.pem`)], { stdio: 'ignore' });
+  return { key: readFileSync(join(dir, `${name}.key`), 'utf8'), cert: readFileSync(join(dir, `${name}.pem`), 'utf8') };
+}
+
 function listen(server) {
   return new Promise((done) => server.listen(0, '127.0.0.1', () => done(server.address().port)));
 }
+
+test('pinnedTlsOptions: Pruefung gibt Fehler zurueck statt zu werfen', () => {
+  const opts = pinnedTlsOptions(BOX_TLS_CERTS);
+  assert.deepEqual(opts.ca, BOX_TLS_CERTS);
+  const fp = new X509Certificate(BOX_TLS_CERTS.at(-1)).fingerprint256;
+  assert.equal(opts.checkServerIdentity('203.0.113.5', { fingerprint256: fp }), undefined);
+  for (const cert of [undefined, {}, { fingerprint256: 'AA:BB' }]) {
+    const err = opts.checkServerIdentity('203.0.113.5', cert);
+    assert.ok(err instanceof Error);
+    assert.equal(err.code, 'ERR_BOX_TLS_NOT_PINNED');
+    assert.ok(!err.message.includes('203.0.113.5'));
+  }
+});
+
+test('Pinning am Fingerabdruck: Namens-Zertifikat ueber die Adresse', { skip: !hasOpenssl && 'openssl fehlt' }, async (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'box-tls-pin-'));
+  const named = makeNamed(dir, 'named');
+  const twin = makeNamed(dir, 'twin');
+  const ipCert = makePair(dir, 'ip');
+  const issuer = makeNamed(dir, 'issuer', { ca: true });
+  const child = makeSigned(dir, 'child', issuer);
+  rmSync(dir, { recursive: true, force: true });
+
+  const servers = [];
+  const serve = async (pair) => {
+    const s = https.createServer({ key: pair.key, cert: pair.cert }, (req, res) => { res.writeHead(200); res.end('ok'); });
+    servers.push(s);
+    return `https://127.0.0.1:${await listen(s)}`;
+  };
+  const agents = [];
+  const agentFor = (certs) => { const a = new https.Agent(pinnedTlsOptions(certs)); agents.push(a); return a; };
+  t.after(() => {
+    agents.forEach((a) => a.destroy());
+    servers.forEach((s) => { s.closeAllConnections(); s.close(); });
+  });
+
+  const namedUrl = await serve(named);
+  const twinUrl = await serve(twin);
+  const ipUrl = await serve(ipCert);
+  const childUrl = await serve(child);
+
+  await t.test('gepinntes Namens-Zertifikat: Verbindung ueber 127.0.0.1 klappt', async () => {
+    const res = await boxFetch(`${namedUrl}/`, { agent: agentFor([named.cert]) });
+    assert.equal(await res.text(), 'ok');
+  });
+
+  await t.test('Wechselphase: altes Adress- und neues Namens-Zertifikat beide gepinnt', async () => {
+    const agent = agentFor([ipCert.cert, named.cert]);
+    assert.equal(await (await boxFetch(`${ipUrl}/`, { agent })).text(), 'ok');
+    assert.equal(await (await boxFetch(`${namedUrl}/`, { agent })).text(), 'ok');
+  });
+
+  await t.test('gleicher Name, anderer Schluessel: abgelehnt', async () => {
+    await assert.rejects(boxFetch(`${twinUrl}/`, { agent: agentFor([named.cert]) }),
+      (err) => err.name === 'TypeError' && err.cause?.code === 'DEPTH_ZERO_SELF_SIGNED_CERT');
+  });
+
+  await t.test('von einem gepinnten Zertifikat unterschrieben, selbst nicht gepinnt: abgelehnt, ohne Adresse im Text', async () => {
+    await assert.rejects(boxFetch(`${childUrl}/`, { agent: agentFor([issuer.cert]) }), (err) => {
+      assert.equal(err.cause?.code, 'ERR_BOX_TLS_NOT_PINNED');
+      assert.ok(!String(err.cause?.message).includes('127.0.0.1'));
+      return true;
+    });
+  });
+
+  await t.test('nur `ca` ohne Fingerabdruck-Pruefung scheitert am Namen (darum pinnedTlsOptions)', async () => {
+    const plain = new https.Agent({ ca: [named.cert] });
+    agents.push(plain);
+    await assert.rejects(boxFetch(`${namedUrl}/`, { agent: plain }), (err) => err.cause?.code === 'ERR_TLS_CERT_ALTNAME_INVALID');
+  });
+});
 
 test('boxFetch: Pinning, Fehlerformen, Fristen und Wiederholung', { skip: !hasOpenssl && 'openssl fehlt' }, async (t) => {
   const dir = mkdtempSync(join(tmpdir(), 'box-tls-test-'));

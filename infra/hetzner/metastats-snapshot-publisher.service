@@ -18,7 +18,16 @@ TimeoutStopSec=120
 # Zuordnung Comp -> Grund-Comp (0109) vor den Listen, damit alles denselben Stand sieht.
 ExecStartPre=-/usr/bin/node scripts/build-comp-merges.mjs
 ExecStartPre=-/usr/bin/node scripts/precompute-comp-windows.mjs
-ExecStart=/usr/bin/node scripts/publish-snapshot-bundle.mjs --concurrency 2
+# Comp-Verlauf als Dateien je Region x Rang (22.11.2026), Endtag von der
+# Vorab-Rechnung. Eigene Frist von 10 min im Skript; "-": ein Fehler blockiert
+# den Publisher nicht, die Route rechnet dann live. Tageszeilen im StateDirectory.
+ExecStartPre=-/usr/bin/node scripts/publish-comp-trends.mjs
+# --concurrency 1 + Pausen im Skript (22.11.2026): mit 2 gleichzeitigen Abrufen
+# brachen abends 18-20 Uhr MEZ bis zu 59 Besucher-Anfragen je Stunde ab.
+ExecStart=/usr/bin/node scripts/publish-snapshot-bundle.mjs --concurrency 1
+# Vor dem Haertungs-Boden: apply-hardening-floor.mjs nimmt hinter dem Boden nur
+# die dort eingetragenen Ausnahmen an.
+StateDirectory=metastats-comp-trend
 StandardOutput=journal
 StandardError=journal
 Nice=10

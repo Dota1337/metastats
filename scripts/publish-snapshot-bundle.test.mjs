@@ -3,7 +3,23 @@
 // alles, was der Teil-Lauf nicht selbst publiziert hat, war weg.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeBaseError, patchFingerprint, reusableEntry, REUSE_MAX_AGE_MS, pinDataEnd } from './publish-snapshot-bundle.mjs';
+import { mergeBaseError, patchFingerprint, reusableEntry, REUSE_MAX_AGE_MS, pinDataEnd, pauseAfterFetch, fetchStats, PACE } from './publish-snapshot-bundle.mjs';
+
+test('Bremse: kurze Pause normal, nach langsamem Abruf so lange wie er dauerte (gedeckelt)', () => {
+  const p = { pauseMs: 250, slowMs: 8_000, slowPauseMaxMs: 20_000 };
+  assert.equal(pauseAfterFetch(3_000, p), 250);
+  assert.equal(pauseAfterFetch(8_000, p), 250);
+  assert.equal(pauseAfterFetch(8_001, p), 8_001);
+  assert.equal(pauseAfterFetch(45_000, p), 20_000);
+  // Standardwerte: Besucherfrist 8 s (app/lib/tft-supabase-reader.ts RPC_TIMEOUT_MS)
+  assert.deepEqual({ ...PACE }, { pauseMs: 250, slowMs: 8_000, slowPauseMaxMs: 20_000 });
+});
+
+test('Abrufzeiten: Median, p90, Anzahl ueber der Frist', () => {
+  assert.equal(fetchStats([]), null);
+  const s = fetchStats([100, 200, 300, 400, 500, 600, 700, 800, 900, 9_000], 8_000);
+  assert.deepEqual(s, { n: 10, p50: 600, p90: 9_000, slow: 1 });
+});
 
 const base = { mergeMode: true, manifestUrlSet: true, baseEntryCount: 700, allowEmptyBase: false };
 

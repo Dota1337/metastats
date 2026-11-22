@@ -91,6 +91,43 @@ const ENDPOINT_FILTER = (() => {
 })();
 const LISTING_ONLY = args.includes('--listing-only');
 const ALLOW_EMPTY_BASE = args.includes('--allow-empty-base');
+
+// Bremse (22.11.2026). Jeder Abruf der eigenen Routen ist eine schwere Abfrage
+// auf der Datenbank, an der auch die Besucher haengen (Detail: 1 + 4 parallele
+// Abfragen, app/api/tft/comps/route.ts). Mit 2 gleichzeitigen Abrufen brachen
+// abends 18-20 Uhr MEZ 49-59 Besucher-Anfragen je Stunde am 8-s-Limit ab.
+// Jetzt --concurrency 1 (Unit) plus eine Pause nach jedem Abruf; war der Abruf
+// langsamer als die Besucherfrist, ist die DB unter Last — dann so lange Pause,
+// wie er gedauert hat (hoechstens PUBLISH_SLOW_PAUSE_MS). Der Lauf dauert laenger.
+const envMs = (name, dflt) => {
+  const v = Number(process.env[name]);
+  return process.env[name] != null && Number.isFinite(v) && v >= 0 ? v : dflt;
+};
+export const PACE = Object.freeze({
+  pauseMs: envMs('PUBLISH_PAUSE_MS', 250),
+  slowMs: envMs('PUBLISH_SLOW_MS', 8_000),
+  slowPauseMaxMs: envMs('PUBLISH_SLOW_PAUSE_MS', 20_000),
+});
+/** Pause nach einem Abruf, der `ms` gedauert hat. */
+export function pauseAfterFetch(ms, pace = PACE) {
+  return ms > pace.slowMs ? Math.min(ms, pace.slowPauseMaxMs) : pace.pauseMs;
+}
+let _paceUntil = 0;
+const _fetchMs = [];
+async function waitForPace() {
+  const wait = _paceUntil - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+}
+function notePace(ms) {
+  _paceUntil = Math.max(_paceUntil, Date.now() + pauseAfterFetch(ms));
+}
+/** Abrufzeiten fuer das Journal: Anzahl, Median, p90, Anteil ueber der Besucherfrist. */
+export function fetchStats(list, slowMs = PACE.slowMs) {
+  if (!list.length) return null;
+  const s = [...list].sort((a, b) => a - b);
+  const at = (q) => s[Math.min(s.length - 1, Math.floor(q * s.length))];
+  return { n: s.length, p50: at(0.5), p90: at(0.9), slow: s.filter((x) => x > slowMs).length };
+}
 // Volle Tage (Migration 0095): Endtag E von Hand setzen (sonst pinDataEnd).
 const END_ARG = (() => {
   const i = args.indexOf('--end');
@@ -267,8 +304,20 @@ function ownApiHeaders(url) {
 }
 
 async function fetchPayload(url, attempt = 1) {
+  // Bremse nur fuer die eigenen Routen (DB-Last), nicht fuer den Blob-Speicher.
+  const own = url.startsWith(`${BASE}/api/`);
+  if (own) await waitForPace();
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 60_000);
+  const t0 = Date.now();
+  let paced = false;
+  const pace = () => {
+    if (!own || paced) return;
+    paced = true;
+    const ms = Date.now() - t0;
+    _fetchMs.push(ms);
+    notePace(ms);
+  };
   try {
     const res = await fetch(url, {
       signal: ctrl.signal,
@@ -279,6 +328,7 @@ async function fetchPayload(url, attempt = 1) {
       redirect: 'follow',
     });
     clearTimeout(t);
+    pace();
     if (!res.ok) {
       // Hoechstens zwei Wiederholungen (2026-10-02, vorher drei): unter
       // Vollauslastung der DB ist jede Wiederholung eine weitere schwere
@@ -301,6 +351,7 @@ async function fetchPayload(url, attempt = 1) {
     return await res.json();
   } catch (err) {
     clearTimeout(t);
+    pace();
     if (attempt < 2 && err?.name === 'AbortError') {
       return fetchPayload(url, attempt + 1);
     }
@@ -996,6 +1047,11 @@ async function main() {
   }
 
   console.log(`[${ts()}] DONE: uploaded=${totalUploaded}, reused=${totalReused}, skipped=${totalSkipped}, errors=${totalErrors}, optionalErrors=${totalOptionalErrors}, totalBytes=${(totalBytes / 1024 / 1024).toFixed(2)} MB`);
+  const fst = fetchStats(_fetchMs);
+  if (fst) {
+    console.log(`[${ts()}] Abrufzeiten eigene Routen: n=${fst.n}, Median ${fst.p50} ms, p90 ${fst.p90} ms, `
+      + `ueber ${PACE.slowMs} ms: ${fst.slow} (Bremse ${PACE.pauseMs} ms, lang bis ${PACE.slowPauseMaxMs} ms, conc=${CONCURRENCY})`);
+  }
 
   // --- Exit-Semantik --------------------------------------------------------
   // Vorher: JEDER Fehler -> exit 1. Folge: der Service stand dauerhaft auf

@@ -13,26 +13,20 @@ import https from 'node:https';
 import { X509Certificate } from 'node:crypto';
 import { BOX_TLS_CERTS, BOX_TLS_NAME, BOX_TLS_PORT, boxFetch, pinnedTlsOptions } from './box-tls.mjs';
 
-// Altes Zertifikat (SAN = Adresse) bis zum Schluesseltausch auf der Box; wird
-// danach aus BOX_TLS_CERTS UND hier entfernt.
-const RETIRING = new Set(['6E:6D:4A:7E:56:BF:5C:38:CF:C2:C5:CA:49:6E:3C:94:EC:45:24:D9:C5:7D:BE:41:5F:A3:FF:27:EE:5D:DC:F4']);
-
+// Jedes gepinnte Zertifikat: auf den Namen, nie auf die Adresse (das Repo ist
+// oeffentlich), kein CA, und noch lange genug gueltig.
 test('BOX_TLS_CERTS: auf BOX_TLS_NAME, ohne Adresse, kein CA, noch mindestens 60 Tage', () => {
   assert.ok(BOX_TLS_CERTS.length >= 1);
   assert.equal(BOX_TLS_PORT, 8443);
   assert.equal(BOX_TLS_NAME, 'box.invalid');
-  let current = 0;
   for (const pem of BOX_TLS_CERTS) {
     const x = new X509Certificate(pem);
     const left = (new Date(x.validTo).getTime() - Date.now()) / 86_400_000;
     assert.ok(left > 60, `Zertifikat laeuft in ${Math.round(left)} Tagen ab — Wechsel siehe box-tls.mjs`);
-    if (RETIRING.has(x.fingerprint256)) continue;
-    current += 1;
     assert.equal(x.subjectAltName, `DNS:${BOX_TLS_NAME}`);
     assert.equal(x.subject.trim(), `CN=${BOX_TLS_NAME}`);
     assert.equal(x.ca, false);
   }
-  assert.ok(current >= 1, 'kein Zertifikat auf BOX_TLS_NAME gepinnt');
 });
 
 let hasOpenssl = true;

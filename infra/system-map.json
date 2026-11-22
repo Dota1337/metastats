@@ -642,6 +642,7 @@
       "scripts": [
         "scripts/build-comp-merges.mjs",
         "scripts/precompute-comp-windows.mjs",
+        "scripts/publish-comp-trends.mjs",
         "scripts/publish-snapshot-bundle.mjs"
       ],
       "After": [
@@ -1002,6 +1003,7 @@
       "scripts": [
         "scripts/publish-route-mirrors.mjs",
         "scripts/lib/explorer-unit-warm.mjs",
+        "scripts/publish-comp-trends.mjs",
         "scripts/lib/tft-player-scoring.mjs",
         "scripts/lib/tft-patch-day.mjs"
       ],
@@ -1585,7 +1587,8 @@
       "comp-merge/set-axis",
       "snapshot-publisher/comp-list-precomputed",
       "snapshot-publisher/item-list-precomputed",
-      "snapshot/manifest-frische"
+      "snapshot/manifest-frische",
+      "snapshot/comp-trend-frische"
     ],
     "metastats-marketvalue-snapshot.service": [
       "marketvalue/hetzner-snapshots",

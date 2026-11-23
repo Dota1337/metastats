@@ -19,13 +19,19 @@
 // - Mehr als 10 % Fehler je Spiegel → Exit 1 und index.json bleibt alt
 //   (Frische-Vertrag mirror/<name>/index-frische schlaegt dann an).
 //
-// Aufruf: node scripts/publish-route-mirrors.mjs --group=rising|leaderboard|regions|ligen [--dry-run]
+// - --timer-skip-if-fresh=<min>: ein Start durch einen Timer (TRIGGER_UNIT)
+//   endet sofort, wenn alle index.json der Gruppe juenger sind — fuer Gruppen,
+//   deren Timer nur Ersatzweg hinter einem OnSuccess= ist
+//   (scripts/lib/mirror-timer-skip.mjs). Schalter ROUTE_MIRROR_TIMER_SKIP=0.
+//
+// Aufruf: node scripts/publish-route-mirrors.mjs --group=rising|leaderboard|regions|ligen [--dry-run] [--timer-skip-if-fresh=240]
 // Env: BLOB_READ_WRITE_TOKEN (nicht bei --dry-run), SNAPSHOT_PUBLISHER_TOKEN
 // (Publisher-Vorrecht; bei --dry-run ohne ihn wie ein Besucher). Optional ROUTE_MIRROR_SITE
 // (Standard https://www.metastats.gg). Liest bewusst keine .env.local: lokal nur
 // --dry-run, geschrieben wird nur auf der Box.
-import { put } from '@vercel/blob';
+import { list, put } from '@vercel/blob';
 import { ACTIVE_REGIONS } from './lib/active-regions.mjs';
+import { isTimerStart, parseSkipMinutes, timerSkipDecision } from './lib/mirror-timer-skip.mjs';
 import {
   ROUTE_MIRRORS, ROUTE_MIRROR_GROUPS, isValidRouteMirror, routeMirrorFetchPath, routeMirrorIndexPath,
   routeMirrorKey, routeMirrorNames, routeMirrorPath, routeMirrorVariants,
@@ -144,12 +150,41 @@ async function publishMirror(name, runId, set) {
   return true;
 }
 
+// Alter je index.json der Gruppe; null, wenn sie fehlt oder nicht lesbar ist
+// (dann laeuft der Spiegel — ein Abruffehler darf nie zum Auslassen fuehren).
+async function indexAges(names) {
+  const out = [];
+  for (const name of names) {
+    const path = routeMirrorIndexPath(name);
+    let ageMs = null;
+    try {
+      const page = await list({ prefix: path, limit: 10, token: TOKEN, abortSignal: AbortSignal.timeout(15_000) });
+      const blob = page.blobs.find((b) => b.pathname === path);
+      const at = blob ? new Date(blob.uploadedAt).getTime() : NaN;
+      if (Number.isFinite(at)) ageMs = Date.now() - at;
+    } catch (e) {
+      log(`${name}: Alter von index.json nicht lesbar (${e.message})`);
+    }
+    out.push({ name, ageMs });
+  }
+  return out;
+}
+
 async function main() {
   const runId = Date.now().toString(36);
+  const names = routeMirrorNames(GROUP);
+  const skipMinutes = parseSkipMinutes(args);
+  if (skipMinutes && isTimerStart() && !DRY_RUN && process.env.ROUTE_MIRROR_TIMER_SKIP !== '0') {
+    const decision = timerSkipDecision({ minutes: skipMinutes, ages: await indexAges(names) });
+    if (decision.skip) {
+      log(`Timer-Lauf ausgelassen: ${decision.reason}`);
+      return;
+    }
+    log(`Timer-Lauf rechnet: ${decision.reason}`);
+  }
   // Ohne angenommenes Vorrecht kaeme die eigene Datei zurueck und wuerde
   // eingefroren neu hochgeladen (app/lib/snapshot-publisher.mjs).
   if (PUB_TOKEN || !DRY_RUN) await assertPublisherAccepted(SITE, PUB_TOKEN);
-  const names = routeMirrorNames(GROUP);
   const set = names.some(n => ROUTE_MIRRORS[n].tftSet) ? await liveTftSet(runId) : null;
   let allOk = true;
   for (const name of names) {

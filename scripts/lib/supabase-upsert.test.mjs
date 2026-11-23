@@ -89,3 +89,25 @@ test('isRetriable: Netzfehler ja, Programmfehler nein', () => {
   assert.equal(isRetriable(Object.assign(new Error('x'), { status: 409 })), false);
   assert.equal(isRetriable(new TypeError('rows.slice is not a function')), false);
 });
+
+test('onBatchDone: je angekommenem Paket mit Zeilenbereich', async () => {
+  const h = harness([ok(), timeout, ok(), ok()]);
+  const done = [];
+  await upsertBatches({ ...h.opts, rows: rows(450), onBatchDone: (x) => done.push(x) });
+  assert.deepEqual(done, [{ index: 0, from: 0, to: 200 }, { index: 1, from: 200, to: 400 }, { index: 2, from: 400, to: 450 }]);
+});
+
+test('onBatchDone: Frist bei Paket 3 von 5 → nur Pakete 1 und 2 gemeldet', async () => {
+  const h = harness([ok(), ok(), http(503)], { deadline: 10_000 });
+  const done = [];
+  await assert.rejects(upsertBatches({ ...h.opts, rows: rows(1000), onBatchDone: (x) => done.push(x.index) }),
+    /Frist abgelaufen: tbl 2 von 5 Paketen/);
+  assert.deepEqual(done, [0, 1]);
+});
+
+test('onBatchDone: 400 im ersten Paket → nichts gemeldet', async () => {
+  const h = harness([http(400, 'bad')]);
+  const done = [];
+  await assert.rejects(upsertBatches({ ...h.opts, rows: rows(10), onBatchDone: (x) => done.push(x) }));
+  assert.deepEqual(done, []);
+});

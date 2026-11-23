@@ -54,12 +54,27 @@
  * alten Sets — der Peak des alten Sets bliebe auf dem Stand des letzten
  * regulaeren Laufs stehen. 14 Tage sind die Nachlaufzeit, in der der volle
  * Lauf das jede Nacht nachholt, auch wenn der Set-Bump-Tag selbst ausfaellt.
+ *
+ * Seit 23.11.2026 rechnet --auto das laufende Set nur noch einmal am Tag ueber
+ * das ganze 7-Tage-Fenster, sonst nur fuer die Spieler, deren Snapshot-Zeilen
+ * der Marktwert-Sync seitdem neu oder geaendert nach Supabase geschickt hat
+ * (Warteliste im gemeinsamen Zustandsordner, scripts/lib/mv-peaks-pending.mjs).
+ * Fuer diese Spieler ist die Rechnung dieselbe (cand = altes cand ∩ Liste),
+ * alle anderen haetten unveraenderte Eingaben. Stimmt an der Absprache etwas
+ * nicht, laeuft das Fenster wie bisher. Schalter: PEAKS_FROM_PENDING=0.
+ * Geschrieben wird nur noch bei echter Aenderung (DO UPDATE … WHERE); der
+ * LoL-Durchgang bleibt, wie er ist (Vertrag lol-marketvalue/peaks braucht
+ * updated_at bei jeder Beruehrung).
  */
 
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import pg from 'pg';
 import { pgStatementTimeout } from './lib/pg-url.mjs';
+import { ownStateDir, removeFiles } from './lib/state-dir.mjs';
+import {
+  MV_SYNC_STATE_NAME, decidePeaksMode, readHeartbeat, readPending, readWindowMark, writeWindowMark,
+} from './lib/mv-peaks-pending.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -143,12 +158,25 @@ const keepIfLower = (col) =>
 //       snapshot_count vom Laufzeitpunkt abhaengig statt idempotent. Der
 //       Set-Filter fehlte in der alten SQL — dort zaehlte sie ueber Sets hinweg.
 // Ueberall nur bewertete Zeilen: "nicht bewertet"-Tage sind kein Snapshot.
-const SQL = `
+// withList: cand zusaetzlich auf die Spieler der Warteliste ($4) beschraenkt —
+// cov und peak haengen nur an cand, fuer diese Spieler ist das Ergebnis also
+// dasselbe wie im Fenster.
+// WHERE am DO UPDATE: nur schreiben, wenn sich etwas aendert. Die Spalten aus
+// keepIfLower und frozen_at aendern sich nur bei einem hoeheren final_value,
+// das deckt die erste Stelle des Vergleichs ab; is distinct from behandelt
+// NULL in first/last_snapshot_date richtig.
+// listFilter in cov/peak aendert nichts am Ergebnis (cand ⊆ Liste), gibt dem
+// Planer aber die Indexbedingung: gemessen 23.11.2026 (nur lesend, 15.584
+// Spieler) 106 s und 204 Tsd. gelesene Bloecke statt 207 s / 554 Tsd. fuer das
+// ganze Fenster; ohne den Filter las die Liste trotzdem das ganze Set (177 s).
+const listFilter = ' and s.puuid = any($4::text[])';
+const peaksSql = (withList) => `
 with cand as (
   select distinct puuid
     from tft_player_marketvalue_snapshots
    where set_number = $1 and sample_size >= $2 and rated
-     and ($3::date is null or snapshot_date >= $3::date)
+     and ($3::date is null or snapshot_date >= $3::date)${withList ? `
+     and puuid = any($4::text[])` : ''}
 ),
 cov as (
   select s.puuid,
@@ -157,7 +185,7 @@ cov as (
          max(s.snapshot_date) as last_snapshot_date
     from tft_player_marketvalue_snapshots s
     join cand c on c.puuid = s.puuid
-   where s.set_number = $1 and s.rated
+   where s.set_number = $1 and s.rated${withList ? listFilter : ''}
    group by s.puuid
 ),
 peak as (
@@ -168,7 +196,7 @@ peak as (
     from tft_player_marketvalue_snapshots s
     join cand c on c.puuid = s.puuid
    where s.set_number = $1 and s.sample_size >= $2 and s.rated
-     and ($3::date is null or s.snapshot_date >= $3::date)
+     and ($3::date is null or s.snapshot_date >= $3::date)${withList ? listFilter : ''}
    order by s.puuid, s.final_value desc, s.snapshot_date asc
 )
 insert into ${T} (
@@ -193,6 +221,11 @@ on conflict (puuid, set_number) do update set
   snapshot_count      = excluded.snapshot_count,
   first_snapshot_date = least(excluded.first_snapshot_date, ${T}.first_snapshot_date),
   last_snapshot_date  = greatest(excluded.last_snapshot_date, ${T}.last_snapshot_date)
+where (greatest(excluded.final_value, ${T}.final_value), excluded.snapshot_count,
+       least(excluded.first_snapshot_date, ${T}.first_snapshot_date),
+       greatest(excluded.last_snapshot_date, ${T}.last_snapshot_date))
+      is distinct from
+      (${T}.final_value, ${T}.snapshot_count, ${T}.first_snapshot_date, ${T}.last_snapshot_date)
 `;
 
 // Bewusst kopiert statt importiert: dieselbe Funktion steht bereits in
@@ -269,40 +302,72 @@ async function runLolPass(since) {
   console.log(`[lol-peaks] ${res.rowCount} Zeilen beruehrt, ${before.rows[0].n} -> ${after.rows[0].n} Zeilen`);
 }
 
-// Ein Durchgang. since = null bedeutet "ganzes Set".
-async function runPass(set, since) {
-  console.log(`=== Marktwert-Peaks Set ${set} (${since ? `ab ${since}` : 'ganzes Set'}, min sample ${MIN_SAMPLE}) ===`);
+// Ein Durchgang. since = null bedeutet "ganzes Set"; list = nur diese Spieler.
+async function runPass(set, since, list = null) {
+  const scope = list ? `, ${list.length} Spieler aus der Warteliste` : '';
+  console.log(`=== Marktwert-Peaks Set ${set} (${since ? `ab ${since}` : 'ganzes Set'}${scope}, min sample ${MIN_SAMPLE}) ===`);
   const before = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [set]);
+  const params = list ? [set, MIN_SAMPLE, since, list] : [set, MIN_SAMPLE, since];
 
   if (DRY_RUN) {
     const c = await pool.query(
       `select count(distinct puuid)::int as n
          from tft_player_marketvalue_snapshots
         where set_number = $1 and sample_size >= $2 and rated
-          and ($3::date is null or snapshot_date >= $3::date)`,
-      [set, MIN_SAMPLE, since],
+          and ($3::date is null or snapshot_date >= $3::date)${list ? ' and puuid = any($4::text[])' : ''}`,
+      params,
     );
     console.log(`[dry-run] ${c.rows[0].n} Kandidaten, ${before.rows[0].n} Zeilen bereits vorhanden`);
     return;
   }
 
   const t0 = process.hrtime.bigint();
-  const res = await pool.query(SQL, [set, MIN_SAMPLE, since]);
+  const res = await pool.query(peaksSql(Boolean(list)), params);
   const ms = Number(process.hrtime.bigint() - t0) / 1e6;
   const after = await pool.query(`select count(*)::int as n from ${T} where set_number = $1`, [set]);
-  console.log(`[peaks] ${res.rowCount} Zeilen beruehrt in ${Math.round(ms)} ms`);
+  console.log(`[peaks] ${res.rowCount} Zeilen neu oder geaendert in ${Math.round(ms)} ms`);
   console.log(`[peaks] Set ${set}: ${before.rows[0].n} -> ${after.rows[0].n} Zeilen`);
+}
+
+// Laufendes Set im Timer-Modus: Fenster, Warteliste oder nichts zu tun.
+// Wartelisten erst nach dem gelungenen Durchgang loeschen, und nur die beim
+// Start gelesenen — eine waehrenddessen geschriebene bleibt fuer den naechsten.
+async function runCurrentSetAuto() {
+  const stateDir = ownStateDir(MV_SYNC_STATE_NAME);
+  const pending = stateDir ? readPending(stateDir) : null;
+  const decision = decidePeaksMode({
+    enabled: process.env.PEAKS_FROM_PENDING !== '0',
+    stateDir,
+    heartbeat: stateDir ? readHeartbeat(stateDir) : null,
+    windowMark: stateDir ? readWindowMark(stateDir) : null,
+    set: SET,
+    pending,
+  });
+  console.log(`[peaks] Set ${SET}: ${decision.mode === 'window' ? 'Fenster-Lauf' : decision.mode === 'pending' ? 'nur Warteliste' : 'uebersprungen'} — ${decision.reason}`);
+  if (decision.mode === 'window') await runPass(SET, SINCE);
+  else if (decision.mode === 'pending') await runPass(SET, SINCE, [...pending.puuids]);
+  if (!stateDir || DRY_RUN) return;
+  if (decision.mode === 'window') {
+    writeWindowMark(stateDir, SET, { onError: (err) => console.warn(`[peaks] Fenster-Marke nicht geschrieben: ${err.message}`) });
+  }
+  const n = removeFiles(pending.files);
+  if (n) console.log(`[peaks] ${n} Warteliste(n) abgearbeitet`);
 }
 
 async function main() {
   // Reihenfolge im Auto-Modus: laufendes Set zuerst. Ein Fehler im
   // Nachlauf-Durchgang darf den taeglichen Normalbetrieb nicht verhindern.
-  const passes = LOL_ONLY ? [] : [{ set: SET, since: SINCE }];
+  // Die Warteliste gilt nur im Timer-Modus mit dem normalen 7-Tage-Fenster;
+  // --full/--since rechnen wie bisher.
+  const pendingAware = AUTO && !FULL && !args.includes('--since');
+  const passes = [];
+  if (!LOL_ONLY && !pendingAware) passes.push({ set: SET, since: SINCE });
   if (AUTO && !LOL_ONLY) {
     for (const ended of recentlyEndedSets()) {
       if (ended !== SET) passes.push({ set: ended, since: null });
     }
   }
+  if (!LOL_ONLY && pendingAware) await runCurrentSetAuto();
   for (const p of passes) await runPass(p.set, p.since);
   if (!NO_LOL) await runLolPass(SINCE);
   await pool.end();

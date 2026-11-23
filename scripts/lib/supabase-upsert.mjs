@@ -36,6 +36,10 @@ const secs = (ms) => `${Math.round(ms / 1000)} s`;
  *
  * Fehlertexte beginnen weiter mit "Supabase upsert <table> failed: HTTP …",
  * damit Aufrufer bekannte Antworten (z. B. fehlende Tabelle) erkennen.
+ *
+ * onBatchDone({ index, from, to }) laeuft nach jedem angekommenen Paket
+ * (rows[from..to) ist auf Supabase) — auch wenn ein spaeteres Paket scheitert.
+ * Der Marktwert-Sync merkt sich damit, was wirklich angekommen ist.
  */
 export async function upsertBatches({
   url, key, table, rows, onConflict,
@@ -47,6 +51,7 @@ export async function upsertBatches({
   fetchImpl = fetch,
   sleep = defaultSleep,
   now = Date.now,
+  onBatchDone = null,
 }) {
   const total = Math.ceil(rows.length / batchSize);
   const endpoint = `${url}/rest/v1/${table}?on_conflict=${onConflict}`;
@@ -79,6 +84,7 @@ export async function upsertBatches({
           throw err;
         }
         if (attempt > 0) log(`[${table}] Paket ${b + 1}/${total} angekommen im Versuch ${attempt + 1}`);
+        if (onBatchDone) onBatchDone({ index: b, from: b * batchSize, to: Math.min(rows.length, (b + 1) * batchSize) });
         break;
       } catch (err) {
         const reason = err.status != null ? `HTTP ${err.status}` : err.message;

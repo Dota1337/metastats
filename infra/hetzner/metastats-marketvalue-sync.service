@@ -20,6 +20,12 @@ TimeoutStartSec=1800
 ExecStart=/usr/bin/node scripts/sync-marketvalue-to-supabase.mjs --window 3
 StandardOutput=journal
 StandardError=journal
+# Zustand (seit 23.11.2026): Fingerabdruecke des Gesendeten → nur neue oder
+# geaenderte Zeilen raus, jede Zeile einmal am Tag erneut. Derselbe Ordner
+# gehoert auch metastats-marketvalue-peaks.service: der Sync legt dort die
+# Warteliste fuer die Peaks ab (scripts/lib/mv-peaks-pending.mjs). Rueckbau:
+# MV_SYNC_DIFF=0 in /etc/metastats-crawler/env oder den Ordner loeschen.
+StateDirectory=metastats-mv-sync
 
 # --- BEGIN metastats-hardening-floor ---
 NoNewPrivileges=yes

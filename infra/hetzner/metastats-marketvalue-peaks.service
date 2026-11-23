@@ -1,7 +1,11 @@
 [Unit]
 Description=metastats Marktwert-Hoechstwerte je TFT-Set und LoL-Split festschreiben
 Wants=network-online.target
-After=network-online.target
+# After= auf den Sync: beide Timer sind Persistent= und koennen nach einem
+# Neustart der Box gleichzeitig feuern — dann wartet Peaks, bis der Sync seine
+# Warteliste geschrieben hat. After= ordnet nur, ein gescheiterter Sync haelt
+# Peaks nicht auf.
+After=network-online.target metastats-marketvalue-sync.service
 # Kein OnSuccess= und keine Kette, gleiche Begruendung wie bei
 # metastats-marketvalue-sync.service: der Lauf muss auch dann stattfinden,
 # wenn der Sync davor abgebrochen ist.
@@ -11,16 +15,21 @@ Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
 # Ein Durchgang ist ein einziges INSERT ... ON CONFLICT ueber die Snapshots
-# eines Sets; der volle Set-17-Lauf brauchte gemessen wenige Sekunden. 30 min
+# eines Sets. Gemessen 17.–23.11.2026: Ø 137 s fuer das 7-Tage-Fenster. 30 min
 # ist Puffer fuer den Fall, dass Supabase gerade langsam ist.
 TimeoutStartSec=1800
-# --auto: laufendes Set im 7-Tage-Fenster, danach jedes Set, dessen Ende
-# hoechstens 14 Tage zurueckliegt, einmal ueber das ganze Set. Damit wandert
-# der angezeigte Hoechstwert beim Set-Wechsel von selbst weiter, ohne dass ein
-# einzelner Stichtags-Lauf gelingen muss.
+# --auto: laufendes Set einmal am Tag im 7-Tage-Fenster, sonst nur fuer die
+# Spieler aus der Warteliste des Syncs (seit 23.11.2026, Schalter
+# PEAKS_FROM_PENDING=0), danach jedes Set, dessen Ende hoechstens 14 Tage
+# zurueckliegt, einmal ueber das ganze Set. Damit wandert der angezeigte
+# Hoechstwert beim Set-Wechsel von selbst weiter, ohne dass ein einzelner
+# Stichtags-Lauf gelingen muss.
 ExecStart=/usr/bin/node scripts/freeze-marketvalue-peaks.mjs --auto
 StandardOutput=journal
 StandardError=journal
+# Gemeinsam mit metastats-marketvalue-sync.service (Warteliste + Herzschlag).
+# Fehlt der Ordner oder ist der Herzschlag alt, rechnet Peaks das Fenster.
+StateDirectory=metastats-mv-sync
 
 # --- BEGIN metastats-hardening-floor ---
 NoNewPrivileges=yes

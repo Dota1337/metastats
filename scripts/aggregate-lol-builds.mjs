@@ -12,7 +12,11 @@
  *
  * Jeder Lauf rechnet die zwei neuesten Patches der Rohablage komplett neu und
  * ersetzt sie auf Supabase in einer Transaktion (loeschen + einfuegen) — die
- * Seite sieht also nie einen halben Stand.
+ * Seite sieht also nie einen halben Stand. Seit 23.11.2026 nur, wenn sich das
+ * Ergebnis geaendert hat oder das letzte Schreiben 20 h zurueckliegt
+ * (scripts/lib/lol-builds-skip.mjs; Zustand in StateDirectory=metastats-lol-builds,
+ * ohne den Ordner wird wie bisher immer geschrieben). Schalter:
+ * LOL_BUILDS_SKIP_UNCHANGED=0. Die Champion-Datei entsteht weiter jedes Mal.
  *
  * Im selben Lesezeiger entstehen die Champion-Zahlen der Liste /champions und
  * der LoL-Startseite (EUW): Spiele, Siege, K/D/A, Bans je Patch + Rang, Rollen.
@@ -31,10 +35,12 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import pg from 'pg';
 import { put } from '@vercel/blob';
 import { pgStatementTimeout } from './lib/pg-url.mjs';
+import { ownStateDir, readJsonOrNull, writeJsonAtomic } from './lib/state-dir.mjs';
+import { patchRowsHash, shouldSkipWrite } from './lib/lol-builds-skip.mjs';
 
 import { bootIds, fetchItemData, finishedItemIds, latestDdragonVersion, classifyInventory, stratumOf } from './lib/lol-items.mjs';
 import {
@@ -314,6 +320,12 @@ async function main() {
   const extras = await hasRawExtras();
   const champPatches = [];
   let writeFailed = false;
+  // Zustand nur mit eigenem StateDirectory (Unit); Handlaeufe schreiben immer.
+  const stateDir = process.env.LOL_BUILDS_SKIP_UNCHANGED === '0' ? null : ownStateDir('metastats-lol-builds');
+  const statePath = stateDir ? join(stateDir, 'written.json') : null;
+  const prev = statePath ? readJsonOrNull(statePath) : null;
+  const written = prev?.v === 1 && prev.patches && typeof prev.patches === 'object' ? prev.patches : {};
+  const nextWritten = {};
   for (const p of patches) {
     const patch = `${p.patch_major}.${p.patch_minor}`;
     const t0 = Date.now();
@@ -323,15 +335,27 @@ async function main() {
     const games = rows.filter((r) => r[3] === 'total').reduce((s, r) => s + r[6], 0);
     log(`${p.region} ${patch}: ${participants} Teilnehmer, ${games} gezaehlt, ${rows.length} Zeilen (${Math.round((Date.now() - t0) / 1000)} s)`);
     if (DRY_RUN || !rows.length) continue;
+    const sk = `${p.region}|${patch}`;
+    const hash = statePath ? patchRowsHash(rows) : null;
+    if (statePath && shouldSkipWrite(written[sk], hash)) {
+      nextWritten[sk] = written[sk];
+      log(`${p.region} ${patch}: unveraendert seit ${written[sk].writtenAt}, Supabase-Schreiben uebersprungen.`);
+      continue;
+    }
     // Ein Supabase-Fehler stoppt weder den naechsten Patch noch die
     // Champion-Datei; der Exit-Code meldet ihn trotzdem (kein OnSuccess).
     try {
       await writePatch(p.region, patch, rows);
       log(`${p.region} ${patch}: auf Supabase ersetzt.`);
+      if (statePath) nextWritten[sk] = { hash, writtenAt: new Date().toISOString() };
     } catch (err) {
       writeFailed = true;
       log(`FEHLER ${p.region} ${patch}: Supabase-Schreiben gescheitert: ${err.message}`);
     }
+  }
+  // Erst nach den Commits; Patches ausserhalb der zwei neuesten fallen heraus.
+  if (statePath && !DRY_RUN) {
+    writeJsonAtomic(statePath, { v: 1, patches: nextWritten }, (err) => log(`Zustand nicht gespeichert: ${err.message}`));
   }
 
   if (champPatches.length) {

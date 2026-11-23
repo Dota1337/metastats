@@ -11,13 +11,26 @@
  *   node scripts/sync-marketvalue-to-supabase.mjs
  *   node scripts/sync-marketvalue-to-supabase.mjs --date 2026-05-14
  *   node scripts/sync-marketvalue-to-supabase.mjs --region euw1
+ *   node scripts/sync-marketvalue-to-supabase.mjs --full   # alles senden, Zustand neu aufbauen
+ *
+ * Nur Geaendertes (seit 23.11.2026, scripts/lib/mv-sync-diff.mjs): laeuft die
+ * Unit mit StateDirectory=metastats-mv-sync, gehen nur neue oder geaenderte
+ * Zeilen raus, plus jede Zeile einmal am Tag. Ohne diesen Ordner (Handlauf,
+ * Kind von crawl-all-regions.mjs) wird wie bisher alles gesendet. Danach
+ * Warteliste + Herzschlag fuer die Peaks (scripts/lib/mv-peaks-pending.mjs).
+ * Schalter: MV_SYNC_DIFF=0 in /etc/metastats-crawler/env sendet wieder alles.
  */
 
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import pg from 'pg';
 import { assertContracts } from './lib/contracts.mjs';
 import { upsertBatches } from './lib/supabase-upsert.mjs';
+import { ownStateDir, readJsonOrNull, writeJsonAtomic } from './lib/state-dir.mjs';
+import {
+  FP_MAX_AGE_MS, loadState, pruneState, recordSent, rowFingerprint, rowKey, selectChanged, targetId,
+} from './lib/mv-sync-diff.mjs';
+import { MV_SYNC_STATE_NAME, writeHeartbeat, writePending } from './lib/mv-peaks-pending.mjs';
 
 const args = process.argv.slice(2);
 const arg = (k, def) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : def; };
@@ -70,10 +83,62 @@ const BATCH = 200;
 // nach 25 min mit "X von Y Paketen" enden als ohne Meldung abgeschossen werden.
 const DEADLINE = Date.now() + 25 * 60_000;
 
-async function supaUpsert(table, rows, onConflict) {
-  if (rows.length === 0) return;
-  // Wiederholung bei Timeout/Netz/5xx (Fehlschlaege 05.–07.10. um 19:15 UTC).
-  await upsertBatches({ url: SUPA_URL, key: SUPA_KEY, table, rows, onConflict, batchSize: BATCH, deadline: DEADLINE });
+const FULL = args.includes('--full');
+const STATE_DIR = ownStateDir(MV_SYNC_STATE_NAME);
+const DIFF = Boolean(STATE_DIR) && !FULL && process.env.MV_SYNC_DIFF !== '0';
+// Aufraeumen nur im Normallauf: mit --region/--date/--since sieht der Lauf nur
+// einen Ausschnitt, die uebrigen Eintraege muessen bleiben.
+const UNFILTERED = !REGION_FILTER && !args.includes('--date') && !SINCE;
+const TARGET = targetId(SUPA_URL);
+// Spieler, deren Snapshot-Zeilen neu/geaendert bei Supabase ankamen → Peaks.
+const deliveredPlayers = new Set();
+const sent = { snapshots: 0, season_stats: 0 };
+
+/**
+ * Upsert mit Wiederholung bei Timeout/Netz/5xx (Fehlschlaege 05.–07.10. um
+ * 19:15 UTC). Mit Zustandsordner nur neue/geaenderte Zeilen; der Zustand
+ * nimmt nur angekommene Pakete auf und wird auch nach "Frist abgelaufen"
+ * gespeichert, damit der naechste Lauf nur den Rest schickt.
+ */
+async function supaUpsert({ label, table, rows, onConflict, keyCols, omit = [], onNew }) {
+  if (!STATE_DIR) {
+    if (rows.length) {
+      await upsertBatches({ url: SUPA_URL, key: SUPA_KEY, table, rows, onConflict, batchSize: BATCH, deadline: DEADLINE });
+    }
+    sent[label] = rows.length;
+    return;
+  }
+  const path = join(STATE_DIR, `fp-${label}.json`);
+  const { state, reason } = loadState(readJsonOrNull(path), TARGET);
+  // Ohne Diff (--full, Schalter) gilt jeder Eintrag als abgelaufen: alles raus,
+  // der Zustand wird trotzdem neu eingetragen.
+  const sel = selectChanged(rows, state, {
+    keyOf: (r) => rowKey(r, keyCols),
+    fpOf: (r) => rowFingerprint(r, omit),
+    maxAgeMs: DIFF ? FP_MAX_AGE_MS : 0,
+  });
+  const c = sel.counts;
+  console.log(`[${label}] ${c.total} im Fenster: ${c.fresh} neu, ${c.changed} geaendert, ${c.expired} taeglich erneut, `
+    + `${c.unchanged} unveraendert → ${sel.send.length} senden${DIFF ? '' : ' (alles: --full oder MV_SYNC_DIFF=0)'}${reason ? ` [${reason}]` : ''}`);
+  // Leerer Zustand oder Komplett-Senden: Sendezeiten verteilen, sonst liefe
+  // alles gleichzeitig ab (siehe recordSent).
+  const spreadMs = reason || !DIFF ? FP_MAX_AGE_MS : 0;
+  try {
+    if (sel.send.length) {
+      await upsertBatches({
+        url: SUPA_URL, key: SUPA_KEY, table, rows: sel.send, onConflict, batchSize: BATCH, deadline: DEADLINE,
+        onBatchDone: ({ from, to }) => {
+          recordSent(state, sel.meta.slice(from, to), Date.now(), spreadMs);
+          sent[label] += to - from;
+          if (onNew) for (let i = from; i < to; i++) if (sel.meta[i][2]) onNew(sel.send[i]);
+        },
+      });
+    }
+  } finally {
+    const pruned = UNFILTERED ? pruneState(state, sel.seen) : 0;
+    const ok = writeJsonAtomic(path, state, (err) => console.warn(`[${label}] Zustand nicht gespeichert: ${err.message}`));
+    if (ok && pruned) console.log(`[${label}] ${pruned} alte Eintraege aus dem Zustand entfernt`);
+  }
 }
 
 async function syncSnapshots() {
@@ -109,8 +174,12 @@ async function syncSnapshots() {
       ? row.snapshot_date.toISOString().slice(0, 10)
       : row.snapshot_date,
   }));
-  await supaUpsert('tft_player_marketvalue_snapshots', rows, 'puuid,region,snapshot_date');
-  console.log(`[snapshots] pushed ${rows.length} → Supabase`);
+  await supaUpsert({
+    label: 'snapshots', table: 'tft_player_marketvalue_snapshots', rows,
+    onConflict: 'puuid,region,snapshot_date', keyCols: ['puuid', 'region', 'snapshot_date'],
+    onNew: (row) => deliveredPlayers.add(row.puuid),
+  });
+  console.log(`[snapshots] pushed ${sent.snapshots} → Supabase`);
 }
 
 async function syncSeasonStats() {
@@ -130,22 +199,43 @@ async function syncSeasonStats() {
        ${where}`,
     params,
   );
-  console.log(`[season_stats] ${r.rows.length} rows updated since ${DATE}`);
-  await supaUpsert('tft_player_season_stats', r.rows, 'puuid,region,set_number');
-  console.log(`[season_stats] pushed ${r.rows.length} → Supabase`);
+  console.log(`[season_stats] ${r.rows.length} rows updated since ${LOWER_BOUND}`);
+  // updated_at zaehlt nicht zum Fingerabdruck: es steigt bei jeder Neuberechnung
+  // auch ohne neue Werte. Auf Supabase liest es niemand (player-stats/route.ts
+  // waehlt es nicht); es bedeutet dort kuenftig "zuletzt geaendert".
+  await supaUpsert({
+    label: 'season_stats', table: 'tft_player_season_stats', rows: r.rows,
+    onConflict: 'puuid,region,set_number', keyCols: ['puuid', 'region', 'set_number'], omit: ['updated_at'],
+  });
+  console.log(`[season_stats] pushed ${sent.season_stats} → Supabase`);
 }
 
 async function main() {
-  console.log(`=== Hetzner → Supabase sync (range ${LOWER_BOUND} … ${DATE}) ===`);
-  await syncSnapshots();
-  if (VERBOSE) console.log('---');
+  const mode = !STATE_DIR ? 'alles (kein Zustandsordner)' : DIFF ? 'nur Geaendertes' : 'alles (--full oder MV_SYNC_DIFF=0)';
+  console.log(`=== Hetzner → Supabase sync (range ${LOWER_BOUND} … ${DATE}, ${mode}) ===`);
+  let complete = false;
   try {
-    await syncSeasonStats();
-  } catch (err) {
-    // season_stats table might not exist on Supabase yet — non-fatal
-    if (/relation .* does not exist/i.test(err.message)) {
-      console.warn(`[season_stats] Supabase table missing — skipping (apply migration 0011 first)`);
-    } else throw err;
+    await syncSnapshots();
+    if (VERBOSE) console.log('---');
+    try {
+      await syncSeasonStats();
+    } catch (err) {
+      // season_stats table might not exist on Supabase yet — non-fatal
+      if (/relation .* does not exist/i.test(err.message)) {
+        console.warn(`[season_stats] Supabase table missing — skipping (apply migration 0011 first)`);
+      } else throw err;
+    }
+    complete = true;
+  } finally {
+    // Auch nach einem Abbruch: was angekommen ist, sollen die Peaks sehen.
+    // Erst NACH dem Upsert — beide Timer sind Persistent= und koennen nach einem
+    // Neustart gleichzeitig starten.
+    if (STATE_DIR) {
+      const warn = (what) => (err) => console.warn(`[peaks-uebergabe] ${what} nicht geschrieben: ${err.message}`);
+      writePending(STATE_DIR, deliveredPlayers, { onError: warn('Warteliste') });
+      writeHeartbeat(STATE_DIR, { target: TARGET, complete, sent, players: deliveredPlayers.size }, { onError: warn('Herzschlag') });
+      console.log(`[peaks-uebergabe] ${deliveredPlayers.size} Spieler mit neuen/geaenderten Zeilen in die Warteliste`);
+    }
   }
   await pool.end();
 

@@ -311,6 +311,9 @@
       "description": "metastats Marktwert-Hoechstwerte je TFT-Set und LoL-Split festschreiben",
       "scripts": [
         "scripts/freeze-marketvalue-peaks.mjs"
+      ],
+      "After": [
+        "metastats-marketvalue-sync.service"
       ]
     },
     {

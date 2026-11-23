@@ -8,6 +8,11 @@ After=network-online.target metastats-marketvalue-sync.service
 # 01/07/13/19:15 UTC) und metastats-mirror-mv-pages.timer alle 6 h als
 # Ersatzweg, falls ein Abgleich fehlschlaegt. Laeuft diese Unit schon, geht ein
 # zweiter Anstoss im laufenden Auftrag auf — kein Doppellauf.
+# Seit 23.11.2026 endet ein Timer-Start sofort, wenn beide index.json juenger
+# als 240 min sind (--timer-skip-if-fresh, scripts/lib/mirror-timer-skip.mjs):
+# 240 min liegen zwischen dem Timer-Versatz (2,5 h) und dem Sync-Takt (6 h).
+# Nach einem gescheiterten Abgleich sind sie ~8 h alt, dann rechnet er.
+# Auslassen abschalten: ROUTE_MIRROR_TIMER_SKIP=0 in /etc/metastats-crawler/env.
 # Rueckbau: ERST Timer stoppen und metastats-marketvalue-sync.service ohne
 # OnSuccess= aufspielen, DANN den Commit zuruecknehmen.
 
@@ -19,7 +24,7 @@ WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
 # Erwartet 1-2 min (30 Abrufe nacheinander, live bis 4 s je Region).
 TimeoutStartSec=20min
-ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=mv-pages
+ExecStart=/usr/bin/node scripts/publish-route-mirrors.mjs --group=mv-pages --timer-skip-if-fresh=240
 StandardOutput=journal
 StandardError=journal
 Nice=15

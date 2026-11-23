@@ -11,6 +11,9 @@ OnSuccess=metastats-lol-builds-publish.service
 # Keine Riot-Anfragen, deshalb keine Riot-Sperre. Rechnet die zwei neuesten
 # Patches jedes Mal komplett neu und ersetzt sie auf Supabase in einer
 # Transaktion — ein abgebrochener Lauf hinterlaesst nie einen halben Stand.
+# Seit 23.11.2026 nur, wenn sich das Ergebnis geaendert hat oder das letzte
+# Schreiben 20 h her ist (Vertrag lol-builds/rang-summen: 2 Tage). Rueckbau:
+# LOL_BUILDS_SKIP_UNCHANGED=0 in /etc/metastats-crawler/env.
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
@@ -19,6 +22,8 @@ ExecStart=/usr/bin/node scripts/aggregate-lol-builds.mjs
 StandardOutput=journal
 StandardError=journal
 Nice=15
+# Fingerabdruck je Region + Patch des zuletzt geschriebenen Ergebnisses.
+StateDirectory=metastats-lol-builds
 
 # --- BEGIN metastats-hardening-floor ---
 NoNewPrivileges=yes

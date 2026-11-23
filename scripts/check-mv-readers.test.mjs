@@ -39,7 +39,7 @@ const EXEMPT = [
     reason: 'Test der Linien im Betriebsgraphen' },
   { file: 'scripts/refresh-api-server.mjs', near: 'async function pushToSupabase',
     reason: 'schreibt eine Zeile nach Supabase, liest nicht' },
-  { file: 'scripts/sync-marketvalue-to-supabase.mjs', near: "supaUpsert('tft_player_marketvalue_snapshots'",
+  { file: 'scripts/sync-marketvalue-to-supabase.mjs', near: "label: 'snapshots', table: 'tft_player_marketvalue_snapshots'",
     reason: 'Abgleich schreibt jede Zeile samt rated nach Supabase' },
 ];
 

@@ -5,6 +5,9 @@ Description=metastats Route-Spiegel /tft/marktwert alle 6 Stunden (Ersatzweg)
 # Hauptweg ist OnSuccess= aus metastats-marketvalue-sync.service. Dieser Takt
 # liegt 2,5 h hinter jedem Abgleich (01/07/13/19:15 UTC) und faengt einen
 # fehlgeschlagenen auf. Die Dateien gelten 26 h, danach rechnet die Route live.
+# Sind beide Dateien juenger als 240 min (Abgleich gelungen), endet der Lauf
+# sofort (--timer-skip-if-fresh in der Unit). Die 240 min muessen zwischen
+# diesem Versatz (2,5 h) und dem Sync-Takt (6 h) bleiben.
 OnCalendar=*-*-* 03,09,15,21:45:00 UTC
 RandomizedDelaySec=60
 Persistent=false

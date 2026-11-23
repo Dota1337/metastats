@@ -356,7 +356,8 @@
       "table": "tft_player_marketvalue_snapshots",
       "setColumn": "set_number",
       "minRows": 1,
-      "note": "Wache gegen den Vorfall vom 27.08.2026: die Tabelle hatte keine Set-Spalte, jeder Leser nahm die neueste Zeile egal aus welchem Set, und die Spielerseite zeigte nach dem Set-18-Start weiter 510 Spiele aus Set 17. Alle bestehenden Verträge standen dabei grün, weil sie nur Frische und Zeilenzahl prüfen. minRows 1 prüft bewusst nur Existenz — direkt nach einem Set-Start ist die Population noch im Aufbau, über die Menge wachen marketvalue/regionen-abdeckung*."
+      "byRegion": true,
+      "note": "Wache gegen den Vorfall vom 27.08.2026: die Tabelle hatte keine Set-Spalte, jeder Leser nahm die neueste Zeile egal aus welchem Set, und die Spielerseite zeigte nach dem Set-18-Start weiter 510 Spiele aus Set 17. Alle bestehenden Verträge standen dabei grün, weil sie nur Frische und Zeilenzahl prüfen. minRows 1 prüft bewusst nur Existenz — direkt nach einem Set-Start ist die Population noch im Aufbau, über die Menge wachen marketvalue/regionen-abdeckung*. byRegion seit 23.11.2026: ohne Regionen-Filter brauchten beide Existenzfragen 23-28 s und rissen das 20-s-Limit (seit 20.11. nur noch nicht pruefbar), mit Filter 17 ms."
     },
     {
       "id": "set-achse/comp-galerie",

@@ -28,6 +28,7 @@ import { catalogCollectOn, WARMUP_DAYS } from './comp-catalog-day.mjs';
 import { patchFamily } from './comp-catalog-store.mjs';
 import { pinnedTlsOptions } from '../../app/lib/box-tls.mjs';
 import { evaluateLiveStandings, liveTournamentsToCheck } from './tft-live-standings.mjs';
+import { ACTIVE_REGIONS } from './active-regions.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..', '..');
@@ -699,6 +700,29 @@ async function runCheck(c) {
 }
 
 /**
+ * PostgREST-Pfade der Set-Achsen-Pruefung (Supabase). Beide Fragen sind
+ * Existenzfragen — gibt es Zeilen im aktuellen Set, gibt es Zeilen ohne Set —
+ * und werden mit `limit` beantwortet statt mit count=exact. Gemessen 23.11.2026
+ * auf tft_player_marketvalue_snapshots (5 Mio Zeilen): count(*) im Set 27,8 s,
+ * `set_number is null` 23,2 s, beides ueber dem 20-s-Abbruch von supaGet; seit
+ * 20.11. war der Vertrag deshalb nur noch „nicht pruefbar“.
+ *
+ * `"byRegion": true` stellt die aktiven Regionen davor. Die Indizes der Tabelle
+ * beginnen mit region; ohne sie liest `is null` den ganzen Index (23,2 s), mit
+ * ihr 17 ms. Zeilen inaktiver Regionen prueft der Vertrag dann nicht mehr.
+ */
+export function setAxisQueries(c, set) {
+  const col = c.setColumn || 'set_number';
+  const need = Math.max(1, c.minRows ?? 1);
+  const scope = c.byRegion ? `&region=in.(${ACTIVE_REGIONS.join(',')})` : '';
+  return {
+    need,
+    current: `${c.table}?select=${col}${scope}&${col}=eq.${set}&limit=${need}`,
+    nulls: `${c.table}?select=${col}${scope}&${col}=is.null&limit=1`,
+  };
+}
+
+/**
  * Set-Achsen-Vertrag: traegt die Tabelle ueberhaupt eine Set-Spalte, ist sie
  * vollstaendig gefuellt, und stehen dort Zeilen des laufenden Sets?
  *
@@ -721,9 +745,12 @@ async function checkSetAxis(c, r) {
   const col = c.setColumn || 'set_number';
   const minRows = c.minRows ?? 1;
   let current, nulls;
+  let exact = true;
   if (c.backend === 'supabase') {
-    current = await supaCount(c.table, `&${col}=eq.${set}`);
-    nulls = await supaCount(c.table, `&${col}=is.null`);
+    const q = setAxisQueries(c, set);
+    current = (await (await supaGet(q.current)).json()).length;
+    nulls = (await (await supaGet(q.nulls)).json()).length;
+    exact = false;
   } else {
     const pool = await hetznerPool();
     const q = await pool.query(
@@ -736,12 +763,12 @@ async function checkSetAxis(c, r) {
   }
 
   if (nulls > 0) {
-    return r('broken', `${nulls} Zeilen ohne ${col} — ein Leser mit Set-Filter uebersieht sie, einer ohne mischt sie ein`);
+    return r('broken', `${exact ? nulls : 'Mindestens 1'} Zeilen ohne ${col} — ein Leser mit Set-Filter uebersieht sie, einer ohne mischt sie ein`);
   }
   if (current < minRows) {
     return r('broken', `keine Zeilen fuer Set ${set} (min ${minRows}) — die Seite zeigt Daten des Vorsets oder nichts`);
   }
-  return r('ok', `${current} Zeilen im Set ${set}, 0 ohne ${col}`);
+  return r('ok', `${exact || current === 0 ? current : `Mindestens ${current}`} Zeilen im Set ${set}, 0 ohne ${col}`);
 }
 
 /**

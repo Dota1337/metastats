@@ -12,14 +12,16 @@ After=metastats-deps-catchup.service
 Type=oneshot
 WorkingDirectory=/opt/metastats-crawler
 EnvironmentFile=/etc/metastats-crawler/env
-# Box hat 2 Kerne und 3 GB, die Sammler gehen vor: niedrigste Prioritaet,
-# harte Speichergrenze (Node-Heap darunter, damit Node sauber abbricht statt
-# vom Kernel beendet zu werden).
+# Die Sammler gehen vor: niedrigste Prioritaet, harte Speichergrenze (Node-Heap
+# darunter, damit Node sauber abbricht statt vom Kernel beendet zu werden).
+# Bedarf waechst mit dem Set (~5 MB/Tag: 01.11. 439 MB, 16.11. 518 MB); die
+# alte Grenze 500M/420 MB vom 3-GB-Server riss ab 15.11. taeglich. Seit 23.11.2026
+# 2G/1536 MB (CPX32, 7,7 GB; frei um 05:17 UTC gemessen ~6,1 GB).
 Nice=19
 IOSchedulingClass=idle
-MemoryMax=500M
+MemoryMax=2G
 TimeoutStartSec=60min
-ExecStart=/usr/bin/node --max-old-space-size=420 scripts/build-player-scoring-population.mjs
+ExecStart=/usr/bin/node --max-old-space-size=1536 scripts/build-player-scoring-population.mjs
 StandardOutput=journal
 StandardError=journal
 

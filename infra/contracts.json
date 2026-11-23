@@ -112,9 +112,9 @@
       "dateColumn": "day",
       "maxLagDays": 1,
       "minRows": 1,
-      "minSum": { "column": "games", "min": 1500000 },
+      "minSum": { "column": "games", "min": 1150000 },
       "minDistinct": { "column": "region", "min": 15 },
-      "note": "Seit Migration 0092 (erster Tag 10.10.2026): Comp-Duelle je Familie, Rang und Region, beide Richtungen. maxLagDays 1, weil Block 10 im Writer seine Fehler schluckt: mit 2 bliebe ein ausgefallener Duell-Tag unsichtbar. Speist Gegner auf /tft/comps/[slug], Companion-Konter und /tft/comps/compare. Seit 29.10.2026 Volumen ueber sum(games) statt Zeilen: mit dem Comp-Katalog (Sammeltag 24.10.) fielen die Zeilen von 1,14-1,25 Mio auf 381-413k, sum(games) blieb bei 2,45-3,26 Mio (= Vergleiche x2, beide Richtungen; 18.-27.10.). 1,5 Mio = ~0,6x des schwaechsten Tages. minDistinct region 15, weil eine kleine Region (me1 ~0,4 %) in keiner Summe auffaellt — bei Aenderung von ACTIVE_REGIONS mitziehen. Kein noGapsInDays: supaDistinctDays bricht nach 200.000 Zeilen ab."
+      "note": "Seit Migration 0092 (erster Tag 10.10.2026): Comp-Duelle je Familie, Rang und Region, beide Richtungen. maxLagDays 1, weil Block 10 im Writer seine Fehler schluckt: mit 2 bliebe ein ausgefallener Duell-Tag unsichtbar. Speist Gegner auf /tft/comps/[slug], Companion-Konter und /tft/comps/compare. Seit 29.10.2026 Volumen ueber sum(games) statt Zeilen: mit dem Comp-Katalog (Sammeltag 24.10.) fielen die Zeilen von 1,14-1,25 Mio auf 381-413k, sum(games) blieb bei 2,45-3,26 Mio (= Vergleiche x2, beide Richtungen; 18.-27.10.). 1,5 Mio = ~0,6x des schwaechsten Tages. minDistinct region 15, weil eine kleine Region (me1 ~0,4 %) in keiner Summe auffaellt — bei Aenderung von ACTIVE_REGIONS mitziehen. Kein noGapsInDays: supaDistinctDays bricht nach 200.000 Zeilen ab. Seit 23.11.2026 1,15 Mio statt 1,5 Mio: die Spieleraktivitaet sank im Set 18 von 72-77k Lobbys/Tag (Start) auf 26,3-26,7k (ab 19.11., Quelle tft_daily_crawl_meta), sum(games) 20.-22.11. 1,40-1,42 Mio bei 15/15 Regionen ohne Fehler; je Lobby stabil ~53 (also kein Pipeline-Verlust). 1,15 Mio = ~0,81x des Plateaus: der Ausfall von vn2 (26 %) oder kr (21 %) faellt weiterhin auf. Beim Set-Start wieder anheben."
     },
     {
       "id": "daily-crawl/comp-matchups-all",
@@ -124,7 +124,7 @@
       "dateColumn": "day",
       "maxLagDays": 1,
       "minRows": 1,
-      "minSum": { "column": "games", "min": 1500000 },
+      "minSum": { "column": "games", "min": 1150000 },
       "note": "Seit Migration 0094 (2026-10-11): Tagessumme der Comp-Duelle ueber alle Regionen, gebildet am Laufende (runMatchupRollup). Seit 29.10.2026 Volumen ueber sum(games) wie daily-crawl/comp-matchups (gleiche Summe, gemessen 27.10.: 2.567.562); Zeilen fielen mit dem Comp-Katalog von ~500k auf 69-89k. Fehlt der neueste Tag, lesen Detailseite, Companion und Vergleich ihn aus der Regionen-Tabelle (richtig, aber langsam) — der Bruch heisst also: Schritt am Laufende scheitert."
     },
     {

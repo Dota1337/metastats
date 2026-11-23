@@ -18,7 +18,7 @@
 //
 // Flags:
 //   --dry-run          nichts schreiben (auch keine Raenge), nur rechnen und melden
-//   --max-players N    Bezugsspieler (Standard 1200, Speichergrenze der Unit 500 MB)
+//   --max-players N    Bezugsspieler (Standard 1200, Speichergrenze der Unit 2 GB)
 //   --max-lobbies N    Lobbys fuer das Lobby-Modell (Standard 80000)
 
 import { readFileSync, existsSync } from 'node:fs';

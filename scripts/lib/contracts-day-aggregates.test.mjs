@@ -76,9 +76,9 @@ test('contracts.json: Comp-Duelle pruefen Vergleiche und Regionen, und jedes Fel
   const { contracts } = JSON.parse(readFileSync(resolve(ROOT, 'infra', 'contracts.json'), 'utf8'));
   const byId = new Map(contracts.map(c => [c.id, c]));
   const m = byId.get('daily-crawl/comp-matchups');
-  assert.deepEqual(m.minSum, { column: 'games', min: 1500000 });
+  assert.deepEqual(m.minSum, { column: 'games', min: 1150000 });
   assert.deepEqual(m.minDistinct, { column: 'region', min: 15 });
-  assert.deepEqual(byId.get('daily-crawl/comp-matchups-all').minSum, { column: 'games', min: 1500000 });
+  assert.deepEqual(byId.get('daily-crawl/comp-matchups-all').minSum, { column: 'games', min: 1150000 });
   for (const c of contracts) {
     for (const k of Object.keys(c)) assert.ok(!/^min(sum|distinct)$/i.test(k) || k === 'minSum' || k === 'minDistinct', `${c.id}: Tippfehler ${k}`);
     if (dayAggregateParts(c)) assert.equal(dayAggregatesSupported(c), true, c.id);

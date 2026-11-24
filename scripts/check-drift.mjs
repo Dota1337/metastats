@@ -303,6 +303,13 @@ function read(path) {
       .map((f) => `${dir}/${String(f).replace(/\\/g, '/')}`)
       .filter((f) => /\.(ts|tsx|mjs|js)$/.test(f))
       .filter((f) => !f.includes('/node_modules/') && !f.includes('/.next/'));
+    // Testdateien tragen Set-Nummern und Set-IDs als Fixture — das ist ihr
+    // Zweck, kein Drift. Ein Test darf beim Set-Wechsel auch NICHT mitziehen
+    // (metatft-cells.test.mjs rechnet mit Set 18 und DA_Ahri19 als "naechstes
+    // Set"). Gilt fuer beide Pruefungen unten (g und Literale), damit sie nicht
+    // auseinanderlaufen. Alle Tests unter app/ und scripts/ enden auf .test.mjs.
+    const isTestFile = (f) => /\.test\.mjs$/.test(f);
+    const codeSources = () => [...sources('app'), ...sources('scripts')].filter((f) => !isTestFile(f));
 
     // e) set-nummerierte Dateien in public/. Zwei Klassen, bewusst getrennt:
     //    eine Datei fuer ein NEUERES Set als die SoT ist ein Fehler (etwas hat
@@ -343,13 +350,12 @@ function read(path) {
     // standen Builder, Explorer und Lobby-Scout mit leeren Listen da, ohne
     // dass irgendwer gewarnt haette.
     const PREFIX_RE = /TFT\d{2}_|TFT\\d|TFT\$\{/;
-    // Testdateien tragen Set-IDs als Fixture — das ist ihr Zweck, kein Drift.
-    // Und nur Zeilen, die mit dem Prefix FILTERN, sind gefaehrlich: eine ID in
-    // einer Datenzeile ist harmlos, ein startsWith('TFT17_') wirft im Set 18
-    // still alles weg.
+    // Testdateien sind ausgenommen (isTestFile oben). Und nur Zeilen, die mit
+    // dem Prefix FILTERN, sind gefaehrlich: eine ID in einer Datenzeile ist
+    // harmlos, ein startsWith('TFT17_') wirft im Set 18 still alles weg.
     const FILTER_RE = /startsWith\(|\.test\(|\.match\(|new RegExp|replace\(|\/\^TFT/;
     const prefixHits = [];
-    for (const f of [...sources('app'), ...sources('scripts')].filter((f) => !/\.test\.mjs$/.test(f))) {
+    for (const f of codeSources()) {
       read(f).split(/\r?\n/).forEach((raw, i) => {
         if (/^\s*[*/]/.test(raw)) return;
         // Zwei Formen: das Literal (TFT17_) und das Muster im Quelltext
@@ -367,7 +373,9 @@ function read(path) {
     }
 
     const found = {};
-    for (const f of [...sources('app'), ...sources('scripts')]) {
+    // Ohne Testdateien (isTestFile oben) — sonst raet die Meldung unten zu
+    // CURRENT_SET, und genau das wuerde einen Test beim Set-Wechsel brechen.
+    for (const f of codeSources()) {
       read(f).split(/\r?\n/).forEach((raw, i) => {
         if (/^\s*[*/]/.test(raw)) return;                 // reine Kommentarzeile
         const line = raw.replace(/\/\/.*$/, '').replace(/\/\*[\s\S]*?\*\//g, '');

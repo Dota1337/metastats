@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:net';
 import { makeGh, retryable } from './gh-issues.mjs';
 
-const TOKEN = 'ghp_GEHEIMtestwert123';
+// Bewusst gleichfoermig: ein zufaellig aussehender Wert loest die
+// Geheimnis-Suche aus (generic-api-key, Lauf 45371394196).
+const TOKEN = 'testtesttesttesttest';
 
 const json = (status, data = {}) => new Response(status === 204 ? null : JSON.stringify(data), { status });
 const netErr = (code, message = 'fetch failed') => new TypeError(message, { cause: Object.assign(new Error(code), { code }) });

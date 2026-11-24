@@ -57,8 +57,9 @@ async function main() {
     try { previousTotal = Number(JSON.parse(readFileSync(outPath, 'utf8')).total) || 0; } catch { /* Vorlauf unlesbar */ }
   }
 
-  const { units, total, sourceUpdated, stats } = buildCells(raw, { champions, previousTotal });
-  console.log(`  ${stats.rows} Zeilen, ${stats.invalid} ungültig, ${(stats.setSharePermille / 10).toFixed(1)} % auf Set-${set}-Units`);
+  const { units, total, sourceUpdated, stats } = buildCells(raw, { champions, set: Number(set), previousTotal });
+  console.log(`  ${stats.rows} Zeilen, ${stats.invalid} ungültig, ${(stats.setSharePermille / 10).toFixed(1)} % auf Set-${set}-Units`
+    + ` (${(stats.nextSetPermille / 10).toFixed(1)} % aus Set ${Number(set) + 1} nicht gezählt)`);
   console.log(`  ${units.length} Units, ${total} Beobachtungen (zuvor ${previousTotal || '–'}), Quelle ${sourceUpdated}`);
 
   const payload = {

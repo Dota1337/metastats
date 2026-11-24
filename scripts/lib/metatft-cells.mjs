@@ -12,6 +12,9 @@
 //   - Enthaelt Units anderer Sets (66 × TFT17_*, 0,1 % der Beobachtungen) und
 //     Formvarianten, die nicht im Bundle stehen (DA_18_Akali_AP, ≤0,1 % der Unit).
 //     Uebernommen wird nur, was exakt in tft-assets-{set}.json#champions steht.
+//   - Vor einem Set-Start auch das naechste Set (24.11.2026: 15,3 % auf
+//     DA_Ahri19, DA_19_Ahri, DA_OceanSong19_Bongos …). Diese Units zaehlen im
+//     Set-Gatter nicht mit (siehe idSetNumber), in die Ausgabe kamen sie nie.
 //   - Feldnummer: cell_N → Index N-1 = row*7+col, Reihe 0 hinten, wie
 //     comp_details (refresh-metatft-comps.mjs) und BuilderClient.
 
@@ -30,14 +33,39 @@ export const MAX_SOURCE_AGE_DAYS = 3;
 
 const CELL_RE = /^cell_(\d+)$/;
 
+// Set-Nummer aus der Unit-Id (Riots Schreibweisen, gemessen an allen 292 Ids
+// der Quelle und des Bundles am 24.11.2026). Die „3" in DA_3StarPyke_* ist
+// eine Sternzahl und trifft keins der Muster.
+const SET_NUMBER_RES = [
+  /^TFT(\d+)_/, // TFT17_Aatrox, TFT18_MasterYi
+  /^DA_(\d+)_/, // DA_18_Akali_AD, DA_19_Ahri
+  /^DA_(?:[A-Za-z]+_)*[A-Za-z]+(\d+)(?:_|$)/, // DA_Ahri19, DA_OceanSong19_Bongos, DA_Akali_TrueDamage19
+];
+
+/** Set-Nummer der Unit-Id oder null (TFT_TrainingDummy, DA_3StarPyke_InfernalIdol). */
+export function idSetNumber(id) {
+  for (const re of SET_NUMBER_RES) {
+    const m = re.exec(String(id));
+    if (m) return Number(m[1]);
+  }
+  return null;
+}
+
 /**
+ * Units des NAECHSTEN Sets (Nummer = set + 1, ausserhalb des Bundles) zaehlen im
+ * Set-Gatter nicht mit — Daten eines anderen Sets gehoeren nicht in dieses, und
+ * sie liessen das Gatter vor jedem Set-Start scheitern (22.–24.11.2026).
+ * Aeltere Sets und Ids ohne Nummer bleiben im Nenner, das Gatter wird damit eher
+ * strenger. Was im Bundle steht, zaehlt immer zum eigenen Set.
+ *
  * @param {unknown} raw  Antwort von tft-stat-api/positions
- * @param {{ champions: Record<string, unknown>, previousTotal?: number, now?: number }} opts
+ * @param {{ champions: Record<string, unknown>, set: number, previousTotal?: number, now?: number }} opts
  * @returns {{ units: Array<{ id: string, n: number, cells: Array<[number, number, number | null]> }>,
  *             total: number, sourceUpdated: string, stats: Record<string, number> }}
  *   `cells`: [Feld 0-basiert, Haeufigkeit in Promille, Top 4 in Promille oder null]
  */
-export function buildCells(raw, { champions, previousTotal = 0, now = Date.now() }) {
+export function buildCells(raw, { champions, set, previousTotal = 0, now = Date.now() }) {
+  if (!Number.isInteger(set) || set <= 0) throw new Error(`Set-Nummer fehlt oder ungueltig: ${set}`);
   const rows = raw && typeof raw === 'object' ? raw.positions : null;
   if (!Array.isArray(rows) || rows.length === 0) throw new Error('Antwort ohne positions-Liste');
 
@@ -54,6 +82,7 @@ export function buildCells(raw, { champions, previousTotal = 0, now = Date.now()
   let invalid = 0;
   let validObs = 0;
   let setObs = 0;
+  let nextSetObs = 0;
   for (const r of rows) {
     const m = CELL_RE.exec(String(r?.position ?? ''));
     const cell = m ? Number(m[1]) - 1 : -1;
@@ -65,7 +94,10 @@ export function buildCells(raw, { champions, previousTotal = 0, now = Date.now()
       continue;
     }
     validObs += count;
-    if (!Object.hasOwn(champions, r.unit)) continue;
+    if (!Object.hasOwn(champions, r.unit)) {
+      if (idSetNumber(r.unit) === set + 1) nextSetObs += count;
+      continue;
+    }
     setObs += count;
     let cells = byUnit.get(r.unit);
     if (!cells) byUnit.set(r.unit, (cells = new Map()));
@@ -78,9 +110,12 @@ export function buildCells(raw, { champions, previousTotal = 0, now = Date.now()
   if (invalid / rows.length > MAX_INVALID_SHARE) {
     throw new Error(`${invalid} von ${rows.length} Zeilen ungueltig (max ${MAX_INVALID_SHARE * 100} %)`);
   }
-  const setShare = validObs ? setObs / validObs : 0;
+  const counted = validObs - nextSetObs;
+  const setShare = counted > 0 ? setObs / counted : 0;
+  const nextShare = validObs ? nextSetObs / validObs : 0;
   if (setShare < MIN_SET_SHARE) {
-    throw new Error(`nur ${(setShare * 100).toFixed(1)} % der Beobachtungen auf Units des Sets (min ${MIN_SET_SHARE * 100} %)`);
+    throw new Error(`nur ${(setShare * 100).toFixed(1)} % der Beobachtungen auf Units des Sets (min ${MIN_SET_SHARE * 100} %, `
+      + `ohne ${(nextShare * 100).toFixed(1)} % aus Set ${set + 1})`);
   }
   if (byUnit.size < MIN_UNITS) throw new Error(`nur ${byUnit.size} Units mit Daten (min ${MIN_UNITS})`);
   if (previousTotal > 0 && setObs < previousTotal * (1 - MAX_DROP)) {
@@ -108,6 +143,10 @@ export function buildCells(raw, { champions, previousTotal = 0, now = Date.now()
     units,
     total: setObs,
     sourceUpdated: new Date(updated).toISOString(),
-    stats: { rows: rows.length, invalid, units: units.length, setSharePermille: Math.round(setShare * 1000) },
+    stats: {
+      rows: rows.length, invalid, units: units.length,
+      setSharePermille: Math.round(setShare * 1000),
+      nextSetPermille: Math.round(nextShare * 1000),
+    },
   };
 }
